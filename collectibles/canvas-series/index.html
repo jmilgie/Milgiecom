@@ -59,7 +59,7 @@
 
 .coverflow-viewport {
   position: relative;
-  height: 620px;            /* more vertical room */
+  height: 700px;            /* more vertical room */
   border-radius: 16px;
   overflow: visible;        /* KEY: stop clipping outer cards */
   outline: none;
@@ -90,7 +90,7 @@
   top: 50%;
   left: 50%;
   width: min(380px, 76vw);
-  height: 480px; /* a bit taller */
+  height: 520px;              /* enough for image + action */
   transform-style: preserve-3d;
   border-radius: 18px;
   overflow: hidden;
@@ -99,10 +99,7 @@
   box-shadow: 0 20px 80px rgba(0,0,0,.45);
   transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 420ms ease, filter 420ms ease;
   user-select: none;
-  z-index: 2;
 }
-
-
 
 .cf-card::after {
   content: "";
@@ -133,15 +130,10 @@
   margin-top: 4px;
 }
 
-.cf-media {
-  padding: 12px 14px 10px;
-  display: grid;
-  place-items: center;
-}
-
 /* Focus treatment */
 .cf-card.is-center {
   filter: none !important;
+  box-shadow: 0 28px 110px rgba(0,0,0,.55);
 }
 
 .cf-card:not(.is-center) {
@@ -151,22 +143,18 @@
 
 .cf-media {
   padding: 12px 14px 10px;
-  display: grid;
-  place-items: center;
 }
 
 .cf-media img {
   width: 100%;
-  max-width: 100%;
-  aspect-ratio: 2.5 / 3.5;  /* playing card */
-  object-fit: contain;       /* DO NOT crop */
   height: auto;
+  aspect-ratio: 2.5 / 3.5;
+  object-fit: contain;
+  display: block;
   border-radius: 14px;
   border: 1px dashed rgba(255,215,120,.35);
   background: rgba(0,0,0,.20);
-  display: block;
 }
-
 
 .cf-card-foot {
   padding: 12px 16px;
@@ -188,18 +176,16 @@
 .cf-under-controls {
   position: absolute;
   left: 50%;
-  top: calc(50% + 220px);  /* tuned for the current card height */
+  top: 565px;                 /* fixed position inside the viewport */
   transform: translateX(-50%);
   display: flex;
   gap: 12px;
-  z-index: 9999;           /* above EVERYTHING in the viewport */
+  z-index: 20000;             /* above all cards */
   pointer-events: auto;
 }
-
-/* Ensure the buttons themselves can receive clicks */
 .cf-under-controls .cf-btn {
-  min-width: 56px;
-  height: 48px;
+  min-width: 58px;
+  height: 50px;
   border-radius: 999px !important;
   font-size: 22px;
   display: grid;
@@ -226,6 +212,7 @@
   text-transform: uppercase;
   font-size: 12px;
   cursor: pointer;
+  z-index: 0;
   transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, opacity 180ms ease;
 }
 
@@ -1121,7 +1108,7 @@
             const z = isCenter ? 220 : 0 - Math.abs(o) * 70;
             const rotY = o * -22;
             const scale = isCenter ? 1.0 : 0.90 - (Math.abs(o) * 0.04);
-            const y = -110; // lifts the deck so the bottom controls + full card show cleanly
+            const y = -170; // lifts the deck so the bottom controls + full card show cleanly
 
             card.classList.toggle('is-center', isCenter);
 
@@ -1164,14 +1151,19 @@
       function next() { setIndex(index + 1); }
       function prev() { setIndex(index - 1); }
     
-      // Buttons
-      root.querySelectorAll('[data-cf]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            (btn.dataset.cf === 'next') ? next() : prev();
+        // Prev/Next buttons (delegated, so it always works)
+        root.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-cf]');
+        if (!btn) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const dir = btn.getAttribute('data-cf');
+        if (dir === 'next') next();
+        if (dir === 'prev') prev();
         });
-        });
+
 
     
       // Keyboard
@@ -1182,14 +1174,22 @@
         if (e.key === 'End') { e.preventDefault(); setIndex(cards.length - 1); }
       });
     
-      // Click-to-focus (tap a side card to bring it to center)
-      cards.forEach((card, i) => {
-        card.addEventListener('click', (e) => {
-          // avoid hijacking clicks on links
-          if (e.target && e.target.closest('a')) return;
-          setIndex(i);
-        });
-      });
+    // Click-to-focus (PC + mobile): click any visible card to bring it to center.
+    // Clicking the action button is handled separately.
+    cards.forEach((card, i) => {
+    card.addEventListener('click', (e) => {
+        // If they clicked the bottom action button, let the button handler manage it.
+        if (e.target && e.target.closest('[data-jump]')) return;
+
+        // If this is already center, do nothing.
+        if (card.classList.contains('is-center')) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        setIndex(i);
+    });
+    });
+
     
       // Auto rotate behavior (optional)
       function restartAuto() {
