@@ -74,7 +74,7 @@
             </div>
           </div>
 
-          <!-- Plaque-inspired panel (matches your gold-on-navy label vibe) -->
+          <!-- Plaque-inspired panel -->
           <div class="hero-plaque">
             <div class="plaque-top">THE COLLECTIBLE CANVAS SERIES™</div>
             <div class="plaque-mid">A Curated Assembly of Character Studies</div>
@@ -82,12 +82,17 @@
 
             <div class="plaque-divider" aria-hidden="true"></div>
 
-            <div class="asset-slot asset-tall">
-              <div class="asset-slot-label">ASSET SLOT (ITEM HERO)</div>
-              <div class="asset-slot-help">
-                Add plaque-style hero images, set photos, or close-ups later.
-              </div>
-            </div>
+            <!-- HERO IMAGE -->
+            <figure class="asset-slot asset-tall">
+              <div class="asset-slot-label">ITEM HERO</div>
+              <img
+                src="./assets/hero-item.png"
+                alt="Collectible Canvas Series — Edition: SpongeBob SquarePants — hero image"
+                loading="lazy"
+                decoding="async"
+                style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+              />
+            </figure>
 
             <div class="plaque-foot">
               <span class="badge">SOLD OUT</span>
@@ -133,26 +138,54 @@
           </div>
 
           <div>
-            <div class="asset-slot asset-wide">
-              <div class="asset-slot-label">ASSET SLOT (MONTAGE / BOX BACK)</div>
-              <div class="asset-slot-help">
-                Add a wide montage (canvases together), or your “back of box” layout photo later.
-              </div>
-            </div>
+            <!-- MONTAGE / BOX BACK -->
+            <figure class="asset-slot asset-wide">
+              <div class="asset-slot-label">MONTAGE / BOX BACK</div>
+              <img
+                src="./assets/montage-boxback.png"
+                alt="Montage of the full Collectible Canvas Series set / box back presentation"
+                loading="lazy"
+                decoding="async"
+                style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+              />
+            </figure>
 
             <div class="asset-row">
-              <div class="asset-slot asset-small">
-                <div class="asset-slot-label">ASSET</div>
-                <div class="asset-slot-help">certificate</div>
-              </div>
-              <div class="asset-slot asset-small">
-                <div class="asset-slot-label">ASSET</div>
-                <div class="asset-slot-help">nameplate</div>
-              </div>
-              <div class="asset-slot asset-small">
-                <div class="asset-slot-label">ASSET</div>
-                <div class="asset-slot-help">corner detail</div>
-              </div>
+              <!-- CERTIFICATE -->
+              <figure class="asset-slot asset-small">
+                <div class="asset-slot-label">CERTIFICATE</div>
+                <img
+                  src="./assets/certificate.png"
+                  alt="Certificate image"
+                  loading="lazy"
+                  decoding="async"
+                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+                />
+              </figure>
+
+              <!-- NAMEPLATE -->
+              <figure class="asset-slot asset-small">
+                <div class="asset-slot-label">NAMEPLATE</div>
+                <img
+                  src="./assets/nameplate.png"
+                  alt="Nameplate detail image"
+                  loading="lazy"
+                  decoding="async"
+                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+                />
+              </figure>
+
+              <!-- CORNER DETAIL -->
+              <figure class="asset-slot asset-small">
+                <div class="asset-slot-label">CORNER DETAIL</div>
+                <img
+                  src="./assets/corner-detail.png"
+                  alt="Ornate corner bracket detail image"
+                  loading="lazy"
+                  decoding="async"
+                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+                />
+              </figure>
             </div>
           </div>
         </div>
@@ -281,7 +314,7 @@
       </div>
     </section>
 
-    <!-- AUTHENTICITY / CERTIFICATE COPY (fine print) -->
+    <!-- AUTHENTICITY / CERTIFICATE COPY -->
     <section class="panel">
       <div class="section-head">
         <div class="section-title">Authenticity Notice</div>
@@ -324,35 +357,32 @@
           </div>
 
           <div class="attest-block" style="grid-column: span 12;">
-            <div class="attest-label">Certificate Asset Slot</div>
+            <div class="attest-label">Certificate Asset</div>
             <div class="attest-text">
-              <div class="asset-slot asset-wide" style="margin-top:10px;">
-                <div class="asset-slot-label">ASSET SLOT (CERTIFICATE IMAGE)</div>
-                <div class="asset-slot-help">Add your printed certificate photograph or scan later.</div>
-              </div>
+              <figure class="asset-slot asset-wide" style="margin-top:10px;">
+                <div class="asset-slot-label">CERTIFICATE IMAGE</div>
+                <img
+                  src="./assets/certificate.png"
+                  alt="Printed certificate photo or scan"
+                  loading="lazy"
+                  decoding="async"
+                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+                />
+              </figure>
             </div>
           </div>
         </div>
 
-        <div class="attest-sign">
-          <div class="sig">
-            <div class="sig-title">AUTHORIZED SIGNATURE</div>
-            <div class="sig-line" aria-hidden="true"></div>
-          </div>
-          <div class="sig">
-            <div class="sig-title">DATE</div>
-            <div class="sig-line" aria-hidden="true"></div>
-          </div>
-        </div>
+        <!-- REMOVED: Authorized Signature + Date fields -->
       </div>
     </section>
 
-    <!-- INCLUDED STUDIES (Booklet copy) -->
+    <!-- INCLUDED STUDIES -->
     <section class="panel">
       <div class="section-head">
         <div class="section-title">Included Studies</div>
         <div class="section-sub">
-          Booklet-ready entries for the complete SpongeBob SquarePants edition (six studies). Insert images per entry later.
+          Booklet-ready entries for the complete SpongeBob SquarePants edition (six studies).
         </div>
       </div>
 
@@ -366,10 +396,16 @@
             </div>
             <div class="item-seal" aria-hidden="true"></div>
           </div>
-          <div class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">ASSET SLOT (SPONGEBOB)</div>
-            <div class="asset-slot-help">Add the canvas photo later.</div>
-          </div>
+          <figure class="item-media asset-slot asset-wide">
+            <div class="asset-slot-label">SPONGEBOB CANVAS</div>
+            <img
+              src="./assets/spongebob.png"
+              alt="Canvas photo: SpongeBob SquarePants"
+              loading="lazy"
+              decoding="async"
+              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+            />
+          </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
@@ -396,10 +432,16 @@
             </div>
             <div class="item-seal" aria-hidden="true"></div>
           </div>
-          <div class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">ASSET SLOT (PATRICK)</div>
-            <div class="asset-slot-help">Add the canvas photo later.</div>
-          </div>
+          <figure class="item-media asset-slot asset-wide">
+            <div class="asset-slot-label">PATRICK CANVAS</div>
+            <img
+              src="./assets/patrick.png"
+              alt="Canvas photo: Patrick Star"
+              loading="lazy"
+              decoding="async"
+              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+            />
+          </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
@@ -424,10 +466,16 @@
             </div>
             <div class="item-seal" aria-hidden="true"></div>
           </div>
-          <div class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">ASSET SLOT (SQUIDWARD)</div>
-            <div class="asset-slot-help">Add the canvas photo later.</div>
-          </div>
+          <figure class="item-media asset-slot asset-wide">
+            <div class="asset-slot-label">SQUIDWARD CANVAS</div>
+            <img
+              src="./assets/squidward.png"
+              alt="Canvas photo: Squidward Tentacles"
+              loading="lazy"
+              decoding="async"
+              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+            />
+          </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
@@ -452,10 +500,16 @@
             </div>
             <div class="item-seal" aria-hidden="true"></div>
           </div>
-          <div class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">ASSET SLOT (MR. KRABS)</div>
-            <div class="asset-slot-help">Add the canvas photo later.</div>
-          </div>
+          <figure class="item-media asset-slot asset-wide">
+            <div class="asset-slot-label">MR. KRABS CANVAS</div>
+            <img
+              src="./assets/mr-krabs.png"
+              alt="Canvas photo: Mr. Krabs"
+              loading="lazy"
+              decoding="async"
+              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+            />
+          </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
@@ -480,10 +534,16 @@
             </div>
             <div class="item-seal" aria-hidden="true"></div>
           </div>
-          <div class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">ASSET SLOT (GARY)</div>
-            <div class="asset-slot-help">Add the canvas photo later.</div>
-          </div>
+          <figure class="item-media asset-slot asset-wide">
+            <div class="asset-slot-label">GARY CANVAS</div>
+            <img
+              src="./assets/gary.png"
+              alt="Canvas photo: Gary the Snail"
+              loading="lazy"
+              decoding="async"
+              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+            />
+          </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
@@ -508,10 +568,16 @@
             </div>
             <div class="item-seal" aria-hidden="true"></div>
           </div>
-          <div class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">ASSET SLOT (SANDY)</div>
-            <div class="asset-slot-help">Add the canvas photo later.</div>
-          </div>
+          <figure class="item-media asset-slot asset-wide">
+            <div class="asset-slot-label">SANDY CANVAS</div>
+            <img
+              src="./assets/sandy.png"
+              alt="Canvas photo: Sandy Cheeks"
+              loading="lazy"
+              decoding="async"
+              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
+            />
+          </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
