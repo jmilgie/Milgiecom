@@ -9,6 +9,177 @@
 
   <!-- Page-only polish layer (keeps your global CSS intact) -->
   <style>
+    /* ========== COVERFLOW CAROUSEL ========== */
+.coverflow {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.16);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.coverflow-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.coverflow-title {
+  display: grid;
+  gap: 4px;
+}
+
+.coverflow-kicker {
+  font-size: 11px;
+  opacity: .75;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.coverflow-now {
+  font-size: 18px;
+  letter-spacing: .02em;
+}
+
+.coverflow-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.cf-btn {
+  min-width: 44px;
+  height: 44px;
+  border-radius: 999px !important;
+  font-size: 22px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.coverflow-viewport {
+  position: relative;
+  height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  outline: none;
+  perspective: 1200px;
+  background: radial-gradient(900px 400px at 50% -10%, rgba(255,255,255,.12), transparent 55%);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.coverflow-track {
+  position: absolute;
+  inset: 0;
+}
+
+.cf-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(360px, 74vw);
+  height: 360px;
+  transform-style: preserve-3d;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 20px 80px rgba(0,0,0,.45);
+  transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 420ms ease, filter 420ms ease;
+  user-select: none;
+}
+
+.cf-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(700px 280px at 25% 0%, rgba(255,255,255,.12), transparent 55%),
+              radial-gradient(700px 280px at 80% 15%, rgba(255,215,120,.10), transparent 55%);
+  opacity: .9;
+  mix-blend-mode: screen;
+}
+
+.cf-card-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0));
+}
+
+.cf-card-name {
+  font-size: 16px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.cf-card-sub {
+  font-size: 12px;
+  opacity: .75;
+  margin-top: 4px;
+}
+
+.cf-media {
+  height: 250px;
+  padding: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.cf-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px dashed rgba(255,215,120,.35);
+  background: rgba(0,0,0,.20);
+}
+
+.cf-card-foot {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  display: flex;
+  justify-content: flex-end;
+  background: linear-gradient(to top, rgba(0,0,0,.22), rgba(0,0,0,0));
+}
+
+.cf-link {
+  text-decoration: none;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: 12px;
+  opacity: .9;
+}
+
+.coverflow-dots {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.cf-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.30);
+  border: 1px solid rgba(255,255,255,.25);
+  transition: transform 220ms ease, opacity 220ms ease;
+  opacity: .75;
+}
+
+.cf-dot.active {
+  transform: scale(1.35);
+  background: rgba(255,215,120,.55);
+  opacity: 1;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .cf-card { transition: none; }
+  .cf-dot { transition: none; }
+}
+
+    
     /* ========== POLISH LAYER (local overrides only) ========== */
 
     /* Subtle lift + glow on key cards for “flashy” without being tacky */
@@ -534,9 +705,122 @@
         </div>
       </div>
 
+<!-- STUDIES CAROUSEL (COVERFLOW) -->
+<section class="panel" aria-label="Character study carousel">
+    <div class="section-head" style="margin-bottom: 10px;">
+      <div class="section-title">Study Carousel</div>
+      <div class="section-sub">Rotate the studies as a curated display sequence.</div>
+    </div>
+  
+    <div class="coverflow lux-card" id="studyCoverflow">
+      <div class="coverflow-top">
+        <div class="coverflow-title">
+          <span class="coverflow-kicker">CURATED DISPLAY MODE</span>
+          <span class="coverflow-now" id="coverflowNow">SpongeBob SquarePants</span>
+        </div>
+  
+        <div class="coverflow-controls">
+          <button class="btn btn-ghost cf-btn" type="button" data-cf="prev" aria-label="Previous study">‹</button>
+          <button class="btn btn-ghost cf-btn" type="button" data-cf="next" aria-label="Next study">›</button>
+        </div>
+      </div>
+  
+      <div class="coverflow-viewport" id="coverflowViewport" tabindex="0" role="region" aria-label="Coverflow viewport">
+        <div class="coverflow-track" id="coverflowTrack" aria-live="polite">
+          <!-- Card 0 -->
+          <article class="cf-card" data-title="SpongeBob SquarePants">
+            <div class="cf-card-head">
+              <div class="cf-card-name">SpongeBob SquarePants</div>
+              <div class="cf-card-sub">Character Study</div>
+            </div>
+            <div class="cf-media">
+              <img src="./assets/spongebob.png" alt="Canvas photo: SpongeBob SquarePants" loading="lazy" decoding="async">
+            </div>
+            <div class="cf-card-foot">
+              <a class="cf-link" href="#study-spongebob">View full entry →</a>
+            </div>
+          </article>
+  
+          <!-- Card 1 -->
+          <article class="cf-card" data-title="Patrick Star">
+            <div class="cf-card-head">
+              <div class="cf-card-name">Patrick Star</div>
+              <div class="cf-card-sub">Character Study</div>
+            </div>
+            <div class="cf-media">
+              <img src="./assets/patrick.png" alt="Canvas photo: Patrick Star" loading="lazy" decoding="async">
+            </div>
+            <div class="cf-card-foot">
+              <a class="cf-link" href="#study-patrick">View full entry →</a>
+            </div>
+          </article>
+  
+          <!-- Card 2 -->
+          <article class="cf-card" data-title="Squidward Tentacles">
+            <div class="cf-card-head">
+              <div class="cf-card-name">Squidward Tentacles</div>
+              <div class="cf-card-sub">Character Study</div>
+            </div>
+            <div class="cf-media">
+              <img src="./assets/squidward.png" alt="Canvas photo: Squidward Tentacles" loading="lazy" decoding="async">
+            </div>
+            <div class="cf-card-foot">
+              <a class="cf-link" href="#study-squidward">View full entry →</a>
+            </div>
+          </article>
+  
+          <!-- Card 3 -->
+          <article class="cf-card" data-title="Mr. Krabs">
+            <div class="cf-card-head">
+              <div class="cf-card-name">Mr. Krabs</div>
+              <div class="cf-card-sub">Character Study</div>
+            </div>
+            <div class="cf-media">
+              <img src="./assets/mr-krabs.png" alt="Canvas photo: Mr. Krabs" loading="lazy" decoding="async">
+            </div>
+            <div class="cf-card-foot">
+              <a class="cf-link" href="#study-krabs">View full entry →</a>
+            </div>
+          </article>
+  
+          <!-- Card 4 -->
+          <article class="cf-card" data-title="Gary the Snail">
+            <div class="cf-card-head">
+              <div class="cf-card-name">Gary the Snail</div>
+              <div class="cf-card-sub">Character Study</div>
+            </div>
+            <div class="cf-media">
+              <img src="./assets/gary.png" alt="Canvas photo: Gary the Snail" loading="lazy" decoding="async">
+            </div>
+            <div class="cf-card-foot">
+              <a class="cf-link" href="#study-gary">View full entry →</a>
+            </div>
+          </article>
+  
+          <!-- Card 5 -->
+          <article class="cf-card" data-title="Sandy Cheeks">
+            <div class="cf-card-head">
+              <div class="cf-card-name">Sandy Cheeks</div>
+              <div class="cf-card-sub">Character Study</div>
+            </div>
+            <div class="cf-media">
+              <img src="./assets/sandy.png" alt="Canvas photo: Sandy Cheeks" loading="lazy" decoding="async">
+            </div>
+            <div class="cf-card-foot">
+              <a class="cf-link" href="#study-sandy">View full entry →</a>
+            </div>
+          </article>
+        </div>
+      </div>
+  
+      <div class="coverflow-dots" id="coverflowDots" aria-label="Carousel position"></div>
+    </div>
+  </section>
+  
+
       <div class="catalog-grid studies-grid">
         <!-- SpongeBob -->
-        <article class="item-card lux-card" style="grid-column: span 4;">
+        <article id="study-spongebob" class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">SpongeBob SquarePants</h2>
@@ -565,7 +849,7 @@
         </article>
 
         <!-- Patrick -->
-        <article class="item-card lux-card" style="grid-column: span 4;">
+        <article id="study-patrick" class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Patrick Star</h2>
@@ -590,7 +874,7 @@
         </article>
 
         <!-- Squidward -->
-        <article class="item-card lux-card" style="grid-column: span 4;">
+        <article id="study-squidward" class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Squidward Tentacles</h2>
@@ -614,7 +898,7 @@
         </article>
 
         <!-- Mr. Krabs -->
-        <article class="item-card lux-card" style="grid-column: span 4;">
+        <article id="study-krabs" class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Mr. Krabs</h2>
@@ -639,7 +923,7 @@
         </article>
 
         <!-- Gary -->
-        <article class="item-card lux-card" style="grid-column: span 4;">
+        <article id="study-gary" class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Gary the Snail</h2>
@@ -664,7 +948,7 @@
         </article>
 
         <!-- Sandy -->
-        <article class="item-card lux-card" style="grid-column: span 4;">
+        <article id="study-sandy" class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Sandy Cheeks</h2>
@@ -695,5 +979,152 @@
       </div>
     </section>
   </main>
+  <script>
+    (() => {
+      const root = document.getElementById('studyCoverflow');
+      if (!root) return;
+    
+      const track = document.getElementById('coverflowTrack');
+      const viewport = document.getElementById('coverflowViewport');
+      const now = document.getElementById('coverflowNow');
+      const dotsHost = document.getElementById('coverflowDots');
+      const cards = Array.from(track.querySelectorAll('.cf-card'));
+    
+      let index = 0;
+    
+      // Optional: auto-rotate like a museum display.
+      const AUTO_ROTATE = false;
+      const AUTO_MS = 4500;
+      let autoTimer = null;
+    
+      function mod(n, m) { return ((n % m) + m) % m; }
+    
+      function buildDots() {
+        dotsHost.innerHTML = '';
+        cards.forEach((_, i) => {
+          const dot = document.createElement('button');
+          dot.type = 'button';
+          dot.className = 'cf-dot';
+          dot.setAttribute('aria-label', `Go to item ${i + 1}`);
+          dot.addEventListener('click', () => setIndex(i));
+          dotsHost.appendChild(dot);
+        });
+      }
+    
+      function updateDots() {
+        const dots = Array.from(dotsHost.querySelectorAll('.cf-dot'));
+        dots.forEach((d, i) => d.classList.toggle('active', i === index));
+      }
+    
+      function layout() {
+        const N = cards.length;
+        cards.forEach((card, i) => {
+          const offset = i - index;
+    
+          // Wrap offsets so the “near” items remain near (circular list)
+          // e.g. if index is 0, item 5 should be -1 not +5
+          let o = offset;
+          if (o > N / 2) o -= N;
+          if (o < -N / 2) o += N;
+    
+          // Only keep a handful visible for the “deck” effect
+          const visibleRange = 2; // shows center + 2 left/right
+          const isVisible = Math.abs(o) <= visibleRange;
+    
+          // Transform math: center is big, sides tilt away
+          const x = o * 220;
+          const z = Math.abs(o) === 0 ? 160 : 0 - Math.abs(o) * 40;
+          const rotY = o * -18;
+          const scale = Math.abs(o) === 0 ? 1.0 : 0.88 - (Math.abs(o) * 0.03);
+          const y = -50; // because we're centering via top:50%
+    
+          card.style.opacity = isVisible ? '1' : '0';
+          card.style.pointerEvents = isVisible ? 'auto' : 'none';
+          card.style.filter = Math.abs(o) === 0 ? 'none' : 'blur(0.2px) saturate(0.9)';
+          card.style.transform =
+            `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), ${z}px) rotateY(${rotY}deg) scale(${scale})`;
+    
+          // Layering
+          card.style.zIndex = String(100 - Math.abs(o));
+        });
+    
+        const title = cards[index]?.dataset?.title || '';
+        now.textContent = title;
+        updateDots();
+      }
+    
+      function setIndex(i) {
+        index = mod(i, cards.length);
+        layout();
+        restartAuto();
+      }
+    
+      function next() { setIndex(index + 1); }
+      function prev() { setIndex(index - 1); }
+    
+      // Buttons
+      root.querySelectorAll('[data-cf]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.dataset.cf === 'next' ? next() : prev();
+        });
+      });
+    
+      // Keyboard
+      viewport.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+        if (e.key === 'Home') { e.preventDefault(); setIndex(0); }
+        if (e.key === 'End') { e.preventDefault(); setIndex(cards.length - 1); }
+      });
+    
+      // Click-to-focus (tap a side card to bring it to center)
+      cards.forEach((card, i) => {
+        card.addEventListener('click', (e) => {
+          // avoid hijacking clicks on links
+          if (e.target && e.target.closest('a')) return;
+          setIndex(i);
+        });
+      });
+    
+      // Auto rotate behavior (optional)
+      function restartAuto() {
+        if (!AUTO_ROTATE) return;
+        if (autoTimer) window.clearInterval(autoTimer);
+        autoTimer = window.setInterval(() => next(), AUTO_MS);
+      }
+      function pauseAuto() {
+        if (autoTimer) window.clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    
+      // Pause on hover/focus (museum etiquette)
+      root.addEventListener('mouseenter', pauseAuto);
+      root.addEventListener('mouseleave', restartAuto);
+      root.addEventListener('focusin', pauseAuto);
+      root.addEventListener('focusout', restartAuto);
+    
+      // Touch drag (simple)
+      let startX = null;
+      viewport.addEventListener('pointerdown', (e) => {
+        startX = e.clientX;
+        viewport.setPointerCapture(e.pointerId);
+      });
+      viewport.addEventListener('pointerup', (e) => {
+        if (startX == null) return;
+        const dx = e.clientX - startX;
+        startX = null;
+        if (Math.abs(dx) > 40) dx < 0 ? next() : prev();
+      });
+    
+      // Init
+      buildDots();
+      layout();
+      restartAuto();
+    
+      // Keep it responsive
+      window.addEventListener('resize', layout);
+    })();
+    </script>
+    
 </body>
 </html>
