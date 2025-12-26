@@ -6,6 +6,159 @@
   <title>Collectible Canvas Series — Edition: SpongeBob SquarePants</title>
   <meta name="description" content="Collectible Canvas Series — Edition: SpongeBob SquarePants (SOLD OUT)." />
   <link rel="stylesheet" href="../collectibles.css" />
+
+  <!-- Page-only polish layer (keeps your global CSS intact) -->
+  <style>
+    /* ========== POLISH LAYER (local overrides only) ========== */
+
+    /* Subtle lift + glow on key cards for “flashy” without being tacky */
+    .lux-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 18px;
+    }
+    .lux-card::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      pointer-events: none;
+      background: radial-gradient(900px 500px at 20% 0%, rgba(255,255,255,.10), transparent 45%),
+                  radial-gradient(700px 450px at 85% 10%, rgba(255,215,120,.10), transparent 55%);
+      opacity: .9;
+      mix-blend-mode: screen;
+    }
+
+    /* Better header rhythm */
+    .section-head .section-title {
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    /* Make asset images always look intentional in slots */
+    .asset-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: inherit;
+      transform: translateZ(0);
+    }
+
+    /* Clickable asset hint */
+    .asset-link {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      text-decoration: none;
+      color: inherit;
+    }
+    .asset-link:focus-visible {
+      outline: 2px solid rgba(255,255,255,.5);
+      outline-offset: 3px;
+      border-radius: 14px;
+    }
+
+    /* === Fix the “bubbly” look in the screenshot section ===
+       We convert the “detail boxes” into elegant rows with dividers.
+       This targets only Edition section cards by adding .edition-elegant wrapper. */
+    .edition-elegant .details-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .edition-elegant .detail {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: transparent !important; /* kill bubble backgrounds */
+      box-shadow: none !important;
+    }
+    .edition-elegant .detail:last-child {
+      border-bottom: none;
+    }
+    .edition-elegant .detail-label {
+      font-size: 11px;
+      opacity: .75;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .edition-elegant .detail-value {
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    /* Collection Features list: convert from bubble-items to a clean “spec list” */
+    .feature-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .feature-list li {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .feature-list li:last-child { border-bottom: none; }
+    .feature-bullet {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      margin-top: 6px;
+      background: rgba(255,255,255,.55);
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.08);
+    }
+
+    /* Edition Status: remove “bubble grid” vibe and make it feel like a formal plaque */
+    .status-plaque {
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .status-plaque .row {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .status-plaque .row:last-child { border-bottom: none; }
+    .status-plaque .k {
+      font-size: 11px;
+      opacity: .75;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .status-plaque .v { font-size: 14px; line-height: 1.45; }
+
+    /* Included Studies: 3-up grid */
+    .studies-grid .item-card {
+      height: 100%;
+    }
+    .studies-grid .item-media.asset-slot {
+      height: 220px; /* makes the grid feel cohesive */
+    }
+
+    /* Small hover sophistication on cards */
+    .item-card {
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .item-card:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Make anchor jump land nicely under the sticky topbar */
+    :root { scroll-padding-top: 110px; }
+  </style>
 </head>
 
 <body class="bg-shift bg-2">
@@ -75,14 +228,13 @@
           </div>
 
           <!-- Plaque-inspired panel -->
-          <div class="hero-plaque">
+          <div class="hero-plaque lux-card">
             <div class="plaque-top">THE COLLECTIBLE CANVAS SERIES™</div>
             <div class="plaque-mid">A Curated Assembly of Character Studies</div>
             <div class="plaque-sub">Edition: SpongeBob SquarePants</div>
 
             <div class="plaque-divider" aria-hidden="true"></div>
 
-            <!-- HERO IMAGE -->
             <figure class="asset-slot asset-tall">
               <div class="asset-slot-label">ITEM HERO</div>
               <img
@@ -90,14 +242,11 @@
                 alt="Collectible Canvas Series — Edition: SpongeBob SquarePants — hero image"
                 loading="lazy"
                 decoding="async"
-                style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
               />
             </figure>
 
             <div class="plaque-foot">
               <span class="badge">SOLD OUT</span>
-              <span class="badge">NAVY</span>
-              <span class="badge">GOLD FOIL</span>
               <span class="badge">ORNATE</span>
             </div>
           </div>
@@ -109,7 +258,7 @@
       </div>
     </section>
 
-    <!-- ABOUT / CURATORIAL STATEMENT -->
+    <!-- ABOUT -->
     <section class="panel">
       <div class="section-head">
         <div class="section-title">About the Collection</div>
@@ -138,32 +287,32 @@
           </div>
 
           <div>
-            <!-- MONTAGE / BOX BACK -->
-            <figure class="asset-slot asset-wide">
+            <figure class="asset-slot asset-wide lux-card">
               <div class="asset-slot-label">MONTAGE / BOX BACK</div>
               <img
                 src="./assets/montage-boxback.png"
                 alt="Montage of the full Collectible Canvas Series set / box back presentation"
                 loading="lazy"
                 decoding="async"
-                style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
               />
             </figure>
 
             <div class="asset-row">
-              <!-- CERTIFICATE -->
+              <!-- CERTIFICATE (LINKS TO CERTIFICATE SECTION) -->
               <figure class="asset-slot asset-small">
-                <div class="asset-slot-label">CERTIFICATE</div>
-                <img
-                  src="./assets/certificate.png"
-                  alt="Certificate image"
-                  loading="lazy"
-                  decoding="async"
-                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
-                />
+                <div class="asset-slot-label">
+                  <a href="#certificate" style="color:inherit;text-decoration:none;">CERTIFICATE</a>
+                </div>
+                <a class="asset-link" href="#certificate" aria-label="Jump to certificate section">
+                  <img
+                    src="./assets/certificate.png"
+                    alt="Certificate image (click to jump to certificate section)"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </a>
               </figure>
 
-              <!-- NAMEPLATE -->
               <figure class="asset-slot asset-small">
                 <div class="asset-slot-label">NAMEPLATE</div>
                 <img
@@ -171,11 +320,9 @@
                   alt="Nameplate detail image"
                   loading="lazy"
                   decoding="async"
-                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
                 />
               </figure>
 
-              <!-- CORNER DETAIL -->
               <figure class="asset-slot asset-small">
                 <div class="asset-slot-label">CORNER DETAIL</div>
                 <img
@@ -183,7 +330,6 @@
                   alt="Ornate corner bracket detail image"
                   loading="lazy"
                   decoding="async"
-                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
                 />
               </figure>
             </div>
@@ -193,14 +339,15 @@
     </section>
 
     <!-- EDITION DETAILS / FEATURES / STATUS -->
-    <section class="panel">
+    <section class="panel edition-elegant">
       <div class="section-head">
         <div class="section-title">Edition Details</div>
         <div class="section-sub">Formal breakdown of format, construction, and issuance.</div>
       </div>
 
       <div class="catalog-grid">
-        <div class="item-card" style="grid-column: span 6;">
+        <!-- Edition Details -->
+        <div class="item-card lux-card" style="grid-column: span 6;">
           <div class="item-top">
             <div>
               <h2 class="h2">Edition Details</h2>
@@ -231,7 +378,8 @@
           </div>
         </div>
 
-        <div class="item-card" style="grid-column: span 6;">
+        <!-- Collection Features -->
+        <div class="item-card lux-card" style="grid-column: span 6;">
           <div class="item-top">
             <div>
               <h2 class="h2">Collection Features</h2>
@@ -241,20 +389,21 @@
           </div>
 
           <div class="item-details">
-            <div class="details-grid">
-              <div class="detail"><div class="detail-value">• Individually mounted canvas works</div></div>
-              <div class="detail"><div class="detail-value">• Ornate metal corner cladding for structural authority</div></div>
-              <div class="detail"><div class="detail-value">• Custom-fabricated identification nameplates</div></div>
-              <div class="detail"><div class="detail-value">• Cohesive scale and visual balance across all pieces</div></div>
-              <div class="detail"><div class="detail-value">• Designed for permanent display environments</div></div>
-              <div class="detail"><div class="detail-value">• Museum-adjacent presentation standards</div></div>
-              <div class="detail"><div class="detail-value">• Display-forward construction</div></div>
-              <div class="detail"><div class="detail-value">• Narrative fidelity preserved through material choice</div></div>
-            </div>
+            <ul class="feature-list">
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Individually mounted canvas works</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Ornate metal corner cladding for structural authority</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Custom-fabricated identification nameplates</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Cohesive scale and visual balance across all pieces</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Designed for permanent display environments</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Museum-adjacent presentation standards</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Display-forward construction</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Narrative fidelity preserved through material choice</span></li>
+            </ul>
           </div>
         </div>
 
-        <div class="item-card" style="grid-column: span 12;">
+        <!-- Edition Status -->
+        <div class="item-card lux-card" style="grid-column: span 12;">
           <div class="item-top">
             <div>
               <h2 class="h2">Edition Status</h2>
@@ -264,44 +413,44 @@
           </div>
 
           <div class="item-details">
-            <div class="details-grid" style="grid-template-columns: repeat(12, 1fr); gap:12px;">
-              <div class="detail" style="grid-column: span 6;">
-                <div class="detail-label">Issued as</div>
-                <div class="detail-value">Complete assembly.</div>
+            <div class="status-plaque">
+              <div class="row">
+                <div class="k">Issued as</div>
+                <div class="v">Complete assembly.</div>
               </div>
 
-              <div class="detail" style="grid-column: span 6;">
-                <div class="detail-label">Availability</div>
-                <div class="detail-value"><span class="sold">SOLD OUT</span> • archival record only</div>
+              <div class="row">
+                <div class="k">Availability</div>
+                <div class="v"><span class="sold">SOLD OUT</span> • archival record only</div>
               </div>
 
-              <div class="detail" style="grid-column: span 12;">
-                <div class="detail-label">This edition is</div>
-                <div class="detail-value">
+              <div class="row">
+                <div class="k">This edition is</div>
+                <div class="v">
                   Not serialized • Not numbered • Not licensed • Not reproduced • Not expanded • Not revised • <span class="foil">Not explained</span>
                 </div>
               </div>
 
-              <div class="detail" style="grid-column: span 12;">
-                <div class="detail-label">Interpretation</div>
-                <div class="detail-value">
+              <div class="row">
+                <div class="k">Interpretation</div>
+                <div class="v">
                   This collection emphasizes visual confidence, narrative clarity, and emotional durability.
                   Variations in posture, expression, and proximity are intentional and should be interpreted
                   as part of the broader compositional structure.
                 </div>
               </div>
 
-              <div class="detail" style="grid-column: span 12;">
-                <div class="detail-label">Guidance</div>
-                <div class="detail-value">
+              <div class="row">
+                <div class="k">Guidance</div>
+                <div class="v">
                   Individual canvases may be displayed separately; however, the full narrative impact is achieved through comprehensive ownership.
                   Reproduction, reinterpretation, or casual handling is discouraged.
                 </div>
               </div>
 
-              <div class="detail" style="grid-column: span 12;">
-                <div class="detail-label">Final statement</div>
-                <div class="detail-value">This collection is presented without irony.</div>
+              <div class="row">
+                <div class="k">Final statement</div>
+                <div class="v">This collection is presented without irony.</div>
               </div>
             </div>
 
@@ -315,13 +464,13 @@
     </section>
 
     <!-- AUTHENTICITY / CERTIFICATE COPY -->
-    <section class="panel">
+    <section class="panel" id="certificate">
       <div class="section-head">
         <div class="section-title">Authenticity Notice</div>
         <div class="section-sub">Certificate-grade language, preserved in full.</div>
       </div>
 
-      <div class="attest-frame">
+      <div class="attest-frame lux-card">
         <div class="attest-body" style="grid-template-columns: repeat(12, 1fr);">
           <div class="attest-block" style="grid-column: span 12;">
             <div class="attest-label">Certificate Fine Print / Authenticity Declaration</div>
@@ -366,18 +515,17 @@
                   alt="Printed certificate photo or scan"
                   loading="lazy"
                   decoding="async"
-                  style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
                 />
               </figure>
             </div>
           </div>
         </div>
 
-        <!-- REMOVED: Authorized Signature + Date fields -->
+        <!-- Removed: Authorized Signature + Date -->
       </div>
     </section>
 
-    <!-- INCLUDED STUDIES -->
+    <!-- INCLUDED STUDIES (3-up grid) -->
     <section class="panel">
       <div class="section-head">
         <div class="section-title">Included Studies</div>
@@ -386,9 +534,9 @@
         </div>
       </div>
 
-      <div class="catalog-grid">
+      <div class="catalog-grid studies-grid">
         <!-- SpongeBob -->
-        <article class="item-card" style="grid-column: span 12;">
+        <article class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">SpongeBob SquarePants</h2>
@@ -398,13 +546,7 @@
           </div>
           <figure class="item-media asset-slot asset-wide">
             <div class="asset-slot-label">SPONGEBOB CANVAS</div>
-            <img
-              src="./assets/spongebob.png"
-              alt="Canvas photo: SpongeBob SquarePants"
-              loading="lazy"
-              decoding="async"
-              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
-            />
+            <img src="./assets/spongebob.png" alt="Canvas photo: SpongeBob SquarePants" loading="lazy" decoding="async" />
           </figure>
           <div class="item-details">
             <div class="detail">
@@ -414,8 +556,7 @@
                 and emotional transparency.
                 <br/><br/>
                 Despite a simplified form, the subject conveys remarkable narrative density. Enthusiasm is not depicted as
-                chaos, but as structure — a consistent state maintained through repetition and effort. The work positions
-                SpongeBob as both central figure and stabilizing force within the broader collection.
+                chaos, but as structure — a consistent state maintained through repetition and effort.
                 <br/><br/>
                 This piece functions as an anchor for the edition.
               </div>
@@ -424,7 +565,7 @@
         </article>
 
         <!-- Patrick -->
-        <article class="item-card" style="grid-column: span 12;">
+        <article class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Patrick Star</h2>
@@ -434,13 +575,7 @@
           </div>
           <figure class="item-media asset-slot asset-wide">
             <div class="asset-slot-label">PATRICK CANVAS</div>
-            <img
-              src="./assets/patrick.png"
-              alt="Canvas photo: Patrick Star"
-              loading="lazy"
-              decoding="async"
-              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
-            />
+            <img src="./assets/patrick.png" alt="Canvas photo: Patrick Star" loading="lazy" decoding="async" />
           </figure>
           <div class="item-details">
             <div class="detail">
@@ -448,17 +583,14 @@
                 Patrick Star is represented as a study in stillness, negative space, and unburdened presence.
                 The composition emphasizes simplicity, allowing form and expression to remain largely uninterrupted by context.
                 <br/><br/>
-                The subject’s posture suggests comfort without urgency, confidence without intention. Interpretation is intentionally left open,
-                inviting the viewer to project meaning rather than extract it.
-                <br/><br/>
-                Within the collection, this work provides visual and emotional contrast, reinforcing the value of absence as a compositional tool.
+                Within the collection, this work provides contrast and relief — reinforcing the value of absence as a compositional tool.
               </div>
             </div>
           </div>
         </article>
 
         <!-- Squidward -->
-        <article class="item-card" style="grid-column: span 12;">
+        <article class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Squidward Tentacles</h2>
@@ -468,31 +600,21 @@
           </div>
           <figure class="item-media asset-slot asset-wide">
             <div class="asset-slot-label">SQUIDWARD CANVAS</div>
-            <img
-              src="./assets/squidward.png"
-              alt="Canvas photo: Squidward Tentacles"
-              loading="lazy"
-              decoding="async"
-              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
-            />
+            <img src="./assets/squidward.png" alt="Canvas photo: Squidward Tentacles" loading="lazy" decoding="async" />
           </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
-                This canvas examines restraint, detachment, and internalized judgment. Squidward Tentacles is positioned with deliberate posture,
-                conveying a sustained awareness of his surroundings and his distance from them.
+                This canvas examines restraint, detachment, and internalized judgment. The posture conveys distance maintained as a discipline.
                 <br/><br/>
-                The figure’s expression resists engagement, favoring composure over accessibility. The work presents dissatisfaction not as an outburst,
-                but as a stable, maintained condition.
-                <br/><br/>
-                As part of the collection, this piece introduces tension and balance, grounding the ensemble through controlled opposition.
+                As part of the collection, this piece introduces tension and balance — grounding the ensemble through controlled opposition.
               </div>
             </div>
           </div>
         </article>
 
         <!-- Mr. Krabs -->
-        <article class="item-card" style="grid-column: span 12;">
+        <article class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Mr. Krabs</h2>
@@ -502,31 +624,22 @@
           </div>
           <figure class="item-media asset-slot asset-wide">
             <div class="asset-slot-label">MR. KRABS CANVAS</div>
-            <img
-              src="./assets/mr-krabs.png"
-              alt="Canvas photo: Mr. Krabs"
-              loading="lazy"
-              decoding="async"
-              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
-            />
+            <img src="./assets/mr-krabs.png" alt="Canvas photo: Mr. Krabs" loading="lazy" decoding="async" />
           </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
                 Mr. Krabs is rendered as a study in accumulation, vigilance, and transactional awareness.
-                The composition emphasizes physical presence and symbolic markers associated with value and ownership.
+                The stance suggests control exercised through continual evaluation.
                 <br/><br/>
-                The subject’s stance conveys readiness and control, suggesting an ongoing negotiation between possession and protection.
-                This canvas frames ambition not as abstraction, but as a visible and active force.
-                <br/><br/>
-                Within the collection, this work operates as a commentary on systems of value and the behaviors they reinforce.
+                Within the collection, this work functions as a commentary on systems of value and the behaviors they reinforce.
               </div>
             </div>
           </div>
         </article>
 
         <!-- Gary -->
-        <article class="item-card" style="grid-column: span 12;">
+        <article class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Gary the Snail</h2>
@@ -536,31 +649,22 @@
           </div>
           <figure class="item-media asset-slot asset-wide">
             <div class="asset-slot-label">GARY CANVAS</div>
-            <img
-              src="./assets/gary.png"
-              alt="Canvas photo: Gary the Snail"
-              loading="lazy"
-              decoding="async"
-              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
-            />
+            <img src="./assets/gary.png" alt="Canvas photo: Gary the Snail" loading="lazy" decoding="async" />
           </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
-                This canvas presents Gary the Snail with minimal intervention, allowing the subject’s form and placement to define the work.
+                This canvas presents Gary with minimal intervention, allowing form and placement to define the work.
                 Motion is implied rather than depicted, emphasizing patience and continuity.
                 <br/><br/>
-                The composition favors calm observation over narrative action. The subject’s presence suggests routine, familiarity,
-                and quiet persistence.
-                <br/><br/>
-                As part of the collection, this piece functions as a moment of visual rest, reinforcing the importance of pacing and scale.
+                As part of the collection, this piece reinforces pacing and visual rest.
               </div>
             </div>
           </div>
         </article>
 
         <!-- Sandy -->
-        <article class="item-card" style="grid-column: span 12;">
+        <article class="item-card lux-card" style="grid-column: span 4;">
           <div class="item-top">
             <div>
               <h2 class="h2">Sandy Cheeks</h2>
@@ -570,23 +674,15 @@
           </div>
           <figure class="item-media asset-slot asset-wide">
             <div class="asset-slot-label">SANDY CANVAS</div>
-            <img
-              src="./assets/sandy.png"
-              alt="Canvas photo: Sandy Cheeks"
-              loading="lazy"
-              decoding="async"
-              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;"
-            />
+            <img src="./assets/sandy.png" alt="Canvas photo: Sandy Cheeks" loading="lazy" decoding="async" />
           </figure>
           <div class="item-details">
             <div class="detail">
               <div class="detail-value">
                 Sandy Cheeks is represented as a study in adaptability, preparedness, and applied intellect.
-                The composition integrates elements of environment and equipment, reinforcing the subject’s role as both participant and observer.
+                The posture suggests capability without performance.
                 <br/><br/>
-                The figure’s posture suggests confidence grounded in capability rather than dominance. This work highlights the balance between discipline and curiosity.
-                <br/><br/>
-                Within the collection, this canvas introduces dimensionality through contrast — land and sea, science and instinct, structure and exploration.
+                Within the collection, this canvas introduces dimensionality through contrast — land and sea, structure and exploration.
               </div>
             </div>
           </div>
