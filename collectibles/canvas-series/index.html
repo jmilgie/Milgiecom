@@ -51,30 +51,46 @@
   display: grid;
   place-items: center;
 }
-
-.coverflow-viewport {
-  position: relative;
-  height: 520px; /* extra room for under-controls */
-  border-radius: 16px;
-  overflow: hidden;
-  outline: none;
-  perspective: 1200px;
-  background: radial-gradient(900px 400px at 50% -10%, rgba(255,255,255,.12), transparent 55%);
-  border: 1px solid rgba(255,255,255,.10);
-}
-
-
 .coverflow-track {
   position: absolute;
   inset: 0;
+  z-index: 1;
 }
+
+.coverflow-viewport {
+  position: relative;
+  height: 620px;            /* more vertical room */
+  border-radius: 16px;
+  overflow: visible;        /* KEY: stop clipping outer cards */
+  outline: none;
+  perspective: 1200px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: transparent;  /* we’ll move the “frame” to an inner layer */
+}
+/* Visual frame behind the cards (keeps the vibe without clipping them) */
+.coverflow-viewport::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: radial-gradient(900px 400px at 50% -10%, rgba(255,255,255,.12), transparent 55%),
+              rgba(0,0,0,.10);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+  pointer-events: none;
+  z-index: 0;
+}
+
+
+
+.cf-under-controls { z-index: 9999; }
 
 .cf-card {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(360px, 74vw);
-  height: 440px; /* taller to accommodate action button */
+  width: min(380px, 76vw);
+  height: 480px; /* a bit taller */
   transform-style: preserve-3d;
   border-radius: 18px;
   overflow: hidden;
@@ -83,7 +99,9 @@
   box-shadow: 0 20px 80px rgba(0,0,0,.45);
   transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 420ms ease, filter 420ms ease;
   user-select: none;
+  z-index: 2;
 }
+
 
 
 .cf-card::after {
@@ -117,6 +135,8 @@
 
 .cf-media {
   padding: 12px 14px 10px;
+  display: grid;
+  place-items: center;
 }
 
 /* Focus treatment */
@@ -129,16 +149,24 @@
   opacity: .65;
 }
 
+.cf-media {
+  padding: 12px 14px 10px;
+  display: grid;
+  place-items: center;
+}
+
 .cf-media img {
   width: 100%;
-  aspect-ratio: 2.5 / 3.5; /* standard playing card */
+  max-width: 100%;
+  aspect-ratio: 2.5 / 3.5;  /* playing card */
+  object-fit: contain;       /* DO NOT crop */
   height: auto;
-  object-fit: contain;      /* NO cropping */
   border-radius: 14px;
   border: 1px dashed rgba(255,215,120,.35);
   background: rgba(0,0,0,.20);
   display: block;
 }
+
 
 .cf-card-foot {
   padding: 12px 16px;
@@ -156,25 +184,33 @@
   opacity: .9;
 }
 
-/* Under-center controls */
+/* Under-center controls (must sit above cards and be clickable) */
 .cf-under-controls {
   position: absolute;
   left: 50%;
-  top: calc(50% + 190px); /* sits under the centered card */
+  top: calc(50% + 220px);  /* tuned for the current card height */
   transform: translateX(-50%);
   display: flex;
-  gap: 10px;
-  z-index: 300;
+  gap: 12px;
+  z-index: 9999;           /* above EVERYTHING in the viewport */
   pointer-events: auto;
 }
 
+/* Ensure the buttons themselves can receive clicks */
 .cf-under-controls .cf-btn {
-  min-width: 52px;
-  height: 46px;
+  min-width: 56px;
+  height: 48px;
   border-radius: 999px !important;
   font-size: 22px;
   display: grid;
   place-items: center;
+  pointer-events: auto;
+}
+
+/* Important: make sure the viewport doesn't block clicks */
+.coverflow-viewport {
+  position: relative;
+  pointer-events: auto;
 }
 
 /* Full-width themed action button */
@@ -1081,11 +1117,11 @@
             const isCenter = (o === 0);
 
             // Wider spread, more depth
-            const x = o * 260;
+            const x = o * 280;
             const z = isCenter ? 220 : 0 - Math.abs(o) * 70;
             const rotY = o * -22;
             const scale = isCenter ? 1.0 : 0.90 - (Math.abs(o) * 0.04);
-            const y = -70; // lift a bit so under-controls fit beneath
+            const y = -110; // lifts the deck so the bottom controls + full card show cleanly
 
             card.classList.toggle('is-center', isCenter);
 
@@ -1130,10 +1166,13 @@
     
       // Buttons
       root.querySelectorAll('[data-cf]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          btn.dataset.cf === 'next' ? next() : prev();
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            (btn.dataset.cf === 'next') ? next() : prev();
         });
-      });
+        });
+
     
       // Keyboard
       viewport.addEventListener('keydown', (e) => {
