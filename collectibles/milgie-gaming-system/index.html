@@ -6,42 +6,15 @@
   <title>Milgie Gaming System — 2022 Archival Entry</title>
   <meta name="description" content="Milgie Gaming System (2022) — a bespoke electronic gaming artifact with companion controller archive." />
 
-  <!-- Shared site styling -->
-  <link rel="stylesheet" href="../collectibles.css" />
-
-  <!-- Reuse the Canvas Series coverflow styling/behavior (no duplication needed) -->
-  <link rel="stylesheet" href="../canvas-series/study-coverflow.css" />
+  <link rel="stylesheet" href="./milgie-gaming-system.css" />
 </head>
 
 <body class="bg-shift bg-2 synthwave">
   <div class="grain" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
   <div class="aurora" aria-hidden="true"></div>
-
-  <!-- Minimal synthwave theming without touching shared CSS -->
-  <style>
-    body.synthwave {
-      --sw-pink: rgba(255, 64, 180, .55);
-      --sw-cyan: rgba(64, 220, 255, .55);
-      --sw-purple: rgba(120, 80, 255, .45);
-    }
-    body.synthwave .panel-hero .ornate-frame { position: relative; }
-    body.synthwave .panel-hero .ornate-frame::before{
-      content:"";
-      position:absolute; inset:-2px;
-      background:
-        radial-gradient(1000px 500px at 18% 10%, var(--sw-pink), transparent 60%),
-        radial-gradient(900px 520px at 85% 18%, var(--sw-cyan), transparent 60%),
-        radial-gradient(800px 520px at 50% 95%, var(--sw-purple), transparent 70%);
-      filter: blur(18px);
-      opacity:.55;
-      pointer-events:none;
-      z-index:0;
-    }
-    body.synthwave .panel-hero .ornate-frame > * { position:relative; z-index:1; }
-    body.synthwave .kicker { letter-spacing:.12em; }
-    body.synthwave .badge { text-transform: uppercase; }
-  </style>
+  <script src="../canvas-series/study-coverflow.js"></script>
+  <link rel="stylesheet" href="./milgie-coverflow.css" />
 
   <header class="topbar">
     <div class="wrap topbar-inner">
@@ -92,14 +65,12 @@
             </div>
 
             <div class="sigline">
-              <span class="sigline-label">SUBHEADING</span>
               <span class="sigline-text">
                 “A domestic arcade protocol preserved in foam, chrome, and confident neon.”
               </span>
             </div>
 
             <div class="sigline">
-              <span class="sigline-label">SECONDARY STATEMENT</span>
               <span class="sigline-text">
                 “Operational by design. Exhibited by necessity.”
               </span>
@@ -116,7 +87,6 @@
 
             <!-- NOTE: you already have this file name in your folder -->
             <figure class="asset-slot asset-tall">
-              <div class="asset-slot-label">ITEM HERO</div>
               <img
                 src="./assets/hero-item.png"
                 alt="Milgie Gaming System — hero image"
@@ -126,7 +96,6 @@
             </figure>
 
             <div class="plaque-foot">
-              <span class="badge">SYNTHWAVE</span>
               <span class="badge">FUNCTIONAL</span>
               <span class="badge">ARCHIVED</span>
             </div>
@@ -542,7 +511,6 @@
     <section class="panel" id="certificate" style="margin-top:0;">
       <div class="section-head" style="margin-bottom:10px;">
         <div class="section-title">Authenticity Notice</div>
-        <div class="section-sub">Certificate-grade language, preserved in full.</div>
       </div>
 
       <div class="attest-frame lux-card">
@@ -560,21 +528,6 @@
               alignment, or foam tolerances constitute evidence of authenticity and should not be interpreted as defects.
               <br/><br/>
               This artifact is recorded without irony.
-            </div>
-          </div>
-
-          <!-- Certificate image (upload your scan/photo using this filename) -->
-          <div class="attest-block" style="grid-column: span 12;">
-            <div class="attest-label">Certificate (Scan / Photo)</div>
-            <div class="attest-text">
-              <figure class="asset-slot asset-wide" style="margin-top:10px;">
-                <img
-                  src="./assets/certificate.png"
-                  alt="Printed certificate photo or scan"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </figure>
             </div>
           </div>
         </div>
