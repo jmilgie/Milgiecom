@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Milgie.com — Neon Portal</title>
-  <meta name="description" content="Milgie.com — a synthwave portal to collectibles, our story, and music." />
+  <meta name="description" content="Milgie.com — a neon portal to collectibles and our corner of the internet." />
   <link rel="stylesheet" href="./styles.css">
 </head>
 
@@ -21,14 +21,12 @@
           <span class="logo" aria-hidden="true"></span>
           <span>
             <span class="title">Milgie<span class="glow">.com</span></span>
-            <span class="tag">Neon portal • synthwave edition</span>
+            <span class="tag">Neon portal</span>
           </span>
         </a>
 
         <div class="navlinks">
           <a class="pill" href="#portal">Portal</a>
-          <a class="pill" href="#about">About</a>
-          <a class="pill" href="#status">Status</a>
         </div>
       </nav>
     </div>
@@ -38,105 +36,37 @@
     <div class="wrap">
       <div class="hero">
         <section class="card hero-left" aria-label="Hero">
-          <div class="kicker"><span class="dot" aria-hidden="true"></span> Welcome to the Neon Timeline</div>
+          <div class="kicker"><span class="dot" aria-hidden="true"></span> Welcome</div>
 
           <h1>
             <span class="glow">MILGIE.COM</span><br/>
-            The 80s Synthwave Gateway
+            The Neon Gateway
           </h1>
 
           <p class="lead">
-            A simple hub for our stuff — collectibles, our corner of the internet, and whatever music is currently
-            melting the speakers. Built to live happily on GitHub Pages with zero dependencies.
+            A simple hub for our stuff — collectibles, updates, and whatever’s currently lighting up the timeline.
+            Built to live happily on GitHub Pages with zero dependencies.
           </p>
 
           <div class="ctaRow">
             <a class="btn primary" href="#portal" aria-label="Jump to portal links">
-              Enter the Portal
+              Enter
               <span aria-hidden="true">▶</span>
-            </a>
-            <a class="btn ghost" href="#about" aria-label="Learn more about this site">
-              How this works
-              <span aria-hidden="true">⌁</span>
             </a>
           </div>
         </section>
-
-        <aside class="card hero-right" aria-label="Side panel">
-          <div class="mini" id="status">
-            <h3>System Status</h3>
-            <div class="stat">
-              <span>Neon Grid</span><span class="badge">ONLINE</span>
-            </div>
-            <div class="stat">
-              <span>Retro Sun</span><span class="badge">RADIANT</span>
-            </div>
-            <div class="stat">
-              <span>Vibes</span><span class="badge">MAXIMUM</span>
-            </div>
-          </div>
-
-          <div class="mini">
-            <h3>Quick Note</h3>
-            <div style="color: rgba(232,230,255,.78); line-height: 1.5; font-size: 13.5px;">
-              Update link targets in one place:
-              <span class="mono">const PAGES = { ... }</span>
-              in the script at the bottom.
-            </div>
-          </div>
-        </aside>
       </div>
 
       <section class="card portal" id="portal" aria-label="Portal links">
         <div class="portalHead">
           <div>
             <h2>Portal</h2>
-            <p>Choose your destination. These buttons can point to folders, pages, or external URLs.</p>
+            <p>Choose your destination.</p>
           </div>
-          <div class="badge mono" id="buildBadge">BUILD: LOCAL</div>
         </div>
 
         <div class="gridLinks" id="linkGrid">
-          <!-- Tiles inserted by JS so you can keep the HTML clean -->
-        </div>
-      </section>
-
-      <section class="card portal" id="about" aria-label="About section">
-        <div class="portalHead">
-          <div>
-            <h2>About</h2>
-            <p>
-              This is a single-file site. You can publish it to
-              <span class="mono">https://&lt;username&gt;.github.io/&lt;repo&gt;</span>
-              (or your custom domain) with GitHub Pages.
-            </p>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: repeat(12, 1fr); gap:12px;">
-          <div class="mini" style="grid-column: span 6;">
-            <h3>Suggested structure</h3>
-            <div class="mono" style="font-size: 12.5px; line-height: 1.65; color: rgba(232,230,255,.78);">
-              / (repo root)<br/>
-              ├─ index.html<br/>
-              ├─ collectibles/ (optional)<br/>
-              │  └─ index.html<br/>
-              ├─ grace-johnathan/ (optional)<br/>
-              │  └─ index.html<br/>
-              └─ music/ (optional)<br/>
-                 └─ index.html
-            </div>
-          </div>
-
-          <div class="mini" style="grid-column: span 6;">
-            <h3>Next upgrades (easy)</h3>
-            <div style="color: rgba(232,230,255,.78); line-height: 1.55; font-size: 13.5px;">
-              • Add a background soundtrack toggle (silent by default)<br/>
-              • Add a “New” badge per link<br/>
-              • Add a gallery grid for Collectibles<br/>
-              • Add a timeline page for Grace &amp; Johnathan
-            </div>
-          </div>
+          <!-- Tiles inserted by JS -->
         </div>
       </section>
     </div>
@@ -145,68 +75,37 @@
   <footer>
     <div class="wrap">
       <div class="foot">
-        <div>© <span id="year"></span> <strong>Milgie.com</strong> • powered by neon dreams</div>
-        <div class="mono" style="opacity:.8;">SYNTHWAVE // GRIDFLOOR // GITHUB PAGES</div>
+        <div>© <span id="year"></span> <strong>Milgie.com</strong></div>
+        <div class="mono" style="opacity:.8;">NEON // GRIDFLOOR // GITHUB PAGES</div>
       </div>
     </div>
   </footer>
 
   <script>
-    // ---- Edit these to match your repo/subpages/custom domain ----
-    // If you create folders like /collectibles/index.html in the same repo,
-    // these relative links will work automatically on GitHub Pages.
+    // Keep just the one destination for now
     const PAGES = [
       {
         title: "Collectibles",
         href: "./collectibles/",
         desc: "The vault — art, finds, oddities, and legendary loot.",
         chips: ["Gallery", "Drops", "Vault"]
-      },
-      {
-        title: "Grace & Johnathan",
-        href: "./grace-johnathan/",
-        desc: "Our corner of the timeline — updates, photos, and memories.",
-        chips: ["Timeline", "Notes", "Life"]
-      },
-      {
-        title: "Music",
-        href: "./music/",
-        desc: "Playlists, demos, gear, and the occasional sonic experiment.",
-        chips: ["Playlists", "Releases", "Studio"]
       }
     ];
 
-    // Tiny inline icons (no external assets)
+    // Tiny inline icon (no external assets)
     const ICONS = {
       "Collectibles": `
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M7 7h10v10H7z" stroke="currentColor" stroke-width="2" />
           <path d="M9 3h6M9 21h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           <path d="M3 9v6M21 9v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>`,
-      "Grace & Johnathan": `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 21s-7-4.6-9.5-8.9C.5 8.6 2.6 6 5.6 6c1.8 0 3.2 1 4 2.2C10.4 7 11.8 6 13.6 6c3 0 5.1 2.6 3.1 6.1C19 16.4 12 21 12 21z"
-            stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        </svg>`,
-      "Music": `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M9 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" stroke="currentColor" stroke-width="2"/>
-          <path d="M19 16a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" stroke="currentColor" stroke-width="2"/>
-          <path d="M11.5 15V6l10-2v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>`
     };
 
     const grid = document.getElementById("linkGrid");
     const year = document.getElementById("year");
-    const buildBadge = document.getElementById("buildBadge");
 
     year.textContent = new Date().getFullYear();
-
-    // If hosted on GitHub Pages, show a little build hint
-    const host = location.hostname || "";
-    const isGitHubPages = host.endsWith("github.io");
-    buildBadge.textContent = isGitHubPages ? "BUILD: GITHUB PAGES" : "BUILD: LOCAL";
 
     function tileTemplate(item){
       const icon = ICONS[item.title] || ICONS["Collectibles"];
