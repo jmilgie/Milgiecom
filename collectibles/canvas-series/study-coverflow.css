@@ -1,0 +1,561 @@
+/* =========================================================
+   study-coverflow.css (REBUILT: LINE-EFFICIENT + NO-CONFLICT)
+   - Same behavior / layout as your current file
+   - Removes duplicate “final override” blocks
+   - Avoids redefining global/shared rules outside this page
+   ========================================================= */
+
+/* Make anchor jumps land under sticky topbar */
+:root { scroll-padding-top: 110px; }
+
+/* =========================================================
+   COVERFLOW: CRITICAL FIXES (scoped to #studyCoverflow)
+   ========================================================= */
+
+/* Your global .lux-card likely has overflow:hidden; that clips side cards.
+   Override ONLY for this component. */
+#studyCoverflow,
+#studyCoverflow.lux-card { overflow: visible !important; }
+
+/* Predictable z-index stacking inside the coverflow block */
+#studyCoverflow { position: relative; isolation: isolate; }
+
+/* Outer container styling */
+#studyCoverflow.coverflow {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.16);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+/* Header row above viewport */
+#studyCoverflow .coverflow-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:12px;
+}
+#studyCoverflow .coverflow-title{ display:grid; gap:4px; }
+#studyCoverflow .coverflow-kicker{
+  font-size:11px;
+  opacity:.75;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+#studyCoverflow .coverflow-now{ font-size:18px; letter-spacing:.02em; }
+
+/* Viewport: must NOT clip vertically (cards) */
+#studyCoverflow .coverflow-viewport{
+  position:relative;
+  height:760px;
+  border-radius:16px;
+  overflow:visible;
+  outline:none;
+  perspective:1200px;
+
+  border:1px solid rgba(255,255,255,.10);
+  background:transparent;
+
+  /* Must match JS reserves */
+  display:grid;
+  place-items:center;
+  padding-top:14px;
+  padding-bottom:78px;
+}
+
+/* Frame behind cards */
+#studyCoverflow .coverflow-viewport::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:16px;
+  background:
+    radial-gradient(900px 400px at 50% -10%, rgba(255,255,255,.12), transparent 55%),
+    rgba(0,0,0,.10);
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* Stage is the “window”: clip left/right only */
+#studyCoverflow .coverflow-stage{
+  position:absolute;
+  inset:0;
+  border-radius:16px;
+  overflow-x:hidden;
+  overflow-y:visible;
+  z-index:1;
+}
+
+/* Optional inner edge treatment */
+#studyCoverflow .coverflow-mask{
+  position:absolute;
+  inset:0;
+  border-radius:16px;
+  pointer-events:none;
+  z-index:2;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.10),
+    inset 0 0 0 2px rgba(0,0,0,.18);
+}
+
+/* Track sits in stage */
+#studyCoverflow .coverflow-track{
+  position:absolute;
+  inset:0;
+  z-index:1;
+}
+
+/* Cards: JS expects top/left 50% anchors */
+#studyCoverflow .cf-card{
+  position:absolute;
+  top:50%;
+  left:50%;
+
+  width:min(380px, 76vw);
+  height:560px;
+
+  transform-style:preserve-3d;
+  border-radius:18px;
+  overflow:hidden;
+
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 20px 80px rgba(0,0,0,.45);
+
+  transition:
+    transform 420ms cubic-bezier(.2,.8,.2,1),
+    opacity 420ms ease,
+    filter 420ms ease;
+  user-select:none;
+}
+#studyCoverflow .cf-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    radial-gradient(700px 280px at 25% 0%, rgba(255,255,255,.12), transparent 55%),
+    radial-gradient(700px 280px at 80% 15%, rgba(255,215,120,.10), transparent 55%);
+  opacity:.9;
+  mix-blend-mode:screen;
+}
+
+#studyCoverflow .cf-card-head{
+  padding:14px 16px 10px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  background: linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0));
+}
+#studyCoverflow .cf-card-name{
+  font-size:16px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+#studyCoverflow .cf-card-sub{
+  font-size:12px;
+  opacity:.75;
+  margin-top:4px;
+}
+
+#studyCoverflow .cf-card.is-center{
+  filter:none !important;
+  box-shadow:0 28px 110px rgba(0,0,0,.55);
+}
+#studyCoverflow .cf-card:not(.is-center){
+  filter: blur(2.6px) saturate(.82) brightness(.95);
+  opacity:.65;
+}
+
+/* Media */
+#studyCoverflow .cf-media{ padding:12px 14px 10px; }
+#studyCoverflow .cf-media img{
+  width:100%;
+  height:auto;
+  aspect-ratio: 2.5 / 3.5;
+  object-fit:contain;
+  object-position:center;
+  display:block;
+  border-radius:14px;
+
+  border:1px dashed rgba(255,215,120,.35);
+  background:rgba(0,0,0,.20);
+}
+
+/* Full-width action button */
+#studyCoverflow .cf-action{
+  width:calc(100% - 24px);
+  margin:10px 12px 12px;
+  padding:12px 14px;
+
+  border-radius:14px;
+  border:1px solid rgba(255,215,120,.35);
+  background:rgba(0,0,0,.22);
+  color:rgba(255,255,255,.92);
+
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-size:12px;
+
+  cursor:pointer;
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, opacity 180ms ease;
+}
+#studyCoverflow .cf-action:hover{
+  transform:translateY(-1px);
+  background:rgba(0,0,0,.28);
+  border-color:rgba(255,215,120,.55);
+}
+#studyCoverflow .cf-action:active{ transform:translateY(0); opacity:.95; }
+#studyCoverflow .cf-action:focus-visible{
+  outline:2px solid rgba(255,255,255,.45);
+  outline-offset:3px;
+}
+
+/* Under-center controls (must be clickable) */
+#studyCoverflow .cf-under-controls{
+  position:absolute;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  display:flex;
+  gap:12px;
+  z-index:20000;
+  pointer-events:auto;
+}
+#studyCoverflow .cf-under-controls .cf-btn{
+  min-width:58px;
+  height:50px;
+  border-radius:999px !important;
+  font-size:22px;
+  display:grid;
+  place-items:center;
+  pointer-events:auto;
+}
+
+/* Dots */
+#studyCoverflow .coverflow-dots{
+  margin-top:12px;
+  display:flex;
+  gap:8px;
+  justify-content:center;
+}
+#studyCoverflow .cf-dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.30);
+  border:1px solid rgba(255,255,255,.25);
+  transition: transform 220ms ease, opacity 220ms ease;
+  opacity:.75;
+}
+#studyCoverflow .cf-dot.active{
+  transform:scale(1.35);
+  background:rgba(255,215,120,.55);
+  opacity:1;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  #studyCoverflow .cf-card,
+  #studyCoverflow .cf-dot { transition:none; }
+}
+
+/* =========================================================
+   COVERFLOW: Selected study text (under carousel)
+   ========================================================= */
+
+#studyCoverflow .cf-study{
+  margin-top:14px;
+  padding:16px 18px 18px;
+  border-radius:18px;
+  background:rgba(0,0,0,.16);
+  border:1px solid rgba(255,255,255,.10);
+}
+#studyCoverflow .cf-study-kicker{
+  font-size:11px;
+  opacity:.75;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+#studyCoverflow .cf-study-title{
+  margin-top:6px;
+  font-size:16px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+#studyCoverflow .cf-study-body{
+  margin-top:10px;
+  font-size:14px;
+  line-height:1.55;
+  opacity:.92;
+}
+#studyCoverflow .cf-study-body p{ margin:0 0 10px; }
+#studyCoverflow .cf-study-body p:last-child{ margin-bottom:0; }
+
+/* =========================================================
+   PAGE POLISH (scoped, avoids global conflicts)
+   ========================================================= */
+
+/* Keep “glow” effect but only on cards inside panels on this page */
+.panel .lux-card{
+  position:relative;
+  overflow:hidden;
+  border-radius:18px;
+}
+.panel .lux-card::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  pointer-events:none;
+  background:
+    radial-gradient(900px 500px at 20% 0%, rgba(255,255,255,.10), transparent 45%),
+    radial-gradient(700px 450px at 85% 10%, rgba(255,215,120,.10), transparent 55%);
+  opacity:.9;
+  mix-blend-mode:screen;
+}
+
+/* Header rhythm */
+.section-head .section-title{
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+/* Default slot images: cover everywhere by default.
+   The About viewer/thumbs override to contain (below). */
+.asset-slot img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+  display:block;
+  border-radius:inherit;
+  transform:translateZ(0);
+}
+
+/* =========================================================
+   EDITION ELEGANT (unchanged behavior)
+   ========================================================= */
+
+.edition-elegant .details-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:0;
+  border-radius:14px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.10);
+}
+.edition-elegant .detail{
+  padding:14px 16px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.edition-elegant .detail:last-child{ border-bottom:none; }
+.edition-elegant .detail-label{
+  font-size:11px;
+  opacity:.75;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+.edition-elegant .detail-value{ font-size:14px; line-height:1.45; }
+
+/* Features list */
+.feature-list{
+  list-style:none;
+  margin:0;
+  padding:0;
+  border-radius:14px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.10);
+}
+.feature-list li{
+  padding:12px 16px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+.feature-list li:last-child{ border-bottom:none; }
+.feature-bullet{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  margin-top:6px;
+  background:rgba(255,255,255,.55);
+  flex:0 0 auto;
+  box-shadow:0 0 0 3px rgba(255,255,255,.08);
+}
+
+/* Status plaque */
+.status-plaque{
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  overflow:hidden;
+}
+.status-plaque .row{
+  padding:14px 16px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.status-plaque .row:last-child{ border-bottom:none; }
+.status-plaque .k{
+  font-size:11px;
+  opacity:.75;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+.status-plaque .v{ font-size:14px; line-height:1.45; }
+
+/* Subtle hover */
+.item-card{ transition: transform .18s ease, box-shadow .18s ease; }
+.item-card:hover{ transform: translateY(-2px); }
+
+/* =========================================================
+   ABOUT SECTION (scoped to .about-corridor)
+   ========================================================= */
+
+/* About corridor is a simple vertical stack */
+.about-corridor{
+  display:grid;
+  grid-template-columns:1fr !important;
+  gap:18px;
+  align-items:start;
+}
+
+/* Keep your intended order (media first in HTML) */
+.about-corridor > :nth-child(2){ order:1; } /* about-statement */
+.about-corridor > :nth-child(1){ order:2; } /* about-media */
+
+/* Add padding to the curatorial statement block */
+.about-corridor > :nth-child(1){ padding:16px 18px 18px; }
+
+/* Ensure media column uses full width */
+.about-media{ width:100%; max-width:100%; }
+
+/* Viewer card: full-width block, no shrink/hug-right */
+#aboutViewer,
+#aboutViewer.viewer-slot,
+#aboutViewer.asset-slot{
+  display:block !important;
+  width:100% !important;
+  max-width:100% !important;
+  justify-self:stretch !important;
+  align-self:stretch !important;
+  float:none !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+
+/* Viewer sizing */
+.about-corridor #aboutViewer.viewer-slot{
+  display:grid;
+  grid-template-rows:auto 1fr;
+  gap:10px;
+  height:520px;
+}
+@media (max-width: 900px){
+  .about-corridor #aboutViewer.viewer-slot{ height:420px; }
+}
+
+/* Viewer viewport: center image, prevent “right-hugging” look */
+.about-corridor #aboutViewer .viewer-viewport{
+  width:100%;
+  height:100%;
+  border-radius:16px;
+  overflow:hidden;
+  background:rgba(0,0,0,.10);
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+
+/* Beat global .asset-slot img rule and ensure NO CROP */
+.about-corridor #aboutViewer .viewer-viewport > img#aboutViewerImg{
+  width:auto !important;
+  height:auto !important;
+  max-width:100% !important;
+  max-height:100% !important;
+  object-fit:contain !important;
+  object-position:center !important;
+  background:transparent !important;
+  display:block !important;
+}
+
+#aboutViewerLabel{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+
+/* Thumbs grid */
+.about-corridor .asset-row{
+  width:100%;
+  max-width:100%;
+  margin-top:14px;
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:14px;
+  overflow:visible;
+}
+@media (max-width: 900px){
+  .about-corridor .asset-row{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px){
+  .about-corridor .asset-row{ grid-template-columns:1fr; }
+}
+
+/* Thumb tiles */
+.about-corridor .asset-row .asset-slot.asset-small{
+  height:150px;
+  padding:12px;
+  border-radius:18px;
+
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.10);
+
+  display:grid;
+  grid-template-rows:auto 1fr;
+  gap:10px;
+
+  overflow:hidden;
+}
+.about-corridor .asset-row .asset-slot.asset-small .thumb-viewport{
+  width:100%;
+  height:100%;
+  border-radius:14px;
+  overflow:hidden;
+  background:rgba(0,0,0,.12);
+
+  display:grid;
+  place-items:center;
+}
+
+/* Always contain in thumbs */
+.about-corridor .asset-row .asset-slot.asset-small img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:contain !important;
+  object-position:center !important;
+}
+
+/* Click affordance */
+.about-corridor .asset-row .asset-slot.asset-small.is-clickable{
+  cursor:pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+.about-corridor .asset-row .asset-slot.asset-small.is-clickable:hover{
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,.18);
+  background: rgba(0,0,0,.22);
+}
+.about-corridor .asset-row .asset-slot.asset-small.is-active{
+  border-color: rgba(255,215,120,.55);
+  box-shadow: 0 0 0 1px rgba(255,215,120,.20) inset;
+}

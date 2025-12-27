@@ -6,412 +6,7 @@
   <title>Collectible Canvas Series — Edition: SpongeBob SquarePants</title>
   <meta name="description" content="Collectible Canvas Series — Edition: SpongeBob SquarePants (SOLD OUT)." />
   <link rel="stylesheet" href="../collectibles.css" />
-
-  <!-- Page-only polish layer (keeps your global CSS intact) -->
-  <style>
-    /* ========== COVERFLOW CAROUSEL ========== */
-.coverflow {
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(0,0,0,.16);
-  border: 1px solid rgba(255,255,255,.10);
-}
-
-.coverflow-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 12px;
-}
-
-.coverflow-title {
-  display: grid;
-  gap: 4px;
-}
-
-.coverflow-kicker {
-  font-size: 11px;
-  opacity: .75;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-}
-
-.coverflow-now {
-  font-size: 18px;
-  letter-spacing: .02em;
-}
-
-.cf-btn {
-  min-width: 44px;
-  height: 44px;
-  border-radius: 999px !important;
-  font-size: 22px;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-}
-.coverflow-track {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-}
-
-.coverflow-viewport {
-  position: relative;
-  height: 700px;            /* more vertical room */
-  border-radius: 16px;
-  overflow: visible;        /* KEY: stop clipping outer cards */
-  outline: none;
-  perspective: 1200px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: transparent;  /* we’ll move the “frame” to an inner layer */
-}
-/* Visual frame behind the cards (keeps the vibe without clipping them) */
-.coverflow-viewport::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  background: radial-gradient(900px 400px at 50% -10%, rgba(255,255,255,.12), transparent 55%),
-              rgba(0,0,0,.10);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
-  pointer-events: none;
-  z-index: 0;
-}
-
-
-
-.cf-under-controls { z-index: 9999; }
-
-.cf-card {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(380px, 76vw);
-  height: 520px;              /* enough for image + action */
-  transform-style: preserve-3d;
-  border-radius: 18px;
-  overflow: hidden;
-  background: rgba(0,0,0,.22);
-  border: 1px solid rgba(255,255,255,.12);
-  box-shadow: 0 20px 80px rgba(0,0,0,.45);
-  transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 420ms ease, filter 420ms ease;
-  user-select: none;
-}
-
-.cf-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(700px 280px at 25% 0%, rgba(255,255,255,.12), transparent 55%),
-              radial-gradient(700px 280px at 80% 15%, rgba(255,215,120,.10), transparent 55%);
-  opacity: .9;
-  mix-blend-mode: screen;
-}
-
-.cf-card-head {
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid rgba(255,255,255,.10);
-  background: linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0));
-}
-
-.cf-card-name {
-  font-size: 16px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.cf-card-sub {
-  font-size: 12px;
-  opacity: .75;
-  margin-top: 4px;
-}
-
-/* Focus treatment */
-.cf-card.is-center {
-  filter: none !important;
-  box-shadow: 0 28px 110px rgba(0,0,0,.55);
-}
-
-.cf-card:not(.is-center) {
-  filter: blur(2.6px) saturate(.82) brightness(.95);
-  opacity: .65;
-}
-
-.cf-media {
-  padding: 12px 14px 10px;
-}
-
-.cf-media img {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 2.5 / 3.5;
-  object-fit: contain;
-  display: block;
-  border-radius: 14px;
-  border: 1px dashed rgba(255,215,120,.35);
-  background: rgba(0,0,0,.20);
-}
-
-.cf-card-foot {
-  padding: 12px 16px;
-  border-top: 1px solid rgba(255,255,255,.10);
-  display: flex;
-  justify-content: flex-end;
-  background: linear-gradient(to top, rgba(0,0,0,.22), rgba(0,0,0,0));
-}
-
-.cf-link {
-  text-decoration: none;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  font-size: 12px;
-  opacity: .9;
-}
-
-/* Under-center controls (must sit above cards and be clickable) */
-.cf-under-controls {
-  position: absolute;
-  left: 50%;
-  top: 565px;                 /* fixed position inside the viewport */
-  transform: translateX(-50%);
-  display: flex;
-  gap: 12px;
-  z-index: 20000;             /* above all cards */
-  pointer-events: auto;
-}
-.cf-under-controls .cf-btn {
-  min-width: 58px;
-  height: 50px;
-  border-radius: 999px !important;
-  font-size: 22px;
-  display: grid;
-  place-items: center;
-  pointer-events: auto;
-}
-
-/* Important: make sure the viewport doesn't block clicks */
-.coverflow-viewport {
-  position: relative;
-  pointer-events: auto;
-}
-
-/* Full-width themed action button */
-.cf-action {
-  width: calc(100% - 24px);
-  margin: 10px 12px 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,215,120,.35);
-  background: rgba(0,0,0,.22);
-  color: rgba(255,255,255,.92);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  font-size: 12px;
-  cursor: pointer;
-  z-index: 0;
-  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, opacity 180ms ease;
-}
-
-.cf-action:hover {
-  transform: translateY(-1px);
-  background: rgba(0,0,0,.28);
-  border-color: rgba(255,215,120,.55);
-}
-
-.cf-action:active {
-  transform: translateY(0px);
-  opacity: .95;
-}
-
-.cf-action:focus-visible {
-  outline: 2px solid rgba(255,255,255,.45);
-  outline-offset: 3px;
-}
-
-.coverflow-dots {
-  margin-top: 12px;
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-
-.cf-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.30);
-  border: 1px solid rgba(255,255,255,.25);
-  transition: transform 220ms ease, opacity 220ms ease;
-  opacity: .75;
-}
-
-.cf-dot.active {
-  transform: scale(1.35);
-  background: rgba(255,215,120,.55);
-  opacity: 1;
-}
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .cf-card { transition: none; }
-  .cf-dot { transition: none; }
-}
-
-    
-    /* ========== POLISH LAYER (local overrides only) ========== */
-
-    /* Subtle lift + glow on key cards for “flashy” without being tacky */
-    .lux-card {
-      position: relative;
-      overflow: hidden;
-      border-radius: 18px;
-    }
-    .lux-card::before {
-      content: "";
-      position: absolute;
-      inset: -2px;
-      pointer-events: none;
-      background: radial-gradient(900px 500px at 20% 0%, rgba(255,255,255,.10), transparent 45%),
-                  radial-gradient(700px 450px at 85% 10%, rgba(255,215,120,.10), transparent 55%);
-      opacity: .9;
-      mix-blend-mode: screen;
-    }
-
-    /* Better header rhythm */
-    .section-head .section-title {
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
-
-    /* Make asset images always look intentional in slots */
-    .asset-slot img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      border-radius: inherit;
-      transform: translateZ(0);
-    }
-
-    /* Clickable asset hint */
-    .asset-link {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      text-decoration: none;
-      color: inherit;
-    }
-    .asset-link:focus-visible {
-      outline: 2px solid rgba(255,255,255,.5);
-      outline-offset: 3px;
-      border-radius: 14px;
-    }
-
-    /* === Fix the “bubbly” look in the screenshot section ===
-       We convert the “detail boxes” into elegant rows with dividers.
-       This targets only Edition section cards by adding .edition-elegant wrapper. */
-    .edition-elegant .details-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 0;
-      border-radius: 14px;
-      overflow: hidden;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-    }
-    .edition-elegant .detail {
-      padding: 14px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      background: transparent !important; /* kill bubble backgrounds */
-      box-shadow: none !important;
-    }
-    .edition-elegant .detail:last-child {
-      border-bottom: none;
-    }
-    .edition-elegant .detail-label {
-      font-size: 11px;
-      opacity: .75;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-    .edition-elegant .detail-value {
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    /* Collection Features list: convert from bubble-items to a clean “spec list” */
-    .feature-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      border-radius: 14px;
-      overflow: hidden;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-    }
-    .feature-list li {
-      padding: 12px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-    .feature-list li:last-child { border-bottom: none; }
-    .feature-bullet {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      margin-top: 6px;
-      background: rgba(255,255,255,.55);
-      flex: 0 0 auto;
-      box-shadow: 0 0 0 3px rgba(255,255,255,.08);
-    }
-
-    /* Edition Status: remove “bubble grid” vibe and make it feel like a formal plaque */
-    .status-plaque {
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    .status-plaque .row {
-      padding: 14px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-    .status-plaque .row:last-child { border-bottom: none; }
-    .status-plaque .k {
-      font-size: 11px;
-      opacity: .75;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-    .status-plaque .v { font-size: 14px; line-height: 1.45; }
-
-    /* Included Studies: 3-up grid */
-    .studies-grid .item-card {
-      height: 100%;
-    }
-    .studies-grid .item-media.asset-slot {
-      height: 220px; /* makes the grid feel cohesive */
-    }
-
-    /* Small hover sophistication on cards */
-    .item-card {
-      transition: transform .18s ease, box-shadow .18s ease;
-    }
-    .item-card:hover {
-      transform: translateY(-2px);
-    }
-
-    /* Make anchor jump land nicely under the sticky topbar */
-    :root { scroll-padding-top: 110px; }
-  </style>
+  <link rel="stylesheet" href="./study-coverflow.css" />
 </head>
 
 <body class="bg-shift bg-2">
@@ -440,8 +35,9 @@
   </header>
 
   <main class="wrap">
+
     <!-- HERO -->
-    <section class="panel panel-hero">
+    <section class="panel panel-hero" style="margin-bottom:0;">
       <div class="ornate-frame">
         <div class="frame-corners" aria-hidden="true">
           <span class="corner tl"></span><span class="corner tr"></span>
@@ -450,7 +46,7 @@
 
         <div class="hero-grid">
           <div>
-            <div class="kicker"><span class="seal" aria-hidden="true"></span> ARCHIVAL ENTRY • SOLD OUT</div>
+            <div class="kicker"><span class="seal" aria-hidden="true"></span> 2025 ARCHIVAL ENTRY • SOLD OUT</div>
 
             <h1 class="h1">The <span class="foil">Collectible Canvas Series™</span></h1>
 
@@ -505,15 +101,133 @@
           </div>
         </div>
       </div>
+    </section>
 
-      <div class="separator" aria-hidden="true">
-        <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    <!-- SECTION DIVIDER (between every section) -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
+    <!-- STUDIES CAROUSEL (COVERFLOW) -->
+    <section class="panel" aria-label="Character study carousel" style="margin-top:0;margin-bottom:0;">
+      <div class="section-head" style="margin-bottom: 10px;">
+        <div class="section-title">Study Carousel</div>
+        <div class="section-sub">Rotate the studies as a curated display sequence.</div>
+      </div>
+
+      <div class="coverflow lux-card" id="studyCoverflow">
+        <div class="coverflow-top">
+          <div class="coverflow-title">
+            <span class="coverflow-kicker">CURATED DISPLAY MODE</span>
+            <span class="coverflow-now" id="coverflowNow">SpongeBob SquarePants</span>
+          </div>
+        </div>
+
+        <div class="coverflow-viewport" id="coverflowViewport" tabindex="0" role="region" aria-label="Coverflow viewport">
+          <div class="coverflow-mask" aria-hidden="true"></div>
+
+          <div class="coverflow-stage">
+            <div class="coverflow-track" id="coverflowTrack" aria-live="polite">
+              <!-- Card 0 -->
+              <article class="cf-card" data-title="SpongeBob SquarePants" data-anchor="#study-spongebob">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">SpongeBob SquarePants</div>
+                  <div class="cf-card-sub">Character Study</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/spongebob.png" alt="Canvas photo: SpongeBob SquarePants" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-spongebob">Open Full Entry</button>
+              </article>
+
+              <!-- Card 1 -->
+              <article class="cf-card" data-title="Patrick Star" data-anchor="#study-patrick">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Patrick Star</div>
+                  <div class="cf-card-sub">Character Study</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/patrick.png" alt="Canvas photo: Patrick Star" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-patrick">Open Full Entry</button>
+              </article>
+
+              <!-- Card 2 -->
+              <article class="cf-card" data-title="Squidward Tentacles" data-anchor="#study-squidward">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Squidward Tentacles</div>
+                  <div class="cf-card-sub">Character Study</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/squidward.png" alt="Canvas photo: Squidward Tentacles" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-squidward">Open Full Entry</button>
+              </article>
+
+              <!-- Card 3 -->
+              <article class="cf-card" data-title="Mr. Krabs" data-anchor="#study-krabs">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Mr. Krabs</div>
+                  <div class="cf-card-sub">Character Study</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/mr-krabs.png" alt="Canvas photo: Mr. Krabs" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-krabs">Open Full Entry</button>
+              </article>
+
+              <!-- Card 4 -->
+              <article class="cf-card" data-title="Gary the Snail" data-anchor="#study-gary">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Gary the Snail</div>
+                  <div class="cf-card-sub">Character Study</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/gary.png" alt="Canvas photo: Gary the Snail" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-gary">Open Full Entry</button>
+              </article>
+
+              <!-- Card 5 -->
+              <article class="cf-card" data-title="Sandy Cheeks" data-anchor="#study-sandy">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Sandy Cheeks</div>
+                  <div class="cf-card-sub">Character Study</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/sandy.png" alt="Canvas photo: Sandy Cheeks" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-sandy">Open Full Entry</button>
+              </article>
+            </div>
+          </div>
+
+          <!-- Controls moved UNDER the center card -->
+          <div class="cf-under-controls" aria-label="Carousel controls">
+            <button class="btn btn-ghost cf-btn" type="button" data-cf="prev" aria-label="Previous study">‹</button>
+            <button class="btn btn-ghost cf-btn" type="button" data-cf="next" aria-label="Next study">›</button>
+          </div>
+        </div>
+
+        <!-- selected study text (updates as user rotates) -->
+        <div class="cf-study lux-card" id="coverflowStudy" aria-live="polite">
+          <div class="cf-study-kicker">Selected Study</div>
+          <div class="cf-study-title" id="coverflowStudyTitle">SpongeBob SquarePants</div>
+          <div class="cf-study-body" id="coverflowStudyBody"></div>
+        </div>
+
+        <div class="coverflow-dots" id="coverflowDots" aria-label="Carousel position"></div>
       </div>
     </section>
 
+    <!-- SECTION DIVIDER -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
     <!-- ABOUT -->
-    <section class="panel">
-      <div class="section-head">
+    <section class="panel" style="margin-top:0;margin-bottom:0;">
+      <div class="section-head" style="margin-bottom:10px;">
         <div class="section-title">About the Collection</div>
         <div class="section-sub">
           Curatorial statement and program description, presented with deliberate seriousness.
@@ -521,79 +235,144 @@
       </div>
 
       <div class="corridor">
-        <div class="corridor-inner">
-          <div>
+        <div class="corridor-inner about-corridor">
+          <!-- MEDIA FIRST: viewer + 4 thumbs -->
+          <div class="about-media">
+            <!-- BIG VIEWER -->
+            <figure
+              class="asset-slot asset-wide lux-card viewer-slot"
+              id="aboutViewer"
+              data-view-src="./assets/montage-boxback.png"
+              data-view-title="MONTAGE / BOX BACK"
+            >
+              <div class="asset-slot-label" id="aboutViewerLabel">MONTAGE / BOX BACK</div>
+
+              <div class="viewer-viewport">
+                <img
+                  id="aboutViewerImg"
+                  src="./assets/montage-boxback.png"
+                  alt="Montage / box back (expanded view)"
+                  loading="lazy"
+                  decoding="async"
+                  style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                />
+              </div>
+            </figure>
+
+            <!-- THUMBS -->
+            <div class="asset-row">
+              <!-- CERTIFICATE -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="certificate"
+                data-view-src="./assets/certificate.png"
+                data-view-title="CERTIFICATE"
+              >
+                <div class="asset-slot-label">
+                  <a href="#certificate" style="color:inherit;text-decoration:none;">CERTIFICATE</a>
+                </div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/certificate.png"
+                    alt="Certificate image (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+
+              <!-- NAMEPLATE -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="nameplate"
+                data-view-src="./assets/nameplate.png"
+                data-view-title="NAMEPLATE"
+              >
+                <div class="asset-slot-label">NAMEPLATE</div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/nameplate.png"
+                    alt="Nameplate detail image (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+
+              <!-- CORNER DETAIL -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="corner"
+                data-view-src="./assets/corner-detail.png"
+                data-view-title="CORNER DETAIL"
+              >
+                <div class="asset-slot-label">CORNER DETAIL</div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/corner-detail.png"
+                    alt="Ornate corner bracket detail image (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+
+              <!-- MONTAGE / BOX BACK -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="montage"
+                data-view-src="./assets/montage-boxback.png"
+                data-view-title="MONTAGE / BOX BACK"
+              >
+                <div class="asset-slot-label">MONTAGE / BOX BACK</div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/montage-boxback.png"
+                    alt="Montage / box back (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+            </div>
+          </div>
+
+          <!-- TEXT LAST: full width under media -->
+          <div class="about-statement">
             <div class="section-title small">Curatorial Statement</div>
+
             <p class="section-sub" style="margin-top:10px;">
               The Collectible Canvas Series™ presents a disciplined exploration of character iconography through a limited
               assembly of canvas works. Each piece is carefully mounted, formally titled, and physically appointed with
               ornamental hardware to reinforce permanence, legitimacy, and display readiness.
             </p>
+
             <p class="section-sub">
               This edition examines the SpongeBob SquarePants canon as a study in persistence, professional identity,
               and emotional clarity. While rooted in animation, these works transcend their origin through material
               seriousness and presentation restraint.
             </p>
+
             <p class="section-sub">
               Each canvas is intended to be viewed individually or as part of the complete set.
             </p>
-          </div>
-
-          <div>
-            <figure class="asset-slot asset-wide lux-card">
-              <div class="asset-slot-label">MONTAGE / BOX BACK</div>
-              <img
-                src="./assets/montage-boxback.png"
-                alt="Montage of the full Collectible Canvas Series set / box back presentation"
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-
-            <div class="asset-row">
-              <!-- CERTIFICATE (LINKS TO CERTIFICATE SECTION) -->
-              <figure class="asset-slot asset-small">
-                <div class="asset-slot-label">
-                  <a href="#certificate" style="color:inherit;text-decoration:none;">CERTIFICATE</a>
-                </div>
-                <a class="asset-link" href="#certificate" aria-label="Jump to certificate section">
-                  <img
-                    src="./assets/certificate.png"
-                    alt="Certificate image (click to jump to certificate section)"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </a>
-              </figure>
-
-              <figure class="asset-slot asset-small">
-                <div class="asset-slot-label">NAMEPLATE</div>
-                <img
-                  src="./assets/nameplate.png"
-                  alt="Nameplate detail image"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </figure>
-
-              <figure class="asset-slot asset-small">
-                <div class="asset-slot-label">CORNER DETAIL</div>
-                <img
-                  src="./assets/corner-detail.png"
-                  alt="Ornate corner bracket detail image"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </figure>
-            </div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- SECTION DIVIDER -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
     <!-- EDITION DETAILS / FEATURES / STATUS -->
-    <section class="panel edition-elegant">
-      <div class="section-head">
+    <section class="panel edition-elegant" style="margin-top:0;margin-bottom:0;">
+      <div class="section-head" style="margin-bottom:10px;">
         <div class="section-title">Edition Details</div>
         <div class="section-sub">Formal breakdown of format, construction, and issuance.</div>
       </div>
@@ -716,9 +495,14 @@
       </div>
     </section>
 
+    <!-- SECTION DIVIDER -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
     <!-- AUTHENTICITY / CERTIFICATE COPY -->
-    <section class="panel" id="certificate">
-      <div class="section-head">
+    <section class="panel" id="certificate" style="margin-top:0;">
+      <div class="section-head" style="margin-bottom:10px;">
         <div class="section-title">Authenticity Notice</div>
         <div class="section-sub">Certificate-grade language, preserved in full.</div>
       </div>
@@ -759,10 +543,10 @@
           </div>
 
           <div class="attest-block" style="grid-column: span 12;">
-            <div class="attest-label">Certificate Asset</div>
+            <div class="attest-label">Certificate</div>
             <div class="attest-text">
               <figure class="asset-slot asset-wide" style="margin-top:10px;">
-                <div class="asset-slot-label">CERTIFICATE IMAGE</div>
+                <div class="asset-slot-label"></div>
                 <img
                   src="./assets/certificate.png"
                   alt="Printed certificate photo or scan"
@@ -773,463 +557,11 @@
             </div>
           </div>
         </div>
-
-        <!-- Removed: Authorized Signature + Date -->
       </div>
     </section>
 
-    <!-- INCLUDED STUDIES (3-up grid) -->
-    <section class="panel">
-      <div class="section-head">
-        <div class="section-title">Included Studies</div>
-        <div class="section-sub">
-          Booklet-ready entries for the complete SpongeBob SquarePants edition (six studies).
-        </div>
-      </div>
-
-<!-- STUDIES CAROUSEL (COVERFLOW) -->
-<section class="panel" aria-label="Character study carousel">
-    <div class="section-head" style="margin-bottom: 10px;">
-      <div class="section-title">Study Carousel</div>
-      <div class="section-sub">Rotate the studies as a curated display sequence.</div>
-    </div>
-  
-    <div class="coverflow lux-card" id="studyCoverflow">
-      <div class="coverflow-top">
-        <div class="coverflow-title">
-          <span class="coverflow-kicker">CURATED DISPLAY MODE</span>
-          <span class="coverflow-now" id="coverflowNow">SpongeBob SquarePants</span>
-        </div>
-      </div>
-  
-      <div class="coverflow-viewport" id="coverflowViewport" tabindex="0" role="region" aria-label="Coverflow viewport">
-        <div class="coverflow-track" id="coverflowTrack" aria-live="polite">
-          <!-- Card 0 -->
-          <article class="cf-card" data-title="SpongeBob SquarePants" data-anchor="#study-spongebob">
-            <div class="cf-card-head">
-              <div class="cf-card-name">SpongeBob SquarePants</div>
-              <div class="cf-card-sub">Character Study</div>
-            </div>
-            <div class="cf-media">
-              <img src="./assets/spongebob.png" alt="Canvas photo: SpongeBob SquarePants" loading="lazy" decoding="async">
-            </div>
-            <button class="cf-action" type="button" data-jump="#study-spongebob">Open Full Entry</button>
-          </article>
-  
-          <!-- Card 1 -->
-          <article class="cf-card" data-title="Patrick Star" data-anchor="#study-patrick">
-            <div class="cf-card-head">
-              <div class="cf-card-name">Patrick Star</div>
-              <div class="cf-card-sub">Character Study</div>
-            </div>
-            <div class="cf-media">
-              <img src="./assets/patrick.png" alt="Canvas photo: Patrick Star" loading="lazy" decoding="async">
-            </div>
-            <button class="cf-action" type="button" data-jump="#study-patrick">Open Full Entry</button>
-          </article>
-  
-          <!-- Card 2 -->
-          <article class="cf-card" data-title="Squidward Tentacles" data-anchor="#study-squidward">
-            <div class="cf-card-head">
-              <div class="cf-card-name">Squidward Tentacles</div>
-              <div class="cf-card-sub">Character Study</div>
-            </div>
-            <div class="cf-media">
-              <img src="./assets/squidward.png" alt="Canvas photo: Squidward Tentacles" loading="lazy" decoding="async">
-            </div>
-            <button class="cf-action" type="button" data-jump="#study-squidward">Open Full Entry</button>
-          </article>
-  
-          <!-- Card 3 -->
-          <article class="cf-card" data-title="Mr. Krabs" data-anchor="#study-krabs">
-            <div class="cf-card-head">
-              <div class="cf-card-name">Mr. Krabs</div>
-              <div class="cf-card-sub">Character Study</div>
-            </div>
-            <div class="cf-media">
-              <img src="./assets/mr-krabs.png" alt="Canvas photo: Mr. Krabs" loading="lazy" decoding="async">
-            </div>
-            <button class="cf-action" type="button" data-jump="#study-krabs">Open Full Entry</button>
-          </article>
-  
-          <!-- Card 4 -->
-          <article class="cf-card" data-title="Gary the Snail" data-anchor="#study-gary">
-            <div class="cf-card-head">
-              <div class="cf-card-name">Gary the Snail</div>
-              <div class="cf-card-sub">Character Study</div>
-            </div>
-            <div class="cf-media">
-              <img src="./assets/gary.png" alt="Canvas photo: Gary the Snail" loading="lazy" decoding="async">
-            </div>
-            <button class="cf-action" type="button" data-jump="#study-gary">Open Full Entry</button>
-          </article>
-  
-          <!-- Card 5 -->
-          <article class="cf-card" data-title="Sandy Cheeks" data-anchor="#study-sandy">
-            <div class="cf-card-head">
-              <div class="cf-card-name">Sandy Cheeks</div>
-              <div class="cf-card-sub">Character Study</div>
-            </div>
-            <div class="cf-media">
-              <img src="./assets/sandy.png" alt="Canvas photo: Sandy Cheeks" loading="lazy" decoding="async">
-            </div>
-            <button class="cf-action" type="button" data-jump="#study-sandy">Open Full Entry</button>
-          </article>
-        </div>
-  
-        <!-- Controls moved UNDER the center card -->
-        <div class="cf-under-controls" aria-label="Carousel controls">
-          <button class="btn btn-ghost cf-btn" type="button" data-cf="prev" aria-label="Previous study">‹</button>
-          <button class="btn btn-ghost cf-btn" type="button" data-cf="next" aria-label="Next study">›</button>
-        </div>
-      </div>
-  
-      <div class="coverflow-dots" id="coverflowDots" aria-label="Carousel position"></div>
-    </div>
-  </section>
-  
-  
-
-      <div class="catalog-grid studies-grid">
-        <!-- SpongeBob -->
-        <article id="study-spongebob" class="item-card lux-card" style="grid-column: span 4;">
-          <div class="item-top">
-            <div>
-              <h2 class="h2">SpongeBob SquarePants</h2>
-              <div class="item-edition">Character Study</div>
-            </div>
-            <div class="item-seal" aria-hidden="true"></div>
-          </div>
-          <figure class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">SPONGEBOB CANVAS</div>
-            <img src="./assets/spongebob.png" alt="Canvas photo: SpongeBob SquarePants" loading="lazy" decoding="async" />
-          </figure>
-          <div class="item-details">
-            <div class="detail">
-              <div class="detail-value">
-                This canvas presents SpongeBob SquarePants as an exercise in sustained optimism and professional devotion.
-                The figure is rendered with open posture and forward orientation, suggesting availability, readiness,
-                and emotional transparency.
-                <br/><br/>
-                Despite a simplified form, the subject conveys remarkable narrative density. Enthusiasm is not depicted as
-                chaos, but as structure — a consistent state maintained through repetition and effort.
-                <br/><br/>
-                This piece functions as an anchor for the edition.
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Patrick -->
-        <article id="study-patrick" class="item-card lux-card" style="grid-column: span 4;">
-          <div class="item-top">
-            <div>
-              <h2 class="h2">Patrick Star</h2>
-              <div class="item-edition">Character Study</div>
-            </div>
-            <div class="item-seal" aria-hidden="true"></div>
-          </div>
-          <figure class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">PATRICK CANVAS</div>
-            <img src="./assets/patrick.png" alt="Canvas photo: Patrick Star" loading="lazy" decoding="async" />
-          </figure>
-          <div class="item-details">
-            <div class="detail">
-              <div class="detail-value">
-                Patrick Star is represented as a study in stillness, negative space, and unburdened presence.
-                The composition emphasizes simplicity, allowing form and expression to remain largely uninterrupted by context.
-                <br/><br/>
-                Within the collection, this work provides contrast and relief — reinforcing the value of absence as a compositional tool.
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Squidward -->
-        <article id="study-squidward" class="item-card lux-card" style="grid-column: span 4;">
-          <div class="item-top">
-            <div>
-              <h2 class="h2">Squidward Tentacles</h2>
-              <div class="item-edition">Character Study</div>
-            </div>
-            <div class="item-seal" aria-hidden="true"></div>
-          </div>
-          <figure class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">SQUIDWARD CANVAS</div>
-            <img src="./assets/squidward.png" alt="Canvas photo: Squidward Tentacles" loading="lazy" decoding="async" />
-          </figure>
-          <div class="item-details">
-            <div class="detail">
-              <div class="detail-value">
-                This canvas examines restraint, detachment, and internalized judgment. The posture conveys distance maintained as a discipline.
-                <br/><br/>
-                As part of the collection, this piece introduces tension and balance — grounding the ensemble through controlled opposition.
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Mr. Krabs -->
-        <article id="study-krabs" class="item-card lux-card" style="grid-column: span 4;">
-          <div class="item-top">
-            <div>
-              <h2 class="h2">Mr. Krabs</h2>
-              <div class="item-edition">Character Study</div>
-            </div>
-            <div class="item-seal" aria-hidden="true"></div>
-          </div>
-          <figure class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">MR. KRABS CANVAS</div>
-            <img src="./assets/mr-krabs.png" alt="Canvas photo: Mr. Krabs" loading="lazy" decoding="async" />
-          </figure>
-          <div class="item-details">
-            <div class="detail">
-              <div class="detail-value">
-                Mr. Krabs is rendered as a study in accumulation, vigilance, and transactional awareness.
-                The stance suggests control exercised through continual evaluation.
-                <br/><br/>
-                Within the collection, this work functions as a commentary on systems of value and the behaviors they reinforce.
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Gary -->
-        <article id="study-gary" class="item-card lux-card" style="grid-column: span 4;">
-          <div class="item-top">
-            <div>
-              <h2 class="h2">Gary the Snail</h2>
-              <div class="item-edition">Character Study</div>
-            </div>
-            <div class="item-seal" aria-hidden="true"></div>
-          </div>
-          <figure class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">GARY CANVAS</div>
-            <img src="./assets/gary.png" alt="Canvas photo: Gary the Snail" loading="lazy" decoding="async" />
-          </figure>
-          <div class="item-details">
-            <div class="detail">
-              <div class="detail-value">
-                This canvas presents Gary with minimal intervention, allowing form and placement to define the work.
-                Motion is implied rather than depicted, emphasizing patience and continuity.
-                <br/><br/>
-                As part of the collection, this piece reinforces pacing and visual rest.
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Sandy -->
-        <article id="study-sandy" class="item-card lux-card" style="grid-column: span 4;">
-          <div class="item-top">
-            <div>
-              <h2 class="h2">Sandy Cheeks</h2>
-              <div class="item-edition">Character Study</div>
-            </div>
-            <div class="item-seal" aria-hidden="true"></div>
-          </div>
-          <figure class="item-media asset-slot asset-wide">
-            <div class="asset-slot-label">SANDY CANVAS</div>
-            <img src="./assets/sandy.png" alt="Canvas photo: Sandy Cheeks" loading="lazy" decoding="async" />
-          </figure>
-          <div class="item-details">
-            <div class="detail">
-              <div class="detail-value">
-                Sandy Cheeks is represented as a study in adaptability, preparedness, and applied intellect.
-                The posture suggests capability without performance.
-                <br/><br/>
-                Within the collection, this canvas introduces dimensionality through contrast — land and sea, structure and exploration.
-              </div>
-            </div>
-          </div>
-        </article>
-      </div>
-
-      <div class="foot-actions">
-        <a class="btn btn-ghost" href="../">Back to Catalog</a>
-        <a class="btn btn-foil" href="../../">Return to Portal</a>
-      </div>
-    </section>
   </main>
-  <script>
-    (() => {
-      const root = document.getElementById('studyCoverflow');
-      if (!root) return;
-    
-      const track = document.getElementById('coverflowTrack');
-      const viewport = document.getElementById('coverflowViewport');
-      const now = document.getElementById('coverflowNow');
-      const dotsHost = document.getElementById('coverflowDots');
-      const cards = Array.from(track.querySelectorAll('.cf-card'));
-    
-      let index = 0;
-    
-      // Optional: auto-rotate like a museum display.
-      const AUTO_ROTATE = false;
-      const AUTO_MS = 4500;
-      let autoTimer = null;
-    
-      function mod(n, m) { return ((n % m) + m) % m; }
-    
-      function buildDots() {
-        dotsHost.innerHTML = '';
-        cards.forEach((_, i) => {
-          const dot = document.createElement('button');
-          dot.type = 'button';
-          dot.className = 'cf-dot';
-          dot.setAttribute('aria-label', `Go to item ${i + 1}`);
-          dot.addEventListener('click', () => setIndex(i));
-          dotsHost.appendChild(dot);
-        });
-      }
-    
-      function updateDots() {
-        const dots = Array.from(dotsHost.querySelectorAll('.cf-dot'));
-        dots.forEach((d, i) => d.classList.toggle('active', i === index));
-      }
-    
-      function layout() {
-        const N = cards.length;
 
-        cards.forEach((card, i) => {
-            const offset = i - index;
-
-            // Wrap offsets so the “near” items remain near (circular list)
-            let o = offset;
-            if (o > N / 2) o -= N;
-            if (o < -N / 2) o += N;
-
-            const visibleRange = 2; // center + 2 each side
-            const isVisible = Math.abs(o) <= visibleRange;
-            const isCenter = (o === 0);
-
-            // Wider spread, more depth
-            const x = o * 280;
-            const z = isCenter ? 220 : 0 - Math.abs(o) * 70;
-            const rotY = o * -22;
-            const scale = isCenter ? 1.0 : 0.90 - (Math.abs(o) * 0.04);
-            const y = -170; // lifts the deck so the bottom controls + full card show cleanly
-
-            card.classList.toggle('is-center', isCenter);
-
-            card.style.opacity = isVisible ? '1' : '0';
-            card.style.pointerEvents = isVisible ? 'auto' : 'none';
-
-            // Note: blur handled by CSS via .is-center
-            card.style.transform =
-            `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), ${z}px) rotateY(${rotY}deg) scale(${scale})`;
-
-            card.style.zIndex = String(200 - Math.abs(o));
-        });
-        // Full-width "Open Full Entry" button -> jump to the matching study anchor
-        track.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-jump]');
-        if (!btn) return;
-        if (!btn.closest('.cf-card')?.classList.contains('is-center')) return;
-
-        const anchor = btn.getAttribute('data-jump');
-        if (!anchor) return;
-
-        const el = document.querySelector(anchor);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        });
-
-        const title = cards[index]?.dataset?.title || '';
-        now.textContent = title;
-        updateDots();
-    }
-
-    
-      function setIndex(i) {
-        index = mod(i, cards.length);
-        layout();
-        restartAuto();
-      }
-    
-      function next() { setIndex(index + 1); }
-      function prev() { setIndex(index - 1); }
-    
-        // Prev/Next buttons (delegated, so it always works)
-        root.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-cf]');
-        if (!btn) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        const dir = btn.getAttribute('data-cf');
-        if (dir === 'next') next();
-        if (dir === 'prev') prev();
-        });
-
-
-    
-      // Keyboard
-      viewport.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
-        if (e.key === 'Home') { e.preventDefault(); setIndex(0); }
-        if (e.key === 'End') { e.preventDefault(); setIndex(cards.length - 1); }
-      });
-    
-    // Click-to-focus (PC + mobile): click any visible card to bring it to center.
-    // Clicking the action button is handled separately.
-    cards.forEach((card, i) => {
-    card.addEventListener('click', (e) => {
-        // If they clicked the bottom action button, let the button handler manage it.
-        if (e.target && e.target.closest('[data-jump]')) return;
-
-        // If this is already center, do nothing.
-        if (card.classList.contains('is-center')) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-        setIndex(i);
-    });
-    });
-
-    
-      // Auto rotate behavior (optional)
-      function restartAuto() {
-        if (!AUTO_ROTATE) return;
-        if (autoTimer) window.clearInterval(autoTimer);
-        autoTimer = window.setInterval(() => next(), AUTO_MS);
-      }
-      function pauseAuto() {
-        if (autoTimer) window.clearInterval(autoTimer);
-        autoTimer = null;
-      }
-    
-      // Pause on hover/focus (museum etiquette)
-      root.addEventListener('mouseenter', pauseAuto);
-      root.addEventListener('mouseleave', restartAuto);
-      root.addEventListener('focusin', pauseAuto);
-      root.addEventListener('focusout', restartAuto);
-    
-      // Touch drag (simple)
-      let startX = null;
-      viewport.addEventListener('pointerdown', (e) => {
-        startX = e.clientX;
-        viewport.setPointerCapture(e.pointerId);
-      });
-      viewport.addEventListener('pointerup', (e) => {
-        if (startX == null) return;
-        const dx = e.clientX - startX;
-        startX = null;
-        if (Math.abs(dx) > 40) dx < 0 ? next() : prev();
-      });
-    
-      // Init
-      buildDots();
-      layout();
-      restartAuto();
-    
-      // Keep it responsive
-      window.addEventListener('resize', layout);
-    })();
-    </script>
-    
+  <script src="./study-coverflow.js"></script>
 </body>
 </html>
