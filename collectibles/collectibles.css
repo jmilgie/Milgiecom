@@ -770,4 +770,18 @@
     .btn, .navlink, .rail-link{ transition:none; }
     .reveal{ transition:none; }
   }
-  
+  /* allow the intro panel to span full viewport width */
+.panel-bleed{
+  width:100vw;
+  margin-left:calc(50% - 50vw);
+}
+
+/* if your hero uses a 2-col grid (text left, empty right), force it full */
+.hero-grid--full{
+  grid-template-columns:1fr !important;
+}
+/* Center the hero content horizontally */
+.hero-grid{
+  display: grid;
+  place-items: center;
+}

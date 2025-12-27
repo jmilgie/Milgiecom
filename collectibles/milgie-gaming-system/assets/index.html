@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Milgie Gaming System — 2022 Archival Entry</title>
+  <meta name="description" content="Milgie Gaming System (2022) — a bespoke electronic gaming artifact with companion controller archive." />
+
+  <!-- Shared site styling -->
+  <link rel="stylesheet" href="../collectibles.css" />
+
+  <!-- Reuse the Canvas Series coverflow styling/behavior (no duplication needed) -->
+  <link rel="stylesheet" href="../canvas-series/study-coverflow.css" />
+</head>
+
+<body class="bg-shift bg-2 synthwave">
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="aurora" aria-hidden="true"></div>
+
+  <!-- Minimal synthwave theming without touching shared CSS -->
+  <style>
+    body.synthwave {
+      --sw-pink: rgba(255, 64, 180, .55);
+      --sw-cyan: rgba(64, 220, 255, .55);
+      --sw-purple: rgba(120, 80, 255, .45);
+    }
+    body.synthwave .panel-hero .ornate-frame { position: relative; }
+    body.synthwave .panel-hero .ornate-frame::before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(1000px 500px at 18% 10%, var(--sw-pink), transparent 60%),
+        radial-gradient(900px 520px at 85% 18%, var(--sw-cyan), transparent 60%),
+        radial-gradient(800px 520px at 50% 95%, var(--sw-purple), transparent 70%);
+      filter: blur(18px);
+      opacity:.55;
+      pointer-events:none;
+      z-index:0;
+    }
+    body.synthwave .panel-hero .ornate-frame > * { position:relative; z-index:1; }
+    body.synthwave .kicker { letter-spacing:.12em; }
+    body.synthwave .badge { text-transform: uppercase; }
+  </style>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="../" title="Return to Catalog">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">
+          <span class="brand-title">COLLECTIBLES<span class="foil">.ARCHIVE</span></span>
+          <span class="brand-sub">Return to Catalog</span>
+        </span>
+      </a>
+
+      <nav class="topnav" aria-label="Item navigation">
+        <a class="navlink" href="../../">Portal</a>
+        <a class="navlink" href="../">Collectibles</a>
+      </nav>
+    </div>
+
+    <div class="rule" aria-hidden="true">
+      <span class="rule-dot"></span><span class="rule-line"></span><span class="rule-dot"></span>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- HERO -->
+    <section class="panel panel-hero" style="margin-bottom:0;">
+      <div class="ornate-frame">
+        <div class="frame-corners" aria-hidden="true">
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+        </div>
+
+        <div class="hero-grid">
+          <div>
+            <div class="kicker"><span class="seal" aria-hidden="true"></span> 2022 ARCHIVAL ENTRY • COMPLETE AS ISSUED</div>
+
+            <h1 class="h1">The <span class="foil">Milgie Gaming System™</span></h1>
+
+            <p class="lead">
+              A ceremonial electronic gaming artifact, presented as a complete exhibition object.<br/>
+              <strong>Program:</strong> <span class="foil">Milgie Gaming Consortium</span><br/>
+              Integrated Display Unit • External Audio • Dual Cases • Multi-Controller Archive
+            </p>
+
+            <div class="hero-actions">
+              <span class="btn btn-sold" aria-disabled="true">ARCHIVED</span>
+              <a class="btn btn-ghost" href="../">Back to Catalog</a>
+            </div>
+
+            <div class="sigline">
+              <span class="sigline-label">SUBHEADING</span>
+              <span class="sigline-text">
+                “A domestic arcade protocol preserved in foam, chrome, and confident neon.”
+              </span>
+            </div>
+
+            <div class="sigline">
+              <span class="sigline-label">SECONDARY STATEMENT</span>
+              <span class="sigline-text">
+                “Operational by design. Exhibited by necessity.”
+              </span>
+            </div>
+          </div>
+
+          <!-- Plaque-inspired panel -->
+          <div class="hero-plaque lux-card">
+            <div class="plaque-top">MILGIE GAMING SYSTEM™</div>
+            <div class="plaque-mid">Electronic Gaming Artifact</div>
+            <div class="plaque-sub">Year: 2022 • Complete Assembly</div>
+
+            <div class="plaque-divider" aria-hidden="true"></div>
+
+            <!-- NOTE: you already have this file name in your folder -->
+            <figure class="asset-slot asset-tall">
+              <div class="asset-slot-label">ITEM HERO</div>
+              <img
+                src="./assets/hero-item.png"
+                alt="Milgie Gaming System — hero image"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+
+            <div class="plaque-foot">
+              <span class="badge">SYNTHWAVE</span>
+              <span class="badge">FUNCTIONAL</span>
+              <span class="badge">ARCHIVED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION DIVIDER -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
+    <!-- STUDIES CAROUSEL (repurposed as "Artifact Views") -->
+    <section class="panel" aria-label="Artifact view carousel" style="margin-top:0;margin-bottom:0;">
+      <div class="section-head" style="margin-bottom: 10px;">
+        <div class="section-title">Artifact Views</div>
+        <div class="section-sub">Rotate the object through its official display sequence.</div>
+      </div>
+
+      <div class="coverflow lux-card" id="studyCoverflow">
+        <div class="coverflow-top">
+          <div class="coverflow-title">
+            <span class="coverflow-kicker">CURATED DISPLAY MODE</span>
+            <span class="coverflow-now" id="coverflowNow">Milgie Gaming System</span>
+          </div>
+        </div>
+
+        <div class="coverflow-viewport" id="coverflowViewport" tabindex="0" role="region" aria-label="Coverflow viewport">
+          <div class="coverflow-mask" aria-hidden="true"></div>
+
+          <div class="coverflow-stage">
+            <div class="coverflow-track" id="coverflowTrack" aria-live="polite">
+
+              <!-- Card 0 -->
+              <article class="cf-card" data-title="Primary Unit" data-anchor="#study-primary-unit">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Primary Unit</div>
+                  <div class="cf-card-sub">Integrated Display Console</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/system-front.png" alt="Primary unit — front view" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-primary-unit">Open Full Entry</button>
+              </article>
+
+              <!-- Card 1 -->
+              <article class="cf-card" data-title="Primary Case Interior" data-anchor="#study-primary-case">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Primary Case Interior</div>
+                  <div class="cf-card-sub">Exhibition Layout</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/case-open-primary.png" alt="Primary presentation case — open view" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-primary-case">Open Full Entry</button>
+              </article>
+
+              <!-- Card 2 -->
+              <article class="cf-card" data-title="Companion Controller Archive" data-anchor="#study-controller-archive">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Companion Controller Archive</div>
+                  <div class="cf-card-sub">N64 Controllers</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/controller-box-open-n64.png" alt="Separate controller box — N64 controllers" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-controller-archive">Open Full Entry</button>
+              </article>
+
+              <!-- Card 3 -->
+              <article class="cf-card" data-title="Ephemera Packet" data-anchor="#study-ephemera">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Ephemera Packet</div>
+                  <div class="cf-card-sub">Printed Materials</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/ephemera-card.png" alt="Ephemera card / printed insert" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-ephemera">Open Full Entry</button>
+              </article>
+
+              <!-- Card 4 -->
+              <article class="cf-card" data-title="Logo & Mark" data-anchor="#study-logo">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Logo &amp; Mark</div>
+                  <div class="cf-card-sub">Milgie Gaming Crest</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/milgie-gaming-logo.png" alt="Milgie Gaming logo / crest" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-logo">Open Full Entry</button>
+              </article>
+
+              <!-- Card 5 -->
+              <article class="cf-card" data-title="Documentation Booklet" data-anchor="#study-booklet">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Documentation Booklet</div>
+                  <div class="cf-card-sub">Program Materials</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/booklet-cover.png" alt="Documentation booklet cover" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-booklet">Open Full Entry</button>
+              </article>
+
+            </div>
+          </div>
+
+          <!-- Controls under the center card -->
+          <div class="cf-under-controls" aria-label="Carousel controls">
+            <button class="btn btn-ghost cf-btn" type="button" data-cf="prev" aria-label="Previous view">‹</button>
+            <button class="btn btn-ghost cf-btn" type="button" data-cf="next" aria-label="Next view">›</button>
+          </div>
+        </div>
+
+        <!-- Selected study text (we'll populate with a tiny helper script below) -->
+        <div class="cf-study lux-card" id="coverflowStudy" aria-live="polite">
+          <div class="cf-study-kicker">Selected View</div>
+          <div class="cf-study-title" id="coverflowStudyTitle">Primary Unit</div>
+          <div class="cf-study-body" id="coverflowStudyBody"></div>
+        </div>
+
+        <div class="coverflow-dots" id="coverflowDots" aria-label="Carousel position"></div>
+      </div>
+    </section>
+
+    <!-- SECTION DIVIDER -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
+    <!-- ABOUT -->
+    <section class="panel" style="margin-top:0;margin-bottom:0;">
+      <div class="section-head" style="margin-bottom:10px;">
+        <div class="section-title">About the Artifact</div>
+        <div class="section-sub">
+          Curatorial statement and program description, delivered with sincere institutional posture.
+        </div>
+      </div>
+
+      <div class="corridor">
+        <div class="corridor-inner about-corridor">
+          <!-- MEDIA FIRST: viewer + 4 thumbs -->
+          <div class="about-media">
+            <!-- BIG VIEWER -->
+            <figure
+              class="asset-slot asset-wide lux-card viewer-slot"
+              id="aboutViewer"
+              data-view-src="./assets/case-open-primary.png"
+              data-view-title="PRIMARY CASE (OPEN)"
+            >
+              <div class="asset-slot-label" id="aboutViewerLabel">PRIMARY CASE (OPEN)</div>
+
+              <div class="viewer-viewport">
+                <img
+                  id="aboutViewerImg"
+                  src="./assets/case-open-primary.png"
+                  alt="Primary case open (expanded view)"
+                  loading="lazy"
+                  decoding="async"
+                  style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                />
+              </div>
+            </figure>
+
+            <!-- THUMBS -->
+            <div class="asset-row">
+
+              <!-- PRIMARY UNIT -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="primary"
+                data-view-src="./assets/system-front.png"
+                data-view-title="PRIMARY UNIT"
+              >
+                <div class="asset-slot-label">PRIMARY UNIT</div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/system-front.png"
+                    alt="Primary unit image (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+
+              <!-- COMPANION CONTROLLER BOX (N64) -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="controller"
+                data-view-src="./assets/controller-box-open-n64.png"
+                data-view-title="COMPANION CONTROLLER ARCHIVE (N64)"
+              >
+                <div class="asset-slot-label">CONTROLLER ARCHIVE (N64)</div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/controller-box-open-n64.png"
+                    alt="Separate controller archive box with N64 controllers (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+
+              <!-- EPHEMERA -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="ephemera"
+                data-view-src="./assets/ephemera-card.png"
+                data-view-title="EPHEMERA PACKET"
+              >
+                <div class="asset-slot-label">EPHEMERA</div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/ephemera-card.png"
+                    alt="Ephemera insert (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+
+              <!-- BOOKLET -->
+              <figure
+                class="asset-slot asset-small is-clickable"
+                data-kind="booklet"
+                data-view-src="./assets/booklet-cover.png"
+                data-view-title="DOCUMENTATION BOOKLET"
+              >
+                <div class="asset-slot-label">BOOKLET</div>
+                <div class="thumb-viewport">
+                  <img
+                    src="./assets/booklet-cover.png"
+                    alt="Documentation booklet (click to view larger)"
+                    loading="lazy"
+                    decoding="async"
+                    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+                  />
+                </div>
+              </figure>
+
+            </div>
+          </div>
+
+          <!-- TEXT LAST: full width under media -->
+          <div class="about-statement">
+            <div class="section-title small">Curatorial Statement</div>
+
+            <p class="section-sub" style="margin-top:10px;">
+              The Milgie Gaming System™ (2022) presents a domestic gaming platform as a formalized display object:
+              operational, preserved, and staged with exhibition-first intent. Familiar electronics are recontextualized
+              through deliberate enclosure, elevated supports, branded crestwork, and archival foam layout.
+            </p>
+
+            <p class="section-sub">
+              The primary unit is housed within a dedicated presentation case designed to read as a complete exhibit when opened.
+              In parallel, a separate companion presentation box preserves two additional <strong>N64</strong> controllers as a discrete
+              controller archive—segregating control hardware from the primary unit to reinforce modularity, scalability, and museum-adjacent storage logic.
+            </p>
+
+            <p class="section-sub">
+              Printed ephemera and documentation are included as program materials. The system is presented without irony.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION DIVIDER -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
+    <!-- EDITION DETAILS / FEATURES / STATUS -->
+    <section class="panel edition-elegant" style="margin-top:0;margin-bottom:0;">
+      <div class="section-head" style="margin-bottom:10px;">
+        <div class="section-title">Edition Details</div>
+        <div class="section-sub">Formal breakdown of format, construction, and issuance.</div>
+      </div>
+
+      <div class="catalog-grid">
+        <!-- Edition Details -->
+        <div class="item-card lux-card" style="grid-column: span 6;">
+          <div class="item-top">
+            <div>
+              <h2 class="h2">Edition Details</h2>
+              <div class="item-edition">Program classification and assembly notes</div>
+            </div>
+            <div class="item-seal" aria-hidden="true"></div>
+          </div>
+
+          <div class="item-details">
+            <div class="details-grid">
+              <div class="detail">
+                <div class="detail-label">Edition Title</div>
+                <div class="detail-value">Milgie Gaming System™</div>
+              </div>
+              <div class="detail">
+                <div class="detail-label">Year</div>
+                <div class="detail-value">2022</div>
+              </div>
+              <div class="detail">
+                <div class="detail-label">Format</div>
+                <div class="detail-value">Electronic Gaming Artifact</div>
+              </div>
+              <div class="detail">
+                <div class="detail-label">Presentation</div>
+                <div class="detail-value">Dual-Case Exhibition Layout</div>
+              </div>
+              <div class="detail">
+                <div class="detail-label">Controller Archive</div>
+                <div class="detail-value">Separate Box • N64 Controllers</div>
+              </div>
+              <div class="detail">
+                <div class="detail-label">Ephemera</div>
+                <div class="detail-value">Printed Program Materials Included</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Collection Features -->
+        <div class="item-card lux-card" style="grid-column: span 6;">
+          <div class="item-top">
+            <div>
+              <h2 class="h2">Collection Features</h2>
+              <div class="item-edition">Material-forward presentation standards</div>
+            </div>
+            <div class="item-seal" aria-hidden="true"></div>
+          </div>
+
+          <div class="item-details">
+            <ul class="feature-list">
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Integrated display console with dedicated enclosure</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>External audio component and tactile control interface</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Primary presentation case with exhibit-style staging</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Separate companion controller archive box (N64 controllers)</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Printed ephemera and documentation packet</span></li>
+              <li><span class="feature-bullet" aria-hidden="true"></span><span>Synthwave visual identity with institutional restraint</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Edition Status -->
+        <div class="item-card lux-card" style="grid-column: span 12;">
+          <div class="item-top">
+            <div>
+              <h2 class="h2">Edition Status</h2>
+              <div class="item-edition">Issuance constraints and preservation posture</div>
+            </div>
+            <div class="item-seal" aria-hidden="true"></div>
+          </div>
+
+          <div class="item-details">
+            <div class="status-plaque">
+              <div class="row">
+                <div class="k">Issued as</div>
+                <div class="v">Complete, multi-box assembly.</div>
+              </div>
+
+              <div class="row">
+                <div class="k">Availability</div>
+                <div class="v"><span class="sold">ARCHIVED</span> • record maintained for reference</div>
+              </div>
+
+              <div class="row">
+                <div class="k">This edition is</div>
+                <div class="v">
+                  Not serialized • Not numbered • Not licensed • Not reproduced • Not expanded • Not revised • <span class="foil">Not explained</span>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="k">Interpretation</div>
+                <div class="v">
+                  The separation of controller hardware into a companion archive is intentional. It should be understood
+                  as a preservation posture, not a storage convenience.
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="k">Guidance</div>
+                <div class="v">
+                  Display is recommended in environments of confidence and minimal commentary. Excessive operational curiosity is tolerated.
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="k">Final statement</div>
+                <div class="v">This artifact remains functional.</div>
+              </div>
+            </div>
+
+            <div class="item-actions" style="margin-top:14px;">
+              <span class="btn btn-sold" aria-disabled="true">ARCHIVED</span>
+              <a class="btn btn-ghost" href="../">Back to Catalog</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION DIVIDER -->
+    <div class="separator" aria-hidden="true" style="margin:0px 0 12px;">
+      <span class="sep-line"></span><span class="sep-orn"></span><span class="sep-line"></span>
+    </div>
+
+    <!-- AUTHENTICITY / CERTIFICATE COPY -->
+    <section class="panel" id="certificate" style="margin-top:0;">
+      <div class="section-head" style="margin-bottom:10px;">
+        <div class="section-title">Authenticity Notice</div>
+        <div class="section-sub">Certificate-grade language, preserved in full.</div>
+      </div>
+
+      <div class="attest-frame lux-card">
+        <div class="attest-body" style="grid-template-columns: repeat(12, 1fr);">
+          <div class="attest-block" style="grid-column: span 12;">
+            <div class="attest-label">Authenticity Declaration</div>
+            <div class="attest-text" style="margin-top:10px;">
+              This notice affirms that the enclosed items collectively constitute the Milgie Gaming System™ (2022),
+              a complete and intentional multi-box assembly consisting of:
+              (1) the primary integrated display unit and its presentation case,
+              (2) a separate companion controller archive box containing additional <strong>N64</strong> controllers,
+              and (3) associated printed ephemera and documentation.
+              <br/><br/>
+              All components were assembled as a unified work and presented as issued. Minor variations in finish,
+              alignment, or foam tolerances constitute evidence of authenticity and should not be interpreted as defects.
+              <br/><br/>
+              This artifact is recorded without irony.
+            </div>
+          </div>
+
+          <!-- Certificate image (upload your scan/photo using this filename) -->
+          <div class="attest-block" style="grid-column: span 12;">
+            <div class="attest-label">Certificate (Scan / Photo)</div>
+            <div class="attest-text">
+              <figure class="asset-slot asset-wide" style="margin-top:10px;">
+                <img
+                  src="./assets/certificate.png"
+                  alt="Printed certificate photo or scan"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hidden “full entries” targets for each carousel card (anchors) -->
+    <section class="panel" aria-label="Full entries" style="display:none;">
+      <div id="study-primary-unit"></div>
+      <div id="study-primary-case"></div>
+      <div id="study-controller-archive"></div>
+      <div id="study-ephemera"></div>
+      <div id="study-logo"></div>
+      <div id="study-booklet"></div>
+    </section>
+
+  </main>
+
+  <!-- Reuse the Canvas Series JS behavior -->
+  <script src="../canvas-series/study-coverflow.js"></script>
+
+  <!-- Tiny helper: populate the “Selected View” text block without modifying your shared JS -->
+  <script>
+    (function(){
+      const bodies = {
+        "Primary Unit": "Integrated display console presented as a ceremonial device: operational, enclosed, and elevated for exhibition-first viewing.",
+        "Primary Case Interior": "Primary presentation case configured as an exhibit: mounted ephemera, staged unit placement, and preservation foam layout.",
+        "Companion Controller Archive": "Separate controller presentation box containing additional N64 controllers—maintained as an intentional controller archive.",
+        "Ephemera Packet": "Printed program materials preserved as documentation: inserts, cards, and consortium-grade messaging.",
+        "Logo & Mark": "Milgie Gaming crestwork and brand identifiers used across hardware, documentation, and presentation surfaces.",
+        "Documentation Booklet": "Booklet-style documentation preserved as institutional program material."
+      };
+
+      const track = document.getElementById("coverflowTrack");
+      const titleEl = document.getElementById("coverflowStudyTitle");
+      const bodyEl  = document.getElementById("coverflowStudyBody");
+
+      function updateFromActive(){
+        if (!track || !titleEl || !bodyEl) return;
+        // Prefer whatever card is visually “current”: many coverflow scripts add .is-current / .active.
+        const current =
+          track.querySelector(".is-current") ||
+          track.querySelector(".active") ||
+          track.querySelector(".cf-card");
+
+        if (!current) return;
+
+        const t = current.getAttribute("data-title") || "Milgie Gaming System";
+        titleEl.textContent = t;
+        bodyEl.textContent = bodies[t] || "";
+      }
+
+      // Update on load and on user interaction
+      updateFromActive();
+      document.addEventListener("click", function(e){
+        if (e.target.closest(".cf-btn") || e.target.closest(".cf-card") || e.target.closest(".cf-action")) {
+          setTimeout(updateFromActive, 50);
+        }
+      });
+      document.addEventListener("keydown", function(){
+        setTimeout(updateFromActive, 50);
+      });
+
+      // About viewer click-to-swap (matches your canvas page pattern)
+      const viewer = document.getElementById("aboutViewer");
+      const viewerImg = document.getElementById("aboutViewerImg");
+      const viewerLabel = document.getElementById("aboutViewerLabel");
+      document.addEventListener("click", function(e){
+        const slot = e.target.closest(".asset-slot.is-clickable");
+        if (!slot || !viewer || !viewerImg || !viewerLabel) return;
+        const src = slot.getAttribute("data-view-src");
+        const ttl = slot.getAttribute("data-view-title") || "VIEW";
+        if (!src) return;
+        viewerImg.src = src;
+        viewerImg.alt = ttl + " (expanded view)";
+        viewer.setAttribute("data-view-src", src);
+        viewer.setAttribute("data-view-title", ttl);
+        viewerLabel.textContent = ttl;
+      });
+    })();
+  </script>
+</body>
+</html>
