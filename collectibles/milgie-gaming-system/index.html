@@ -129,6 +129,41 @@
 
           <div class="coverflow-stage">
             <div class="coverflow-track" id="coverflowTrack" aria-live="polite">
+              <!-- Card 1A -->
+              <article class="cf-card" data-title="Primary Case Exterior" data-anchor="#study-primary-case-exterior">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Primary Case Exterior</div>
+                  <div class="cf-card-sub">Closed Presentation Shell</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/6.png" alt="Primary presentation case — closed exterior view" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-primary-case-exterior">Open Full Entry</button>
+              </article>
+
+              <!-- Card 1B -->
+              <article class="cf-card" data-title="Primary Case Rear Panel" data-anchor="#study-primary-case-rear">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Primary Case Rear Panel</div>
+                  <div class="cf-card-sub">Barcode + Compliance Placard</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/5.png" alt="Primary presentation case — rear panel with barcode and label" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-primary-case-rear">Open Full Entry</button>
+              </article>
+
+              <!-- Card 1C -->
+              <article class="cf-card" data-title="Systems Label (Detail)" data-anchor="#study-systems-label">
+                <div class="cf-card-head">
+                  <div class="cf-card-name">Systems Label (Detail)</div>
+                  <div class="cf-card-sub">Brand Plate + Markings</div>
+                </div>
+                <div class="cf-media">
+                  <img src="./assets/milgie-systems-label.png" alt="Milgie Systems label — detail plate" loading="lazy" decoding="async">
+                </div>
+                <button class="cf-action" type="button" data-jump="#study-systems-label">Open Full Entry</button>
+              </article>
 
               <!-- Card 0 -->
               <article class="cf-card" data-title="Primary Unit" data-anchor="#study-primary-unit">
@@ -538,6 +573,9 @@
     <section class="panel" aria-label="Full entries" style="display:none;">
       <div id="study-primary-unit"></div>
       <div id="study-primary-case"></div>
+      <div id="study-primary-case-exterior"></div>
+      <div id="study-primary-case-rear"></div>
+      <div id="study-systems-label"></div>
       <div id="study-controller-archive"></div>
       <div id="study-ephemera"></div>
       <div id="study-logo"></div>
@@ -555,46 +593,58 @@
       const bodies = {
         "Primary Unit": "Integrated display console presented as a ceremonial device: operational, enclosed, and elevated for exhibition-first viewing.",
         "Primary Case Interior": "Primary presentation case configured as an exhibit: mounted ephemera, staged unit placement, and preservation foam layout.",
+  
+        "Primary Case Exterior": "Closed presentation shell demonstrating institutional portability: an archive-grade exterior with crest placement and field-ready posture.",
+        "Primary Case Rear Panel": "Rear-facing identity surface including barcode strip and compliance placard. Intended to read as administrative proof, not decoration.",
+        "Systems Label (Detail)": "Detail plate used across the system’s outward-facing materials. Synthwave markwork presented as a formal manufacturer imprint.",
+  
         "Companion Controller Archive": "Separate controller presentation box containing additional N64 controllers—maintained as an intentional controller archive.",
         "Ephemera Packet": "Printed program materials preserved as documentation: inserts, cards, and consortium-grade messaging.",
         "Logo & Mark": "Milgie Gaming crestwork and brand identifiers used across hardware, documentation, and presentation surfaces.",
-        "Documentation Booklet": "Booklet-style documentation preserved as institutional program material."
+  
+        "Documentation Booklet":
+          'Booklet-style documentation preserved as institutional program material. ' +
+          '<a class="btn btn-ghost" href="./assets/Milgie%20Gaming%20Systems%20Manual.pdf" target="_blank" rel="noopener">Open Manual (PDF)</a>'
       };
-
+  
       const track = document.getElementById("coverflowTrack");
       const titleEl = document.getElementById("coverflowStudyTitle");
       const bodyEl  = document.getElementById("coverflowStudyBody");
-
+  
       function updateFromActive(){
         if (!track || !titleEl || !bodyEl) return;
-        // Prefer whatever card is visually “current”: many coverflow scripts add .is-current / .active.
+  
         const current =
           track.querySelector(".is-current") ||
           track.querySelector(".active") ||
           track.querySelector(".cf-card");
-
+  
         if (!current) return;
-
+  
         const t = current.getAttribute("data-title") || "Milgie Gaming System";
         titleEl.textContent = t;
-        bodyEl.textContent = bodies[t] || "";
+  
+        // Allow HTML (so the PDF link renders)
+        bodyEl.innerHTML = bodies[t] || "";
       }
-
-      // Update on load and on user interaction
+  
       updateFromActive();
+  
       document.addEventListener("click", function(e){
         if (e.target.closest(".cf-btn") || e.target.closest(".cf-card") || e.target.closest(".cf-action")) {
           setTimeout(updateFromActive, 50);
         }
       });
+  
       document.addEventListener("keydown", function(){
         setTimeout(updateFromActive, 50);
       });
-
+  
       // About viewer click-to-swap (matches your canvas page pattern)
       const viewer = document.getElementById("aboutViewer");
       const viewerImg = document.getElementById("aboutViewerImg");
       const viewerLabel = document.getElementById("aboutViewerLabel");
+  
       document.addEventListener("click", function(e){
         const slot = e.target.closest(".asset-slot.is-clickable");
         if (!slot || !viewer || !viewerImg || !viewerLabel) return;
@@ -608,6 +658,6 @@
         viewerLabel.textContent = ttl;
       });
     })();
-  </script>
+  </script>  
 </body>
 </html>
