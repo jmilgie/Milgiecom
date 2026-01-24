@@ -1527,8 +1527,8 @@ function updateAll(){
             const r=getCrewRank(c);const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'))||crewTypes[0];
             const costMult=(ct.id==='insider'?0.7:1);
             const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)*costMult),sc=Math.floor(7000*Math.pow(1.9,c.skill)*costMult),ec=Math.floor(4500*Math.pow(1.9,c.exp)*costMult);
-            const crewImgName=c.type||'enforcer';
-            const bgImage=`assets/crew_${crewImgName}.PNG`;
+            const crewImgName=c.name.toLowerCase();
+            const bgImage=`assets/crew_${crewImgName}.png`;
             return `<div class="thief-card" style="background-image:url('${bgImage}')">
                 <div class="thief-card-header">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
