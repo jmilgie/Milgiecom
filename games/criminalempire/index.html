@@ -273,9 +273,11 @@
     .mg-balance { text-align: center; font-size: 0.9em; color: #4ade80; margin-bottom: 10px; }
     /* Safe Cracker */
     .safe-game { text-align: center; }
-    .safe-dial { width: 160px; height: 160px; margin: 10px auto; background: radial-gradient(circle, #374151, #1a1a2e); border-radius: 50%; border: 6px solid #6b7280; position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+    .safe-dial { width: 180px; height: 180px; margin: 10px auto; background: radial-gradient(circle, #374151, #1a1a2e); border-radius: 50%; border: 6px solid #6b7280; position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
     .safe-dial::before { content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 15px solid #ef4444; z-index: 10; }
-    .safe-pointer { position: absolute; width: 4px; height: 60px; background: linear-gradient(180deg, #ffd700, #f59e0b); left: 50%; bottom: 50%; transform-origin: bottom center; transform: translateX(-50%); border-radius: 2px; transition: transform 0.1s; }
+    .safe-pointer { position: absolute; width: 4px; height: 70px; background: linear-gradient(180deg, #ffd700, #f59e0b); left: 50%; bottom: 50%; transform-origin: bottom center; transform: translateX(-50%); border-radius: 2px; transition: transform 0.1s; z-index: 5; }
+    .safe-marker { position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; justify-content: center; }
+    .safe-marker span { position: absolute; top: 8px; font-size: 0.75em; font-weight: bold; color: #94a3b8; background: rgba(0,0,0,0.5); padding: 2px 4px; border-radius: 3px; }
     .safe-combo { display: flex; justify-content: center; gap: 8px; margin: 10px 0; }
     .safe-combo-num { width: 45px; height: 45px; background: rgba(0,0,0,0.4); border: 2px solid #6b7280; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.3em; font-weight: bold; }
     .safe-combo-num.active { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; }
@@ -436,24 +438,24 @@ const tierNames=['🔘','🥉','🥈','🥇','💎','🌟'];
 const MINIGAME_TIER=3;
 
 const bizUpgrades=[
-    {name:"Lemonade",icon:"🍋",income:1,baseCost:15,owned:0,mult:1.12,minigame:null},
-    {name:"Food Cart",icon:"🌭",income:6,baseCost:120,owned:0,mult:1.12,minigame:null},
-    {name:"Shop",icon:"🏪",income:30,baseCost:900,owned:0,mult:1.13,minigame:null},
-    {name:"Restaurant",icon:"🍽️",income:120,baseCost:6000,owned:0,mult:1.13,minigame:null},
-    {name:"Factory",icon:"🏭",income:500,baseCost:35000,owned:0,mult:1.14,minigame:'dice'},
-    {name:"Corp",icon:"🏢",income:2500,baseCost:250000,owned:0,mult:1.14,minigame:null},
-    {name:"Bank",icon:"🏦",income:12000,baseCost:2000000,owned:0,mult:1.15,minigame:'safe'},
-    {name:"Casino",icon:"🎰",income:60000,baseCost:25000000,owned:0,mult:1.16,minigame:'slots'}
+    {name:"Lemonade",icon:"🍋",income:1,baseCost:15,owned:0,mult:1.12,minigame:null,maxOwned:100},
+    {name:"Food Cart",icon:"🌭",income:6,baseCost:120,owned:0,mult:1.12,minigame:null,maxOwned:90},
+    {name:"Shop",icon:"🏪",income:30,baseCost:900,owned:0,mult:1.13,minigame:null,maxOwned:80},
+    {name:"Restaurant",icon:"🍽️",income:120,baseCost:6000,owned:0,mult:1.13,minigame:null,maxOwned:70},
+    {name:"Factory",icon:"🏭",income:500,baseCost:35000,owned:0,mult:1.14,minigame:'factory',maxOwned:60},
+    {name:"Corp",icon:"🏢",income:2500,baseCost:250000,owned:0,mult:1.14,minigame:null,maxOwned:50},
+    {name:"Bank",icon:"🏦",income:12000,baseCost:2000000,owned:0,mult:1.15,minigame:'safe',maxOwned:40},
+    {name:"Casino",icon:"🎰",income:60000,baseCost:25000000,owned:0,mult:1.16,minigame:'casino',maxOwned:30}
 ];
 
 const clickUpgrades=[
-    {name:"Gloves",icon:"🧤",mult:1.5,baseCost:50,owned:0,costMult:2.2},
-    {name:"Rings",icon:"💍",mult:1.5,baseCost:400,owned:0,costMult:2.5},
-    {name:"Watch",icon:"⌚",mult:1.8,baseCost:4000,owned:0,costMult:2.8},
-    {name:"Briefcase",icon:"💼",mult:2,baseCost:40000,owned:0,costMult:3},
-    {name:"Lambo",icon:"🏎️",mult:2,baseCost:400000,owned:0,costMult:3.5},
-    {name:"Yacht",icon:"🛥️",mult:2.5,baseCost:5000000,owned:0,costMult:4},
-    {name:"Jet",icon:"✈️",mult:3,baseCost:80000000,owned:0,costMult:5}
+    {name:"Gloves",icon:"🧤",mult:1.5,baseCost:50,owned:0,costMult:2.2,maxOwned:50},
+    {name:"Rings",icon:"💍",mult:1.5,baseCost:400,owned:0,costMult:2.5,maxOwned:50},
+    {name:"Watch",icon:"⌚",mult:1.8,baseCost:4000,owned:0,costMult:2.8,maxOwned:40},
+    {name:"Briefcase",icon:"💼",mult:2,baseCost:40000,owned:0,costMult:3,maxOwned:40},
+    {name:"Lambo",icon:"🏎️",mult:2,baseCost:400000,owned:0,costMult:3.5,maxOwned:30},
+    {name:"Yacht",icon:"🛥️",mult:2.5,baseCost:5000000,owned:0,costMult:4,maxOwned:20},
+    {name:"Jet",icon:"✈️",mult:3,baseCost:80000000,owned:0,costMult:5,maxOwned:10}
 ];
 
 const territories=[
@@ -498,9 +500,16 @@ const storageTypes=[
     {name:"Offshore",icon:"🏝️",cost:8000000,cap:300000000}
 ];
 
-const crewNames=["Shadow","Ghost","Viper","Raven","Wolf","Phantom"];
+const crewNames=["Shadow","Ghost","Viper","Raven","Wolf","Phantom","Ace","Blaze","Cipher","Duke","Echo","Frost"];
 const crewRanks=["Rookie","Skilled","Pro","Elite","Master"];
 const crewRankColors=["#6b7280","#22c55e","#3b82f6","#a855f7","#fbbf24"];
+const crewTypes=[
+    {id:"enforcer",name:"Enforcer",icon:"💪",color:"#ef4444",bonus:"heist",desc:"+heist success"},
+    {id:"hacker",name:"Hacker",icon:"💻",color:"#3b82f6",bonus:"income",desc:"+passive income"},
+    {id:"driver",name:"Driver",icon:"🚗",color:"#f59e0b",bonus:"heat",desc:"-heat generation"},
+    {id:"smuggler",name:"Smuggler",icon:"📦",color:"#8b5cf6",bonus:"luck",desc:"+luck chance"},
+    {id:"insider",name:"Insider",icon:"🎭",color:"#ec4899",bonus:"cost",desc:"-training cost"}
+];
 
 const achievements=[
     {id:'first_click',name:'First Steps',desc:'Click for the first time',check:()=>totalClicks>=1},
@@ -529,7 +538,7 @@ function getStored(){return storageLocations.reduce((t,s)=>t+s.stored,0)}
 function getHeatChance(){return Math.min(policeHeat/100,0.45)}
 function getCrewPower(){return thieves.reduce((t,c)=>t+c.loyalty+c.skill+c.exp,0)}
 function getHeistChance(h){return Math.min(0.95,h.chance+getCrewPower()*0.004+heistBonus)}
-function getCrewIncome(c){return Math.floor((c.baseIncome*(1+c.exp*0.4)+c.skill*40)*globalMult)}
+function getCrewIncome(c){const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'));const typeMult=ct&&ct.bonus==='income'?1.5:1;return Math.floor((c.baseIncome*(1+c.exp*0.4)+c.skill*40)*globalMult*typeMult)}
 function getCrewSteal(c){return Math.max(0.01,0.18-c.loyalty*0.022)}
 function getCrewRank(c){const t=c.loyalty+c.skill+c.exp;if(t>=24)return 4;if(t>=15)return 3;if(t>=8)return 2;if(t>=3)return 1;return 0}
 
@@ -652,7 +661,7 @@ function checkAchievements(){
 
 // === CORE GAME ===
 function calcBonuses(){
-    globalMult=1;heistBonus=0;let clickB=0,critB=0,luckB=0;
+    globalMult=1;heistBonus=0;heatShield=0;let clickB=0,critB=0,luckB=0;
     ownedTerritories.forEach(tid=>{
         const t=territories.find(x=>x.id===tid);if(!t)return;
         const v=t.val*(1+t.level*0.6);
@@ -663,8 +672,17 @@ function calcBonuses(){
         else if(t.bonus==='luck')luckB+=v;
         else if(t.bonus==='all'){globalMult+=v;heistBonus+=v;clickB+=v;critB+=v;luckB+=v}
     });
+    thieves.forEach(c=>{
+        const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'));if(!ct)return;
+        const rankMult=1+getCrewRank(c)*0.1;
+        if(ct.bonus==='heist')heistBonus+=0.02*rankMult;
+        else if(ct.bonus==='income')globalMult+=0.015*rankMult;
+        else if(ct.bonus==='heat')heatShield+=0.03*rankMult;
+        else if(ct.bonus==='luck')luckB+=0.01*rankMult;
+    });
     let baseCrit=0.05,baseLuck=0;
     specialUpgrades.forEach(u=>{if(u.owned){if(u.id.includes('crit'))baseCrit+=u.id==='crit1'?0.03:u.id==='crit3'?0.05:0;if(u.id.includes('luck'))baseLuck+=u.id==='luck1'?0.02:u.id==='luck2'?0.03:0.05}});
+    policeUpgrades.forEach(u=>{if(u.owned)u.fx()});
     critChance=baseCrit+critB;luckChance=baseLuck+luckB;
 }
 
@@ -740,7 +758,7 @@ function buySpecial(id){const u=specialUpgrades.find(x=>x.id===id);if(!u||u.owne
 function buyStorage(i){const s=storageTypes[i];if(money>=s.cost&&!storageLocations.find(x=>x.name===s.name)){money-=s.cost;storageLocations.push({...s,stored:0,id:Date.now()});vib([15,25,15]);updateAll()}}
 function deposit(id,amt){const s=storageLocations.find(x=>x.id===id);if(s){const mx=Math.min(amt,money,s.cap-s.stored);if(mx>0){money-=mx;s.stored+=mx;updateAll()}}}
 function withdraw(id){const s=storageLocations.find(x=>x.id===id);if(s?.stored>0){money+=s.stored;s.stored=0;updateAll()}}
-function hireThief(){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);showTip('crew_hired','Train Loyalty to reduce theft risk!');checkAchievements();updateAll()}}
+function hireThief(){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes[Math.floor(Math.random()*crewTypes.length)];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
 function trainCrew(id,attr){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib([15,25,15]);updateAll()}}
 function fireCrew(id){if(confirm('Fire this crew member?')){thieves=thieves.filter(c=>c.id!==id);updateAll()}}
 
@@ -810,22 +828,25 @@ function updateAll(){
     
     // Biz upgrades
     document.getElementById('bizList').innerHTML=bizUpgrades.map((u,i)=>{
-        const cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));const can=money>=cost;
+        const cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));const can=money>=cost&&u.owned<u.maxOwned;
         const tier=getTier(u.owned),prog=getTierProgress(u.owned);
         const hasMinigame=u.minigame&&tier>=MINIGAME_TIER;
-        return `<div class="upgrade-card ${can?'affordable':''} ${tier>=MINIGAME_TIER&&u.minigame?'maxed':''}">
-            <div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span class="upgrade-tier tier-${tier}">${tierNames[tier]}</span></div>
-            <div class="upgrade-tier-bar"><div class="upgrade-tier-fill tier-${tier}-fill" style="width:${prog}%"></div></div>
-            <div class="upgrade-meta"><span>+$${u.income}/s</span><b>${fmtS(cost)}</b></div>
-            ${hasMinigame?`<button class="upgrade-btn minigame-btn" onclick="openMiniGame('${u.minigame}')">🎮 PLAY</button>`:`<button class="upgrade-btn" onclick="buyBiz(${i})" ${can?'':'disabled'}>${u.minigame&&tier<MINIGAME_TIER?`Buy (🎮@${tierNames[MINIGAME_TIER]})`:'Buy'}</button>`}
+        const atMax=u.owned>=u.maxOwned;
+        const pipsPer=Math.ceil(u.maxOwned/5);const pipsOwned=Math.min(5,Math.floor(u.owned/pipsPer));
+        return `<div class="upgrade-card ${can?'affordable':''} ${atMax?'maxed':''}">
+            <div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span style="font-size:0.65em;color:#94a3b8">${u.owned}/${u.maxOwned}</span></div>
+            <div class="territory-pips">${Array(5).fill(0).map((_,j)=>`<div class="territory-pip ${j<pipsOwned?'filled':''}"></div>`).join('')}</div>
+            <div class="upgrade-meta"><span>+$${u.income}/s</span><b style="color:#fbbf24">$${fmtS(cost)}</b></div>
+            ${hasMinigame?`<button class="upgrade-btn minigame-btn" onclick="openMiniGame('${u.minigame}')">🎮 PLAY</button>`:`<button class="upgrade-btn" onclick="buyBiz(${i})" ${can&&!atMax?'':'disabled'}>${atMax?'✓ MAX':(u.minigame&&tier<MINIGAME_TIER?`Buy (🎮@${tierNames[MINIGAME_TIER]})`:'Buy')}</button>`}
         </div>`;
     }).join('');
     
     // Click upgrades
     document.getElementById('clickList').innerHTML=clickUpgrades.map((u,i)=>{
-        const cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));const can=money>=cost;
-        const tier=getTier(u.owned),prog=getTierProgress(u.owned);
-        return `<div class="upgrade-card ${can?'affordable':''}"><div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span class="upgrade-tier tier-${tier}">${tierNames[tier]}</span></div><div class="upgrade-tier-bar"><div class="upgrade-tier-fill tier-${tier}-fill" style="width:${prog}%"></div></div><div class="upgrade-meta"><span>x${u.mult}</span><b>${fmtS(cost)}</b></div><button class="upgrade-btn" onclick="buyClick(${i})" ${can?'':'disabled'}>Buy</button></div>`;
+        const cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));const can=money>=cost&&u.owned<u.maxOwned;
+        const atMax=u.owned>=u.maxOwned;
+        const pipsPer=Math.ceil(u.maxOwned/5);const pipsOwned=Math.min(5,Math.floor(u.owned/pipsPer));
+        return `<div class="upgrade-card ${can?'affordable':''} ${atMax?'maxed':''}"><div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span style="font-size:0.65em;color:#94a3b8">${u.owned}/${u.maxOwned}</span></div><div class="territory-pips">${Array(5).fill(0).map((_,j)=>`<div class="territory-pip ${j<pipsOwned?'filled':''}"></div>`).join('')}</div><div class="upgrade-meta"><span>x${u.mult}</span><b style="color:#fbbf24">$${fmtS(cost)}</b></div><button class="upgrade-btn" onclick="buyClick(${i})" ${can&&!atMax?'':'disabled'}>${atMax?'✓ MAX':'Buy'}</button></div>`;
     }).join('');
     
     // Territory content
@@ -869,9 +890,10 @@ function updateAll(){
             💡 Crew earns money every 5 seconds but may steal from your cash! Train <b>Loyalty</b> to reduce theft risk.
         </div>
         <div class="grid-2col">${thieves.length?thieves.map(c=>{
-            const r=getCrewRank(c);
-            const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)),sc=Math.floor(7000*Math.pow(1.9,c.skill)),ec=Math.floor(4500*Math.pow(1.9,c.exp));
-            return `<div class="thief-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-weight:bold">🥷 ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span><button class="btn btn-red" style="padding:2px 6px;font-size:0.8em" onclick="fireCrew(${c.id})">✕</button></div><div style="display:flex;gap:8px;margin-bottom:4px;color:#94a3b8;font-size:0.9em"><span>💰<b style="color:#4ade80">${fmt(getCrewIncome(c))}</b>/5s</span><span>⚠️<b style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</b> theft</span></div><div class="train-grid"><button class="train-btn" onclick="trainCrew(${c.id},'loyalty')" ${money<lc||c.loyalty>=10?'disabled':''}>🛡️${c.loyalty}/10<br><span style="font-size:0.8em">${fmtS(lc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'skill')" ${money<sc||c.skill>=10?'disabled':''}>⚡${c.skill}/10<br><span style="font-size:0.8em">${fmtS(sc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'exp')" ${money<ec||c.exp>=10?'disabled':''}>📈${c.exp}/10<br><span style="font-size:0.8em">${fmtS(ec)}</span></button></div></div>`;
+            const r=getCrewRank(c);const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'))||crewTypes[0];
+            const costMult=(ct.id==='insider'?0.7:1);
+            const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)*costMult),sc=Math.floor(7000*Math.pow(1.9,c.skill)*costMult),ec=Math.floor(4500*Math.pow(1.9,c.exp)*costMult);
+            return `<div class="thief-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-weight:bold">${ct.icon} ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span><button class="btn btn-red" style="padding:2px 6px;font-size:0.8em" onclick="fireCrew(${c.id})">✕</button></div><div style="font-size:0.65em;color:${ct.color};margin-bottom:3px;font-weight:bold">${ct.name} - ${ct.desc}</div><div style="display:flex;gap:8px;margin-bottom:4px;color:#94a3b8;font-size:0.9em"><span>💰<b style="color:#4ade80">${fmt(getCrewIncome(c))}</b>/5s</span><span>⚠️<b style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</b> theft</span></div><div class="train-grid"><button class="train-btn" onclick="trainCrew(${c.id},'loyalty')" ${money<lc||c.loyalty>=10?'disabled':''}>🛡️${c.loyalty}/10<br><span style="font-size:0.8em">${fmtS(lc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'skill')" ${money<sc||c.skill>=10?'disabled':''}>⚡${c.skill}/10<br><span style="font-size:0.8em">${fmtS(sc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'exp')" ${money<ec||c.exp>=10?'disabled':''}>📈${c.exp}/10<br><span style="font-size:0.8em">${fmtS(ec)}</span></button></div></div>`;
         }).join(''):'<div class="empty-state">No crew members yet.<br>Hire your first crew member above!</div>'}</div>
     `:`<div class="locked-content"><div class="lock-icon">🔒</div><h3>Crew</h3><p>Reach Rank 1 (💜 Hustler) to hire crew members for passive income!</p></div>`;
     
@@ -890,9 +912,26 @@ function closeMiniGame(){document.getElementById('mgOverlay').classList.remove('
 function openMiniGame(type){
     document.getElementById('mgOverlay').classList.add('active');
     const c=document.getElementById('mgContainer');
-    if(type==='slots')renderSlots(c);
+    if(type==='casino')renderCasino(c);
     else if(type==='safe')renderSafe(c);
-    else if(type==='dice')renderDice(c);
+    else if(type==='factory')renderFactory(c);
+}
+
+// CASINO HUB
+let casinoGame='slots';
+function renderCasino(c){
+    c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
+        <div class="mg-title">🎰 CASINO GAMES 🎰</div>
+        <div class="mg-balance">Cash: <span id="casinoBal">${fmt(money)}</span></div>
+        <div class="slot-select">
+            <button class="slot-select-btn ${casinoGame==='slots'?'active':''}" onclick="casinoGame='slots';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎰</span><span class="name">Slots</span><span class="desc">Classic & Megaways</span></button>
+            <button class="slot-select-btn ${casinoGame==='dice'?'active':''}" onclick="casinoGame='dice';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎲</span><span class="name">Dice</span><span class="desc">High Roller Betting</span></button>
+            <button class="slot-select-btn ${casinoGame==='roulette'?'active':''}" onclick="casinoGame='roulette';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎯</span><span class="name">Roulette</span><span class="desc">Red/Black/Numbers</span></button>
+        </div>
+        <div id="casinoGameArea"></div>`;
+    if(casinoGame==='slots')renderSlots(document.getElementById('casinoGameArea'));
+    else if(casinoGame==='dice')renderDice(document.getElementById('casinoGameArea'));
+    else if(casinoGame==='roulette')renderRoulette(document.getElementById('casinoGameArea'));
 }
 
 // SLOTS
@@ -904,12 +943,9 @@ const megaValues={'💰':1,'💎':2,'🔔':3,'⭐':5,'👑':8,'7️⃣':15,'🃏
 let megaMultiplier=1,megaReels=[];
 
 function renderSlots(c){
-    c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
-        <div class="mg-title">🎰 CASINO SLOTS 🎰</div>
-        <div class="mg-balance">Cash: <span id="slotBal">${fmt(money)}</span></div>
-        <div class="slot-select">
-            <button class="slot-select-btn ${slotType==='classic'?'active':''}" onclick="slotType='classic';renderSlots(document.getElementById('mgContainer'))"><span class="icon">🎰</span><span class="name">Classic</span><span class="desc">3 Reels • Big Jackpots</span></button>
-            <button class="slot-select-btn ${slotType==='mega'?'active':''}" onclick="slotType='mega';renderSlots(document.getElementById('mgContainer'))"><span class="icon">💎</span><span class="name">Megaways</span><span class="desc">6 Reels • Cascades</span></button>
+    c.innerHTML=`<div class="slot-select" style="margin-top:6px">
+            <button class="slot-select-btn ${slotType==='classic'?'active':''}" onclick="slotType='classic';renderSlots(document.getElementById('casinoGameArea'))"><span class="icon">🎰</span><span class="name">Classic</span><span class="desc">3 Reels • Big Jackpots</span></button>
+            <button class="slot-select-btn ${slotType==='mega'?'active':''}" onclick="slotType='mega';renderSlots(document.getElementById('casinoGameArea'))"><span class="icon">💎</span><span class="name">Megaways</span><span class="desc">6 Reels • Cascades</span></button>
         </div>
         <div id="slotGameArea"></div>`;
     if(slotType==='classic')renderClassicSlots();else renderMegaways();
@@ -1059,7 +1095,7 @@ function findMegaWins(){
 }
 
 function updateSlotUI(){
-    const bal=document.getElementById('slotBal');if(bal)bal.textContent=fmt(money);
+    const bal=document.getElementById('casinoBal');if(bal)bal.textContent=fmt(money);
     const btn=document.getElementById('slotSpinBtn');if(btn)btn.disabled=slotSpinning||money<slotBet;
     ['betUp','betDown','bonusBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=slotSpinning});
     const bi=document.getElementById('bonusInfo');if(bi){bi.style.display=slotBonusSpins>0?'block':'none';const bc=document.getElementById('bonusCount');if(bc)bc.textContent=slotBonusSpins}
@@ -1071,21 +1107,25 @@ function renderSafe(c){
     safeBet=Math.min(money,Math.max(1000,Math.floor(money*0.01)));
     safeTarget=[Math.floor(Math.random()*100),Math.floor(Math.random()*100),Math.floor(Math.random()*100)];
     safeCombo=[];safeIdx=0;safePointer=0;
+    const markers=[0,25,50,75].map(n=>`<div class="safe-marker" style="transform: rotate(${n*3.6}deg)"><span style="transform: rotate(-${n*3.6}deg)">${n}</span></div>`).join('');
     c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
         <div class="mg-title">🔐 VAULT CRACKER 🔐</div>
         <div class="mg-balance">Cash: <span id="safeBal">${fmt(money)}</span></div>
         <div class="safe-game">
             <div class="safe-info">Crack the 3-number combo! Bet: <b style="color:#4ade80">${fmt(safeBet)}</b> → Win: <b style="color:#ffd700">${fmt(safeBet*10)}</b></div>
-            <div class="safe-dial"><div class="safe-pointer" id="safePointer"></div></div>
+            <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+                <div class="safe-dial">${markers}<div class="safe-pointer" id="safePointer"></div></div>
+                <div style="margin-top:8px;font-size:1.2em;font-weight:bold;color:#fbbf24">Current: <span id="safeCurrentNum">0</span></div>
+            </div>
             <div class="safe-combo"><div class="safe-combo-num active" id="sc0">?</div><div class="safe-combo-num" id="sc1">?</div><div class="safe-combo-num" id="sc2">?</div></div>
-            <div class="safe-controls"><button onclick="turnSafe(-5)">⟲</button><button onclick="turnSafe(5)">⟳</button></div>
+            <div class="safe-controls"><button onclick="turnSafe(-5)">⟲ -5</button><button onclick="turnSafe(-1)">⟲ -1</button><button onclick="turnSafe(1)">+1 ⟳</button><button onclick="turnSafe(5)">+5 ⟳</button></div>
             <button class="safe-submit" onclick="submitSafe()">🔓 TRY</button>
             <div class="slot-result" id="safeResult"></div>
-            <div style="margin-top:6px;font-size:0.65em;color:#64748b">Get within ±5 of target. Hints show after each try!</div>
+            <div style="margin-top:6px;font-size:0.65em;color:#64748b">Turn the dial to set numbers 0-99. Get within ±5 of target!</div>
         </div>`;
     document.getElementById('safePointer').style.transform=`translateX(-50%) rotate(${(safePointer/100)*360}deg)`;
 }
-function turnSafe(amt){safePointer=(safePointer+amt+100)%100;document.getElementById('safePointer').style.transform=`translateX(-50%) rotate(${(safePointer/100)*360}deg)`}
+function turnSafe(amt){safePointer=(safePointer+amt+100)%100;document.getElementById('safePointer').style.transform=`translateX(-50%) rotate(${(safePointer/100)*360}deg)`;const numEl=document.getElementById('safeCurrentNum');if(numEl)numEl.textContent=safePointer}
 function submitSafe(){
     if(safeIdx>=3)return;
     const target=safeTarget[safeIdx];const diff=Math.abs(safePointer-target);const correct=diff<=5||diff>=95;
@@ -1108,15 +1148,12 @@ function submitSafe(){
 let diceBet=1000,diceChoice=null,diceRolling=false;
 const diceOpts=[{id:'low',name:'Low 2-6',payout:2},{id:'mid',name:'Mid 7',payout:4},{id:'high',name:'High 8-12',payout:2},{id:'doubles',name:'Doubles',payout:5},{id:'snake',name:'Snake Eyes',payout:30},{id:'boxcars',name:'Boxcars',payout:30}];
 function renderDice(c){
-    c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
-        <div class="mg-title">🎲 HIGH ROLLER DICE 🎲</div>
-        <div class="mg-balance">Cash: <span id="diceBal">${fmt(money)}</span></div>
-        <div class="dice-game">
-            <div class="dice-container"><div class="dice" id="dice1">⚀</div><div class="dice" id="dice2">⚀</div></div>
+    c.innerHTML=`<div class="dice-game" style="margin-top:8px">
+            <div class="dice-container" style="margin:15px 0"><div class="dice" id="dice1">⚀</div><div class="dice" id="dice2">⚀</div></div>
             <div class="slot-bet-row" style="margin:10px 0"><button onclick="diceBet=Math.max(100,diceBet-1000);document.getElementById('diceBetAmt').textContent=fmt(diceBet)">−</button><div class="slot-bet">Bet: <b id="diceBetAmt">${fmt(diceBet)}</b></div><button onclick="diceBet=Math.min(money,diceBet+1000);document.getElementById('diceBetAmt').textContent=fmt(diceBet)">+</button></div>
-            <div style="font-size:0.7em;color:#94a3b8;margin-bottom:6px">Choose your bet:</div>
-            <div class="dice-bet-options">${diceOpts.map(o=>`<div class="dice-bet-opt" data-id="${o.id}" onclick="diceChoice='${o.id}';document.querySelectorAll('.dice-bet-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('diceRollBtn').disabled=false">${o.name}<div class="payout">${o.payout}x</div></div>`).join('')}</div>
-            <button class="dice-roll-btn" id="diceRollBtn" onclick="rollDice()" disabled>🎲 ROLL 🎲</button>
+            <div style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;font-weight:bold">Choose your bet:</div>
+            <div class="dice-bet-options">${diceOpts.map(o=>`<div class="dice-bet-opt" data-id="${o.id}" onclick="diceChoice='${o.id}';document.querySelectorAll('.dice-bet-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('diceRollBtn').disabled=false"><div style="font-weight:bold;margin-bottom:2px">${o.name}</div><div class="payout">${o.payout}x payout</div></div>`).join('')}</div>
+            <button class="dice-roll-btn" id="diceRollBtn" onclick="rollDice()" disabled>🎲 ROLL DICE 🎲</button>
             <div class="slot-result" id="diceResult"></div>
         </div>`;
     diceChoice=null;
@@ -1137,8 +1174,127 @@ function rollDice(){
         const res=document.getElementById('diceResult');res.textContent=`Rolled: ${total}`;
         if(win>0){money+=win;totalEarned+=win;res.textContent+=` → WIN! +${fmt(win)}`;res.className='slot-result '+(opt.payout>=10?'jackpot':'win');vib(opt.payout>=10?[100,50,100,50,200]:[50,30])}
         else{res.textContent+=' → No match';res.className='slot-result lose'}
-        document.getElementById('diceBal').textContent=fmt(money);updateAll();saveGame();
+        document.getElementById('casinoBal').textContent=fmt(money);updateAll();saveGame();
     },800);
+}
+
+// FACTORY ASSEMBLY LINE
+let factoryActive=false,factoryScore=0,factoryTime=30,factoryItems=[],factoryInterval=null;
+const factoryProducts=['📦','🔧','⚙️','🔩','🛠️'];
+function renderFactory(c){
+    c.innerHTML=`<button class="mg-close" onclick="closeMiniGame();if(factoryInterval)clearInterval(factoryInterval)">✕</button>
+        <div class="mg-title">🏭 ASSEMBLY LINE 🏭</div>
+        <div class="mg-balance">Cash: <span id="factoryBal">${fmt(money)}</span></div>
+        <div class="safe-game">
+            <div class="safe-info">Click matching items as they pass! Time: <b style="color:#4ade80"><span id="factoryTimer">30</span>s</b> | Score: <b style="color:#ffd700"><span id="factoryScore">0</span></b></div>
+            <div style="margin:15px 0;min-height:180px">
+                <div style="text-align:center;font-size:2em;margin-bottom:10px">Target: <span id="factoryTarget" style="color:#ffd700">?</span></div>
+                <div id="factoryBelt" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px auto;max-width:300px"></div>
+            </div>
+            <button class="safe-submit" id="factoryStartBtn" onclick="startFactory()">🏭 START PRODUCTION</button>
+            <div class="slot-result" id="factoryResult"></div>
+            <div style="margin-top:6px;font-size:0.65em;color:#64748b">Click correct items quickly! Each correct: +$${fmt(500)}. Wrong click: -$${fmt(100)}</div>
+        </div>`;
+}
+function startFactory(){
+    if(factoryActive)return;
+    factoryActive=true;factoryScore=0;factoryTime=30;factoryItems=[];
+    document.getElementById('factoryStartBtn').disabled=true;
+    document.getElementById('factoryResult').textContent='';
+    const target=factoryProducts[Math.floor(Math.random()*factoryProducts.length)];
+    document.getElementById('factoryTarget').textContent=target;
+    factoryInterval=setInterval(()=>{
+        factoryTime--;
+        document.getElementById('factoryTimer').textContent=factoryTime;
+        if(factoryTime<=0){endFactory();return}
+        if(Math.random()<0.7){
+            const item=Math.random()<0.4?target:factoryProducts[Math.floor(Math.random()*factoryProducts.length)];
+            const id=Date.now()+Math.random();
+            factoryItems.push({id,item,correct:item===target});
+            if(factoryItems.length>12)factoryItems.shift();
+        }
+        renderFactoryBelt(target);
+    },800);
+}
+function renderFactoryBelt(target){
+    const belt=document.getElementById('factoryBelt');
+    belt.innerHTML=factoryItems.map(fi=>`<div onclick="clickFactoryItem('${fi.id}','${fi.correct}')" style="font-size:2.5em;cursor:pointer;background:rgba(255,255,255,0.1);border-radius:8px;padding:10px;text-align:center;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">${fi.item}</div>`).join('');
+}
+function clickFactoryItem(id,correct){
+    if(!factoryActive)return;
+    const isCorrect=correct==='true';
+    factoryItems=factoryItems.filter(fi=>fi.id!=id);
+    if(isCorrect){factoryScore++;money+=500;totalEarned+=500;vib([20,10])}
+    else{money=Math.max(0,money-100);vib([50])}
+    document.getElementById('factoryScore').textContent=factoryScore;
+    document.getElementById('factoryBal').textContent=fmt(money);
+    updateAll();
+}
+function endFactory(){
+    clearInterval(factoryInterval);factoryActive=false;
+    const bonus=factoryScore*500;const total=bonus;
+    const res=document.getElementById('factoryResult');
+    if(factoryScore>=20){res.textContent=`🎉 EXCELLENT! Score: ${factoryScore} → Bonus: +${fmt(total)}`;res.className='slot-result jackpot';money+=total;totalEarned+=total;vib([100,50,100,50,200])}
+    else if(factoryScore>=10){res.textContent=`✓ Good work! Score: ${factoryScore}`;res.className='slot-result win';vib([50,30])}
+    else{res.textContent=`Score: ${factoryScore}. Keep practicing!`;res.className='slot-result'}
+    document.getElementById('factoryStartBtn').disabled=false;
+    document.getElementById('factoryBal').textContent=fmt(money);
+    updateAll();saveGame();
+}
+
+// ROULETTE
+let rouletteBet=1000,rouletteChoice=null,rouletteSpinning=false;
+const rouletteNumbers=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const redNums=[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+const rouletteBets=[
+    {id:'red',name:'Red',payout:2,desc:'1-18 red'},
+    {id:'black',name:'Black',payout:2,desc:'1-18 black'},
+    {id:'low',name:'1-18',payout:2,desc:'Low half'},
+    {id:'high',name:'19-36',payout:2,desc:'High half'},
+    {id:'even',name:'Even',payout:2,desc:'Even numbers'},
+    {id:'odd',name:'Odd',payout:2,desc:'Odd numbers'},
+    {id:'zero',name:'0 (Zero)',payout:35,desc:'Jackpot!'}
+];
+function renderRoulette(c){
+    c.innerHTML=`<div style="margin-top:8px">
+            <div style="position:relative;width:200px;height:200px;margin:15px auto;background:radial-gradient(circle,#1a1a2e,#0f0f1e);border-radius:50%;border:8px solid #ffd700;display:flex;align-items:center;justify-content:center">
+                <div id="rouletteWheel" style="font-size:3em;transition:transform 0.05s">🎯</div>
+                <div id="rouletteResult" style="position:absolute;bottom:-35px;left:50%;transform:translateX(-50%);font-size:1.2em;font-weight:bold;color:#ffd700"></div>
+            </div>
+            <div class="slot-bet-row" style="margin:10px 0"><button onclick="rouletteBet=Math.max(100,rouletteBet-1000);document.getElementById('rouletteBetAmt').textContent=fmt(rouletteBet)">−</button><div class="slot-bet">Bet: <b id="rouletteBetAmt">${fmt(rouletteBet)}</b></div><button onclick="rouletteBet=Math.min(money,rouletteBet+1000);document.getElementById('rouletteBetAmt').textContent=fmt(rouletteBet)">+</button></div>
+            <div style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;font-weight:bold">Place your bet:</div>
+            <div class="dice-bet-options">${rouletteBets.map(b=>`<div class="dice-bet-opt" data-id="${b.id}" onclick="rouletteChoice='${b.id}';document.querySelectorAll('.dice-bet-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('rouletteSpinBtn').disabled=false"><div style="font-weight:bold;margin-bottom:2px">${b.name}</div><div class="payout">${b.payout}x</div></div>`).join('')}</div>
+            <button class="dice-roll-btn" id="rouletteSpinBtn" onclick="spinRoulette()" disabled>🎯 SPIN WHEEL 🎯</button>
+            <div class="slot-result" id="rouletteWinResult"></div>
+        </div>`;
+    rouletteChoice=null;
+}
+function spinRoulette(){
+    if(rouletteSpinning||!rouletteChoice||money<rouletteBet)return;
+    money-=rouletteBet;rouletteSpinning=true;updateAll();
+    const wheel=document.getElementById('rouletteWheel');
+    const result=document.getElementById('rouletteResult');
+    const winResult=document.getElementById('rouletteWinResult');
+    result.textContent='';winResult.textContent='';winResult.className='slot-result';
+    let spins=0;const maxSpins=30;
+    const spinInterval=setInterval(()=>{
+        wheel.style.transform=`rotate(${spins*36}deg)`;
+        spins++;
+        if(spins>=maxSpins){
+            clearInterval(spinInterval);
+            const num=rouletteNumbers[Math.floor(Math.random()*rouletteNumbers.length)];
+            const isRed=redNums.includes(num);
+            result.textContent=num;result.style.color=num===0?'#22c55e':(isRed?'#ef4444':'#1f2937');
+            setTimeout(()=>{
+                let win=0;const bet=rouletteBets.find(b=>b.id===rouletteChoice);
+                if((rouletteChoice==='red'&&isRed)||(rouletteChoice==='black'&&!isRed&&num!==0)||(rouletteChoice==='low'&&num>=1&&num<=18)||(rouletteChoice==='high'&&num>=19)||(rouletteChoice==='even'&&num>0&&num%2===0)||(rouletteChoice==='odd'&&num%2===1)||(rouletteChoice==='zero'&&num===0))win=rouletteBet*bet.payout;
+                if(win>0){money+=win;totalEarned+=win;winResult.textContent=`WIN! +${fmt(win)}`;winResult.className='slot-result '+(bet.payout>=10?'jackpot':'win');vib(bet.payout>=10?[100,50,100,50,200]:[50,30])}
+                else{winResult.textContent='No match';winResult.className='slot-result lose'}
+                document.getElementById('casinoBal').textContent=fmt(money);updateAll();saveGame();
+                rouletteSpinning=false;
+            },500);
+        }
+    },50);
 }
 
 // === GAME LOOP ===
