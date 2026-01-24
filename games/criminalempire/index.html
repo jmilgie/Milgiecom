@@ -127,6 +127,8 @@
     /* Purchase Animation */
     @keyframes purchasePulse { 0% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 197, 94, 0.7); } 50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(34, 197, 94, 0.7); } 100% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 197, 94, 0); } }
     .just-purchased { animation: purchasePulse 0.5s ease-out; }
+    @keyframes raidFlash { 0%, 100% { filter: none; } 25% { filter: brightness(0.5) saturate(0) hue-rotate(240deg); } 50% { filter: brightness(0.7) saturate(0) hue-rotate(240deg); } 75% { filter: brightness(0.5) saturate(0) hue-rotate(240deg); } }
+    @keyframes eventPop { 0% { transform: scale(0.8) rotate(-5deg); opacity: 0; } 50% { transform: scale(1.05) rotate(2deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
     
     /* Heist Cards */
     .heist-card { background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15)); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 6px; position: relative; transition: all 0.2s; }
@@ -152,12 +154,21 @@
     .heat-info-panel b { color: #fbbf24; }
     
     /* Crew/Thief Cards */
-    .thief-card { background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 6px; font-size: 0.7em; }
-    .thief-rank-badge { font-size: 0.8em; padding: 1px 5px; border-radius: 3px; margin-left: 4px; color: white; }
-    .train-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 4px; }
-    .train-btn { padding: 5px 3px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 4px; color: white; font-size: 0.85em; cursor: pointer; text-align: center; transition: all 0.2s; }
-    .train-btn:disabled { background: rgba(55, 65, 81, 0.5); border-color: transparent; color: #6b7280; }
-    .train-btn:not(:disabled):hover { background: rgba(59, 130, 246, 0.4); }
+    .thief-card { position: relative; background: rgba(168, 85, 247, 0.15); border: 2px solid rgba(168, 85, 247, 0.4); border-radius: 8px; padding: 0; font-size: 0.7em; overflow: hidden; min-height: 140px; background-size: cover; background-position: center; }
+    .thief-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.3) 100%); z-index: 0; }
+    .thief-card > * { position: relative; z-index: 1; }
+    .thief-card-header { padding: 6px; }
+    .thief-rank-badge { font-size: 0.75em; padding: 2px 6px; border-radius: 4px; margin-left: 4px; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .thief-stats { display: flex; gap: 8px; margin: 6px 6px 8px 6px; justify-content: space-around; }
+    .thief-stat { text-align: center; background: rgba(0,0,0,0.4); padding: 4px 6px; border-radius: 6px; flex: 1; border: 1px solid rgba(255,255,255,0.1); }
+    .thief-stat-icon { font-size: 1.1em; margin-bottom: 2px; }
+    .thief-stat-label { font-size: 0.7em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .thief-stat-value { font-weight: bold; color: #4ade80; font-size: 1.1em; }
+    .train-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 6px 6px 6px; }
+    .train-btn { padding: 6px 4px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); border: 1px solid rgba(59, 130, 246, 0.5); border-radius: 6px; color: white; font-size: 0.8em; cursor: pointer; text-align: center; transition: all 0.2s; font-weight: bold; }
+    .train-btn:disabled { background: rgba(55, 65, 81, 0.3); border-color: rgba(107, 114, 128, 0.3); color: #6b7280; }
+    .train-btn:not(:disabled):hover { background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(37, 99, 235, 0.5)); transform: translateY(-1px); }
+    .train-btn-label { display: block; font-size: 0.7em; color: #94a3b8; margin-top: 2px; }
     
     /* Storage Cards */
     .storage-card { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 6px; padding: 6px; font-size: 0.7em; }
@@ -799,8 +810,25 @@ function playSound(freq=440,duration=50,type='sine',volume=0.1){
     }catch(e){console.warn('Audio error',e)}
 }
 function vib(p){if(settings.vibration&&navigator.vibrate)navigator.vibrate(p)}
-function fmt(n){if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+Math.floor(n)}
-function fmtS(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(0)+'K';return Math.floor(n)}
+function fmt(n){
+    if(!isFinite(n)||n<0)return'$0';
+    if(n>=1e18)return'$'+(n/1e18).toFixed(2)+'Qi';
+    if(n>=1e15)return'$'+(n/1e15).toFixed(2)+'Qa';
+    if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';
+    if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';
+    if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';
+    if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';
+    return'$'+Math.floor(n);
+}
+function fmtS(n){
+    if(!isFinite(n)||n<0)return'0';
+    if(n>=1e15)return(n/1e15).toFixed(1)+'Qa';
+    if(n>=1e12)return(n/1e12).toFixed(1)+'T';
+    if(n>=1e9)return(n/1e9).toFixed(1)+'B';
+    if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+    if(n>=1e3)return(n/1e3).toFixed(0)+'K';
+    return Math.floor(n);
+}
 function getRank(){for(let i=ranks.length-1;i>=0;i--)if(reputation>=ranks[i].rep)return i;return 0}
 function getTier(o){for(let i=tierThresholds.length-1;i>=0;i--)if(o>=tierThresholds[i])return i;return 0}
 function getTierProgress(o){const t=getTier(o);if(t>=tierThresholds.length-1)return 100;const c=tierThresholds[t],n=tierThresholds[t+1];return((o-c)/(n-c))*100}
@@ -935,6 +963,7 @@ function hardReset(){
 
 // === ACHIEVEMENTS ===
 function openAchievements(){
+    playSound(650,80,'triangle',0.1);
     document.getElementById('achievementsModal').classList.add('active');
     renderAchievements();
 }
@@ -1036,7 +1065,8 @@ function calculateLegacyPoints(){
 
 function openPrestige(){
     const lp=calculateLegacyPoints();
-    if(lp===0){showNotif('⚠️ Not Ready','event','Need more lifetime earnings to prestige');return}
+    if(lp===0){playSound(300,100,'sawtooth',0.1);showNotif('⚠️ Not Ready','event','Need more lifetime earnings to prestige');return}
+    playSound(750,120,'square',0.12);
     document.getElementById('currentPrestige').textContent=prestigeLevel;
     document.getElementById('currentLegacy').textContent=legacyPoints+' LP';
     document.getElementById('prestigeReward').textContent=`+${lp} LP`;
@@ -1169,8 +1199,8 @@ function renderAchievements(){
 }
 
 // === SETTINGS ===
-function openSettings(){document.getElementById('settingsModal').classList.add('active');updateSettingsUI()}
-function closeSettings(){document.getElementById('settingsModal').classList.remove('active')}
+function openSettings(){playSound(500,50,'sine',0.08);document.getElementById('settingsModal').classList.add('active');updateSettingsUI()}
+function closeSettings(){playSound(400,50,'sine',0.08);document.getElementById('settingsModal').classList.remove('active')}
 function toggleSetting(key){
     settings[key]=!settings[key];
     if(key==='debug')document.getElementById('debugBtns').style.display=settings.debug?'flex':'none';
@@ -1290,10 +1320,15 @@ function clickMoney(event){
 // Raids on timer instead of per-click
 function checkRaid(){
     if(Math.random()<getHeatChance()*0.1){
-        vib([150,80,150]);
+        vib([150,80,150,80,150]);
+        playSound(300,400,'sawtooth',0.25);
         const loss=Math.floor(money*(0.08+Math.random()*0.15));
         money=Math.max(0,money-loss);policeHeat=Math.max(0,policeHeat-25);
-        if(loss>0)showNotif('🚔 RAID!','police',`-${fmt(loss)} cash seized!`);
+        if(loss>0){
+            showNotif('🚔 RAID!','police',`-${fmt(loss)} cash seized!`);
+            document.body.style.animation='raidFlash 0.5s';
+            setTimeout(()=>document.body.style.animation='',500);
+        }
         updateAll();
     }
 }
@@ -1327,9 +1362,9 @@ function buySpecial(id){const u=specialUpgrades.find(x=>x.id===id);if(!u||u.owne
 function buyStorage(i){const s=storageTypes[i];if(money>=s.cost&&!storageLocations.find(x=>x.name===s.name)){money-=s.cost;storageLocations.push({...s,stored:0,id:Date.now()});vib([15,25,15]);updateAll()}}
 function deposit(id,amt){const s=storageLocations.find(x=>x.id===id);if(s){const mx=Math.min(amt,money,s.cap-s.stored);if(mx>0){money-=mx;s.stored+=mx;updateAll()}}}
 function withdraw(id){const s=storageLocations.find(x=>x.id===id);if(s?.stored>0){money+=s.stored;s.stored=0;updateAll()}}
-function hireThief(crewTypeId){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes.find(t=>t.id===crewTypeId)||crewTypes[0];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
-function trainCrew(id,attr){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib([15,25,15]);updateAll()}}
-function fireCrew(id){if(confirm('Fire this crew member?')){thieves=thieves.filter(c=>c.id!==id);updateAll()}}
+function hireThief(crewTypeId){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes.find(t=>t.id===crewTypeId)||crewTypes[0];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);playSound(850,150,'triangle',0.15);showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
+function trainCrew(id,attr){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib([15,25,15]);playSound(550,80,'sine',0.1);updateAll()}}
+function fireCrew(id){if(confirm('Fire this crew member?')){playSound(250,150,'sawtooth',0.12);thieves=thieves.filter(c=>c.id!==id);updateAll()}}
 
 function processCrew(){
     thieves.forEach(c=>{
@@ -1492,7 +1527,43 @@ function updateAll(){
             const r=getCrewRank(c);const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'))||crewTypes[0];
             const costMult=(ct.id==='insider'?0.7:1);
             const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)*costMult),sc=Math.floor(7000*Math.pow(1.9,c.skill)*costMult),ec=Math.floor(4500*Math.pow(1.9,c.exp)*costMult);
-            return `<div class="thief-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-weight:bold">${ct.icon} ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span><button class="btn btn-red" style="padding:2px 6px;font-size:0.8em" onclick="fireCrew(${c.id})">✕</button></div><div style="font-size:0.65em;color:${ct.color};margin-bottom:3px;font-weight:bold">${ct.name} - ${ct.desc}</div><div style="display:flex;gap:8px;margin-bottom:4px;color:#94a3b8;font-size:0.9em"><span>💰<b style="color:#4ade80">${fmt(getCrewIncome(c))}</b>/5s</span><span>⚠️<b style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</b> theft</span></div><div class="train-grid"><button class="train-btn" onclick="trainCrew(${c.id},'loyalty')" ${money<lc||c.loyalty>=10?'disabled':''}>🛡️${c.loyalty}/10<br><span style="font-size:0.8em">${fmtS(lc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'skill')" ${money<sc||c.skill>=10?'disabled':''}>⚡${c.skill}/10<br><span style="font-size:0.8em">${fmtS(sc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'exp')" ${money<ec||c.exp>=10?'disabled':''}>📈${c.exp}/10<br><span style="font-size:0.8em">${fmtS(ec)}</span></button></div></div>`;
+            const crewImgName=c.type||'enforcer';
+            const bgImage=`assets/crew_${crewImgName}.PNG`;
+            return `<div class="thief-card" style="background-image:url('${bgImage}')">
+                <div class="thief-card-header">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                        <span style="font-weight:bold;font-size:0.95em;text-shadow:0 2px 4px rgba(0,0,0,0.9)">${ct.icon} ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span>
+                        <button class="btn btn-red" style="padding:3px 7px;font-size:0.75em" onclick="fireCrew(${c.id})">✕</button>
+                    </div>
+                    <div style="font-size:0.7em;color:${ct.color};font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.9)">${ct.name} - ${ct.desc}</div>
+                </div>
+                <div class="thief-stats">
+                    <div class="thief-stat">
+                        <div class="thief-stat-icon">💰</div>
+                        <div class="thief-stat-value">${fmt(getCrewIncome(c))}</div>
+                        <div class="thief-stat-label">Income/5s</div>
+                    </div>
+                    <div class="thief-stat">
+                        <div class="thief-stat-icon">⚠️</div>
+                        <div class="thief-stat-value" style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</div>
+                        <div class="thief-stat-label">Theft Risk</div>
+                    </div>
+                </div>
+                <div class="train-grid">
+                    <button class="train-btn" onclick="trainCrew(${c.id},'loyalty')" ${money<lc||c.loyalty>=10?'disabled':''}>
+                        <div>🛡️ ${c.loyalty}/10</div>
+                        <div class="train-btn-label">Loyalty<br>${fmtS(lc)}</div>
+                    </button>
+                    <button class="train-btn" onclick="trainCrew(${c.id},'skill')" ${money<sc||c.skill>=10?'disabled':''}>
+                        <div>⚡ ${c.skill}/10</div>
+                        <div class="train-btn-label">Skill<br>${fmtS(sc)}</div>
+                    </button>
+                    <button class="train-btn" onclick="trainCrew(${c.id},'exp')" ${money<ec||c.exp>=10?'disabled':''}>
+                        <div>📈 ${c.exp}/10</div>
+                        <div class="train-btn-label">Experience<br>${fmtS(ec)}</div>
+                    </button>
+                </div>
+            </div>`;
         }).join(''):'<div class="empty-state">No crew members yet.<br>Hire your first crew member above!</div>'}</div>
     `:`<div class="locked-content"><div class="lock-icon">🔒</div><h3>Crew</h3><p>Reach Rank 1 (💜 Hustler) to hire crew members for passive income!</p></div>`;
     
