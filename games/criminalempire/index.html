@@ -209,14 +209,14 @@
     .dice-roll-btn { width: 100%; padding: 15px; font-size: 1.2em; font-weight: bold; background: linear-gradient(145deg, #3b82f6, #2563eb); border: 3px solid #fbbf24; border-radius: 10px; color: white; cursor: pointer; margin-top: 10px; }
     .dice-roll-btn:disabled { background: #374151; border-color: #6b7280; }
 </style>
-```
+
 
 </head>
 <body class="rank-0">
     <button class="debug-btn" onclick="money+=1e12;updateAll()">+$1T DEBUG</button>
     <button class="debug-btn" style="bottom:80px;background:rgba(59,130,246,0.8)" onclick="money=0;storageLocations.forEach(s=>s.stored=0);updateAll()">ZERO $</button>
 
-```
+
 <div class="mg-overlay" id="mgOverlay">
     <div class="mg-container" id="mgContainer"></div>
 </div>
@@ -271,7 +271,7 @@
     <button class="tab-btn locked" data-tab="crew" onclick="switchTab('crew',this)"><span>🔒</span><span class="unlock-hint">Rank 1</span></button>
     <button class="tab-btn" data-tab="empire" onclick="switchTab('empire',this)"><span>🏛️</span>Empire</button>
 </div>
-```
+
 
 <script>
 let money=0,moneyPerSecond=0,clickPower=1,reputation=0,policeHeat=0,heatShield=0,heatDecay=0,critChance=0.05,critMult=3,luckChance=0,combo=0,lastClickTime=0,comboTimeout=null,storageLocations=[],thieves=[],ownedTerritories=[],globalMult=1,heistBonus=0;
