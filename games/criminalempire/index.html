@@ -384,6 +384,105 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="welcomeBackModal">
+    <div class="modal-container" style="max-width:400px">
+        <div class="modal-header" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">
+            <span class="modal-title">💤 Welcome Back!</span>
+            <button class="modal-close" onclick="closeWelcomeBack()">✕</button>
+        </div>
+        <div style="padding:20px;text-align:center">
+            <div style="font-size:3em;margin:10px 0" id="wbEmoji">😴</div>
+            <div style="font-size:1.2em;font-weight:bold;color:#fbbf24;margin:10px 0" id="wbEarnings">+$0</div>
+            <div style="font-size:0.85em;color:#94a3b8;margin:5px 0">earned while away</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0;padding:15px;background:rgba(0,0,0,0.3);border-radius:8px">
+                <div><div style="font-size:0.7em;color:#64748b">Time Away</div><div style="font-weight:bold;color:#a78bfa" id="wbTime">0m</div></div>
+                <div><div style="font-size:0.7em;color:#64748b">Per Hour</div><div style="font-weight:bold;color:#4ade80" id="wbRate">$0/hr</div></div>
+            </div>
+            <button class="btn btn-purple" onclick="closeWelcomeBack()" style="width:100%;padding:12px;font-size:1em">Continue Empire Building!</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="prestigeModal">
+    <div class="modal-container" style="max-width:500px">
+        <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+            <span class="modal-title">👑 Legacy System</span>
+            <button class="modal-close" onclick="closePrestige()">✕</button>
+        </div>
+        <div style="padding:20px">
+            <div style="text-align:center;margin-bottom:15px">
+                <div style="font-size:2.5em">🏝️</div>
+                <h3 style="margin:10px 0;color:#fbbf24">Retire to Paradise</h3>
+                <p style="font-size:0.85em;color:#94a3b8;margin:5px 0">Reset your empire and gain permanent bonuses</p>
+            </div>
+            <div style="background:rgba(0,0,0,0.3);padding:15px;border-radius:8px;margin:15px 0">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:10px">
+                    <div><div style="font-size:0.7em;color:#64748b">Prestige Level</div><div style="font-weight:bold;font-size:1.3em;color:#fbbf24" id="currentPrestige">0</div></div>
+                    <div><div style="font-size:0.7em;color:#64748b">Legacy Points</div><div style="font-weight:bold;font-size:1.3em;color:#22c55e" id="currentLegacy">0</div></div>
+                </div>
+                <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:10px;margin-top:10px">
+                    <div style="font-size:0.75em;color:#94a3b8;margin-bottom:5px">You will earn:</div>
+                    <div style="font-size:1.8em;font-weight:bold;color:#4ade80;text-align:center" id="prestigeReward">+0 LP</div>
+                    <div style="font-size:0.7em;color:#64748b;text-align:center;margin-top:5px">Based on lifetime earnings: <span id="lifetimeDisplay">$0</span></div>
+                </div>
+            </div>
+            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:10px;margin:15px 0">
+                <div style="font-size:0.75em;color:#ef4444;font-weight:bold;margin-bottom:5px">⚠️ You will lose:</div>
+                <div style="font-size:0.7em;color:#fca5a5">
+                    • All money and upgrades<br>
+                    • All territories and crew<br>
+                    • All progress (except achievements)
+                </div>
+            </div>
+            <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:10px;margin:15px 0">
+                <div style="font-size:0.75em;color:#22c55e;font-weight:bold;margin-bottom:5px">✓ You will keep:</div>
+                <div style="font-size:0.7em;color:#86efac">
+                    • All achievements<br>
+                    • All Legacy Points<br>
+                    • All prestige upgrades
+                </div>
+            </div>
+            <button class="btn btn-red" onclick="confirmPrestige()" style="width:100%;padding:14px;font-size:1.1em;font-weight:bold" id="prestigeBtn">🏝️ Retire to Paradise</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="prestigeShopModal">
+    <div class="modal-container">
+        <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+            <span class="modal-title">👑 Legacy Upgrades</span>
+            <button class="modal-close" onclick="closePrestigeShop()">✕</button>
+        </div>
+        <div style="padding:10px;max-height:70vh;overflow-y:auto">
+            <div style="text-align:center;background:rgba(251,191,36,0.1);padding:10px;border-radius:6px;margin-bottom:10px">
+                <span style="font-size:0.75em;color:#94a3b8">Legacy Points Available:</span>
+                <div style="font-size:1.5em;font-weight:bold;color:#fbbf24" id="lpDisplay">0 LP</div>
+            </div>
+            <div class="grid-2col" id="prestigeUpgradesList"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="eventModal">
+    <div class="modal-container" style="max-width:380px">
+        <div class="modal-header" id="eventHeader" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+            <span class="modal-title" id="eventTitle">⚡ Event!</span>
+            <button class="modal-close" onclick="closeEvent()">✕</button>
+        </div>
+        <div style="padding:20px;text-align:center">
+            <div style="font-size:3.5em;margin:15px 0" id="eventIcon">⚡</div>
+            <div style="font-size:1.2em;font-weight:bold;margin:10px 0" id="eventName">Something Happened!</div>
+            <div style="font-size:0.85em;color:#94a3b8;margin:8px 0" id="eventDesc">Description</div>
+            <div style="font-size:1.1em;font-weight:bold;margin:15px 0;padding:12px;border-radius:8px;background:rgba(0,0,0,0.3)" id="eventResult">Result</div>
+            <div id="eventActions" style="display:none;margin-top:15px">
+                <button class="btn btn-green" onclick="acceptEventChoice()" style="margin:5px">Accept</button>
+                <button class="btn btn-red" onclick="declineEventChoice()" style="margin:5px">Decline</button>
+            </div>
+            <button class="btn btn-purple" onclick="closeEvent()" id="eventContinue" style="width:100%;padding:12px;margin-top:10px">Continue</button>
+        </div>
+    </div>
+</div>
+
 <div class="mg-overlay" id="mgOverlay">
     <div class="mg-container" id="mgContainer"></div>
 </div>
@@ -401,6 +500,7 @@
     </div>
     <div class="header-right">
         <div class="rank-badge rank-0-badge" id="rankBadge">🔰 Thug</div>
+        <button class="header-settings-btn" onclick="openPrestigeShop()" style="display:none" id="lpBtn" title="Legacy Shop"><span style="font-size:0.7em" id="lpBadge">0</span> 👑</button>
         <button class="header-settings-btn" onclick="openAchievements()">🏆</button>
         <button class="header-settings-btn" onclick="openSettings()">⚙️</button>
     </div>
@@ -446,6 +546,22 @@
         <div id="crewContent"></div>
     </div>
     <div class="tab-content" id="tab-empire">
+        <div id="prestigeSection" style="display:none">
+            <div class="section-title">👑 Legacy System</div>
+            <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.15));border:2px solid rgba(251,191,36,0.4);border-radius:8px;padding:15px;margin-bottom:12px">
+                <div style="text-align:center;margin-bottom:10px">
+                    <div style="font-size:2em">🏝️</div>
+                    <div style="font-size:1.1em;font-weight:bold;color:#fbbf24;margin:5px 0">Retire to Paradise</div>
+                    <div style="font-size:0.75em;color:#94a3b8">Reset for permanent bonuses</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0">
+                    <div style="text-align:center"><div style="font-size:0.65em;color:#64748b">Prestige</div><div style="font-weight:bold;color:#fbbf24" id="prestigeLvlDisplay">0</div></div>
+                    <div style="text-align:center"><div style="font-size:0.65em;color:#64748b">Legacy Points</div><div style="font-weight:bold;color:#22c55e" id="lpCount">0</div></div>
+                    <div style="text-align:center"><div style="font-size:0.65em;color:#64748b">Next Reward</div><div style="font-weight:bold;color:#4ade80" id="nextLpReward">0 LP</div></div>
+                </div>
+                <button class="btn btn-gold" onclick="openPrestige()" style="width:100%;padding:10px;font-weight:bold;background:linear-gradient(145deg,#fbbf24,#f59e0b);border:2px solid #ffd700">🏝️ Retire & Get Bonuses</button>
+            </div>
+        </div>
         <div class="section-title">🏦 Secure Storage <span style="font-weight:normal;color:#94a3b8;font-size:0.9em">(Protected from raids!)</span></div>
         <div class="grid-2col" id="storageList"></div>
         <div class="section-title" style="margin-top:6px">⚡ Special Upgrades</div>
@@ -472,7 +588,9 @@ let shownTips = new Set();
 let money=0,moneyPerSecond=0,clickPower=1,reputation=0,policeHeat=0,heatShield=0,heatDecay=0;
 let critChance=0.05,critMult=3,luckChance=0,combo=0,lastClickTime=0,comboTimeout=null;
 let storageLocations=[],thieves=[],ownedTerritories=[],globalMult=1,heistBonus=0;
-let totalEarned=0,totalClicks=0,totalHeists=0,achievementsUnlocked=[];
+let totalEarned=0,totalClicks=0,totalHeists=0,totalOfflineEarnings=0,achievementsUnlocked=[];
+let prestigeLevel=0,legacyPoints=0,lifetimeEarnings=0,prestigeUpgrades=[];
+let eventHistory=[],lastEventTime=0,activeEffects={};
 let isResetting=false;
 let maxThieves=6;
 
@@ -563,6 +681,7 @@ const achievements=[
     {id:'earn_1k',name:'Pocket Change',desc:'Earn $1,000 total',check:()=>totalEarned>=1000},
     {id:'earn_1m',name:'Millionaire',desc:'Earn $1,000,000 total',check:()=>totalEarned>=1e6},
     {id:'earn_1b',name:'Billionaire',desc:'Earn $1,000,000,000 total',check:()=>totalEarned>=1e9},
+    {id:'first_offline',name:'Passive Income',desc:'Earn money while offline',check:()=>totalOfflineEarnings>=1},
     {id:'first_heist',name:'First Job',desc:'Complete your first heist',check:()=>totalHeists>=1},
     {id:'heist_10',name:'Career Criminal',desc:'Complete 10 heists',check:()=>totalHeists>=10},
     {id:'first_crew',name:'Gang Leader',desc:'Hire your first crew member',check:()=>thieves.length>=1},
@@ -570,6 +689,98 @@ const achievements=[
     {id:'first_turf',name:'Turf War',desc:'Capture your first territory',check:()=>ownedTerritories.length>=1},
     {id:'all_turf',name:'Kingpin',desc:'Own all territories',check:()=>ownedTerritories.length>=territories.length},
     {id:'rank_max',name:'Legend',desc:'Reach maximum rank',check:()=>getRank()>=6},
+    {id:'first_prestige',name:'Retirement',desc:'Prestige for the first time',check:()=>prestigeLevel>=1},
+];
+
+const prestigeUpgradesData=[
+    {id:'income1',name:'Income Boost I',desc:'+10% all income',cost:1,owned:0,maxOwned:5,bonus:{type:'income',val:0.1}},
+    {id:'income2',name:'Income Boost II',desc:'+25% all income',cost:3,owned:0,maxOwned:3,bonus:{type:'income',val:0.25}},
+    {id:'click1',name:'Click Power I',desc:'+15% click power',cost:1,owned:0,maxOwned:5,bonus:{type:'click',val:0.15}},
+    {id:'click2',name:'Click Power II',desc:'+30% click power',cost:3,owned:0,maxOwned:3,bonus:{type:'click',val:0.3}},
+    {id:'offline1',name:'Offline Earnings I',desc:'+20% offline rate',cost:2,owned:0,maxOwned:3,bonus:{type:'offline',val:0.2}},
+    {id:'offline2',name:'Offline Earnings II',desc:'+ 2hrs offline cap',cost:4,owned:0,maxOwned:2,bonus:{type:'offlineCap',val:2*3600}},
+    {id:'heist1',name:'Heist Master',desc:'+20% heist success',cost:2,owned:0,maxOwned:4,bonus:{type:'heist',val:0.2}},
+    {id:'crew1',name:'Crew Capacity',desc:'+2 max crew',cost:3,owned:0,maxOwned:3,bonus:{type:'crewCap',val:2}},
+    {id:'start1',name:'Head Start',desc:'Start with $10K',cost:2,owned:0,maxOwned:1,bonus:{type:'startMoney',val:10000}},
+    {id:'start2',name:'Quick Start',desc:'Start at rank 2',cost:5,owned:0,maxOwned:1,bonus:{type:'startRank',val:2}},
+];
+
+const crewMissions=[
+    {id:'pickpocket',name:'Quick Pickpocket',icon:'👝',duration:300,baseReward:500,rep:10,skillReq:'skill',desc:'Small quick cash'},
+    {id:'carboost',name:'Car Boost',icon:'🚗',duration:900,baseReward:2000,rep:25,skillReq:'exp',desc:'Steal a car'},
+    {id:'scout',name:'Building Scout',icon:'🔍',duration:1800,effect:'heistCD',effectVal:60,skillReq:'loyalty',desc:'Reduce heist cooldowns'},
+    {id:'weapons',name:'Weapons Deal',icon:'💣',duration:3600,baseReward:15000,rep:100,skillReq:'skill',desc:'Sell contraband'},
+    {id:'recruit',name:'Recruit Search',icon:'🔎',duration:7200,effect:'crewSlot',skillReq:'loyalty',desc:'Find new crew member'},
+    {id:'training',name:'Training Camp',icon:'🥋',duration:14400,effect:'skillUp',skillReq:'exp',desc:'Gain random skill level'},
+    {id:'sabotage',name:'Sabotage',icon:'💥',duration:5400,effect:'heat',effectVal:-20,skillReq:'skill',desc:'Reduce police heat'},
+    {id:'intel',name:'Intel Gathering',icon:'📋',duration:10800,baseReward:50000,rep:200,skillReq:'exp',desc:'Big payout'},
+];
+
+const randomEvents=[
+    {id:'lucky_break',name:'Lucky Break',icon:'💰',desc:'Found a cash stash!',weight:10,minRank:0,
+        trigger:()=>{
+            const amount=Math.floor((money*0.15+moneyPerSecond*10)*Math.random());
+            money+=amount;lifetimeEarnings+=amount;
+            return {msg:`+${fmt(amount)}!`,color:'#22c55e'};
+        }},
+    {id:'informant_tip',name:'Informant Tip',icon:'🕵️',desc:'Got insider info on security',weight:8,minRank:2,
+        trigger:()=>{
+            Object.keys(heistCDs).forEach(k=>heistCDs[k]=Math.max(Date.now(),heistCDs[k]-120000));
+            return {msg:'Heist cooldowns -2 minutes',color:'#3b82f6'};
+        }},
+    {id:'police_raid',name:'Police Raid',icon:'🚔',desc:'Surprise inspection!',weight:6,minRank:1,
+        trigger:()=>{
+            const stored=getStored();
+            const lossPercent=stored>money*0.5?0.05:0.15;
+            const loss=Math.floor(money*lossPercent);
+            money=Math.max(0,money-loss);
+            policeHeat=Math.min(100,policeHeat+15);
+            return {msg:`-${fmt(loss)} (storage saved you!)`,color:'#ef4444'};
+        }},
+    {id:'crew_betrayal',name:'Crew Betrayal',icon:'🥷',desc:'Crew member stole from you',weight:5,minRank:1,
+        trigger:()=>{
+            if(thieves.length===0)return {msg:'No crew to betray you',color:'#94a3b8'};
+            const loss=Math.floor(money*0.08);
+            money=Math.max(0,money-loss);
+            return {msg:`-${fmt(loss)} stolen!`,color:'#ef4444'};
+        }},
+    {id:'black_market',name:'Black Market Sale',icon:'🏪',desc:'Limited time discount!',weight:7,minRank:0,
+        trigger:()=>{
+            activeEffects.discount={ends:Date.now()+30000,val:0.5};
+            return {msg:'50% off next purchase (30s)',color:'#a855f7'};
+        }},
+    {id:'rival_gang',name:'Rival Gang',icon:'⚔️',desc:'Enemies demand protection money',weight:6,minRank:4,
+        trigger:()=>{
+            const amount=Math.floor(moneyPerSecond*30);
+            if(money>=amount){
+                money-=amount;
+                return {msg:`-${fmt(amount)} protection paid`,color:'#f59e0b'};
+            }else{
+                activeEffects.territoryLock={ends:Date.now()+60000};
+                return {msg:'Territories disabled (1min)',color:'#ef4444'};
+            }
+        }},
+    {id:'street_race',name:'Street Race',icon:'🏎️',desc:'Risk it for triple reward',weight:5,minRank:0,
+        trigger:()=>{
+            activeEffects.raceOffer={amount:Math.floor(money*0.1+moneyPerSecond*20)};
+            return {msg:'Accept race challenge?',color:'#f59e0b',hasChoice:true};
+        }},
+    {id:'vip_client',name:'VIP Client',icon:'💎',desc:'High roller wants service',weight:7,minRank:2,
+        trigger:()=>{
+            activeEffects.incomeBoost={ends:Date.now()+60000,val:1};
+            return {msg:'2x passive income (1min)',color:'#22c55e'};
+        }},
+    {id:'heat_wave',name:'Heat Wave',icon:'🔥',desc:'Police distracted by riots',weight:6,minRank:2,
+        trigger:()=>{
+            activeEffects.fastHeists={ends:Date.now()+120000};
+            Object.keys(heistCDs).forEach(k=>heistCDs[k]=Math.max(Date.now(),heistCDs[k]-60000));
+            return {msg:'Heists cool down faster (2min)',color:'#f59e0b'};
+        }},
+    {id:'boom',name:'Economic Boom',icon:'📈',desc:'Market surge!',weight:8,minRank:0,
+        trigger:()=>{
+            activeEffects.clickBoost={ends:Date.now()+30000,val:1};
+            return {msg:'2x click power (30s)',color:'#4ade80'};
+        }},
 ];
 
 // === UTILITIES ===
@@ -607,7 +818,8 @@ function saveGame(){
     const save={
         v:SAVE_VERSION,ts:Date.now(),
         money,moneyPerSecond,clickPower,reputation,policeHeat,heatShield,heatDecay,
-        critChance,critMult,luckChance,totalEarned,totalClicks,totalHeists,
+        critChance,critMult,luckChance,totalEarned,totalClicks,totalHeists,totalOfflineEarnings,
+        prestigeLevel,legacyPoints,lifetimeEarnings,prestigeUpgrades,eventHistory,lastEventTime,
         bizUpgrades:bizUpgrades.map(b=>b.owned),
         clickUpgrades:clickUpgrades.map(c=>c.owned),
         territories:territories.map(t=>({level:t.level})),
@@ -631,7 +843,10 @@ function loadGame(){
         reputation=save.reputation||0;policeHeat=save.policeHeat||0;heatShield=save.heatShield||0;
         heatDecay=save.heatDecay||0;critChance=save.critChance||0.05;critMult=save.critMult||3;
         luckChance=save.luckChance||0;totalEarned=save.totalEarned||0;totalClicks=save.totalClicks||0;
-        totalHeists=save.totalHeists||0;
+        totalHeists=save.totalHeists||0;totalOfflineEarnings=save.totalOfflineEarnings||0;
+        prestigeLevel=save.prestigeLevel||0;legacyPoints=save.legacyPoints||0;
+        lifetimeEarnings=save.lifetimeEarnings||0;prestigeUpgrades=save.prestigeUpgrades||[];
+        eventHistory=save.eventHistory||[];lastEventTime=save.lastEventTime||0;
         
         if(save.bizUpgrades)save.bizUpgrades.forEach((o,i)=>{if(bizUpgrades[i])bizUpgrades[i].owned=o});
         if(save.clickUpgrades)save.clickUpgrades.forEach((o,i)=>{if(clickUpgrades[i])clickUpgrades[i].owned=o});
@@ -645,14 +860,39 @@ function loadGame(){
         achievementsUnlocked=save.achievementsUnlocked||[];
         shownTips=new Set(save.shownTips||[]);
         if(save.settings)settings={...settings,...save.settings};
-        
+
+        // Restore prestige upgrades
+        prestigeUpgrades.forEach(pu=>{
+            const upg=prestigeUpgradesData.find(u=>u.id===pu.id);
+            if(upg)upg.owned=pu.owned;
+        });
+
         // Process offline time
-        const elapsed=Math.min((Date.now()-save.ts)/1000,8*3600);
+        const offlineCap=8*3600+getPrestigeBonus('offlineCap');
+        const elapsed=Math.min((Date.now()-save.ts)/1000,offlineCap);
         if(elapsed>10&&moneyPerSecond>0){
             calcBonuses();
-            const offlineEarn=Math.floor(moneyPerSecond*globalMult*elapsed*0.5);
-            money+=offlineEarn;totalEarned+=offlineEarn;
-            setTimeout(()=>showNotif('💤 Welcome back!','offline',`+${fmt(offlineEarn)} while away`),500);
+            const offlineRate=0.5*(1+getPrestigeBonus('offline'));
+            const offlineEarn=Math.floor(moneyPerSecond*globalMult*elapsed*offlineRate);
+            money+=offlineEarn;totalEarned+=offlineEarn;totalOfflineEarnings+=offlineEarn;lifetimeEarnings+=offlineEarn;
+
+            // Show welcome back modal
+            setTimeout(()=>{
+                const modal=document.getElementById('welcomeBackModal');
+                const hours=Math.floor(elapsed/3600);
+                const mins=Math.floor((elapsed%3600)/60);
+                const timeStr=hours>0?`${hours}h ${mins}m`:`${mins}m`;
+                const hourlyRate=Math.floor((moneyPerSecond*globalMult*3600*offlineRate));
+
+                document.getElementById('wbEarnings').textContent=`+${fmt(offlineEarn)}`;
+                document.getElementById('wbTime').textContent=timeStr;
+                document.getElementById('wbRate').textContent=`${fmt(hourlyRate)}/hr`;
+                document.getElementById('wbEmoji').textContent=elapsed>3600*4?'😴':elapsed>1800?'💤':'👋';
+
+                modal.classList.add('active');
+                playSound(600,200,'sine',0.15);
+                checkAchievements();
+            },500);
         }
         // Reduce heist cooldowns by elapsed time
         const now=Date.now();
@@ -699,6 +939,205 @@ function openAchievements(){
     renderAchievements();
 }
 function closeAchievements(){document.getElementById('achievementsModal').classList.remove('active')}
+function closeWelcomeBack(){document.getElementById('welcomeBackModal').classList.remove('active')}
+function closePrestige(){document.getElementById('prestigeModal').classList.remove('active')}
+function closePrestigeShop(){document.getElementById('prestigeShopModal').classList.remove('active')}
+function closeEvent(){document.getElementById('eventModal').classList.remove('active');currentEvent=null}
+
+let currentEvent=null;
+function triggerRandomEvent(){
+    const now=Date.now();
+    if(now-lastEventTime<120000)return; // Min 2 min between events
+    if(Math.random()>0.3)return; // 30% chance per check
+
+    const rank=getRank();
+    const availableEvents=randomEvents.filter(e=>rank>=e.minRank);
+    if(availableEvents.length===0)return;
+
+    const totalWeight=availableEvents.reduce((sum,e)=>sum+e.weight,0);
+    let roll=Math.random()*totalWeight;
+    let event=availableEvents[0];
+    for(const e of availableEvents){
+        roll-=e.weight;
+        if(roll<=0){event=e;break}
+    }
+
+    lastEventTime=now;
+    currentEvent=event;
+    showEvent(event);
+}
+
+function showEvent(event){
+    const result=event.trigger();
+
+    document.getElementById('eventTitle').textContent=`⚡ ${event.name}`;
+    document.getElementById('eventIcon').textContent=event.icon;
+    document.getElementById('eventName').textContent=event.name;
+    document.getElementById('eventDesc').textContent=event.desc;
+    document.getElementById('eventResult').textContent=result.msg;
+    document.getElementById('eventResult').style.color=result.color||'#fbbf24';
+
+    const header=document.getElementById('eventHeader');
+    header.style.background=result.color?`linear-gradient(135deg,${result.color},${result.color}dd)`:'linear-gradient(135deg,#f59e0b,#d97706)';
+
+    if(result.hasChoice&&activeEffects.raceOffer){
+        document.getElementById('eventActions').style.display='block';
+        document.getElementById('eventContinue').style.display='none';
+    }else{
+        document.getElementById('eventActions').style.display='none';
+        document.getElementById('eventContinue').style.display='block';
+    }
+
+    eventHistory.push({id:event.id,time:Date.now(),result:result.msg});
+    if(eventHistory.length>20)eventHistory.shift();
+
+    document.getElementById('eventModal').classList.add('active');
+    playSound(1000,200,'triangle',0.2);
+    vib([30,30,30]);
+    checkAchievements();
+    updateAll();
+}
+
+function acceptEventChoice(){
+    if(activeEffects.raceOffer){
+        const bet=activeEffects.raceOffer.amount;
+        if(money>=bet){
+            money-=bet;
+            if(Math.random()<0.33){
+                const win=bet*3;
+                money+=win;lifetimeEarnings+=win;
+                document.getElementById('eventResult').textContent=`Won ${fmt(win)}!`;
+                document.getElementById('eventResult').style.color='#22c55e';
+                playSound(1200,300,'square',0.2);
+            }else{
+                document.getElementById('eventResult').textContent=`Lost ${fmt(bet)}`;
+                document.getElementById('eventResult').style.color='#ef4444';
+                playSound(400,200,'sawtooth',0.15);
+            }
+        }
+        delete activeEffects.raceOffer;
+    }
+    document.getElementById('eventActions').style.display='none';
+    document.getElementById('eventContinue').style.display='block';
+    updateAll();
+}
+
+function declineEventChoice(){
+    delete activeEffects.raceOffer;
+    document.getElementById('eventResult').textContent='Challenge declined';
+    document.getElementById('eventResult').style.color='#94a3b8';
+    document.getElementById('eventActions').style.display='none';
+    document.getElementById('eventContinue').style.display='block';
+}
+
+function calculateLegacyPoints(){
+    return Math.floor(Math.pow(lifetimeEarnings/1e7,0.5));
+}
+
+function openPrestige(){
+    const lp=calculateLegacyPoints();
+    if(lp===0){showNotif('⚠️ Not Ready','event','Need more lifetime earnings to prestige');return}
+    document.getElementById('currentPrestige').textContent=prestigeLevel;
+    document.getElementById('currentLegacy').textContent=legacyPoints+' LP';
+    document.getElementById('prestigeReward').textContent=`+${lp} LP`;
+    document.getElementById('lifetimeDisplay').textContent=fmt(lifetimeEarnings);
+    document.getElementById('prestigeModal').classList.add('active');
+}
+
+function confirmPrestige(){
+    const lp=calculateLegacyPoints();
+    if(lp===0)return;
+    if(!confirm('Are you sure? This will reset ALL progress except achievements and Legacy Points!'))return;
+
+    // Award Legacy Points
+    prestigeLevel++;
+    legacyPoints+=lp;
+
+    // Reset everything except prestige data and achievements
+    money=0;moneyPerSecond=0;clickPower=1;reputation=0;policeHeat=0;heatShield=0;heatDecay=0;
+    critChance=0.05;critMult=3;luckChance=0;totalEarned=0;totalClicks=0;totalHeists=0;totalOfflineEarnings=0;
+    bizUpgrades.forEach(b=>b.owned=0);
+    clickUpgrades.forEach(c=>c.owned=0);
+    territories.forEach(t=>t.level=0);
+    ownedTerritories=[];
+    policeUpgrades.forEach(p=>p.owned=false);
+    specialUpgrades.forEach(s=>s.owned=false);
+    storageLocations=[];
+    thieves=[];
+    heistCDs={};
+    shownTips=new Set();
+
+    // Apply prestige bonuses
+    applyPrestigeBonuses();
+
+    closePrestige();
+    saveGame();
+    calcBonuses();
+    updateAll();
+    checkAchievements();
+    showNotif('👑 RETIRED!','prestige',`+${lp} Legacy Points earned!`);
+    playSound(1200,400,'square',0.2);
+    vib([50,50,50,50,100]);
+}
+
+function applyPrestigeBonuses(){
+    // Apply start bonuses
+    const startMoney=prestigeUpgrades.find(u=>u.id==='start1');
+    if(startMoney&&startMoney.owned>0)money+=startMoney.bonus.val*startMoney.owned;
+
+    const startRank=prestigeUpgrades.find(u=>u.id==='start2');
+    if(startRank&&startRank.owned>0){
+        reputation=ranks[startRank.bonus.val]?.rep||0;
+    }
+}
+
+function getPrestigeBonus(type){
+    let bonus=0;
+    prestigeUpgrades.filter(u=>u.bonus.type===type&&u.owned>0).forEach(u=>{
+        bonus+=u.bonus.val*u.owned;
+    });
+    return bonus;
+}
+
+function openPrestigeShop(){
+    document.getElementById('lpDisplay').textContent=legacyPoints+' LP';
+    renderPrestigeUpgrades();
+    document.getElementById('prestigeShopModal').classList.add('active');
+}
+
+function renderPrestigeUpgrades(){
+    document.getElementById('prestigeUpgradesList').innerHTML=prestigeUpgradesData.map((u,i)=>{
+        const cost=u.cost*Math.pow(1.5,u.owned);
+        const canBuy=legacyPoints>=cost&&u.owned<u.maxOwned;
+        const maxed=u.owned>=u.maxOwned;
+        return `<div class="upgrade-card ${canBuy?'affordable':''} ${maxed?'maxed':''}">
+            <div class="upgrade-header"><span class="upgrade-name">${u.name}</span><span style="font-size:0.65em;color:#94a3b8">${u.owned}/${u.maxOwned}</span></div>
+            <div style="font-size:0.75em;color:#94a3b8;margin:4px 0">${u.desc}</div>
+            <div class="upgrade-meta"><span style="color:#fbbf24">${u.bonus.type}</span><b style="color:#fbbf24">${Math.floor(cost)} LP</b></div>
+            <button class="upgrade-btn" onclick="buyPrestigeUpgrade(${i})" ${canBuy?'':'disabled'}>${maxed?'✓ MAX':'Buy'}</button>
+        </div>`;
+    }).join('');
+}
+
+function buyPrestigeUpgrade(idx){
+    const u=prestigeUpgradesData[idx];
+    const cost=u.cost*Math.pow(1.5,u.owned);
+    if(legacyPoints>=cost&&u.owned<u.maxOwned){
+        legacyPoints-=cost;
+        u.owned++;
+        // Copy to persistent array
+        const existing=prestigeUpgrades.find(p=>p.id===u.id);
+        if(existing)existing.owned=u.owned;
+        else prestigeUpgrades.push({id:u.id,owned:u.owned});
+
+        saveGame();
+        renderPrestigeUpgrades();
+        document.getElementById('lpDisplay').textContent=legacyPoints+' LP';
+        updateAll();
+        playSound(800,150,'triangle',0.15);
+        vib([15,30,15]);
+    }
+}
 function getAchievementProgress(a){
     if(a.id==='clicks_100')return Math.min(100,Math.floor((totalClicks/100)*100));
     if(a.id==='clicks_1000')return Math.min(100,Math.floor((totalClicks/1000)*100));
@@ -772,6 +1211,13 @@ function checkAchievements(){
 // === CORE GAME ===
 function calcBonuses(){
     globalMult=1;heistBonus=0;heatShield=0;let clickB=0,critB=0,luckB=0;maxThieves=6;
+
+    // Apply prestige bonuses
+    globalMult+=getPrestigeBonus('income');
+    clickB+=getPrestigeBonus('click');
+    heistBonus+=getPrestigeBonus('heist');
+    maxThieves+=getPrestigeBonus('crewCap');
+
     ownedTerritories.forEach(tid=>{
         const t=territories.find(x=>x.id===tid);if(!t)return;
         const v=t.val*(1+t.level*0.6);
@@ -815,14 +1261,15 @@ function clickMoney(event){
     lastClickTime=now;clearTimeout(comboTimeout);comboTimeout=setTimeout(()=>{combo=0;updateAll()},1500);
 
     const isCrit=Math.random()<critChance;const comboMult=1+combo*0.05;
-    let earned=Math.floor(clickPower*comboMult*(isCrit?critMult:1));
+    const clickMultiplier=(activeEffects.clickBoost?1+activeEffects.clickBoost.val:1);
+    let earned=Math.floor(clickPower*(1+getPrestigeBonus('click'))*comboMult*(isCrit?critMult:1)*clickMultiplier);
     if(isCrit){vib([15,20,15]);playSound(800,100,'square',0.15)}
     else{playSound(600,50,'sine',0.1)}
-    money+=earned;totalEarned+=earned;reputation+=Math.ceil(earned/800);
+    money+=earned;totalEarned+=earned;lifetimeEarnings+=earned;reputation+=Math.ceil(earned/800);
     policeHeat=Math.min(100,policeHeat+0.08*(1-heatShield));
 
     if(Math.random()<luckChance){
-        const bonus=Math.floor(money*0.1+clickPower*10);money+=bonus;totalEarned+=bonus;
+        const bonus=Math.floor(money*0.1+clickPower*10);money+=bonus;totalEarned+=bonus;lifetimeEarnings+=bonus;
         playSound(1200,200,'triangle',0.2);
         document.getElementById('eventBanner').style.display='block';
         document.getElementById('eventBanner').textContent=`🎉 +${fmt(bonus)}`;
@@ -858,7 +1305,7 @@ function attemptHeist(id){
     if(Math.random()<chance){
         vib([25,40,25,40,25,40,80]);
         const reward=h.reward[0]+Math.floor(Math.random()*(h.reward[1]-h.reward[0]));
-        money+=reward;totalEarned+=reward;reputation+=Math.ceil(reward/400);
+        money+=reward;totalEarned+=reward;lifetimeEarnings+=reward;reputation+=Math.ceil(reward/400);
         showNotif('🎯 SUCCESS!','heist-win',`+${fmt(reward)}`);
     }else{
         vib([80,40,80]);policeHeat=Math.min(100,policeHeat+h.heat);
@@ -871,10 +1318,10 @@ function addPurchaseFeedback(selector){
     const el=document.querySelector(selector);
     if(el){el.classList.add('just-purchased');setTimeout(()=>el.classList.remove('just-purchased'),500)}
 }
-function buyBiz(i){const u=bizUpgrades[i],cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));if(money>=cost&&u.owned<u.maxOwned){money-=cost;u.owned++;moneyPerSecond+=u.income;reputation+=Math.ceil(cost/800);vib([15,25,15]);playSound(700,80,'triangle',0.12);checkAchievements();updateAll();setTimeout(()=>addPurchaseFeedback(`#bizList .upgrade-card:nth-child(${i+1})`),10)}}
-function buyClick(i){const u=clickUpgrades[i],cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));if(money>=cost&&u.owned<u.maxOwned){money-=cost;u.owned++;clickPower=Math.floor(clickPower*u.mult);reputation+=Math.ceil(cost/400);vib([15,25,15]);playSound(700,80,'triangle',0.12);updateAll();setTimeout(()=>addPurchaseFeedback(`#clickList .upgrade-card:nth-child(${i+1})`),10)}}
-function buyTerritory(id){const t=territories.find(x=>x.id===id);if(!t||ownedTerritories.includes(id)||money<t.cost)return;money-=t.cost;ownedTerritories.push(id);reputation+=Math.ceil(t.cost/150);vib([25,40,25,40,30]);playSound(900,120,'square',0.15);calcBonuses();showNotif('🗺️ CAPTURED!','event',t.icon+' '+t.name);checkAchievements();updateAll();setTimeout(()=>addPurchaseFeedback(`.territory-card:nth-child(${id+1})`),10)}
-function upgradeTerritory(id){const t=territories.find(x=>x.id===id);if(!t||!ownedTerritories.includes(id)||t.level>=t.maxLvl)return;const cost=t.upCost*Math.pow(2,t.level);if(money>=cost){money-=cost;t.level++;reputation+=Math.ceil(cost/80);vib([25,40,25,40,30]);calcBonuses();updateAll()}}
+function buyBiz(i){const u=bizUpgrades[i];let cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));if(activeEffects.discount){cost=Math.floor(cost*(1-activeEffects.discount.val));delete activeEffects.discount}if(money>=cost&&u.owned<u.maxOwned){money-=cost;u.owned++;moneyPerSecond+=u.income;reputation+=Math.ceil(cost/800);vib([15,25,15]);playSound(700,80,'triangle',0.12);checkAchievements();updateAll();setTimeout(()=>addPurchaseFeedback(`#bizList .upgrade-card:nth-child(${i+1})`),10)}}
+function buyClick(i){const u=clickUpgrades[i];let cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));if(activeEffects.discount){cost=Math.floor(cost*(1-activeEffects.discount.val));delete activeEffects.discount}if(money>=cost&&u.owned<u.maxOwned){money-=cost;u.owned++;clickPower=Math.floor(clickPower*u.mult);reputation+=Math.ceil(cost/400);vib([15,25,15]);playSound(700,80,'triangle',0.12);updateAll();setTimeout(()=>addPurchaseFeedback(`#clickList .upgrade-card:nth-child(${i+1})`),10)}}
+function buyTerritory(id){if(activeEffects.territoryLock){showNotif('⚔️ Locked','event','Territories under attack!');return}const t=territories.find(x=>x.id===id);if(!t||ownedTerritories.includes(id)||money<t.cost)return;money-=t.cost;ownedTerritories.push(id);reputation+=Math.ceil(t.cost/150);vib([25,40,25,40,30]);playSound(900,120,'square',0.15);calcBonuses();showNotif('🗺️ CAPTURED!','event',t.icon+' '+t.name);checkAchievements();updateAll();setTimeout(()=>addPurchaseFeedback(`.territory-card:nth-child(${id+1})`),10)}
+function upgradeTerritory(id){if(activeEffects.territoryLock){showNotif('⚔️ Locked','event','Territories under attack!');return}const t=territories.find(x=>x.id===id);if(!t||!ownedTerritories.includes(id)||t.level>=t.maxLvl)return;const cost=t.upCost*Math.pow(2,t.level);if(money>=cost){money-=cost;t.level++;reputation+=Math.ceil(cost/80);vib([25,40,25,40,30]);calcBonuses();updateAll()}}
 function buyPolice(id){const u=policeUpgrades.find(x=>x.id===id);if(!u||u.owned||money<u.cost)return;money-=u.cost;u.owned=true;u.fx();reputation+=Math.ceil(u.cost/400);vib([25,40,25,40,30]);updateAll()}
 function buySpecial(id){const u=specialUpgrades.find(x=>x.id===id);if(!u||u.owned||money<u.cost)return;money-=u.cost;u.owned=true;u.fx();reputation+=Math.ceil(u.cost/300);vib([25,40,25,40,30]);calcBonuses();updateAll()}
 function buyStorage(i){const s=storageTypes[i];if(money>=s.cost&&!storageLocations.find(x=>x.name===s.name)){money-=s.cost;storageLocations.push({...s,stored:0,id:Date.now()});vib([15,25,15]);updateAll()}}
@@ -921,7 +1368,23 @@ function updateTabs(){
 function updateAll(){
     checkRankUp();calcBonuses();updateTabs();
     const rank=getRank();const total=money+getStored();
-    
+
+    // Update prestige UI
+    const prestigeAvailable=rank>=6||totalEarned>=1e8;
+    const prestigeSection=document.getElementById('prestigeSection');
+    if(prestigeSection)prestigeSection.style.display=prestigeAvailable?'block':'none';
+    if(prestigeAvailable){
+        const nextLP=calculateLegacyPoints();
+        document.getElementById('prestigeLvlDisplay').textContent=prestigeLevel;
+        document.getElementById('lpCount').textContent=legacyPoints+' LP';
+        document.getElementById('nextLpReward').textContent=nextLP+' LP';
+    }
+    const lpBtn=document.getElementById('lpBtn');
+    if(lpBtn){
+        lpBtn.style.display=prestigeLevel>0?'inline-block':'none';
+        document.getElementById('lpBadge').textContent=legacyPoints;
+    }
+
     document.getElementById('money').innerHTML=`${fmt(total)} <span class="money-label">Net Worth</span>`;
     document.getElementById('onHand').textContent=fmt(money);
     document.getElementById('stored').textContent=fmt(getStored());
@@ -1452,15 +1915,27 @@ if(settings.debug)document.getElementById('debugBtns').style.display='flex';
 updateAll();
 
 setInterval(()=>{
-    money+=Math.floor(moneyPerSecond*globalMult);
-    if(moneyPerSecond>0){totalEarned+=Math.floor(moneyPerSecond*globalMult);reputation+=Math.ceil(moneyPerSecond*globalMult/4000)}
+    const incomeMultiplier=(activeEffects.incomeBoost?1+activeEffects.incomeBoost.val:1);
+    const earned=Math.floor(moneyPerSecond*globalMult*incomeMultiplier);
+    money+=earned;
+    if(moneyPerSecond>0){totalEarned+=earned;lifetimeEarnings+=earned;reputation+=Math.ceil(earned/4000)}
     policeHeat=Math.max(0,policeHeat-(0.4+heatDecay)/10);
     checkRaid();updateAll();
 },1000);
 
 setInterval(()=>{if(thieves.length){processCrew();checkAchievements();updateAll()}},5000);
+setInterval(()=>{triggerRandomEvent();clearExpiredEffects()},60000); // Events & effects every minute
 setInterval(saveGame,5000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveGame()});
+
+function clearExpiredEffects(){
+    const now=Date.now();
+    Object.keys(activeEffects).forEach(key=>{
+        if(activeEffects[key].ends&&now>=activeEffects[key].ends){
+            delete activeEffects[key];
+        }
+    });
+}
 </script>
 
 </body>
