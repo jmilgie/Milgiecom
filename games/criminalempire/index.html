@@ -262,12 +262,12 @@
     @keyframes jackpot { 0%, 100% { transform: scale(1) rotate(-2deg); text-shadow: 0 0 10px #ffd700; } 50% { transform: scale(1.15) rotate(2deg); text-shadow: 0 0 20px #ffd700; } }
     .slot-paytable { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 10px; font-size: 0.65em; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; }
     .slot-paytable div { text-align: center; padding: 3px; }
-    .slot-select { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .slot-select-btn { padding: 12px 8px; border-radius: 10px; border: 2px solid #6b7280; background: rgba(0,0,0,0.3); color: white; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .slot-select { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .slot-select-btn { padding: 6px 4px; border-radius: 8px; border: 2px solid #6b7280; background: rgba(0,0,0,0.3); color: white; cursor: pointer; text-align: center; transition: all 0.2s; }
     .slot-select-btn.active { border-color: #ffd700; background: rgba(255,215,0,0.15); box-shadow: 0 0 15px rgba(255,215,0,0.3); }
-    .slot-select-btn .icon { font-size: 1.8em; display: block; margin-bottom: 4px; }
-    .slot-select-btn .name { font-weight: bold; font-size: 0.9em; }
-    .slot-select-btn .desc { font-size: 0.65em; color: #94a3b8; margin-top: 2px; }
+    .slot-select-btn .icon { font-size: 1.3em; display: block; margin-bottom: 2px; }
+    .slot-select-btn .name { font-weight: bold; font-size: 0.7em; }
+    .slot-select-btn .desc { font-size: 0.55em; color: #94a3b8; margin-top: 1px; display: none; }
     .mega-reels { display: flex; justify-content: center; gap: 4px; margin: 10px 0; }
     .mega-reel { width: 48px; background: linear-gradient(180deg, #1a1a2e, #0a0a1a); border-radius: 6px; border: 2px solid #fbbf24; overflow: hidden; position: relative; display: flex; flex-direction: column; }
     .mega-symbol { height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.6em; transition: all 0.3s; }
@@ -303,7 +303,9 @@
     /* Dice Game */
     .dice-game { text-align: center; }
     .dice-container { display: flex; justify-content: center; gap: 15px; margin: 15px 0; }
-    .dice { width: 70px; height: 70px; background: linear-gradient(145deg, #fff, #e0e0e0); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.2em; color: #1a1a2e; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .dice { width: 80px; height: 80px; background: linear-gradient(145deg, #fff, #e8e8e8); border-radius: 12px; display: grid; grid-template-areas: 'a . b' '. c .' 'd . e'; padding: 8px; gap: 4px; box-shadow: 0 6px 16px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.5); position: relative; }
+    .dice::before { content: ''; position: absolute; inset: 3px; border-radius: 8px; background: linear-gradient(145deg, rgba(255,255,255,0.3), transparent); }
+    .dice-dot { width: 12px; height: 12px; background: #1a1a2e; border-radius: 50%; box-shadow: 0 2px 3px rgba(0,0,0,0.3); }
     .dice.rolling { animation: diceRoll 0.15s linear infinite; }
     @keyframes diceRoll { 0% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(90deg) scale(0.9); } 50% { transform: rotate(180deg) scale(1); } 75% { transform: rotate(270deg) scale(0.9); } 100% { transform: rotate(360deg) scale(1); } }
     .dice-bet-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 8px 0; }
@@ -1024,12 +1026,12 @@ function openMiniGame(type){
 let casinoGame='slots';
 function renderCasino(c){
     c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
-        <div class="mg-title">🎰 CASINO GAMES 🎰</div>
+        <div class="mg-title">🎰 CASINO 🎰</div>
         <div class="mg-balance">Cash: <span id="casinoBal">${fmt(money)}</span></div>
         <div class="slot-select">
-            <button class="slot-select-btn ${casinoGame==='slots'?'active':''}" onclick="casinoGame='slots';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎰</span><span class="name">Slots</span><span class="desc">Classic & Megaways</span></button>
-            <button class="slot-select-btn ${casinoGame==='dice'?'active':''}" onclick="casinoGame='dice';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎲</span><span class="name">Dice</span><span class="desc">High Roller Betting</span></button>
-            <button class="slot-select-btn ${casinoGame==='roulette'?'active':''}" onclick="casinoGame='roulette';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎯</span><span class="name">Roulette</span><span class="desc">Red/Black/Numbers</span></button>
+            <button class="slot-select-btn ${casinoGame==='slots'?'active':''}" onclick="casinoGame='slots';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎰</span><span class="name">Slots</span></button>
+            <button class="slot-select-btn ${casinoGame==='dice'?'active':''}" onclick="casinoGame='dice';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎲</span><span class="name">Dice</span></button>
+            <button class="slot-select-btn ${casinoGame==='roulette'?'active':''}" onclick="casinoGame='roulette';renderCasino(document.getElementById('mgContainer'))"><span class="icon">🎯</span><span class="name">Roulette</span></button>
         </div>
         <div id="casinoGameArea"></div>`;
     if(casinoGame==='slots')renderSlots(document.getElementById('casinoGameArea'));
@@ -1046,9 +1048,9 @@ const megaValues={'💰':1,'💎':2,'🔔':3,'⭐':5,'👑':8,'7️⃣':15,'🃏
 let megaMultiplier=1,megaReels=[];
 
 function renderSlots(c){
-    c.innerHTML=`<div class="slot-select" style="margin-top:6px">
-            <button class="slot-select-btn ${slotType==='classic'?'active':''}" onclick="slotType='classic';renderSlots(document.getElementById('casinoGameArea'))"><span class="icon">🎰</span><span class="name">Classic</span><span class="desc">3 Reels • Big Jackpots</span></button>
-            <button class="slot-select-btn ${slotType==='mega'?'active':''}" onclick="slotType='mega';renderSlots(document.getElementById('casinoGameArea'))"><span class="icon">💎</span><span class="name">Megaways</span><span class="desc">6 Reels • Cascades</span></button>
+    c.innerHTML=`<div class="slot-select" style="margin-top:6px;grid-template-columns:1fr 1fr">
+            <button class="slot-select-btn ${slotType==='classic'?'active':''}" onclick="slotType='classic';renderSlots(document.getElementById('casinoGameArea'))"><span class="icon">🎰</span><span class="name">Classic</span></button>
+            <button class="slot-select-btn ${slotType==='mega'?'active':''}" onclick="slotType='mega';renderSlots(document.getElementById('casinoGameArea'))"><span class="icon">💎</span><span class="name">Megaways</span></button>
         </div>
         <div id="slotGameArea"></div>`;
     if(slotType==='classic')renderClassicSlots();else renderMegaways();
@@ -1250,9 +1252,22 @@ function submitSafe(){
 // DICE GAME
 let diceBet=1000,diceChoice=null,diceRolling=false;
 const diceOpts=[{id:'low',name:'Low 2-6',payout:2},{id:'mid',name:'Mid 7',payout:4},{id:'high',name:'High 8-12',payout:2},{id:'doubles',name:'Doubles',payout:5},{id:'snake',name:'Snake Eyes',payout:30},{id:'boxcars',name:'Boxcars',payout:30}];
+function getDiceFace(num){
+    const dots={
+        1:['c'],
+        2:['a','e'],
+        3:['a','c','e'],
+        4:['a','b','d','e'],
+        5:['a','b','c','d','e'],
+        6:['a','b','c','d','e','c']
+    };
+    const positions={a:'grid-area:a',b:'grid-area:b',c:'grid-area:c',d:'grid-area:d',e:'grid-area:e'};
+    if(num===6)return '<div class="dice-dot" style="grid-area:a"></div><div class="dice-dot" style="grid-area:c"></div><div class="dice-dot" style="grid-area:b"></div><div class="dice-dot" style="grid-area:d"></div><div class="dice-dot" style="grid-area:c"></div><div class="dice-dot" style="grid-area:e"></div>';
+    return dots[num].map(p=>`<div class="dice-dot" style="${positions[p]}"></div>`).join('');
+}
 function renderDice(c){
     c.innerHTML=`<div class="dice-game" style="margin-top:8px">
-            <div class="dice-container" style="margin:15px 0"><div class="dice" id="dice1">⚀</div><div class="dice" id="dice2">⚀</div></div>
+            <div class="dice-container" style="margin:15px 0"><div class="dice" id="dice1">${getDiceFace(1)}</div><div class="dice" id="dice2">${getDiceFace(1)}</div></div>
             <div class="slot-bet-row" style="margin:10px 0"><button onclick="diceBet=Math.max(100,diceBet-1000);document.getElementById('diceBetAmt').textContent=fmt(diceBet)">−</button><div class="slot-bet">Bet: <b id="diceBetAmt">${fmt(diceBet)}</b></div><button onclick="diceBet=Math.min(money,diceBet+1000);document.getElementById('diceBetAmt').textContent=fmt(diceBet)">+</button></div>
             <div style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;font-weight:bold">Choose your bet:</div>
             <div class="dice-bet-options">${diceOpts.map(o=>`<div class="dice-bet-opt" data-id="${o.id}" onclick="diceChoice='${o.id}';document.querySelectorAll('.dice-bet-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('diceRollBtn').disabled=false"><div style="font-weight:bold;margin-bottom:2px">${o.name}</div><div class="payout">${o.payout}x payout</div></div>`).join('')}</div>
@@ -1264,13 +1279,12 @@ function renderDice(c){
 function rollDice(){
     if(diceRolling||!diceChoice||money<diceBet)return;
     money-=diceBet;diceRolling=true;updateAll();
-    const chars=['⚀','⚁','⚂','⚃','⚄','⚅'];
     document.querySelectorAll('.dice').forEach(d=>d.classList.add('rolling'));
     document.getElementById('diceResult').textContent='';document.getElementById('diceResult').className='slot-result';
     const d1=Math.floor(Math.random()*6)+1,d2=Math.floor(Math.random()*6)+1,total=d1+d2;
-    setTimeout(()=>{document.getElementById('dice1').textContent=chars[d1-1];document.getElementById('dice1').classList.remove('rolling')},400);
+    setTimeout(()=>{document.getElementById('dice1').innerHTML=getDiceFace(d1);document.getElementById('dice1').classList.remove('rolling')},400);
     setTimeout(()=>{
-        document.getElementById('dice2').textContent=chars[d2-1];document.getElementById('dice2').classList.remove('rolling');
+        document.getElementById('dice2').innerHTML=getDiceFace(d2);document.getElementById('dice2').classList.remove('rolling');
         diceRolling=false;
         let win=0;const opt=diceOpts.find(o=>o.id===diceChoice);
         if((diceChoice==='low'&&total<=6)||(diceChoice==='mid'&&total===7)||(diceChoice==='high'&&total>=8)||(diceChoice==='doubles'&&d1===d2)||(diceChoice==='snake'&&d1===1&&d2===1)||(diceChoice==='boxcars'&&d1===6&&d2===6))win=diceBet*opt.payout;
@@ -1360,15 +1374,15 @@ const rouletteBets=[
 ];
 function renderRoulette(c){
     c.innerHTML=`<div style="margin-top:8px">
-            <div style="position:relative;width:200px;height:200px;margin:15px auto;background:radial-gradient(circle,#1a1a2e,#0f0f1e);border-radius:50%;border:8px solid #ffd700;display:flex;align-items:center;justify-content:center">
-                <div id="rouletteWheel" style="font-size:3em;transition:transform 0.05s">🎯</div>
-                <div id="rouletteResult" style="position:absolute;bottom:-35px;left:50%;transform:translateX(-50%);font-size:1.2em;font-weight:bold;color:#ffd700"></div>
+            <div style="position:relative;width:180px;height:180px;margin:10px auto;background:radial-gradient(circle,#1a1a2e,#0f0f1e);border-radius:50%;border:8px solid #ffd700;display:flex;align-items:center;justify-content:center;flex-direction:column">
+                <div id="rouletteWheel" style="font-size:2.5em;transition:transform 0.05s">🎯</div>
+                <div id="rouletteResult" style="font-size:1.8em;font-weight:bold;color:#ffd700;margin-top:8px"></div>
             </div>
-            <div class="slot-bet-row" style="margin:10px 0"><button onclick="rouletteBet=Math.max(100,rouletteBet-1000);document.getElementById('rouletteBetAmt').textContent=fmt(rouletteBet)">−</button><div class="slot-bet">Bet: <b id="rouletteBetAmt">${fmt(rouletteBet)}</b></div><button onclick="rouletteBet=Math.min(money,rouletteBet+1000);document.getElementById('rouletteBetAmt').textContent=fmt(rouletteBet)">+</button></div>
-            <div style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;font-weight:bold">Place your bet:</div>
-            <div class="dice-bet-options">${rouletteBets.map(b=>`<div class="dice-bet-opt" data-id="${b.id}" onclick="rouletteChoice='${b.id}';document.querySelectorAll('.dice-bet-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('rouletteSpinBtn').disabled=false"><div style="font-weight:bold;margin-bottom:2px">${b.name}</div><div class="payout">${b.payout}x</div></div>`).join('')}</div>
-            <button class="dice-roll-btn" id="rouletteSpinBtn" onclick="spinRoulette()" disabled>🎯 SPIN WHEEL 🎯</button>
-            <div class="slot-result" id="rouletteWinResult"></div>
+            <div class="slot-bet-row" style="margin:8px 0"><button onclick="rouletteBet=Math.max(100,rouletteBet-1000);document.getElementById('rouletteBetAmt').textContent=fmt(rouletteBet)">−</button><div class="slot-bet">Bet: <b id="rouletteBetAmt">${fmt(rouletteBet)}</b></div><button onclick="rouletteBet=Math.min(money,rouletteBet+1000);document.getElementById('rouletteBetAmt').textContent=fmt(rouletteBet)">+</button></div>
+            <div style="font-size:0.7em;color:#94a3b8;margin-bottom:6px;font-weight:bold">Place your bet:</div>
+            <div class="dice-bet-options" style="grid-template-columns:repeat(2,1fr)">${rouletteBets.map(b=>`<div class="dice-bet-opt" data-id="${b.id}" onclick="rouletteChoice='${b.id}';document.querySelectorAll('.dice-bet-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('rouletteSpinBtn').disabled=false"><div style="font-weight:bold;margin-bottom:2px">${b.name}</div><div class="payout">${b.payout}x</div></div>`).join('')}</div>
+            <button class="dice-roll-btn" id="rouletteSpinBtn" onclick="spinRoulette()" disabled>🎯 SPIN 🎯</button>
+            <div class="slot-result" id="rouletteWinResult" style="margin-top:8px"></div>
         </div>`;
     rouletteChoice=null;
 }
