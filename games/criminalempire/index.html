@@ -17,11 +17,17 @@
         .rank-5 { background: linear-gradient(135deg, #6b1d1d 0%, #8b6914 100%); }
         .rank-6 { background: radial-gradient(circle at 50% 50%, #ffd700 0%, #1a1a2e 70%); }
 
+
     .header { background: rgba(0,0,0,0.4); padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; }
-    .money-main { font-size: 1.5em; font-weight: bold; color: #4ade80; display: flex; align-items: center; gap: 6px; }
+    .money-main { font-size: 1.4em; font-weight: bold; color: #4ade80; display: flex; align-items: center; gap: 6px; }
+    .money-label { font-size: 0.5em; color: #94a3b8; font-weight: normal; }
     .combo-badge { font-size: 0.5em; background: linear-gradient(135deg, #f59e0b, #ef4444); padding: 2px 6px; border-radius: 8px; animation: comboPulse 0.3s infinite; }
     @keyframes comboPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-    .money-sub { font-size: 0.55em; color: #64748b; display: flex; gap: 6px; }
+    .money-sub { font-size: 0.55em; color: #64748b; display: flex; gap: 8px; }
+    .money-sub .cash { color: #4ade80; }
+    .money-sub .banked { color: #3b82f6; }
+    .header-right { display: flex; align-items: center; gap: 6px; }
+    .settings-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 1em; }
     .rank-badge { padding: 3px 8px; border-radius: 10px; font-weight: bold; font-size: 0.65em; }
     .rank-0-badge { background: linear-gradient(135deg, #6b7280, #4b5563); }
     .rank-1-badge { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
@@ -38,7 +44,8 @@
     .progress-text { font-size: 0.55em; color: #94a3b8; white-space: nowrap; text-align: right; min-width: 70px; }
     
     .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 4px 8px; background: rgba(0,0,0,0.15); font-size: 0.6em; }
-    .stat-item { text-align: center; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px; }
+    .stat-item { text-align: center; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px; cursor: pointer; }
+    .stat-item:hover { background: rgba(255,255,255,0.1); }
     .stat-value { font-weight: bold; color: #fbbf24; }
     .stat-label { color: #64748b; font-size: 0.8em; }
     
@@ -52,7 +59,7 @@
     .click-4 { border: 4px solid #ef4444; background: linear-gradient(145deg, #f87171, #dc2626); box-shadow: 0 6px 25px rgba(239, 68, 68, 0.7); }
     .click-5 { border: 4px solid #fbbf24; background: linear-gradient(145deg, #fcd34d, #f59e0b); box-shadow: 0 6px 30px rgba(251, 191, 36, 0.8); }
     .click-6 { border: 5px solid #ffd700; background: linear-gradient(145deg, #fff, #ffd700); box-shadow: 0 0 40px rgba(255, 215, 0, 1); animation: godButton 1s infinite; }
-    @keyframes godButton { 0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(255, 215, 0, 0.8); } 50% { transform: scale(1.05); box-shadow: 0 0 60px rgba(255, 215, 0, 1); } }
+    @keyframes godButton { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     
     .click-effect { position: absolute; pointer-events: none; font-weight: bold; animation: floatUp 0.5s ease-out forwards; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10; }
     .click-effect.normal { font-size: 0.4em; color: #fff; }
@@ -73,7 +80,7 @@
     .tab-content.active { display: block; }
     
     .tab-bar { display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.1); }
-    .tab-btn { padding: 5px 2px; text-align: center; background: none; border: none; color: #64748b; font-size: 0.5em; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; transition: all 0.2s; position: relative; }
+    .tab-btn { padding: 5px 2px; text-align: center; background: none; border: none; color: #64748b; font-size: 0.5em; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; transition: all 0.2s; }
     .tab-btn.active { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
     .tab-btn.locked { color: #374151; pointer-events: none; }
     .tab-btn span { font-size: 1.4em; }
@@ -82,6 +89,7 @@
     .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
     .section-title { font-size: 0.65em; font-weight: bold; color: #fbbf24; margin: 4px 0; display: flex; align-items: center; gap: 4px; }
     
+    /* Upgrade Cards */
     .upgrade-card { padding: 6px; background: rgba(0,0,0,0.25); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s; position: relative; overflow: hidden; }
     .upgrade-card.affordable { border-color: rgba(74, 222, 128, 0.5); box-shadow: 0 0 10px rgba(74, 222, 128, 0.3); }
     .upgrade-card.maxed { border-color: rgba(255, 215, 0, 0.5); background: rgba(255, 215, 0, 0.1); }
@@ -101,6 +109,61 @@
     .minigame-btn { background: linear-gradient(145deg, #a855f7, #7c3aed) !important; animation: mgPulse 1.5s infinite; }
     @keyframes mgPulse { 0%, 100% { box-shadow: 0 0 5px #a855f7; } 50% { box-shadow: 0 0 15px #a855f7; } }
     
+    /* Territory Cards */
+    .territory-card { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; padding: 6px; transition: all 0.2s; }
+    .territory-card.owned { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); }
+    .territory-pips { display: flex; gap: 3px; margin: 4px 0; }
+    .territory-pip { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); transition: background 0.3s; }
+    .territory-pip.filled { background: linear-gradient(90deg, #22c55e, #4ade80); }
+    
+    /* Heist Cards */
+    .heist-card { background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15)); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 6px; position: relative; transition: all 0.2s; }
+    .heist-card.on-cooldown { opacity: 0.6; }
+    .heist-difficulty { position: absolute; top: 4px; right: 4px; font-size: 0.5em; padding: 2px 5px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }
+    .heist-difficulty.easy { background: #22c55e; color: white; }
+    .heist-difficulty.medium { background: #eab308; color: #1a1a2e; }
+    .heist-difficulty.hard { background: #ef4444; color: white; }
+    .heist-difficulty.legendary { background: linear-gradient(90deg, #a855f7, #ec4899); color: white; }
+    .heist-name { font-size: 0.8em; font-weight: bold; margin-bottom: 2px; }
+    .heist-info { font-size: 0.6em; color: #94a3b8; }
+    .heist-bar { height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden; margin: 4px 0; }
+    .heist-bar-fill { height: 100%; background: linear-gradient(90deg, #ef4444, #eab308, #22c55e); transition: width 0.3s; }
+    
+    /* Police Cards */
+    .police-card { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; padding: 6px; transition: all 0.2s; }
+    .police-card.owned { opacity: 0.7; border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+    
+    /* Heat Info Panel */
+    .heat-info-panel { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 8px; margin-bottom: 8px; font-size: 0.65em; }
+    .heat-info-panel h4 { color: #ef4444; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+    .heat-info-panel p { color: #94a3b8; margin: 2px 0; }
+    .heat-info-panel b { color: #fbbf24; }
+    
+    /* Crew/Thief Cards */
+    .thief-card { background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 6px; font-size: 0.7em; }
+    .thief-rank-badge { font-size: 0.8em; padding: 1px 5px; border-radius: 3px; margin-left: 4px; color: white; }
+    .train-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 4px; }
+    .train-btn { padding: 5px 3px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 4px; color: white; font-size: 0.85em; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .train-btn:disabled { background: rgba(55, 65, 81, 0.5); border-color: transparent; color: #6b7280; }
+    .train-btn:not(:disabled):hover { background: rgba(59, 130, 246, 0.4); }
+    
+    /* Storage Cards */
+    .storage-card { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 6px; padding: 6px; font-size: 0.7em; }
+    .storage-bar { height: 5px; background: rgba(0,0,0,0.3); border-radius: 3px; margin: 4px 0; overflow: hidden; }
+    .storage-fill { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); transition: width 0.3s; }
+    .storage-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+    .storage-btns button { padding: 4px; font-size: 0.85em; }
+    
+    /* Empty State */
+    .empty-state { text-align: center; padding: 20px; color: #64748b; font-size: 0.75em; grid-column: span 2; }
+    
+    /* Locked Tab Content */
+    .locked-content { text-align: center; padding: 30px 20px; color: #64748b; }
+    .locked-content .lock-icon { font-size: 3em; margin-bottom: 10px; opacity: 0.5; }
+    .locked-content h3 { color: #94a3b8; margin-bottom: 5px; }
+    .locked-content p { font-size: 0.8em; }
+    
+    /* Buttons */
     .btn { padding: 4px 8px; border: none; border-radius: 4px; font-weight: bold; font-size: 0.6em; cursor: pointer; transition: all 0.15s; }
     .btn:not(:disabled):active { transform: scale(0.95); }
     .btn-green { background: linear-gradient(145deg, #22c55e, #16a34a); color: white; }
@@ -110,43 +173,74 @@
     .btn-blue { background: linear-gradient(145deg, #3b82f6, #2563eb); color: white; }
     .btn:disabled { background: #374151; color: #6b7280; }
     
-    .notification { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 12px 20px; border-radius: 12px; font-weight: bold; z-index: 1000; animation: notifPop 0.25s ease-out; cursor: pointer; text-align: center; max-width: 250px; font-size: 0.85em; }
+    /* Notifications */
+    .notification { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 12px 20px; border-radius: 12px; font-weight: bold; z-index: 1000; animation: notifPop 0.25s ease-out; cursor: pointer; text-align: center; max-width: 280px; font-size: 0.85em; }
     @keyframes notifPop { 0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.1); } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
     .notification.level { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e; }
     .notification.rank-up { background: linear-gradient(135deg, #a855f7, #ec4899); color: white; box-shadow: 0 0 30px rgba(168, 85, 247, 0.6); }
+    .notification.police { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
     .notification.income { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
-    .notification small { display: block; font-weight: normal; margin-top: 2px; font-size: 0.8em; opacity: 0.9; }
+    .notification.theft { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+    .notification.heist-win { background: linear-gradient(135deg, #a855f7, #ec4899); color: white; box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
+    .notification.heist-fail { background: linear-gradient(135deg, #6b7280, #374151); color: white; }
+    .notification.event { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; }
+    .notification.offline { background: linear-gradient(135deg, #22c55e, #3b82f6); color: white; }
+    .notification.achievement { background: linear-gradient(135deg, #ffd700, #f59e0b); color: #1a1a2e; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
+    .notification.tip { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; }
+    .notification small { display: block; font-weight: normal; margin-top: 3px; font-size: 0.85em; opacity: 0.9; }
     
-    .debug-btn { position: fixed; bottom: 60px; right: 5px; background: rgba(239,68,68,0.8); border: none; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.6em; cursor: pointer; z-index: 500; }
+    /* Settings Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal-container { width: 100%; max-width: 340px; background: linear-gradient(145deg, #1a1a2e, #2d1b4e); border-radius: 12px; border: 2px solid #fbbf24; padding: 15px; max-height: 80vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .modal-title { font-size: 1.1em; font-weight: bold; color: #fbbf24; }
+    .modal-close { background: none; border: none; color: #ef4444; font-size: 1.3em; cursor: pointer; }
+    .settings-group { margin-bottom: 12px; }
+    .settings-group h4 { font-size: 0.75em; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; }
+    .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 4px; }
+    .settings-row label { font-size: 0.8em; }
+    .toggle { width: 44px; height: 24px; background: #374151; border-radius: 12px; position: relative; cursor: pointer; transition: background 0.3s; }
+    .toggle.on { background: #22c55e; }
+    .toggle::after { content: ''; position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: left 0.3s; }
+    .toggle.on::after { left: 22px; }
+    .settings-btn { width: 100%; padding: 10px; margin-top: 4px; font-size: 0.8em; }
+    .danger-zone { border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 8px; margin-top: 8px; }
+    .danger-zone h4 { color: #ef4444; }
     
-    /* Mini-game Modal */
-    .mg-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; justify-content: center; align-items: center; }
-    .mg-overlay.active { display: flex; }
-    .mg-container { width: 95%; max-width: 360px; background: linear-gradient(145deg, #1a1a2e, #2d1b4e); border-radius: 16px; border: 2px solid #ffd700; padding: 12px; position: relative; }
-    .mg-close { position: absolute; top: 8px; right: 10px; background: none; border: none; color: #ef4444; font-size: 1.5em; cursor: pointer; }
-    .mg-title { text-align: center; font-size: 1.2em; font-weight: bold; margin-bottom: 8px; background: linear-gradient(90deg, #ffd700, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .mg-balance { text-align: center; font-size: 0.9em; color: #4ade80; margin-bottom: 10px; }
+    /* Achievements */
+    .achievement-card { background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 6px; padding: 6px; display: flex; align-items: center; gap: 8px; }
+    .achievement-card.locked { opacity: 0.5; filter: grayscale(1); }
+    .achievement-icon { font-size: 1.5em; }
+    .achievement-info { flex: 1; }
+    .achievement-name { font-size: 0.75em; font-weight: bold; }
+    .achievement-desc { font-size: 0.6em; color: #94a3b8; }
     
-    /* Slot Machine - Classic */
+    /* Debug Buttons */
+    .debug-btns { position: fixed; bottom: 55px; right: 5px; display: flex; flex-direction: column; gap: 3px; z-index: 500; }
+    .debug-btn { background: rgba(239,68,68,0.8); border: none; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.55em; cursor: pointer; }
+    .debug-btn.blue { background: rgba(59,130,246,0.8); }
+    
+    /* Slot Machine Styles */
     .slot-machine { background: linear-gradient(145deg, #4a1942, #2d1b4e); border-radius: 12px; padding: 15px; border: 3px solid #ffd700; }
     .slot-reels { display: flex; justify-content: center; gap: 8px; margin: 15px 0; }
     .slot-reel { width: 70px; height: 80px; background: linear-gradient(180deg, #1a1a2e, #0a0a1a); border-radius: 8px; border: 2px solid #fbbf24; overflow: hidden; position: relative; }
     .slot-reel::before, .slot-reel::after { content: ''; position: absolute; left: 0; right: 0; height: 15px; z-index: 2; pointer-events: none; }
     .slot-reel::before { top: 0; background: linear-gradient(180deg, #1a1a2e, transparent); }
     .slot-reel::after { bottom: 0; background: linear-gradient(0deg, #1a1a2e, transparent); }
-    .reel-strip { display: flex; flex-direction: column; align-items: center; transition: transform 0.1s; }
-    .reel-strip.spinning { transition: none; }
+    .reel-strip { display: flex; flex-direction: column; align-items: center; }
     .reel-symbol { height: 80px; width: 70px; display: flex; align-items: center; justify-content: center; font-size: 2.8em; flex-shrink: 0; }
     .slot-controls { display: flex; flex-direction: column; gap: 8px; }
     .slot-bet-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
     .slot-bet-row button { width: 40px; height: 40px; border-radius: 50%; font-size: 1.2em; border: 2px solid #fbbf24; background: linear-gradient(145deg, #4a1942, #2d1b4e); color: white; cursor: pointer; }
+    .slot-bet-row button:disabled { opacity: 0.5; }
     .slot-bet-row button:active { transform: scale(0.9); }
     .slot-bet { font-size: 1.1em; min-width: 100px; text-align: center; }
     .slot-bet b { color: #4ade80; font-size: 1.2em; }
     .slot-spin-btn { width: 100%; padding: 15px; font-size: 1.3em; font-weight: bold; background: linear-gradient(145deg, #ef4444, #dc2626); border: 3px solid #fbbf24; border-radius: 10px; color: white; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
     .slot-spin-btn:disabled { background: #374151; border-color: #6b7280; }
-    .slot-spin-btn:not(:disabled):active { transform: scale(0.98); }
     .slot-bonus-btn { width: 100%; padding: 10px; font-size: 0.9em; background: linear-gradient(145deg, #a855f7, #7c3aed); border: 2px solid #ffd700; border-radius: 8px; color: white; cursor: pointer; margin-top: 8px; }
+    .slot-bonus-btn:disabled { opacity: 0.5; }
     .slot-result { text-align: center; font-size: 1.1em; font-weight: bold; min-height: 30px; margin-top: 8px; }
     .slot-result.win { color: #4ade80; animation: winFlash 0.3s ease-in-out 3; }
     .slot-result.lose { color: #ef4444; }
@@ -158,16 +252,11 @@
     .slot-select { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .slot-select-btn { padding: 12px 8px; border-radius: 10px; border: 2px solid #6b7280; background: rgba(0,0,0,0.3); color: white; cursor: pointer; text-align: center; transition: all 0.2s; }
     .slot-select-btn.active { border-color: #ffd700; background: rgba(255,215,0,0.15); box-shadow: 0 0 15px rgba(255,215,0,0.3); }
-    .slot-select-btn:hover { border-color: #fbbf24; }
     .slot-select-btn .icon { font-size: 1.8em; display: block; margin-bottom: 4px; }
     .slot-select-btn .name { font-weight: bold; font-size: 0.9em; }
     .slot-select-btn .desc { font-size: 0.65em; color: #94a3b8; margin-top: 2px; }
-    /* Megaways */
     .mega-reels { display: flex; justify-content: center; gap: 4px; margin: 10px 0; }
     .mega-reel { width: 48px; background: linear-gradient(180deg, #1a1a2e, #0a0a1a); border-radius: 6px; border: 2px solid #fbbf24; overflow: hidden; position: relative; display: flex; flex-direction: column; }
-    .mega-reel::before, .mega-reel::after { content: ''; position: absolute; left: 0; right: 0; height: 10px; z-index: 2; pointer-events: none; }
-    .mega-reel::before { top: 0; background: linear-gradient(180deg, #1a1a2e, transparent); }
-    .mega-reel::after { bottom: 0; background: linear-gradient(0deg, #1a1a2e, transparent); }
     .mega-symbol { height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.6em; transition: all 0.3s; }
     .mega-symbol.winning { animation: megaWin 0.4s ease-in-out; background: rgba(255,215,0,0.3); }
     .mega-symbol.cascade { animation: cascadeFall 0.3s ease-out; }
@@ -176,46 +265,80 @@
     .mega-info { display: flex; justify-content: space-between; font-size: 0.75em; margin: 8px 0; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 6px; }
     .mega-info .ways { color: #fbbf24; } .mega-info .mult { color: #a855f7; }
     .mega-cascade-info { text-align: center; font-size: 0.8em; color: #4ade80; min-height: 20px; }
-    
+    .mg-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; justify-content: center; align-items: center; }
+    .mg-overlay.active { display: flex; }
+    .mg-container { width: 95%; max-width: 360px; background: linear-gradient(145deg, #1a1a2e, #2d1b4e); border-radius: 16px; border: 2px solid #ffd700; padding: 12px; position: relative; max-height: 90vh; overflow-y: auto; }
+    .mg-close { position: absolute; top: 8px; right: 10px; background: none; border: none; color: #ef4444; font-size: 1.5em; cursor: pointer; }
+    .mg-title { text-align: center; font-size: 1.2em; font-weight: bold; margin-bottom: 8px; background: linear-gradient(90deg, #ffd700, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .mg-balance { text-align: center; font-size: 0.9em; color: #4ade80; margin-bottom: 10px; }
     /* Safe Cracker */
     .safe-game { text-align: center; }
-    .safe-dial { width: 180px; height: 180px; margin: 15px auto; background: radial-gradient(circle, #374151, #1a1a2e); border-radius: 50%; border: 8px solid #6b7280; position: relative; box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 0 20px rgba(0,0,0,0.5); }
-    .safe-dial::before { content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 20px solid #ef4444; z-index: 10; }
-    .safe-pointer { position: absolute; width: 4px; height: 70px; background: linear-gradient(180deg, #ffd700, #f59e0b); left: 50%; bottom: 50%; transform-origin: bottom center; transform: translateX(-50%); border-radius: 2px; transition: transform 0.1s; }
-    .safe-numbers { position: absolute; inset: 15px; }
-    .safe-number { position: absolute; font-size: 0.75em; font-weight: bold; color: #94a3b8; }
-    .safe-combo { display: flex; justify-content: center; gap: 10px; margin: 10px 0; }
-    .safe-combo-num { width: 50px; height: 50px; background: rgba(0,0,0,0.4); border: 2px solid #6b7280; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; }
+    .safe-dial { width: 160px; height: 160px; margin: 10px auto; background: radial-gradient(circle, #374151, #1a1a2e); border-radius: 50%; border: 6px solid #6b7280; position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+    .safe-dial::before { content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 15px solid #ef4444; z-index: 10; }
+    .safe-pointer { position: absolute; width: 4px; height: 60px; background: linear-gradient(180deg, #ffd700, #f59e0b); left: 50%; bottom: 50%; transform-origin: bottom center; transform: translateX(-50%); border-radius: 2px; transition: transform 0.1s; }
+    .safe-combo { display: flex; justify-content: center; gap: 8px; margin: 10px 0; }
+    .safe-combo-num { width: 45px; height: 45px; background: rgba(0,0,0,0.4); border: 2px solid #6b7280; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.3em; font-weight: bold; }
     .safe-combo-num.active { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; }
     .safe-combo-num.correct { border-color: #22c55e; background: rgba(34, 197, 94, 0.2); }
     .safe-combo-num.wrong { border-color: #ef4444; background: rgba(239, 68, 68, 0.2); }
-    .safe-controls { display: flex; justify-content: center; gap: 15px; margin: 15px 0; }
-    .safe-controls button { width: 60px; height: 60px; border-radius: 50%; font-size: 1.5em; border: 3px solid #fbbf24; background: linear-gradient(145deg, #4a1942, #2d1b4e); color: white; cursor: pointer; }
-    .safe-controls button:active { transform: scale(0.9); }
-    .safe-submit { padding: 10px 30px; font-size: 1em; background: linear-gradient(145deg, #22c55e, #16a34a); border: 2px solid #ffd700; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; }
-    .safe-info { font-size: 0.8em; color: #94a3b8; margin: 8px 0; }
-    
+    .safe-controls { display: flex; justify-content: center; gap: 12px; margin: 12px 0; }
+    .safe-controls button { width: 55px; height: 55px; border-radius: 50%; font-size: 1.3em; border: 3px solid #fbbf24; background: linear-gradient(145deg, #4a1942, #2d1b4e); color: white; cursor: pointer; }
+    .safe-submit { padding: 10px 25px; font-size: 1em; background: linear-gradient(145deg, #22c55e, #16a34a); border: 2px solid #ffd700; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; }
+    .safe-info { font-size: 0.75em; color: #94a3b8; margin: 6px 0; }
     /* Dice Game */
     .dice-game { text-align: center; }
-    .dice-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
-    .dice { width: 80px; height: 80px; background: linear-gradient(145deg, #fff, #e0e0e0); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 2.5em; color: #1a1a2e; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.3s; }
+    .dice-container { display: flex; justify-content: center; gap: 15px; margin: 15px 0; }
+    .dice { width: 70px; height: 70px; background: linear-gradient(145deg, #fff, #e0e0e0); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.2em; color: #1a1a2e; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .dice.rolling { animation: diceRoll 0.15s linear infinite; }
     @keyframes diceRoll { 0% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(90deg) scale(0.9); } 50% { transform: rotate(180deg) scale(1); } 75% { transform: rotate(270deg) scale(0.9); } 100% { transform: rotate(360deg) scale(1); } }
-    .dice-bet-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
-    .dice-bet-opt { padding: 10px 5px; background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; border-radius: 8px; cursor: pointer; font-size: 0.8em; transition: all 0.2s; }
-    .dice-bet-opt.selected { background: rgba(59, 130, 246, 0.5); border-color: #ffd700; box-shadow: 0 0 10px #3b82f6; }
-    .dice-bet-opt:hover { background: rgba(59, 130, 246, 0.3); }
-    .dice-bet-opt .payout { color: #4ade80; font-weight: bold; font-size: 0.9em; }
-    .dice-roll-btn { width: 100%; padding: 15px; font-size: 1.2em; font-weight: bold; background: linear-gradient(145deg, #3b82f6, #2563eb); border: 3px solid #fbbf24; border-radius: 10px; color: white; cursor: pointer; margin-top: 10px; }
+    .dice-bet-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 8px 0; }
+    .dice-bet-opt { padding: 8px 4px; background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; border-radius: 6px; cursor: pointer; font-size: 0.75em; transition: all 0.2s; }
+    .dice-bet-opt.selected { background: rgba(59, 130, 246, 0.5); border-color: #ffd700; }
+    .dice-bet-opt .payout { color: #4ade80; font-weight: bold; }
+    .dice-roll-btn { width: 100%; padding: 12px; font-size: 1.1em; font-weight: bold; background: linear-gradient(145deg, #3b82f6, #2563eb); border: 3px solid #fbbf24; border-radius: 10px; color: white; cursor: pointer; margin-top: 8px; }
     .dice-roll-btn:disabled { background: #374151; border-color: #6b7280; }
 </style>
 
-
 </head>
 <body class="rank-0">
-    <button class="debug-btn" onclick="money+=1e12;updateAll()">+$1T DEBUG</button>
-    <button class="debug-btn" style="bottom:80px;background:rgba(59,130,246,0.8)" onclick="money=0;storageLocations.forEach(s=>s.stored=0);updateAll()">ZERO $</button>
+    <div class="debug-btns" id="debugBtns" style="display:none">
+        <button class="debug-btn" onclick="money+=1e12;saveGame();updateAll()">+$1T</button>
+        <button class="debug-btn blue" onclick="money=0;storageLocations.forEach(s=>s.stored=0);saveGame();updateAll()">ZERO</button>
+    </div>
 
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <span class="modal-title">⚙️ Settings</span>
+            <button class="modal-close" onclick="closeSettings()">✕</button>
+        </div>
+        <div class="settings-group">
+            <h4>Preferences</h4>
+            <div class="settings-row">
+                <label>Vibration</label>
+                <div class="toggle ${settings.vibration?'on':''}" id="toggleVib" onclick="toggleSetting('vibration')"></div>
+            </div>
+            <div class="settings-row">
+                <label>Show Tips</label>
+                <div class="toggle ${settings.tips?'on':''}" id="toggleTips" onclick="toggleSetting('tips')"></div>
+            </div>
+            <div class="settings-row">
+                <label>Debug Mode</label>
+                <div class="toggle" id="toggleDebug" onclick="toggleSetting('debug')"></div>
+            </div>
+        </div>
+        <div class="settings-group">
+            <h4>Save Data</h4>
+            <button class="btn btn-blue settings-btn" onclick="exportSave()">📤 Export Save</button>
+            <button class="btn btn-purple settings-btn" onclick="importSave()">📥 Import Save</button>
+        </div>
+        <div class="danger-zone">
+            <h4>⚠️ Danger Zone</h4>
+            <button class="btn btn-red settings-btn" onclick="hardReset()">🗑️ Reset ALL Progress</button>
+        </div>
+        <div style="font-size:0.6em;color:#64748b;text-align:center;margin-top:10px">Auto-saves every 5 seconds</div>
+    </div>
+</div>
 
 <div class="mg-overlay" id="mgOverlay">
     <div class="mg-container" id="mgContainer"></div>
@@ -223,20 +346,29 @@
 
 <div class="header">
     <div>
-        <div class="money-main"><span id="money">$0</span><span class="combo-badge" id="comboBadge" style="display:none">x1</span></div>
-        <div class="money-sub"><span>💵<span id="onHand">$0</span></span><span>🏦<span id="stored">$0</span></span><span>⭐<span id="rep">0</span></span></div>
+        <div class="money-main">
+            <span id="money">$0</span>
+            <span class="combo-badge" id="comboBadge" style="display:none">x1</span>
+        </div>
+        <div class="money-sub">
+            <span class="cash">💵 Cash: <span id="onHand">$0</span></span>
+            <span class="banked">🏦 Safe: <span id="stored">$0</span></span>
+        </div>
     </div>
-    <div class="rank-badge rank-0-badge" id="rankBadge">🔰 Thug</div>
+    <div class="header-right">
+        <div class="rank-badge rank-0-badge" id="rankBadge">🔰 Thug</div>
+        <button class="settings-btn" onclick="openSettings()">⚙️</button>
+    </div>
 </div>
 <div class="progress-row">
     <div class="progress-bar-container"><div class="progress-fill" id="progressBar"></div></div>
     <div class="progress-text" id="progressText">→ Hustler</div>
 </div>
 <div class="stats-row">
-    <div class="stat-item"><div class="stat-value" id="perSec">$0</div><div class="stat-label">/sec</div></div>
-    <div class="stat-item"><div class="stat-value" id="clickVal">$1</div><div class="stat-label">/click</div></div>
-    <div class="stat-item"><div class="stat-value" id="critChance">5%</div><div class="stat-label">⚡crit</div></div>
-    <div class="stat-item"><div class="stat-value" id="heatVal">0%</div><div class="stat-label">🚔heat</div></div>
+    <div class="stat-item" title="Passive income per second"><div class="stat-value" id="perSec">$0</div><div class="stat-label">/sec</div></div>
+    <div class="stat-item" title="Money earned per click"><div class="stat-value" id="clickVal">$1</div><div class="stat-label">/click</div></div>
+    <div class="stat-item" title="Critical hit chance"><div class="stat-value" id="critChance">5%</div><div class="stat-label">⚡crit</div></div>
+    <div class="stat-item" onclick="switchTab('heist',document.querySelector('[data-tab=heist]'))" title="Police heat - tap for info"><div class="stat-value" id="heatVal">0%</div><div class="stat-label">🚔heat</div></div>
 </div>
 <div class="click-section">
     <div class="side-panel">
@@ -259,10 +391,21 @@
         <div class="section-title" style="margin-top:6px">👆 Click Power</div>
         <div class="grid-2col" id="clickList"></div>
     </div>
-    <div class="tab-content" id="tab-territory"><div class="section-title">🗺️ Territories <span style="font-weight:normal;color:#94a3b8" id="turfInfo"></span></div><div class="grid-2col" id="territoryList"></div></div>
-    <div class="tab-content" id="tab-heist"><div class="section-title">🎯 Heists</div><div class="grid-2col" id="heistList"></div><div class="section-title" style="margin-top:6px">🛡️ Heat Reduction</div><div class="grid-2col" id="policeList"></div></div>
-    <div class="tab-content" id="tab-crew"><div class="section-title">🥷 Your Crew <span id="crewCount" style="font-weight:normal;color:#94a3b8"></span></div><button class="btn btn-purple" id="hireBtn" onclick="hireThief(event)" style="width:100%;margin-bottom:6px;padding:8px;font-size:0.75em">Hire Crew - $10K</button><div class="grid-2col" id="crewList"></div></div>
-    <div class="tab-content" id="tab-empire"><div class="section-title">🏦 Secure Storage</div><div class="grid-2col" id="storageList"></div><div class="section-title" style="margin-top:6px">⚡ Special Upgrades</div><div class="grid-2col" id="specialList"></div></div>
+    <div class="tab-content" id="tab-territory">
+        <div id="territoryContent"></div>
+    </div>
+    <div class="tab-content" id="tab-heist">
+        <div id="heistContent"></div>
+    </div>
+    <div class="tab-content" id="tab-crew">
+        <div id="crewContent"></div>
+    </div>
+    <div class="tab-content" id="tab-empire">
+        <div class="section-title">🏦 Secure Storage <span style="font-weight:normal;color:#94a3b8;font-size:0.9em">(Protected from raids!)</span></div>
+        <div class="grid-2col" id="storageList"></div>
+        <div class="section-title" style="margin-top:6px">⚡ Special Upgrades</div>
+        <div class="grid-2col" id="specialList"></div>
+    </div>
 </div>
 <div class="tab-bar" id="tabBar">
     <button class="tab-btn active" data-tab="shop" onclick="switchTab('shop',this)"><span>🏪</span>Shop</button>
@@ -271,11 +414,23 @@
     <button class="tab-btn locked" data-tab="crew" onclick="switchTab('crew',this)"><span>🔒</span><span class="unlock-hint">Rank 1</span></button>
     <button class="tab-btn" data-tab="empire" onclick="switchTab('empire',this)"><span>🏛️</span>Empire</button>
 </div>
-
+```
 
 <script>
-let money=0,moneyPerSecond=0,clickPower=1,reputation=0,policeHeat=0,heatShield=0,heatDecay=0,critChance=0.05,critMult=3,luckChance=0,combo=0,lastClickTime=0,comboTimeout=null,storageLocations=[],thieves=[],ownedTerritories=[],globalMult=1,heistBonus=0;
+// === SETTINGS & PERSISTENCE ===
+const SAVE_KEY = 'criminalEmpireSave';
+const SAVE_VERSION = 2;
+let settings = { vibration: true, tips: true, debug: false };
+let lastSeen = Date.now();
+let shownTips = new Set();
+
+// === GAME STATE ===
+let money=0,moneyPerSecond=0,clickPower=1,reputation=0,policeHeat=0,heatShield=0,heatDecay=0;
+let critChance=0.05,critMult=3,luckChance=0,combo=0,lastClickTime=0,comboTimeout=null;
+let storageLocations=[],thieves=[],ownedTerritories=[],globalMult=1,heistBonus=0;
+let totalEarned=0,totalClicks=0,totalHeists=0,achievementsUnlocked=[];
 const maxThieves=6;
+
 const ranks=[{name:"🔰 Thug",rep:0},{name:"💜 Hustler",rep:100},{name:"💙 Runner",rep:400},{name:"💗 Boss",rep:1500},{name:"❤️ Kingpin",rep:6000},{name:"🧡 Godfather",rep:25000},{name:"👑 Legend",rep:100000}];
 const tierThresholds=[0,5,15,30,50,100];
 const tierNames=['🔘','🥉','🥈','🥇','💎','🌟'];
@@ -321,17 +476,17 @@ const heists=[
 let heistCDs={};
 
 const policeUpgrades=[
-    {id:"scanner",name:"📡 Scanner",desc:"-5% heat",cost:20000,owned:false,fx:()=>heatShield+=0.05},
-    {id:"safehouse",name:"🏠 Safehouse",desc:"+1 decay",cost:80000,owned:false,fx:()=>heatDecay+=1},
-    {id:"insider",name:"🕵️ Insider",desc:"-10% heat",cost:400000,owned:false,fx:()=>heatShield+=0.1},
-    {id:"judge",name:"⚖️ Judge",desc:"-15% heat",cost:1500000,owned:false,fx:()=>heatShield+=0.15},
-    {id:"chief",name:"👮 Chief",desc:"+3 decay",cost:8000000,owned:false,fx:()=>heatDecay+=3}
+    {id:"scanner",name:"📡 Scanner",desc:"-5% heat gain",cost:20000,owned:false,fx:()=>heatShield+=0.05},
+    {id:"safehouse",name:"🏠 Safehouse",desc:"+1 heat decay/sec",cost:80000,owned:false,fx:()=>heatDecay+=1},
+    {id:"insider",name:"🕵️ Insider",desc:"-10% heat gain",cost:400000,owned:false,fx:()=>heatShield+=0.1},
+    {id:"judge",name:"⚖️ Judge",desc:"-15% heat gain",cost:1500000,owned:false,fx:()=>heatShield+=0.15},
+    {id:"chief",name:"👮 Chief",desc:"+3 heat decay/sec",cost:8000000,owned:false,fx:()=>heatDecay+=3}
 ];
 
 const specialUpgrades=[
     {id:"luck1",name:"🍀 Lucky Charm",desc:"+2% luck",cost:50000,owned:false,fx:()=>luckChance+=0.02},
     {id:"crit1",name:"⚡ Sharp Eye",desc:"+3% crit",cost:100000,owned:false,fx:()=>critChance+=0.03},
-    {id:"crit2",name:"💥 Crit Master",desc:"+1x crit",cost:500000,owned:false,fx:()=>critMult+=1},
+    {id:"crit2",name:"💥 Crit Master",desc:"+1x crit mult",cost:500000,owned:false,fx:()=>critMult+=1},
     {id:"luck2",name:"🎲 Gambler",desc:"+3% luck",cost:1000000,owned:false,fx:()=>luckChance+=0.03},
     {id:"crit3",name:"🔥 Devastation",desc:"+5% crit +2x",cost:5000000,owned:false,fx:()=>{critChance+=0.05;critMult+=2}},
     {id:"luck3",name:"✨ Fortune",desc:"+5% luck",cost:10000000,owned:false,fx:()=>luckChance+=0.05}
@@ -348,12 +503,26 @@ const crewNames=["Shadow","Ghost","Viper","Raven","Wolf","Phantom"];
 const crewRanks=["Rookie","Skilled","Pro","Elite","Master"];
 const crewRankColors=["#6b7280","#22c55e","#3b82f6","#a855f7","#fbbf24"];
 
-function vib(p){if(navigator.vibrate)navigator.vibrate(p)}
-const hap={click:8,crit:[15,20,15],buy:[15,25,15],big:[25,40,25,40,30],rank:[40,80,40,80,80,40,150]};
+const achievements=[
+    {id:'first_click',name:'First Steps',desc:'Click for the first time',check:()=>totalClicks>=1},
+    {id:'clicks_100',name:'Clicker',desc:'Click 100 times',check:()=>totalClicks>=100},
+    {id:'clicks_1000',name:'Click Master',desc:'Click 1,000 times',check:()=>totalClicks>=1000},
+    {id:'earn_1k',name:'Pocket Change',desc:'Earn $1,000 total',check:()=>totalEarned>=1000},
+    {id:'earn_1m',name:'Millionaire',desc:'Earn $1,000,000 total',check:()=>totalEarned>=1e6},
+    {id:'earn_1b',name:'Billionaire',desc:'Earn $1,000,000,000 total',check:()=>totalEarned>=1e9},
+    {id:'first_heist',name:'First Job',desc:'Complete your first heist',check:()=>totalHeists>=1},
+    {id:'heist_10',name:'Career Criminal',desc:'Complete 10 heists',check:()=>totalHeists>=10},
+    {id:'first_crew',name:'Gang Leader',desc:'Hire your first crew member',check:()=>thieves.length>=1},
+    {id:'full_crew',name:'Crime Family',desc:'Hire maximum crew',check:()=>thieves.length>=maxThieves},
+    {id:'first_turf',name:'Turf War',desc:'Capture your first territory',check:()=>ownedTerritories.length>=1},
+    {id:'all_turf',name:'Kingpin',desc:'Own all territories',check:()=>ownedTerritories.length>=territories.length},
+    {id:'rank_max',name:'Legend',desc:'Reach maximum rank',check:()=>getRank()>=6},
+];
 
+// === UTILITIES ===
+function vib(p){if(settings.vibration&&navigator.vibrate)navigator.vibrate(p)}
 function fmt(n){if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+Math.floor(n)}
 function fmtS(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(0)+'K';return Math.floor(n)}
-
 function getRank(){for(let i=ranks.length-1;i>=0;i--)if(reputation>=ranks[i].rep)return i;return 0}
 function getTier(o){for(let i=tierThresholds.length-1;i>=0;i--)if(o>=tierThresholds[i])return i;return 0}
 function getTierProgress(o){const t=getTier(o);if(t>=tierThresholds.length-1)return 100;const c=tierThresholds[t],n=tierThresholds[t+1];return((o-c)/(n-c))*100}
@@ -365,6 +534,124 @@ function getCrewIncome(c){return Math.floor((c.baseIncome*(1+c.exp*0.4)+c.skill*
 function getCrewSteal(c){return Math.max(0.01,0.18-c.loyalty*0.022)}
 function getCrewRank(c){const t=c.loyalty+c.skill+c.exp;if(t>=24)return 4;if(t>=15)return 3;if(t>=8)return 2;if(t>=3)return 1;return 0}
 
+// === SAVE/LOAD ===
+function saveGame(){
+    const save={
+        v:SAVE_VERSION,ts:Date.now(),
+        money,moneyPerSecond,clickPower,reputation,policeHeat,heatShield,heatDecay,
+        critChance,critMult,luckChance,totalEarned,totalClicks,totalHeists,
+        bizUpgrades:bizUpgrades.map(b=>b.owned),
+        clickUpgrades:clickUpgrades.map(c=>c.owned),
+        territories:territories.map(t=>({level:t.level})),
+        ownedTerritories,
+        policeUpgrades:policeUpgrades.map(p=>p.owned),
+        specialUpgrades:specialUpgrades.map(s=>s.owned),
+        storageLocations,thieves,heistCDs,
+        achievementsUnlocked,shownTips:[...shownTips],settings
+    };
+    try{localStorage.setItem(SAVE_KEY,JSON.stringify(save))}catch(e){console.warn('Save failed',e)}
+}
+
+function loadGame(){
+    try{
+        const raw=localStorage.getItem(SAVE_KEY);
+        if(!raw)return false;
+        const save=JSON.parse(raw);
+        if(!save.v)return false;
+        
+        money=save.money||0;moneyPerSecond=save.moneyPerSecond||0;clickPower=save.clickPower||1;
+        reputation=save.reputation||0;policeHeat=save.policeHeat||0;heatShield=save.heatShield||0;
+        heatDecay=save.heatDecay||0;critChance=save.critChance||0.05;critMult=save.critMult||3;
+        luckChance=save.luckChance||0;totalEarned=save.totalEarned||0;totalClicks=save.totalClicks||0;
+        totalHeists=save.totalHeists||0;
+        
+        if(save.bizUpgrades)save.bizUpgrades.forEach((o,i)=>{if(bizUpgrades[i])bizUpgrades[i].owned=o});
+        if(save.clickUpgrades)save.clickUpgrades.forEach((o,i)=>{if(clickUpgrades[i])clickUpgrades[i].owned=o});
+        if(save.territories)save.territories.forEach((t,i)=>{if(territories[i])territories[i].level=t.level});
+        ownedTerritories=save.ownedTerritories||[];
+        if(save.policeUpgrades)save.policeUpgrades.forEach((o,i)=>{if(policeUpgrades[i])policeUpgrades[i].owned=o});
+        if(save.specialUpgrades)save.specialUpgrades.forEach((o,i)=>{if(specialUpgrades[i])specialUpgrades[i].owned=o});
+        storageLocations=save.storageLocations||[];
+        thieves=save.thieves||[];
+        heistCDs=save.heistCDs||{};
+        achievementsUnlocked=save.achievementsUnlocked||[];
+        shownTips=new Set(save.shownTips||[]);
+        if(save.settings)settings={...settings,...save.settings};
+        
+        // Process offline time
+        const elapsed=Math.min((Date.now()-save.ts)/1000,8*3600);
+        if(elapsed>10&&moneyPerSecond>0){
+            calcBonuses();
+            const offlineEarn=Math.floor(moneyPerSecond*globalMult*elapsed*0.5);
+            money+=offlineEarn;totalEarned+=offlineEarn;
+            setTimeout(()=>showNotif('💤 Welcome back!','offline',`+${fmt(offlineEarn)} while away`),500);
+        }
+        // Reduce heist cooldowns by elapsed time
+        const now=Date.now();
+        Object.keys(heistCDs).forEach(k=>{heistCDs[k]=Math.max(now,heistCDs[k]-elapsed*1000)});
+        
+        lastSeen=Date.now();
+        return true;
+    }catch(e){console.warn('Load failed',e);return false}
+}
+
+function exportSave(){
+    saveGame();
+    const data=localStorage.getItem(SAVE_KEY);
+    navigator.clipboard.writeText(data).then(()=>showNotif('📤 Copied!','income','Save data copied to clipboard')).catch(()=>alert(data));
+}
+
+function importSave(){
+    const data=prompt('Paste save data:');
+    if(data){try{JSON.parse(data);localStorage.setItem(SAVE_KEY,data);location.reload()}catch(e){alert('Invalid save data')}}
+}
+
+function hardReset(){
+    if(confirm('⚠️ Delete ALL progress? This cannot be undone!')){
+        if(confirm('Are you REALLY sure?')){localStorage.removeItem(SAVE_KEY);location.reload()}
+    }
+}
+
+// === SETTINGS ===
+function openSettings(){document.getElementById('settingsModal').classList.add('active');updateSettingsUI()}
+function closeSettings(){document.getElementById('settingsModal').classList.remove('active')}
+function toggleSetting(key){
+    settings[key]=!settings[key];
+    if(key==='debug')document.getElementById('debugBtns').style.display=settings.debug?'flex':'none';
+    updateSettingsUI();saveGame();
+}
+function updateSettingsUI(){
+    document.getElementById('toggleVib').className='toggle'+(settings.vibration?' on':'');
+    document.getElementById('toggleTips').className='toggle'+(settings.tips?' on':'');
+    document.getElementById('toggleDebug').className='toggle'+(settings.debug?' on':'');
+}
+
+// === NOTIFICATIONS & TIPS ===
+function showNotif(msg,type,sub=''){
+    document.querySelectorAll('.notification').forEach(n=>n.remove());
+    const n=document.createElement('div');n.className='notification '+type;
+    n.innerHTML=msg+(sub?`<small>${sub}</small>`:'');n.onclick=()=>n.remove();
+    document.body.appendChild(n);setTimeout(()=>n.remove(),2500);
+}
+
+function showTip(id,msg){
+    if(!settings.tips||shownTips.has(id))return;
+    shownTips.add(id);saveGame();
+    setTimeout(()=>showNotif('💡 Tip',msg,'tip'),1000);
+}
+
+// === ACHIEVEMENTS ===
+function checkAchievements(){
+    achievements.forEach(a=>{
+        if(!achievementsUnlocked.includes(a.id)&&a.check()){
+            achievementsUnlocked.push(a.id);
+            vib([50,30,50,30,100]);
+            showNotif('🏆 '+a.name,'achievement',a.desc);
+        }
+    });
+}
+
+// === CORE GAME ===
 function calcBonuses(){
     globalMult=1;heistBonus=0;let clickB=0,critB=0,luckB=0;
     ownedTerritories.forEach(tid=>{
@@ -377,51 +664,111 @@ function calcBonuses(){
         else if(t.bonus==='luck')luckB+=v;
         else if(t.bonus==='all'){globalMult+=v;heistBonus+=v;clickB+=v;critB+=v;luckB+=v}
     });
-    critChance=0.05+critB;luckChance=luckB;
+    let baseCrit=0.05,baseLuck=0;
+    specialUpgrades.forEach(u=>{if(u.owned){if(u.id.includes('crit'))baseCrit+=u.id==='crit1'?0.03:u.id==='crit3'?0.05:0;if(u.id.includes('luck'))baseLuck+=u.id==='luck1'?0.02:u.id==='luck2'?0.03:0.05}});
+    critChance=baseCrit+critB;luckChance=baseLuck+luckB;
 }
 
-function switchTab(tab,btn){if(btn.classList.contains('locked'))return;vib(5);document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active')}
-
-function showNotif(msg,type,sub=''){document.querySelectorAll('.notification').forEach(n=>n.remove());const n=document.createElement('div');n.className='notification '+type;n.innerHTML=msg+(sub?`<small>${sub}</small>`:'');n.onclick=()=>n.remove();document.body.appendChild(n);setTimeout(()=>n.remove(),1400)}
+function switchTab(tab,btn){
+    const rank=getRank();
+    const unlocks={territory:4,heist:2,crew:1};
+    if(unlocks[tab]&&rank<unlocks[tab])return;
+    vib(5);
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+tab).classList.add('active');
+    btn.classList.add('active');
+}
 
 function clickMoney(){
-    vib(hap.click);const now=Date.now();
+    vib(8);totalClicks++;
+    const now=Date.now();
     if(now-lastClickTime<400){combo=Math.min(combo+1,20)}else{combo=Math.max(1,combo-1)}
     lastClickTime=now;clearTimeout(comboTimeout);comboTimeout=setTimeout(()=>{combo=0;updateAll()},1500);
+    
     const isCrit=Math.random()<critChance;const comboMult=1+combo*0.05;
-    let earned=Math.floor(clickPower*comboMult*(isCrit?critMult:1));if(isCrit)vib(hap.crit);
-    money+=earned;reputation+=Math.ceil(earned/800);policeHeat=Math.min(100,policeHeat+0.08*(1-heatShield));
-    if(Math.random()<luckChance){const bonus=Math.floor(money*0.1+clickPower*10);money+=bonus;document.getElementById('eventBanner').style.display='block';document.getElementById('eventBanner').textContent=`🎉 +${fmt(bonus)}`;setTimeout(()=>document.getElementById('eventBanner').style.display='none',1500)}
-    if(Math.random()<getHeatChance())policeRaid();updateAll();
-    const e=document.createElement('div');e.className='click-effect '+(isCrit?'crit':'normal');e.textContent=(isCrit?'💥':'+')+fmt(earned);e.style.left=(20+Math.random()*35)+'px';e.style.top=(20+Math.random()*35)+'px';document.getElementById('clickBtn').appendChild(e);setTimeout(()=>e.remove(),isCrit?600:500);
+    let earned=Math.floor(clickPower*comboMult*(isCrit?critMult:1));if(isCrit)vib([15,20,15]);
+    money+=earned;totalEarned+=earned;reputation+=Math.ceil(earned/800);
+    policeHeat=Math.min(100,policeHeat+0.08*(1-heatShield));
+    
+    if(Math.random()<luckChance){
+        const bonus=Math.floor(money*0.1+clickPower*10);money+=bonus;totalEarned+=bonus;
+        document.getElementById('eventBanner').style.display='block';
+        document.getElementById('eventBanner').textContent=`🎉 +${fmt(bonus)}`;
+        setTimeout(()=>document.getElementById('eventBanner').style.display='none',1500);
+    }
+    
+    checkAchievements();updateAll();
+    
+    const e=document.createElement('div');e.className='click-effect '+(isCrit?'crit':'normal');
+    e.textContent=(isCrit?'💥':'+')+fmt(earned);e.style.left=(20+Math.random()*35)+'px';e.style.top=(20+Math.random()*35)+'px';
+    document.getElementById('clickBtn').appendChild(e);setTimeout(()=>e.remove(),isCrit?600:500);
 }
 
-function policeRaid(){vib([150,80,150]);const loss=Math.floor(money*(0.08+Math.random()*0.15));money=Math.max(0,money-loss);policeHeat=Math.max(0,policeHeat-25);if(loss>0)showNotif('🚔 RAID!','police',`-${fmt(loss)}`)}
+// Raids on timer instead of per-click
+function checkRaid(){
+    if(Math.random()<getHeatChance()*0.1){
+        vib([150,80,150]);
+        const loss=Math.floor(money*(0.08+Math.random()*0.15));
+        money=Math.max(0,money-loss);policeHeat=Math.max(0,policeHeat-25);
+        if(loss>0)showNotif('🚔 RAID!','police',`-${fmt(loss)} cash seized!`);
+        updateAll();
+    }
+}
 
 function attemptHeist(id){
-    if(heistCDs[id]>Date.now())return;const h=heists[id];const chance=getHeistChance(h);
-    policeHeat=Math.min(100,policeHeat+h.heat*(1-heatShield));
-    if(Math.random()<chance){vib([25,40,25,40,25,40,80]);const reward=h.reward[0]+Math.floor(Math.random()*(h.reward[1]-h.reward[0]));money+=reward;reputation+=Math.ceil(reward/400);showNotif('🎯 SUCCESS!','heist-win',`+${fmt(reward)}`)}
-    else{vib([80,40,80]);policeHeat=Math.min(100,policeHeat+h.heat);showNotif('💀 FAILED!','heist-fail','More crew!')}
-    heistCDs[id]=Date.now()+h.cd*1000;updateAll();
+    if(heistCDs[id]>Date.now())return;
+    const h=heists[id];const chance=getHeistChance(h);
+    policeHeat=Math.min(100,policeHeat+h.heat*(1-heatShield));totalHeists++;
+    if(Math.random()<chance){
+        vib([25,40,25,40,25,40,80]);
+        const reward=h.reward[0]+Math.floor(Math.random()*(h.reward[1]-h.reward[0]));
+        money+=reward;totalEarned+=reward;reputation+=Math.ceil(reward/400);
+        showNotif('🎯 SUCCESS!','heist-win',`+${fmt(reward)}`);
+    }else{
+        vib([80,40,80]);policeHeat=Math.min(100,policeHeat+h.heat);
+        showNotif('💀 FAILED!','heist-fail','Increase crew power!');
+    }
+    heistCDs[id]=Date.now()+h.cd*1000;checkAchievements();updateAll();
 }
 
-function buyBiz(i,ev){const u=bizUpgrades[i],cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));if(money>=cost){money-=cost;u.owned++;moneyPerSecond+=u.income;reputation+=Math.ceil(cost/800);vib(hap.buy);updateAll()}}
-function buyClick(i,ev){const u=clickUpgrades[i],cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));if(money>=cost){money-=cost;u.owned++;clickPower=Math.floor(clickPower*u.mult);reputation+=Math.ceil(cost/400);vib(hap.buy);updateAll()}}
-function buyTerritory(id,ev){const t=territories.find(x=>x.id===id);if(!t||ownedTerritories.includes(id)||money<t.cost)return;money-=t.cost;ownedTerritories.push(id);reputation+=Math.ceil(t.cost/150);vib(hap.big);calcBonuses();showNotif('🗺️ CAPTURED!','event',t.icon+' '+t.name);updateAll()}
-function upgradeTerritory(id,ev){const t=territories.find(x=>x.id===id);if(!t||!ownedTerritories.includes(id)||t.level>=t.maxLvl)return;const cost=t.upCost*Math.pow(2,t.level);if(money>=cost){money-=cost;t.level++;reputation+=Math.ceil(cost/80);vib(hap.big);calcBonuses();updateAll()}}
-function buyPolice(id,ev){const u=policeUpgrades.find(x=>x.id===id);if(!u||u.owned||money<u.cost)return;money-=u.cost;u.owned=true;u.fx();reputation+=Math.ceil(u.cost/400);vib(hap.big);updateAll()}
-function buySpecial(id,ev){const u=specialUpgrades.find(x=>x.id===id);if(!u||u.owned||money<u.cost)return;money-=u.cost;u.owned=true;u.fx();reputation+=Math.ceil(u.cost/300);vib(hap.big);calcBonuses();updateAll()}
-function buyStorage(i,ev){const s=storageTypes[i];if(money>=s.cost&&!storageLocations.find(x=>x.name===s.name)){money-=s.cost;storageLocations.push({...s,stored:0,id:Date.now()});vib(hap.buy);updateAll()}}
+function buyBiz(i){const u=bizUpgrades[i],cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));if(money>=cost){money-=cost;u.owned++;moneyPerSecond+=u.income;reputation+=Math.ceil(cost/800);vib([15,25,15]);checkAchievements();updateAll()}}
+function buyClick(i){const u=clickUpgrades[i],cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));if(money>=cost){money-=cost;u.owned++;clickPower=Math.floor(clickPower*u.mult);reputation+=Math.ceil(cost/400);vib([15,25,15]);updateAll()}}
+function buyTerritory(id){const t=territories.find(x=>x.id===id);if(!t||ownedTerritories.includes(id)||money<t.cost)return;money-=t.cost;ownedTerritories.push(id);reputation+=Math.ceil(t.cost/150);vib([25,40,25,40,30]);calcBonuses();showNotif('🗺️ CAPTURED!','event',t.icon+' '+t.name);checkAchievements();updateAll()}
+function upgradeTerritory(id){const t=territories.find(x=>x.id===id);if(!t||!ownedTerritories.includes(id)||t.level>=t.maxLvl)return;const cost=t.upCost*Math.pow(2,t.level);if(money>=cost){money-=cost;t.level++;reputation+=Math.ceil(cost/80);vib([25,40,25,40,30]);calcBonuses();updateAll()}}
+function buyPolice(id){const u=policeUpgrades.find(x=>x.id===id);if(!u||u.owned||money<u.cost)return;money-=u.cost;u.owned=true;u.fx();reputation+=Math.ceil(u.cost/400);vib([25,40,25,40,30]);updateAll()}
+function buySpecial(id){const u=specialUpgrades.find(x=>x.id===id);if(!u||u.owned||money<u.cost)return;money-=u.cost;u.owned=true;u.fx();reputation+=Math.ceil(u.cost/300);vib([25,40,25,40,30]);calcBonuses();updateAll()}
+function buyStorage(i){const s=storageTypes[i];if(money>=s.cost&&!storageLocations.find(x=>x.name===s.name)){money-=s.cost;storageLocations.push({...s,stored:0,id:Date.now()});vib([15,25,15]);updateAll()}}
 function deposit(id,amt){const s=storageLocations.find(x=>x.id===id);if(s){const mx=Math.min(amt,money,s.cap-s.stored);if(mx>0){money-=mx;s.stored+=mx;updateAll()}}}
 function withdraw(id){const s=storageLocations.find(x=>x.id===id);if(s?.stored>0){money+=s.stored;s.stored=0;updateAll()}}
-function hireThief(ev){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib(hap.big);updateAll()}}
-function trainCrew(id,attr,ev){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib(hap.buy);updateAll()}}
-function fireCrew(id){thieves=thieves.filter(c=>c.id!==id);updateAll()}
+function hireThief(){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);showTip('crew_hired','Train Loyalty to reduce theft risk!');checkAchievements();updateAll()}}
+function trainCrew(id,attr){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib([15,25,15]);updateAll()}}
+function fireCrew(id){if(confirm('Fire this crew member?')){thieves=thieves.filter(c=>c.id!==id);updateAll()}}
 
-function processCrew(){thieves.forEach(c=>{if(Math.random()<getCrewSteal(c)){const stolen=Math.floor(money*0.04*Math.random());money=Math.max(0,money-stolen);if(stolen>500)showNotif(`🥷 ${c.name}`,'theft',`-${fmt(stolen)}`)}else{money+=getCrewIncome(c)}})}
+function processCrew(){
+    thieves.forEach(c=>{
+        const stealChance=getCrewSteal(c);
+        if(Math.random()<stealChance){
+            const stolen=Math.floor(money*0.04*Math.random());
+            money=Math.max(0,money-stolen);
+            if(stolen>100)showNotif(`🥷 ${c.name} stole!`,'theft',`-${fmt(stolen)}`);
+        }else{
+            const income=getCrewIncome(c);money+=income;totalEarned+=income;
+        }
+    });
+}
 
-function checkRankUp(){const newRank=getRank();const oldRank=parseInt(document.body.className.match(/rank-(\d)/)?.[1]||0);if(newRank>oldRank){document.body.className=`rank-${newRank}`;vib(hap.rank);showNotif('🎖️ RANK UP!','rank-up',ranks[newRank].name)}}
+function checkRankUp(){
+    const newRank=getRank();const oldRank=parseInt(document.body.className.match(/rank-(\d)/)?.[1]||0);
+    if(newRank>oldRank){
+        document.body.className=`rank-${newRank}`;vib([40,80,40,80,80,40,150]);
+        showNotif('🎖️ RANK UP!','rank-up',ranks[newRank].name);
+        if(newRank===1)showTip('crew_unlock','Crew tab unlocked! Hire members for passive income.');
+        if(newRank===2)showTip('heist_unlock','Heists unlocked! High risk, high reward.');
+        if(newRank===4)showTip('turf_unlock','Territories unlocked! Control turf for bonuses.');
+        checkAchievements();
+    }
+}
 
 function updateTabs(){
     const rank=getRank();
@@ -432,410 +779,13 @@ function updateTabs(){
     });
 }
 
-// ============ MINI-GAMES ============
-function closeMiniGame(){document.getElementById('mgOverlay').classList.remove('active')}
-
-function openMiniGame(type){
-    const container=document.getElementById('mgContainer');
-    document.getElementById('mgOverlay').classList.add('active');
-    if(type==='slots')renderSlots(container);
-    else if(type==='safe')renderSafe(container);
-    else if(type==='dice')renderDice(container);
-}
-
-// SLOTS - Two Types
-let slotBet=1000,slotSpinning=false,slotBonusSpins=0,slotType='classic';
-const slotSymbols=['🍒','🍋','🔔','💎','7️⃣','🎰'];
-const slotPayouts={'🍒🍒🍒':3,'🍋🍋🍋':5,'🔔🔔🔔':10,'💎💎💎':25,'7️⃣7️⃣7️⃣':50,'🎰🎰🎰':100};
-// Megaways
-const megaSymbols=['💰','💎','🔔','⭐','👑','7️⃣','🃏'];
-const megaValues={'💰':1,'💎':2,'🔔':3,'⭐':5,'👑':8,'7️⃣':15,'🃏':0};
-let megaMultiplier=1,megaReels=[],megaCascading=false;
-
-function renderSlots(c){
-    c.innerHTML=`
-        <button class="mg-close" onclick="closeMiniGame()">✕</button>
-        <div class="mg-title">🎰 CASINO SLOTS 🎰</div>
-        <div class="mg-balance">Balance: <span id="slotBal">${fmt(money)}</span></div>
-        <div class="slot-select">
-            <button class="slot-select-btn ${slotType==='classic'?'active':''}" onclick="selectSlotType('classic')">
-                <span class="icon">🎰</span><span class="name">Classic</span><span class="desc">3 Reels • Big Jackpots</span>
-            </button>
-            <button class="slot-select-btn ${slotType==='mega'?'active':''}" onclick="selectSlotType('mega')">
-                <span class="icon">💎</span><span class="name">Megaways</span><span class="desc">6 Reels • Cascades</span>
-            </button>
-        </div>
-        <div id="slotGameArea"></div>`;
-    renderSlotGame();
-}
-
-function selectSlotType(t){slotType=t;renderSlots(document.getElementById('mgContainer'))}
-
-function renderSlotGame(){
-    const area=document.getElementById('slotGameArea');
-    if(slotType==='classic')renderClassicSlots(area);
-    else renderMegaways(area);
-}
-
-function renderClassicSlots(area){
-    const extSymbols=[...slotSymbols,...slotSymbols,...slotSymbols];
-    area.innerHTML=`
-        <div class="slot-machine">
-            <div class="slot-reels">
-                ${[0,1,2].map(i=>`<div class="slot-reel" id="reel${i}"><div class="reel-strip" id="strip${i}">${extSymbols.map(s=>`<div class="reel-symbol">${s}</div>`).join('')}</div></div>`).join('')}
-            </div>
-            <div class="slot-controls">
-                <div class="slot-bet-row">
-                    <button id="betDown" onclick="adjustSlotBet(-1000)">−</button>
-                    <div class="slot-bet">Bet: <b id="slotBetAmt">${fmt(slotBet)}</b></div>
-                    <button id="betUp" onclick="adjustSlotBet(1000)">+</button>
-                </div>
-                <button class="slot-spin-btn" id="slotSpinBtn" onclick="spinClassicSlots()">🎲 SPIN 🎲</button>
-                <button class="slot-bonus-btn" id="bonusBtn" onclick="buyBonusSpins()">💫 Buy 5 Bonus (95% Win!) - ${fmt(slotBet*8)}</button>
-                <div class="slot-result" id="slotResult"></div>
-                <div id="bonusInfo" style="text-align:center;color:#ffd700;font-size:0.8em;display:${slotBonusSpins>0?'block':'none'}">✨ BONUS: <span id="bonusCount">${slotBonusSpins}</span> (95% win!)</div>
-            </div>
-            <div class="slot-paytable">
-                <div>🍒x3=3x</div><div>🍋x3=5x</div><div>🔔x3=10x</div>
-                <div>💎x3=25x</div><div>7️⃣x3=50x</div><div>🎰x3=100x</div>
-            </div>
-        </div>`;
-    [0,1,2].forEach(i=>document.getElementById('strip'+i).style.transform='translateY(0px)');
-}
-
-function adjustSlotBet(amt){if(slotSpinning)return;slotBet=Math.max(100,Math.min(money,slotBet+amt));const el=document.getElementById('slotBetAmt');if(el)el.textContent=fmt(slotBet)}
-
-function buyBonusSpins(){if(slotSpinning)return;const cost=slotBet*8;if(money>=cost){money-=cost;slotBonusSpins+=5;updateSlotUI();updateAll()}}
-
-function spinClassicSlots(){
-    if(slotSpinning||money<slotBet)return;
-    const isBonus=slotBonusSpins>0;
-    if(!isBonus)money-=slotBet;else slotBonusSpins--;
-    slotSpinning=true;updateAll();updateSlotUI();
-    document.getElementById('slotResult').textContent='';document.getElementById('slotResult').className='slot-result';
-    
-    let results;
-    if(isBonus&&Math.random()<0.95){
-        const winSym=slotSymbols[Math.floor(Math.random()*slotSymbols.length)];
-        results=[winSym,winSym,winSym];
-    }else{
-        results=[0,1,2].map(()=>slotSymbols[Math.floor(Math.random()*slotSymbols.length)]);
-    }
-    
-    const strips=[0,1,2].map(i=>document.getElementById('strip'+i));
-    const symbolH=80,totalSyms=slotSymbols.length*3;
-    
-    strips.forEach((strip,i)=>{
-        strip.classList.add('spinning');
-        const targetIdx=slotSymbols.indexOf(results[i])+slotSymbols.length;
-        const spins=3+i;
-        const finalY=-(targetIdx*symbolH);
-        let currentY=0,speed=40+i*5,decel=0.97;
-        const totalDist=spins*totalSyms*symbolH+Math.abs(finalY);
-        let travelled=0;
-        
-        const spin=()=>{
-            travelled+=speed;currentY-=speed;
-            if(currentY<-totalSyms*symbolH)currentY+=totalSyms*symbolH;
-            strip.style.transform=`translateY(${currentY}px)`;
-            if(travelled<totalDist*0.7)requestAnimationFrame(spin);
-            else{speed*=decel;if(speed>2)requestAnimationFrame(spin);else{strip.classList.remove('spinning');strip.style.transform=`translateY(${finalY}px)`;if(i===2)finishClassicSpin(results,isBonus)}}
-        };
-        setTimeout(()=>spin(),i*150);
-    });
-}
-
-function finishClassicSpin(results,isBonus){
-    slotSpinning=false;
-    const combo=results.join('');const basePayout=slotPayouts[combo];
-    const resultEl=document.getElementById('slotResult');
-    
-    if(basePayout){
-        const win=slotBet*basePayout;money+=win;
-        if(basePayout>=50){resultEl.textContent=`🎉 JACKPOT! +${fmt(win)} 🎉`;resultEl.className='slot-result jackpot';vib([100,50,100,50,100,50,200])}
-        else{resultEl.textContent=`WIN! +${fmt(win)}`;resultEl.className='slot-result win';vib([50,30,50])}
-    }else if(results[0]===results[1]||results[1]===results[2]){
-        const win=Math.floor(slotBet*0.5);money+=win;resultEl.textContent=`Close! +${fmt(win)}`;resultEl.className='slot-result win'
-    }else{resultEl.textContent='Try again!';resultEl.className='slot-result lose'}
-    updateSlotUI();updateAll();
-}
-
-// MEGAWAYS
-function renderMegaways(area){
-    megaMultiplier=1;megaReels=[];
-    for(let i=0;i<6;i++){const count=Math.floor(Math.random()*6)+2;megaReels.push(Array(count).fill(0).map(()=>megaSymbols[Math.floor(Math.random()*megaSymbols.length)]))}
-    const ways=megaReels.reduce((a,r)=>a*r.length,1);
-    
-    area.innerHTML=`
-        <div class="slot-machine">
-            <div class="mega-info">
-                <span class="ways">Ways: <b id="megaWays">${ways.toLocaleString()}</b></span>
-                <span class="mult">Multiplier: <b id="megaMult">x${megaMultiplier}</b></span>
-            </div>
-            <div class="mega-reels" id="megaReelsContainer">${renderMegaReels()}</div>
-            <div class="mega-cascade-info" id="cascadeInfo"></div>
-            <div class="slot-controls">
-                <div class="slot-bet-row">
-                    <button onclick="adjustSlotBet(-1000)">−</button>
-                    <div class="slot-bet">Bet: <b id="slotBetAmt">${fmt(slotBet)}</b></div>
-                    <button onclick="adjustSlotBet(1000)">+</button>
-                </div>
-                <button class="slot-spin-btn" id="slotSpinBtn" onclick="spinMegaways()">🎲 SPIN 🎲</button>
-                <button class="slot-bonus-btn" onclick="buyMegaBonus()">💫 Bonus Round (5 spins, +3 start mult) - ${fmt(slotBet*12)}</button>
-                <div class="slot-result" id="slotResult"></div>
-                <div id="bonusInfo" style="text-align:center;color:#ffd700;font-size:0.8em;display:${slotBonusSpins>0?'block':'none'}">✨ BONUS: <span id="bonusCount">${slotBonusSpins}</span></div>
-            </div>
-            <div style="font-size:0.6em;color:#94a3b8;text-align:center;margin-top:6px">Match 3+ adjacent • Cascades increase multiplier • 🃏=Wild</div>
-        </div>`;
-}
-
-function renderMegaReels(){
-    return megaReels.map((reel,ri)=>`<div class="mega-reel">${reel.map((s,si)=>`<div class="mega-symbol" data-r="${ri}" data-s="${si}">${s}</div>`).join('')}</div>`).join('');
-}
-
-function buyMegaBonus(){if(slotSpinning)return;const cost=slotBet*12;if(money>=cost){money-=cost;slotBonusSpins+=5;megaMultiplier=4;updateSlotUI();updateAll();renderMegaways(document.getElementById('slotGameArea'))}}
-
-function spinMegaways(){
-    if(slotSpinning||money<slotBet)return;
-    const isBonus=slotBonusSpins>0;
-    if(!isBonus){money-=slotBet;megaMultiplier=1}else{slotBonusSpins--;if(megaMultiplier<4)megaMultiplier=4}
-    slotSpinning=true;updateAll();updateSlotUI();
-    
-    for(let i=0;i<6;i++){const count=Math.floor(Math.random()*6)+2;megaReels[i]=Array(count).fill(0).map(()=>megaSymbols[Math.floor(Math.random()*megaSymbols.length)])}
-    
-    document.getElementById('megaReelsContainer').innerHTML=renderMegaReels();
-    document.querySelectorAll('.mega-symbol').forEach(s=>s.classList.add('cascade'));
-    const ways=megaReels.reduce((a,r)=>a*r.length,1);
-    document.getElementById('megaWays').textContent=ways.toLocaleString();
-    document.getElementById('megaMult').textContent='x'+megaMultiplier;
-    document.getElementById('slotResult').textContent='';document.getElementById('slotResult').className='slot-result';
-    document.getElementById('cascadeInfo').textContent='';
-    
-    setTimeout(()=>{document.querySelectorAll('.mega-symbol').forEach(s=>s.classList.remove('cascade'));checkMegaWins(0,isBonus)},400);
-}
-
-function checkMegaWins(cascadeNum,isBonus){
-    const wins=findMegaWins();
-    if(wins.length===0){
-        slotSpinning=false;
-        const resultEl=document.getElementById('slotResult');
-        if(cascadeNum===0){resultEl.textContent='No wins';resultEl.className='slot-result lose'}
-        updateSlotUI();updateAll();
-        return;
-    }
-    
-    let totalWin=0;
-    wins.forEach(w=>{
-        w.positions.forEach(p=>{const el=document.querySelector(`[data-r="${p.r}"][data-s="${p.s}"]`);if(el)el.classList.add('winning')});
-        const baseVal=megaValues[w.symbol]||1;
-        const winAmt=Math.floor(slotBet*baseVal*w.count*0.5*megaMultiplier);
-        totalWin+=winAmt;
-    });
-    
-    money+=totalWin;
-    const resultEl=document.getElementById('slotResult');
-    resultEl.textContent=`+${fmt(totalWin)}`;resultEl.className='slot-result win';
-    document.getElementById('cascadeInfo').textContent=`Cascade #${cascadeNum+1} • x${megaMultiplier} multiplier`;
-    if(totalWin>slotBet*10)vib([50,30,50]);
-    updateSlotUI();updateAll();
-    
-    setTimeout(()=>{
-        wins.forEach(w=>{w.positions.forEach(p=>{
-            if(megaReels[p.r]){megaReels[p.r][p.s]=null}
-        })});
-        megaReels=megaReels.map(reel=>{
-            const remaining=reel.filter(s=>s!==null);
-            const needed=reel.length-remaining.length;
-            const newSyms=Array(needed).fill(0).map(()=>megaSymbols[Math.floor(Math.random()*megaSymbols.length)]);
-            return[...newSyms,...remaining];
-        });
-        megaMultiplier++;
-        document.getElementById('megaMult').textContent='x'+megaMultiplier;
-        document.getElementById('megaReelsContainer').innerHTML=renderMegaReels();
-        document.querySelectorAll('.mega-symbol').forEach(s=>s.classList.add('cascade'));
-        updateSlotUI();
-        setTimeout(()=>{document.querySelectorAll('.mega-symbol').forEach(s=>s.classList.remove('cascade'));checkMegaWins(cascadeNum+1,isBonus)},400);
-    },600);
-}
-
-function findMegaWins(){
-    const wins=[];const checked=new Set();
-    for(let r=0;r<megaReels.length-2;r++){
-        for(let s=0;s<megaReels[r].length;s++){
-            const sym=megaReels[r][s];if(sym==='🃏')continue;
-            const chain=[{r,s}];let currPositions=[{r,s}];
-            for(let nr=r+1;nr<megaReels.length;nr++){
-                const nextPos=[];
-                for(let ns=0;ns<megaReels[nr].length;ns++){
-                    if(megaReels[nr][ns]===sym||megaReels[nr][ns]==='🃏')nextPos.push({r:nr,s:ns});
-                }
-                if(nextPos.length===0)break;
-                chain.push(...nextPos);currPositions=nextPos;
-            }
-            if(chain.length>=3){
-                const key=chain.map(p=>`${p.r}-${p.s}`).sort().join('|');
-                if(!checked.has(key)){checked.add(key);wins.push({symbol:sym,count:chain.length,positions:chain})}
-            }
-        }
-    }
-    return wins;
-}
-
-function updateSlotUI(){
-    const bal=document.getElementById('slotBal');if(bal)bal.textContent=fmt(money);
-    const btn=document.getElementById('slotSpinBtn');if(btn)btn.disabled=slotSpinning||money<slotBet;
-    const betUp=document.getElementById('betUp');if(betUp)betUp.disabled=slotSpinning;
-    const betDown=document.getElementById('betDown');if(betDown)betDown.disabled=slotSpinning;
-    const bonusBtn=document.getElementById('bonusBtn');if(bonusBtn)bonusBtn.disabled=slotSpinning;
-    const bi=document.getElementById('bonusInfo');if(bi){bi.style.display=slotBonusSpins>0?'block':'none';const bc=document.getElementById('bonusCount');if(bc)bc.textContent=slotBonusSpins}
-}
-
-// SAFE CRACKER
-let safeCombo=[],safeTarget=[],safePointer=0,safeIdx=0,safeBet=5000;
-
-function renderSafe(c){
-    safeBet=Math.min(money,Math.max(1000,Math.floor(money*0.01)));
-    safeTarget=[Math.floor(Math.random()*100),Math.floor(Math.random()*100),Math.floor(Math.random()*100)];
-    safeCombo=[];safeIdx=0;safePointer=0;
-    
-    let nums='';for(let i=0;i<12;i++){const angle=(i*30)-90;const x=50+40*Math.cos(angle*Math.PI/180);const y=50+40*Math.sin(angle*Math.PI/180);nums+=`<div class="safe-number" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%)">${i===0?'00':i*8}</div>`}
-    
-    c.innerHTML=`
-        <button class="mg-close" onclick="closeMiniGame()">✕</button>
-        <div class="mg-title">🔐 VAULT CRACKER 🔐</div>
-        <div class="mg-balance">Balance: <span id="safeBal">${fmt(money)}</span></div>
-        <div class="safe-game">
-            <div class="safe-info">Crack the 3-number combo! Bet: <b style="color:#4ade80">${fmt(safeBet)}</b> → Win: <b style="color:#ffd700">${fmt(safeBet*10)}</b></div>
-            <div class="safe-dial"><div class="safe-pointer" id="safePointer"></div><div class="safe-numbers">${nums}</div></div>
-            <div class="safe-combo">
-                <div class="safe-combo-num ${safeIdx===0?'active':''}" id="sc0">?</div>
-                <div class="safe-combo-num ${safeIdx===1?'active':''}" id="sc1">?</div>
-                <div class="safe-combo-num ${safeIdx===2?'active':''}" id="sc2">?</div>
-            </div>
-            <div class="safe-controls">
-                <button onclick="turnSafe(-5)">⟲</button>
-                <button onclick="turnSafe(5)">⟳</button>
-            </div>
-            <button class="safe-submit" onclick="submitSafe()">🔓 TRY NUMBER</button>
-            <div class="slot-result" id="safeResult"></div>
-            <div style="margin-top:8px;font-size:0.7em;color:#64748b">Target: Get within ±5 of each number. Hints show after each try!</div>
-        </div>`;
-    updateSafePointer();
-}
-
-function turnSafe(amt){safePointer=(safePointer+amt+100)%100;updateSafePointer()}
-function updateSafePointer(){const deg=(safePointer/100)*360;document.getElementById('safePointer').style.transform=`translateX(-50%) rotate(${deg}deg)`}
-
-function submitSafe(){
-    if(safeIdx>=3)return;
-    const target=safeTarget[safeIdx];const diff=Math.abs(safePointer-target);
-    const correct=diff<=5||diff>=95;
-    const el=document.getElementById('sc'+safeIdx);
-    el.textContent=safePointer;
-    el.classList.remove('active');
-    el.classList.add(correct?'correct':'wrong');
-    safeCombo.push({val:safePointer,correct});
-    
-    if(!correct){
-        const hint=safePointer<target?'↑ Higher':'↓ Lower';
-        document.getElementById('safeResult').textContent=`❌ ${hint}`;document.getElementById('safeResult').className='slot-result lose';
-        money-=Math.floor(safeBet/3);vib([80]);updateAll();updateSafeBal();
-    }
-    
-    safeIdx++;
-    if(safeIdx<3){
-        document.getElementById('sc'+safeIdx).classList.add('active');
-        if(correct){document.getElementById('safeResult').textContent='✓ Click!';document.getElementById('safeResult').className='slot-result win'}
-    }else{
-        const wins=safeCombo.filter(x=>x.correct).length;
-        const res=document.getElementById('safeResult');
-        if(wins===3){
-            const win=safeBet*10;money+=win;res.textContent=`🎉 CRACKED! +${fmt(win)}`;res.className='slot-result jackpot';vib([100,50,100,50,200]);
-        }else if(wins===2){
-            const win=safeBet*2;money+=win;res.textContent=`Close! 2/3 +${fmt(win)}`;res.className='slot-result win';vib([50,30]);
-        }else{res.textContent='Vault secured! Try again.';res.className='slot-result lose'}
-        updateAll();
-        setTimeout(()=>{if(document.getElementById('mgOverlay').classList.contains('active'))renderSafe(document.getElementById('mgContainer'))},2500);
-    }
-    updateSafeBal();
-}
-
-function updateSafeBal(){const b=document.getElementById('safeBal');if(b)b.textContent=fmt(money)}
-
-// DICE GAME
-let diceBet=1000,diceChoice=null,diceRolling=false;
-const diceOpts=[
-    {id:'low',name:'Low (2-6)',payout:2},{id:'mid',name:'Mid (7)',payout:4},{id:'high',name:'High (8-12)',payout:2},
-    {id:'doubles',name:'Doubles',payout:5},{id:'snake',name:'Snake Eyes',payout:30},{id:'boxcars',name:'Boxcars',payout:30}
-];
-
-function renderDice(c){
-    c.innerHTML=`
-        <button class="mg-close" onclick="closeMiniGame()">✕</button>
-        <div class="mg-title">🎲 HIGH ROLLER DICE 🎲</div>
-        <div class="mg-balance">Balance: <span id="diceBal">${fmt(money)}</span></div>
-        <div class="dice-game">
-            <div class="dice-container">
-                <div class="dice" id="dice1">⚀</div>
-                <div class="dice" id="dice2">⚀</div>
-            </div>
-            <div class="slot-bet-row" style="margin:10px 0">
-                <button onclick="adjustDiceBet(-1000)">−</button>
-                <div class="slot-bet">Bet: <b id="diceBetAmt">${fmt(diceBet)}</b></div>
-                <button onclick="adjustDiceBet(1000)">+</button>
-            </div>
-            <div style="font-size:0.75em;color:#94a3b8;margin-bottom:6px">Choose your bet:</div>
-            <div class="dice-bet-options">${diceOpts.map(o=>`<div class="dice-bet-opt" data-id="${o.id}" onclick="selectDiceBet('${o.id}')">${o.name}<div class="payout">${o.payout}x</div></div>`).join('')}</div>
-            <button class="dice-roll-btn" id="diceRollBtn" onclick="rollDice()" disabled>🎲 ROLL DICE 🎲</button>
-            <div class="slot-result" id="diceResult"></div>
-        </div>`;
-    diceChoice=null;
-}
-
-function adjustDiceBet(amt){diceBet=Math.max(100,Math.min(money,diceBet+amt));document.getElementById('diceBetAmt').textContent=fmt(diceBet)}
-function selectDiceBet(id){diceChoice=id;document.querySelectorAll('.dice-bet-opt').forEach(o=>{o.classList.toggle('selected',o.dataset.id===id)});document.getElementById('diceRollBtn').disabled=false}
-
-function rollDice(){
-    if(diceRolling||!diceChoice||money<diceBet)return;
-    money-=diceBet;diceRolling=true;updateAll();
-    
-    const diceChars=['⚀','⚁','⚂','⚃','⚄','⚅'];
-    document.querySelectorAll('.dice').forEach(d=>d.classList.add('rolling'));
-    document.getElementById('diceResult').textContent='';document.getElementById('diceResult').className='slot-result';
-    
-    const d1=Math.floor(Math.random()*6)+1,d2=Math.floor(Math.random()*6)+1;
-    const total=d1+d2;
-    
-    setTimeout(()=>{
-        document.getElementById('dice1').textContent=diceChars[d1-1];document.getElementById('dice1').classList.remove('rolling');
-    },400);
-    setTimeout(()=>{
-        document.getElementById('dice2').textContent=diceChars[d2-1];document.getElementById('dice2').classList.remove('rolling');
-        diceRolling=false;
-        
-        let win=0;const opt=diceOpts.find(o=>o.id===diceChoice);
-        const isLow=total<=6,isMid=total===7,isHigh=total>=8,isDoubles=d1===d2,isSnake=d1===1&&d2===1,isBoxcars=d1===6&&d2===6;
-        
-        if((diceChoice==='low'&&isLow)||(diceChoice==='mid'&&isMid)||(diceChoice==='high'&&isHigh)||(diceChoice==='doubles'&&isDoubles)||(diceChoice==='snake'&&isSnake)||(diceChoice==='boxcars'&&isBoxcars)){
-            win=diceBet*opt.payout;
-        }
-        
-        const res=document.getElementById('diceResult');
-        res.textContent=`Rolled: ${total}`;
-        if(win>0){
-            money+=win;res.textContent+=` → WIN! +${fmt(win)}`;res.className='slot-result '+(opt.payout>=10?'jackpot':'win');vib(opt.payout>=10?[100,50,100,50,200]:[50,30]);
-        }else{res.textContent+=' → No match';res.className='slot-result lose'}
-        
-        document.getElementById('diceBal').textContent=fmt(money);updateAll();
-    },800);
-}
-
 function updateAll(){
-    checkRankUp();calcBonuses();updateTabs();const rank=getRank();const total=money+getStored();
-    document.getElementById('money').textContent=fmt(total);
+    checkRankUp();calcBonuses();updateTabs();
+    const rank=getRank();const total=money+getStored();
+    
+    document.getElementById('money').innerHTML=`${fmt(total)} <span class="money-label">Net Worth</span>`;
     document.getElementById('onHand').textContent=fmt(money);
     document.getElementById('stored').textContent=fmt(getStored());
-    document.getElementById('rep').textContent=fmtS(reputation);
     document.getElementById('rankBadge').textContent=ranks[rank].name;
     document.getElementById('rankBadge').className=`rank-badge rank-${rank}-badge`;
     
@@ -844,7 +794,7 @@ function updateAll(){
     
     const nextRank=ranks[rank+1];
     if(nextRank){const pct=Math.min(100,((reputation-ranks[rank].rep)/(nextRank.rep-ranks[rank].rep))*100);document.getElementById('progressBar').style.width=pct+'%';document.getElementById('progressText').textContent=`${pct.toFixed(0)}% → ${nextRank.name}`}
-    else{document.getElementById('progressBar').style.width='100%';document.getElementById('progressText').textContent='👑 MAX'}
+    else{document.getElementById('progressBar').style.width='100%';document.getElementById('progressText').textContent='👑 MAX RANK'}
     
     const effIncome=Math.floor(moneyPerSecond*globalMult);
     document.getElementById('perSec').textContent=fmt(effIncome);
@@ -859,7 +809,7 @@ function updateAll(){
     document.getElementById('luckVal').textContent=(luckChance*100).toFixed(0)+'%';
     document.getElementById('clickBtn').className=`click-button click-${Math.min(rank,6)}`;
     
-    // Biz with minigame buttons
+    // Biz upgrades
     document.getElementById('bizList').innerHTML=bizUpgrades.map((u,i)=>{
         const cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));const can=money>=cost;
         const tier=getTier(u.owned),prog=getTierProgress(u.owned);
@@ -868,52 +818,346 @@ function updateAll(){
             <div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span class="upgrade-tier tier-${tier}">${tierNames[tier]}</span></div>
             <div class="upgrade-tier-bar"><div class="upgrade-tier-fill tier-${tier}-fill" style="width:${prog}%"></div></div>
             <div class="upgrade-meta"><span>+$${u.income}/s</span><b>${fmtS(cost)}</b></div>
-            ${hasMinigame?`<button class="upgrade-btn minigame-btn" onclick="openMiniGame('${u.minigame}')">🎮 PLAY</button>`:`<button class="upgrade-btn" onclick="buyBiz(${i},event)" ${can?'':'disabled'}>${u.minigame&&tier<MINIGAME_TIER?`Buy (🎮 @${tierNames[MINIGAME_TIER]})`:'Buy'}</button>`}
+            ${hasMinigame?`<button class="upgrade-btn minigame-btn" onclick="openMiniGame('${u.minigame}')">🎮 PLAY</button>`:`<button class="upgrade-btn" onclick="buyBiz(${i})" ${can?'':'disabled'}>${u.minigame&&tier<MINIGAME_TIER?`Buy (🎮@${tierNames[MINIGAME_TIER]})`:'Buy'}</button>`}
         </div>`;
     }).join('');
     
+    // Click upgrades
     document.getElementById('clickList').innerHTML=clickUpgrades.map((u,i)=>{
         const cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));const can=money>=cost;
         const tier=getTier(u.owned),prog=getTierProgress(u.owned);
-        return `<div class="upgrade-card ${can?'affordable':''}"><div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span class="upgrade-tier tier-${tier}">${tierNames[tier]}</span></div><div class="upgrade-tier-bar"><div class="upgrade-tier-fill tier-${tier}-fill" style="width:${prog}%"></div></div><div class="upgrade-meta"><span>x${u.mult}</span><b>${fmtS(cost)}</b></div><button class="upgrade-btn" onclick="buyClick(${i},event)" ${can?'':'disabled'}>Buy</button></div>`;
+        return `<div class="upgrade-card ${can?'affordable':''}"><div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span class="upgrade-tier tier-${tier}">${tierNames[tier]}</span></div><div class="upgrade-tier-bar"><div class="upgrade-tier-fill tier-${tier}-fill" style="width:${prog}%"></div></div><div class="upgrade-meta"><span>x${u.mult}</span><b>${fmtS(cost)}</b></div><button class="upgrade-btn" onclick="buyClick(${i})" ${can?'':'disabled'}>Buy</button></div>`;
     }).join('');
     
-    document.getElementById('turfInfo').textContent=`(${ownedTerritories.length}/${territories.length})`;
-    document.getElementById('territoryList').innerHTML=territories.map(t=>{
-        const owned=ownedTerritories.includes(t.id);const can=money>=t.cost;const upCost=t.upCost*Math.pow(2,t.level);const canUp=owned&&t.level<t.maxLvl&&money>=upCost;
-        const bonusMap={income:'📈',click:'👆',heist:'🎯',crit:'⚡',luck:'🍀',all:'✨'};const currVal=(t.val*(1+t.level*0.6)*100).toFixed(0);
-        return `<div class="territory-card ${owned?'owned':''}"><div class="upgrade-header"><span class="upgrade-name">${t.icon} ${t.name}</span><span style="font-size:0.65em;color:#4ade80">${bonusMap[t.bonus]}+${currVal}%</span></div><div class="territory-pips">${Array(t.maxLvl).fill(0).map((_,j)=>`<div class="territory-pip ${j<t.level?'filled':''}"></div>`).join('')}</div>${owned?`<button class="btn btn-green" style="width:100%" onclick="upgradeTerritory(${t.id},event)" ${canUp?'':'disabled'}>${t.level>=t.maxLvl?'✓ MAX':`⬆ ${fmtS(upCost)}`}</button>`:`<button class="btn btn-blue" style="width:100%" onclick="buyTerritory(${t.id},event)" ${can?'':'disabled'}>🎯 ${fmtS(t.cost)}</button>`}</div>`;
-    }).join('');
+    // Territory content
+    const territoryUnlocked=rank>=4;
+    document.getElementById('territoryContent').innerHTML=territoryUnlocked?`
+        <div class="section-title">🗺️ Territories <span style="font-weight:normal;color:#94a3b8">(${ownedTerritories.length}/${territories.length})</span></div>
+        <div class="grid-2col">${territories.map(t=>{
+            const owned=ownedTerritories.includes(t.id);const can=money>=t.cost;const upCost=t.upCost*Math.pow(2,t.level);const canUp=owned&&t.level<t.maxLvl&&money>=upCost;
+            const bonusMap={income:'📈 Income',click:'👆 Click',heist:'🎯 Heist',crit:'⚡ Crit',luck:'🍀 Luck',all:'✨ All'};
+            const currVal=(t.val*(1+t.level*0.6)*100).toFixed(0);
+            return `<div class="territory-card ${owned?'owned':''}"><div class="upgrade-header"><span class="upgrade-name">${t.icon} ${t.name}</span><span style="font-size:0.6em;color:#4ade80">+${currVal}% ${bonusMap[t.bonus]}</span></div><div class="territory-pips">${Array(t.maxLvl).fill(0).map((_,j)=>`<div class="territory-pip ${j<t.level?'filled':''}"></div>`).join('')}</div>${owned?`<button class="btn btn-green" style="width:100%" onclick="upgradeTerritory(${t.id})" ${canUp?'':'disabled'}>${t.level>=t.maxLvl?'✓ MAX':`⬆ ${fmtS(upCost)}`}</button>`:`<button class="btn btn-blue" style="width:100%" onclick="buyTerritory(${t.id})" ${can?'':'disabled'}>🎯 ${fmtS(t.cost)}</button>`}</div>`;
+        }).join('')}</div>
+    `:`<div class="locked-content"><div class="lock-icon">🔒</div><h3>Territories</h3><p>Reach Rank 4 (❤️ Kingpin) to unlock territory control and earn passive bonuses!</p></div>`;
     
+    // Heist content
+    const heistUnlocked=rank>=2;
     const now=Date.now();
-    document.getElementById('heistList').innerHTML=heists.map(h=>{
-        const cd=heistCDs[h.id]||0,onCd=cd>now,cdLeft=onCd?Math.ceil((cd-now)/1000):0;const chance=getHeistChance(h);
-        return `<div class="heist-card ${onCd?'on-cooldown':''}"><span class="heist-difficulty ${h.diff}">${h.diff}</span><div class="heist-name">${h.name}</div><div class="heist-info">${fmt(h.reward[0])}-${fmt(h.reward[1])}</div><div class="heist-bar"><div class="heist-bar-fill" style="width:${chance*100}%"></div></div><button class="btn btn-purple" style="width:100%" onclick="attemptHeist(${h.id})" ${onCd?'disabled':''}>${onCd?`⏱${cdLeft}s`:`${(chance*100).toFixed(0)}%`}</button></div>`;
+    document.getElementById('heistContent').innerHTML=heistUnlocked?`
+        <div class="heat-info-panel">
+            <h4>🚔 Police Heat System</h4>
+            <p>Current Heat: <b>${Math.floor(policeHeat)}%</b> → Raid chance: <b>${(getHeatChance()*10).toFixed(1)}%</b>/sec</p>
+            <p>Heat Decay: <b>${(0.4+heatDecay).toFixed(1)}</b>/sec • Shield: <b>${Math.floor(heatShield*100)}%</b> reduction</p>
+            <p style="font-size:0.9em;margin-top:4px">💡 Raids only take <b>cash on hand</b> - money in storage is safe!</p>
+        </div>
+        <div class="section-title">🎯 Heists</div>
+        <div class="grid-2col">${heists.map(h=>{
+            const cd=heistCDs[h.id]||0,onCd=cd>now,cdLeft=onCd?Math.ceil((cd-now)/1000):0;const chance=getHeistChance(h);
+            return `<div class="heist-card ${onCd?'on-cooldown':''}"><span class="heist-difficulty ${h.diff}">${h.diff}</span><div class="heist-name">${h.name}</div><div class="heist-info">${fmt(h.reward[0])}-${fmt(h.reward[1])} • +${h.heat} heat</div><div class="heist-bar"><div class="heist-bar-fill" style="width:${chance*100}%"></div></div><button class="btn btn-purple" style="width:100%" onclick="attemptHeist(${h.id})" ${onCd?'disabled':''}>${onCd?`⏱ ${cdLeft}s`:`${(chance*100).toFixed(0)}% Success`}</button></div>`;
+        }).join('')}</div>
+        <div class="section-title" style="margin-top:8px">🛡️ Heat Reduction</div>
+        <div class="grid-2col">${policeUpgrades.map(u=>`<div class="police-card ${u.owned?'owned':''}"><div class="upgrade-header"><span class="upgrade-name">${u.name}</span><span style="font-size:0.6em;color:${u.owned?'#22c55e':'#fbbf24'}">${u.owned?'✓ Owned':fmtS(u.cost)}</span></div><div style="font-size:0.6em;color:#94a3b8">${u.desc}</div>${!u.owned?`<button class="btn btn-blue" style="width:100%;margin-top:4px" onclick="buyPolice('${u.id}')" ${money>=u.cost?'':'disabled'}>Buy</button>`:''}</div>`).join('')}</div>
+    `:`<div class="locked-content"><div class="lock-icon">🔒</div><h3>Heists</h3><p>Reach Rank 2 (💙 Runner) to unlock heists and big scores!</p></div>`;
+    
+    // Crew content
+    const crewUnlocked=rank>=1;
+    const crewCost=10000*Math.pow(2.3,thieves.length);
+    document.getElementById('crewContent').innerHTML=crewUnlocked?`
+        <div class="section-title">🥷 Your Crew <span style="font-weight:normal;color:#94a3b8">(${thieves.length}/${maxThieves})</span></div>
+        <button class="btn btn-purple" onclick="hireThief()" style="width:100%;margin-bottom:8px;padding:10px;font-size:0.8em" ${money<crewCost||thieves.length>=maxThieves?'disabled':''}>${thieves.length>=maxThieves?'✓ MAX CREW':`Hire Crew Member - ${fmt(crewCost)}`}</button>
+        <div style="font-size:0.6em;color:#94a3b8;margin-bottom:8px;padding:6px;background:rgba(0,0,0,0.2);border-radius:4px">
+            💡 Crew earns money every 5 seconds but may steal from your cash! Train <b>Loyalty</b> to reduce theft risk.
+        </div>
+        <div class="grid-2col">${thieves.length?thieves.map(c=>{
+            const r=getCrewRank(c);
+            const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)),sc=Math.floor(7000*Math.pow(1.9,c.skill)),ec=Math.floor(4500*Math.pow(1.9,c.exp));
+            return `<div class="thief-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-weight:bold">🥷 ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span><button class="btn btn-red" style="padding:2px 6px;font-size:0.8em" onclick="fireCrew(${c.id})">✕</button></div><div style="display:flex;gap:8px;margin-bottom:4px;color:#94a3b8;font-size:0.9em"><span>💰<b style="color:#4ade80">${fmt(getCrewIncome(c))}</b>/5s</span><span>⚠️<b style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</b> theft</span></div><div class="train-grid"><button class="train-btn" onclick="trainCrew(${c.id},'loyalty')" ${money<lc||c.loyalty>=10?'disabled':''}>🛡️${c.loyalty}/10<br><span style="font-size:0.8em">${fmtS(lc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'skill')" ${money<sc||c.skill>=10?'disabled':''}>⚡${c.skill}/10<br><span style="font-size:0.8em">${fmtS(sc)}</span></button><button class="train-btn" onclick="trainCrew(${c.id},'exp')" ${money<ec||c.exp>=10?'disabled':''}>📈${c.exp}/10<br><span style="font-size:0.8em">${fmtS(ec)}</span></button></div></div>`;
+        }).join(''):'<div class="empty-state">No crew members yet.<br>Hire your first crew member above!</div>'}</div>
+    `:`<div class="locked-content"><div class="lock-icon">🔒</div><h3>Crew</h3><p>Reach Rank 1 (💜 Hustler) to hire crew members for passive income!</p></div>`;
+    
+    // Storage & Specials
+    const allStorage=[...storageLocations.map(s=>({...s,owned:true})),...storageTypes.filter(s=>!storageLocations.find(x=>x.name===s.name)).map((s,i)=>({...s,owned:false,idx:storageTypes.indexOf(s)}))];
+    document.getElementById('storageList').innerHTML=allStorage.map(s=>{
+        if(s.owned){const pct=s.stored/s.cap*100;return `<div class="storage-card"><div style="display:flex;justify-content:space-between;font-weight:bold">${s.icon} ${s.name}<span style="font-size:0.9em">${fmtS(s.stored)}/${fmtS(s.cap)}</span></div><div class="storage-bar"><div class="storage-fill" style="width:${pct}%"></div></div><div class="storage-btns"><button class="btn btn-gold" onclick="deposit(${s.id},100000)" ${money<100000||s.stored>=s.cap?'disabled':''}>+100K</button><button class="btn btn-gold" onclick="deposit(${s.id},money)" ${money===0||s.stored>=s.cap?'disabled':''}>All</button><button class="btn btn-gold" onclick="withdraw(${s.id})" ${s.stored===0?'disabled':''}>Take</button></div></div>`}
+        return `<div class="upgrade-card ${money>=s.cost?'affordable':''}"><div class="upgrade-header"><span class="upgrade-name">${s.icon} ${s.name}</span></div><div class="upgrade-meta"><span>Holds ${fmtS(s.cap)}</span><b>${fmtS(s.cost)}</b></div><button class="upgrade-btn" onclick="buyStorage(${s.idx})" ${money>=s.cost?'':'disabled'}>Buy</button></div>`;
     }).join('');
     
-    document.getElementById('policeList').innerHTML=policeUpgrades.map(u=>`<div class="police-card ${u.owned?'owned':''}"><div class="upgrade-header"><span class="upgrade-name">${u.name}</span><span style="font-size:0.6em;color:${u.owned?'#22c55e':'#fbbf24'}">${u.owned?'✓':fmtS(u.cost)}</span></div><div style="font-size:0.55em;color:#94a3b8">${u.desc}</div>${!u.owned?`<button class="btn btn-blue" style="width:100%;margin-top:3px" onclick="buyPolice('${u.id}',event)" ${money>=u.cost?'':'disabled'}>Buy</button>`:''}</div>`).join('');
-    
-    const crewCost=10000*Math.pow(2.3,thieves.length);
-    document.getElementById('crewCount').innerHTML=thieves.length>=maxThieves?'<span style="background:#ef4444;padding:1px 4px;border-radius:3px;font-size:0.8em">MAX</span>':`(${thieves.length}/${maxThieves})`;
-    document.getElementById('hireBtn').textContent=thieves.length>=maxThieves?'✓ MAX CREW':`Hire - ${fmt(crewCost)}`;
-    document.getElementById('hireBtn').disabled=money<crewCost||thieves.length>=maxThieves;
-    document.getElementById('crewList').innerHTML=thieves.length?thieves.map(c=>{
-        const r=getCrewRank(c);const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)),sc=Math.floor(7000*Math.pow(1.9,c.skill)),ec=Math.floor(4500*Math.pow(1.9,c.exp));
-        return `<div class="thief-card"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:bold">🥷 ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span><button class="btn btn-red" style="padding:2px 5px" onclick="fireCrew(${c.id})">X</button></div><div style="display:flex;gap:6px;margin:3px 0;color:#94a3b8"><span><b style="color:#4ade80">${fmt(getCrewIncome(c))}</b>/t</span><span>Risk:<b style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</b></span></div><div class="train-grid"><button class="train-btn" onclick="trainCrew(${c.id},'loyalty',event)" ${money<lc||c.loyalty>=10?'disabled':''}>🛡${c.loyalty}<br>${fmtS(lc)}</button><button class="train-btn" onclick="trainCrew(${c.id},'skill',event)" ${money<sc||c.skill>=10?'disabled':''}>⚡${c.skill}<br>${fmtS(sc)}</button><button class="train-btn" onclick="trainCrew(${c.id},'exp',event)" ${money<ec||c.exp>=10?'disabled':''}>📈${c.exp}<br>${fmtS(ec)}</button></div></div>`;
-    }).join(''):'<div class="empty-state">No crew hired yet</div>';
-    
-    const allStorage=[...storageLocations.map((s,i)=>({...s,owned:true,idx:i})),...storageTypes.filter(s=>!storageLocations.find(x=>x.name===s.name)).map((s,i)=>({...s,owned:false,idx:storageTypes.indexOf(s)}))];
-    document.getElementById('storageList').innerHTML=allStorage.map(s=>{
-        if(s.owned){const pct=s.stored/s.cap*100;return `<div class="storage-card"><div style="display:flex;justify-content:space-between;font-weight:bold">${s.icon} ${s.name}<span>${fmtS(s.stored)}/${fmtS(s.cap)}</span></div><div class="storage-bar"><div class="storage-fill" style="width:${pct}%"></div></div><div class="storage-btns"><button class="btn btn-gold" onclick="deposit(${s.id},100000)" ${money<100000||s.stored>=s.cap?'disabled':''}>+100K</button><button class="btn btn-gold" onclick="deposit(${s.id},money)" ${money===0||s.stored>=s.cap?'disabled':''}>All</button><button class="btn btn-gold" onclick="withdraw(${s.id})" ${s.stored===0?'disabled':''}>Out</button></div></div>`}
-        else{return `<div class="upgrade-card ${money>=s.cost?'affordable':''}"><div class="upgrade-header"><span class="upgrade-name">${s.icon} ${s.name}</span></div><div class="upgrade-meta"><span>Holds ${fmtS(s.cap)}</span><b>${fmtS(s.cost)}</b></div><button class="upgrade-btn" onclick="buyStorage(${s.idx},event)" ${money>=s.cost?'':'disabled'}>Buy</button></div>`}
-    }).join('')||'<div class="empty-state">No storage</div>';
-    
-    document.getElementById('specialList').innerHTML=specialUpgrades.map(u=>`<div class="upgrade-card ${u.owned?'maxed':(money>=u.cost?'affordable':'')}"><div class="upgrade-header"><span class="upgrade-name">${u.name}</span><span style="font-size:0.6em;color:${u.owned?'#ffd700':'#fbbf24'}">${u.owned?'✓':fmtS(u.cost)}</span></div><div style="font-size:0.55em;color:#94a3b8">${u.desc}</div>${!u.owned?`<button class="upgrade-btn" onclick="buySpecial('${u.id}',event)" ${money>=u.cost?'':'disabled'}>Buy</button>`:''}</div>`).join('');
+    document.getElementById('specialList').innerHTML=specialUpgrades.map(u=>`<div class="upgrade-card ${u.owned?'maxed':(money>=u.cost?'affordable':'')}"><div class="upgrade-header"><span class="upgrade-name">${u.name}</span><span style="font-size:0.6em;color:${u.owned?'#ffd700':'#fbbf24'}">${u.owned?'✓':fmtS(u.cost)}</span></div><div style="font-size:0.6em;color:#94a3b8">${u.desc}</div>${!u.owned?`<button class="upgrade-btn" onclick="buySpecial('${u.id}')" ${money>=u.cost?'':'disabled'}>Buy</button>`:''}</div>`).join('');
 }
 
-setInterval(()=>{money+=Math.floor(moneyPerSecond*globalMult);if(moneyPerSecond>0)reputation+=Math.ceil(moneyPerSecond*globalMult/4000);policeHeat=Math.max(0,policeHeat-(0.4+heatDecay)/10);updateAll()},1000);
-setInterval(()=>{if(thieves.length){processCrew();updateAll()}},5000);
+// === MINIGAMES ===
+function closeMiniGame(){document.getElementById('mgOverlay').classList.remove('active')}
+function openMiniGame(type){
+    document.getElementById('mgOverlay').classList.add('active');
+    const c=document.getElementById('mgContainer');
+    if(type==='slots')renderSlots(c);
+    else if(type==='safe')renderSafe(c);
+    else if(type==='dice')renderDice(c);
+}
+
+// SLOTS
+let slotBet=1000,slotSpinning=false,slotBonusSpins=0,slotType='classic';
+const slotSymbols=['🍒','🍋','🔔','💎','7️⃣','🎰'];
+const slotPayouts={'🍒🍒🍒':3,'🍋🍋🍋':5,'🔔🔔🔔':10,'💎💎💎':25,'7️⃣7️⃣7️⃣':50,'🎰🎰🎰':100};
+const megaSymbols=['💰','💎','🔔','⭐','👑','7️⃣','🃏'];
+const megaValues={'💰':1,'💎':2,'🔔':3,'⭐':5,'👑':8,'7️⃣':15,'🃏':0};
+let megaMultiplier=1,megaReels=[];
+
+function renderSlots(c){
+    c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
+        <div class="mg-title">🎰 CASINO SLOTS 🎰</div>
+        <div class="mg-balance">Cash: <span id="slotBal">${fmt(money)}</span></div>
+        <div class="slot-select">
+            <button class="slot-select-btn ${slotType==='classic'?'active':''}" onclick="slotType='classic';renderSlots(document.getElementById('mgContainer'))"><span class="icon">🎰</span><span class="name">Classic</span><span class="desc">3 Reels • Big Jackpots</span></button>
+            <button class="slot-select-btn ${slotType==='mega'?'active':''}" onclick="slotType='mega';renderSlots(document.getElementById('mgContainer'))"><span class="icon">💎</span><span class="name">Megaways</span><span class="desc">6 Reels • Cascades</span></button>
+        </div>
+        <div id="slotGameArea"></div>`;
+    if(slotType==='classic')renderClassicSlots();else renderMegaways();
+}
+
+function renderClassicSlots(){
+    const area=document.getElementById('slotGameArea');
+    const ext=[...slotSymbols,...slotSymbols,...slotSymbols];
+    area.innerHTML=`<div class="slot-machine">
+        <div class="slot-reels">${[0,1,2].map(i=>`<div class="slot-reel" id="reel${i}"><div class="reel-strip" id="strip${i}">${ext.map(s=>`<div class="reel-symbol">${s}</div>`).join('')}</div></div>`).join('')}</div>
+        <div class="slot-controls">
+            <div class="slot-bet-row"><button id="betDown" onclick="adjustSlotBet(-1000)">−</button><div class="slot-bet">Bet: <b id="slotBetAmt">${fmt(slotBet)}</b></div><button id="betUp" onclick="adjustSlotBet(1000)">+</button></div>
+            <button class="slot-spin-btn" id="slotSpinBtn" onclick="spinClassicSlots()">🎲 SPIN 🎲</button>
+            <button class="slot-bonus-btn" id="bonusBtn" onclick="buyClassicBonus()">💫 Buy 5 Bonus (95% Win!) - ${fmt(slotBet*8)}</button>
+            <div class="slot-result" id="slotResult"></div>
+            <div id="bonusInfo" style="text-align:center;color:#ffd700;font-size:0.8em;display:${slotBonusSpins>0?'block':'none'}">✨ BONUS: <span id="bonusCount">${slotBonusSpins}</span> spins (95% win!)</div>
+        </div>
+        <div class="slot-paytable"><div>🍒x3=3x</div><div>🍋x3=5x</div><div>🔔x3=10x</div><div>💎x3=25x</div><div>7️⃣x3=50x</div><div>🎰x3=100x</div></div>
+    </div>`;
+}
+
+function adjustSlotBet(amt){if(slotSpinning)return;slotBet=Math.max(100,Math.min(money,slotBet+amt));const el=document.getElementById('slotBetAmt');if(el)el.textContent=fmt(slotBet)}
+function buyClassicBonus(){if(slotSpinning)return;const cost=slotBet*8;if(money>=cost){money-=cost;slotBonusSpins+=5;updateSlotUI();updateAll();saveGame()}}
+
+function spinClassicSlots(){
+    if(slotSpinning)return;
+    const isBonus=slotBonusSpins>0;
+    if(!isBonus){if(money<slotBet)return;money-=slotBet}else{slotBonusSpins--}
+    slotSpinning=true;updateAll();updateSlotUI();
+    document.getElementById('slotResult').textContent='';document.getElementById('slotResult').className='slot-result';
+    
+    let results;
+    if(isBonus&&Math.random()<0.95){const w=slotSymbols[Math.floor(Math.random()*slotSymbols.length)];results=[w,w,w]}
+    else{results=[0,1,2].map(()=>slotSymbols[Math.floor(Math.random()*slotSymbols.length)])}
+    
+    const strips=[0,1,2].map(i=>document.getElementById('strip'+i));
+    const symbolH=80,totalSyms=slotSymbols.length*3;
+    
+    strips.forEach((strip,i)=>{
+        const targetIdx=slotSymbols.indexOf(results[i])+slotSymbols.length;
+        const spins=3+i;const finalY=-(targetIdx*symbolH);
+        let currentY=0,speed=40+i*5,decel=0.97;const totalDist=spins*totalSyms*symbolH+Math.abs(finalY);let travelled=0;
+        const spin=()=>{
+            travelled+=speed;currentY-=speed;
+            if(currentY<-totalSyms*symbolH)currentY+=totalSyms*symbolH;
+            strip.style.transform=`translateY(${currentY}px)`;
+            if(travelled<totalDist*0.7)requestAnimationFrame(spin);
+            else{speed*=decel;if(speed>2)requestAnimationFrame(spin);else{strip.style.transform=`translateY(${finalY}px)`;if(i===2)finishClassicSpin(results)}}
+        };
+        setTimeout(spin,i*150);
+    });
+}
+
+function finishClassicSpin(results){
+    slotSpinning=false;
+    const combo=results.join('');const payout=slotPayouts[combo];
+    const el=document.getElementById('slotResult');
+    if(payout){
+        const win=slotBet*payout;money+=win;totalEarned+=win;
+        if(payout>=50){el.textContent=`🎉 JACKPOT! +${fmt(win)} 🎉`;el.className='slot-result jackpot';vib([100,50,100,50,100,50,200])}
+        else{el.textContent=`WIN! +${fmt(win)}`;el.className='slot-result win';vib([50,30,50])}
+    }else if(results[0]===results[1]||results[1]===results[2]){
+        const win=Math.floor(slotBet*0.5);money+=win;totalEarned+=win;el.textContent=`Close! +${fmt(win)}`;el.className='slot-result win'
+    }else{el.textContent='Try again!';el.className='slot-result lose'}
+    updateSlotUI();updateAll();saveGame();
+}
+
+function renderMegaways(){
+    megaMultiplier=1;megaReels=[];
+    for(let i=0;i<6;i++){const count=Math.floor(Math.random()*6)+2;megaReels.push(Array(count).fill(0).map(()=>megaSymbols[Math.floor(Math.random()*megaSymbols.length)]))}
+    const ways=megaReels.reduce((a,r)=>a*r.length,1);
+    const area=document.getElementById('slotGameArea');
+    area.innerHTML=`<div class="slot-machine">
+        <div class="mega-info"><span class="ways">Ways: <b id="megaWays">${ways.toLocaleString()}</b></span><span class="mult">Multiplier: <b id="megaMult">x${megaMultiplier}</b></span></div>
+        <div class="mega-reels" id="megaReelsContainer">${megaReels.map((reel,ri)=>`<div class="mega-reel">${reel.map((s,si)=>`<div class="mega-symbol" data-r="${ri}" data-s="${si}">${s}</div>`).join('')}</div>`).join('')}</div>
+        <div class="mega-cascade-info" id="cascadeInfo"></div>
+        <div class="slot-controls">
+            <div class="slot-bet-row"><button id="betDown" onclick="adjustSlotBet(-1000)">−</button><div class="slot-bet">Bet: <b id="slotBetAmt">${fmt(slotBet)}</b></div><button id="betUp" onclick="adjustSlotBet(1000)">+</button></div>
+            <button class="slot-spin-btn" id="slotSpinBtn" onclick="spinMegaways()">🎲 SPIN 🎲</button>
+            <button class="slot-bonus-btn" id="bonusBtn" onclick="buyMegaBonus()">💫 Bonus (5 spins, x4 start) - ${fmt(slotBet*12)}</button>
+            <div class="slot-result" id="slotResult"></div>
+            <div id="bonusInfo" style="text-align:center;color:#ffd700;font-size:0.8em;display:${slotBonusSpins>0?'block':'none'}">✨ BONUS: <span id="bonusCount">${slotBonusSpins}</span></div>
+        </div>
+        <div style="font-size:0.6em;color:#94a3b8;text-align:center;margin-top:6px">Match 3+ adjacent • Cascades increase multiplier • 🃏=Wild</div>
+    </div>`;
+}
+
+function buyMegaBonus(){if(slotSpinning)return;const cost=slotBet*12;if(money>=cost){money-=cost;slotBonusSpins+=5;megaMultiplier=4;updateSlotUI();updateAll();saveGame();renderMegaways()}}
+
+function spinMegaways(){
+    if(slotSpinning)return;
+    const isBonus=slotBonusSpins>0;
+    if(!isBonus){if(money<slotBet)return;money-=slotBet;megaMultiplier=1}else{slotBonusSpins--;if(megaMultiplier<4)megaMultiplier=4}
+    slotSpinning=true;updateAll();updateSlotUI();
+    
+    for(let i=0;i<6;i++){const count=Math.floor(Math.random()*6)+2;megaReels[i]=Array(count).fill(0).map(()=>megaSymbols[Math.floor(Math.random()*megaSymbols.length)])}
+    document.getElementById('megaReelsContainer').innerHTML=megaReels.map((reel,ri)=>`<div class="mega-reel">${reel.map((s,si)=>`<div class="mega-symbol cascade" data-r="${ri}" data-s="${si}">${s}</div>`).join('')}</div>`).join('');
+    document.getElementById('megaWays').textContent=megaReels.reduce((a,r)=>a*r.length,1).toLocaleString();
+    document.getElementById('megaMult').textContent='x'+megaMultiplier;
+    document.getElementById('slotResult').textContent='';document.getElementById('slotResult').className='slot-result';
+    document.getElementById('cascadeInfo').textContent='';
+    
+    setTimeout(()=>{document.querySelectorAll('.mega-symbol').forEach(s=>s.classList.remove('cascade'));checkMegaWins(0)},400);
+}
+
+function checkMegaWins(cascadeNum){
+    const wins=findMegaWins();
+    if(wins.length===0){slotSpinning=false;if(cascadeNum===0){document.getElementById('slotResult').textContent='No wins';document.getElementById('slotResult').className='slot-result lose'}updateSlotUI();updateAll();saveGame();return}
+    
+    let totalWin=0;
+    wins.forEach(w=>{
+        w.positions.forEach(p=>{const el=document.querySelector(`[data-r="${p.r}"][data-s="${p.s}"]`);if(el)el.classList.add('winning')});
+        totalWin+=Math.floor(slotBet*(megaValues[w.symbol]||1)*w.count*0.5*megaMultiplier);
+    });
+    
+    money+=totalWin;totalEarned+=totalWin;
+    document.getElementById('slotResult').textContent=`+${fmt(totalWin)}`;document.getElementById('slotResult').className='slot-result win';
+    document.getElementById('cascadeInfo').textContent=`Cascade #${cascadeNum+1} • x${megaMultiplier}`;
+    if(totalWin>slotBet*10)vib([50,30,50]);
+    updateSlotUI();updateAll();
+    
+    setTimeout(()=>{
+        wins.forEach(w=>{w.positions.forEach(p=>{if(megaReels[p.r])megaReels[p.r][p.s]=null})});
+        megaReels=megaReels.map(reel=>{const rem=reel.filter(s=>s!==null);const need=reel.length-rem.length;return[...Array(need).fill(0).map(()=>megaSymbols[Math.floor(Math.random()*megaSymbols.length)]),...rem]});
+        megaMultiplier++;
+        document.getElementById('megaMult').textContent='x'+megaMultiplier;
+        document.getElementById('megaReelsContainer').innerHTML=megaReels.map((reel,ri)=>`<div class="mega-reel">${reel.map((s,si)=>`<div class="mega-symbol cascade" data-r="${ri}" data-s="${si}">${s}</div>`).join('')}</div>`).join('');
+        updateSlotUI();
+        setTimeout(()=>{document.querySelectorAll('.mega-symbol').forEach(s=>s.classList.remove('cascade'));checkMegaWins(cascadeNum+1)},400);
+    },600);
+}
+
+function findMegaWins(){
+    const wins=[],checked=new Set();
+    for(let r=0;r<megaReels.length-2;r++){
+        for(let s=0;s<megaReels[r].length;s++){
+            const sym=megaReels[r][s];if(sym==='🃏')continue;
+            const chain=[{r,s}];
+            for(let nr=r+1;nr<megaReels.length;nr++){
+                const next=[];for(let ns=0;ns<megaReels[nr].length;ns++){if(megaReels[nr][ns]===sym||megaReels[nr][ns]==='🃏')next.push({r:nr,s:ns})}
+                if(next.length===0)break;chain.push(...next);
+            }
+            if(chain.length>=3){const key=chain.map(p=>`${p.r}-${p.s}`).sort().join('|');if(!checked.has(key)){checked.add(key);wins.push({symbol:sym,count:chain.length,positions:chain})}}
+        }
+    }
+    return wins;
+}
+
+function updateSlotUI(){
+    const bal=document.getElementById('slotBal');if(bal)bal.textContent=fmt(money);
+    const btn=document.getElementById('slotSpinBtn');if(btn)btn.disabled=slotSpinning||money<slotBet;
+    ['betUp','betDown','bonusBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=slotSpinning});
+    const bi=document.getElementById('bonusInfo');if(bi){bi.style.display=slotBonusSpins>0?'block':'none';const bc=document.getElementById('bonusCount');if(bc)bc.textContent=slotBonusSpins}
+}
+
+// SAFE CRACKER
+let safeCombo=[],safeTarget=[],safePointer=0,safeIdx=0,safeBet=5000;
+function renderSafe(c){
+    safeBet=Math.min(money,Math.max(1000,Math.floor(money*0.01)));
+    safeTarget=[Math.floor(Math.random()*100),Math.floor(Math.random()*100),Math.floor(Math.random()*100)];
+    safeCombo=[];safeIdx=0;safePointer=0;
+    c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
+        <div class="mg-title">🔐 VAULT CRACKER 🔐</div>
+        <div class="mg-balance">Cash: <span id="safeBal">${fmt(money)}</span></div>
+        <div class="safe-game">
+            <div class="safe-info">Crack the 3-number combo! Bet: <b style="color:#4ade80">${fmt(safeBet)}</b> → Win: <b style="color:#ffd700">${fmt(safeBet*10)}</b></div>
+            <div class="safe-dial"><div class="safe-pointer" id="safePointer"></div></div>
+            <div class="safe-combo"><div class="safe-combo-num active" id="sc0">?</div><div class="safe-combo-num" id="sc1">?</div><div class="safe-combo-num" id="sc2">?</div></div>
+            <div class="safe-controls"><button onclick="turnSafe(-5)">⟲</button><button onclick="turnSafe(5)">⟳</button></div>
+            <button class="safe-submit" onclick="submitSafe()">🔓 TRY</button>
+            <div class="slot-result" id="safeResult"></div>
+            <div style="margin-top:6px;font-size:0.65em;color:#64748b">Get within ±5 of target. Hints show after each try!</div>
+        </div>`;
+    document.getElementById('safePointer').style.transform=`translateX(-50%) rotate(${(safePointer/100)*360}deg)`;
+}
+function turnSafe(amt){safePointer=(safePointer+amt+100)%100;document.getElementById('safePointer').style.transform=`translateX(-50%) rotate(${(safePointer/100)*360}deg)`}
+function submitSafe(){
+    if(safeIdx>=3)return;
+    const target=safeTarget[safeIdx];const diff=Math.abs(safePointer-target);const correct=diff<=5||diff>=95;
+    const el=document.getElementById('sc'+safeIdx);el.textContent=safePointer;el.classList.remove('active');el.classList.add(correct?'correct':'wrong');
+    safeCombo.push({val:safePointer,correct});
+    if(!correct){document.getElementById('safeResult').textContent=safePointer<target?'↑ Higher':'↓ Lower';document.getElementById('safeResult').className='slot-result lose';money-=Math.floor(safeBet/3);vib([80]);updateAll()}
+    safeIdx++;
+    if(safeIdx<3){document.getElementById('sc'+safeIdx).classList.add('active');if(correct){document.getElementById('safeResult').textContent='✓ Click!';document.getElementById('safeResult').className='slot-result win'}}
+    else{
+        const wins=safeCombo.filter(x=>x.correct).length;const res=document.getElementById('safeResult');
+        if(wins===3){const win=safeBet*10;money+=win;totalEarned+=win;res.textContent=`🎉 CRACKED! +${fmt(win)}`;res.className='slot-result jackpot';vib([100,50,100,50,200])}
+        else if(wins===2){const win=safeBet*2;money+=win;totalEarned+=win;res.textContent=`Close! 2/3 +${fmt(win)}`;res.className='slot-result win';vib([50,30])}
+        else{res.textContent='Vault secured!';res.className='slot-result lose'}
+        updateAll();saveGame();setTimeout(()=>{if(document.getElementById('mgOverlay').classList.contains('active'))renderSafe(document.getElementById('mgContainer'))},2500);
+    }
+    document.getElementById('safeBal').textContent=fmt(money);
+}
+
+// DICE GAME
+let diceBet=1000,diceChoice=null,diceRolling=false;
+const diceOpts=[{id:'low',name:'Low 2-6',payout:2},{id:'mid',name:'Mid 7',payout:4},{id:'high',name:'High 8-12',payout:2},{id:'doubles',name:'Doubles',payout:5},{id:'snake',name:'Snake Eyes',payout:30},{id:'boxcars',name:'Boxcars',payout:30}];
+function renderDice(c){
+    c.innerHTML=`<button class="mg-close" onclick="closeMiniGame()">✕</button>
+        <div class="mg-title">🎲 HIGH ROLLER DICE 🎲</div>
+        <div class="mg-balance">Cash: <span id="diceBal">${fmt(money)}</span></div>
+        <div class="dice-game">
+            <div class="dice-container"><div class="dice" id="dice1">⚀</div><div class="dice" id="dice2">⚀</div></div>
+            <div class="slot-bet-row" style="margin:10px 0"><button onclick="diceBet=Math.max(100,diceBet-1000);document.getElementById('diceBetAmt').textContent=fmt(diceBet)">−</button><div class="slot-bet">Bet: <b id="diceBetAmt">${fmt(diceBet)}</b></div><button onclick="diceBet=Math.min(money,diceBet+1000);document.getElementById('diceBetAmt').textContent=fmt(diceBet)">+</button></div>
+            <div style="font-size:0.7em;color:#94a3b8;margin-bottom:6px">Choose your bet:</div>
+            <div class="dice-bet-options">${diceOpts.map(o=>`<div class="dice-bet-opt" data-id="${o.id}" onclick="diceChoice='${o.id}';document.querySelectorAll('.dice-bet-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('diceRollBtn').disabled=false">${o.name}<div class="payout">${o.payout}x</div></div>`).join('')}</div>
+            <button class="dice-roll-btn" id="diceRollBtn" onclick="rollDice()" disabled>🎲 ROLL 🎲</button>
+            <div class="slot-result" id="diceResult"></div>
+        </div>`;
+    diceChoice=null;
+}
+function rollDice(){
+    if(diceRolling||!diceChoice||money<diceBet)return;
+    money-=diceBet;diceRolling=true;updateAll();
+    const chars=['⚀','⚁','⚂','⚃','⚄','⚅'];
+    document.querySelectorAll('.dice').forEach(d=>d.classList.add('rolling'));
+    document.getElementById('diceResult').textContent='';document.getElementById('diceResult').className='slot-result';
+    const d1=Math.floor(Math.random()*6)+1,d2=Math.floor(Math.random()*6)+1,total=d1+d2;
+    setTimeout(()=>{document.getElementById('dice1').textContent=chars[d1-1];document.getElementById('dice1').classList.remove('rolling')},400);
+    setTimeout(()=>{
+        document.getElementById('dice2').textContent=chars[d2-1];document.getElementById('dice2').classList.remove('rolling');
+        diceRolling=false;
+        let win=0;const opt=diceOpts.find(o=>o.id===diceChoice);
+        if((diceChoice==='low'&&total<=6)||(diceChoice==='mid'&&total===7)||(diceChoice==='high'&&total>=8)||(diceChoice==='doubles'&&d1===d2)||(diceChoice==='snake'&&d1===1&&d2===1)||(diceChoice==='boxcars'&&d1===6&&d2===6))win=diceBet*opt.payout;
+        const res=document.getElementById('diceResult');res.textContent=`Rolled: ${total}`;
+        if(win>0){money+=win;totalEarned+=win;res.textContent+=` → WIN! +${fmt(win)}`;res.className='slot-result '+(opt.payout>=10?'jackpot':'win');vib(opt.payout>=10?[100,50,100,50,200]:[50,30])}
+        else{res.textContent+=' → No match';res.className='slot-result lose'}
+        document.getElementById('diceBal').textContent=fmt(money);updateAll();saveGame();
+    },800);
+}
+
+// === GAME LOOP ===
+loadGame();
+document.body.className=`rank-${getRank()}`;
+if(settings.debug)document.getElementById('debugBtns').style.display='flex';
 updateAll();
+
+setInterval(()=>{
+    money+=Math.floor(moneyPerSecond*globalMult);
+    if(moneyPerSecond>0){totalEarned+=Math.floor(moneyPerSecond*globalMult);reputation+=Math.ceil(moneyPerSecond*globalMult/4000)}
+    policeHeat=Math.max(0,policeHeat-(0.4+heatDecay)/10);
+    checkRaid();updateAll();
+},1000);
+
+setInterval(()=>{if(thieves.length){processCrew();checkAchievements();updateAll()}},5000);
+setInterval(saveGame,5000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveGame()});
 </script>
 
 </body>
