@@ -50,7 +50,7 @@
     .stat-value { font-weight: bold; color: #fbbf24; }
     .stat-label { color: #64748b; font-size: 0.8em; }
     
-    .click-section { display: flex; justify-content: center; align-items: center; padding: 15px 8px; gap: 8px; position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); z-index: 100; pointer-events: none; }
+    .click-section { display: flex; justify-content: center; align-items: center; padding: 15px 8px; gap: 8px; position: fixed; bottom: 50px; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); z-index: 100; pointer-events: none; }
     .click-section > * { pointer-events: auto; }
     .click-button { width: 98px; height: 98px; border-radius: 50%; font-size: 2.6em; cursor: pointer; transition: all 0.1s; position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; }
     .click-button:active { transform: scale(0.88); }
@@ -77,11 +77,11 @@
     .event-banner { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: linear-gradient(90deg, #f59e0b, #ef4444); padding: 3px 12px; border-radius: 10px; font-size: 0.7em; font-weight: bold; white-space: nowrap; animation: eventPop 0.3s ease-out; }
     @keyframes eventPop { 0% { transform: translateX(-50%) scale(0); } 100% { transform: translateX(-50%) scale(1); } }
     
-    .content-area { flex: 1; overflow-y: auto; padding: 5px 5px 140px 5px; -webkit-overflow-scrolling: touch; }
+    .content-area { flex: 1; overflow-y: auto; padding: 5px 5px 200px 5px; -webkit-overflow-scrolling: touch; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    
-    .tab-bar { display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.1); }
+
+    .tab-bar { display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,255,255,0.1); position: fixed; bottom: 0; left: 0; right: 0; z-index: 99; }
     .tab-btn { padding: 5px 2px; text-align: center; background: none; border: none; color: #64748b; font-size: 0.5em; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; transition: all 0.2s; }
     .tab-btn.active { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
     .tab-btn.locked { color: #374151; pointer-events: none; }
