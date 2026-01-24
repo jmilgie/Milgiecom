@@ -129,7 +129,9 @@
     .just-purchased { animation: purchasePulse 0.5s ease-out; }
     @keyframes raidFlash { 0%, 100% { filter: none; } 25% { filter: brightness(0.5) saturate(0) hue-rotate(240deg); } 50% { filter: brightness(0.7) saturate(0) hue-rotate(240deg); } 75% { filter: brightness(0.5) saturate(0) hue-rotate(240deg); } }
     @keyframes eventPop { 0% { transform: scale(0.8) rotate(-5deg); opacity: 0; } 50% { transform: scale(1.05) rotate(2deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
-    
+    @keyframes hireSuccess { 0% { transform: scale(1) rotate(0deg); } 25% { transform: scale(1.15) rotate(-5deg); } 50% { transform: scale(1.1) rotate(5deg); } 75% { transform: scale(1.15) rotate(-3deg); } 100% { transform: scale(1) rotate(0deg); } }
+    @keyframes crewAppear { 0% { transform: translateY(30px) scale(0.8); opacity: 0; } 60% { transform: translateY(-10px) scale(1.05); } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+
     /* Heist Cards */
     .heist-card { background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15)); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 6px; position: relative; transition: all 0.2s; }
     .heist-card.on-cooldown { opacity: 0.6; }
@@ -154,16 +156,17 @@
     .heat-info-panel b { color: #fbbf24; }
     
     /* Crew/Thief Cards */
-    .thief-card { position: relative; background: rgba(168, 85, 247, 0.15); border: 2px solid rgba(168, 85, 247, 0.4); border-radius: 8px; padding: 0; font-size: 0.7em; overflow: hidden; min-height: 140px; background-size: cover; background-position: center; }
-    .thief-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.3) 100%); z-index: 0; }
+    .thief-card { position: relative; background: rgba(168, 85, 247, 0.15); border: 2px solid rgba(168, 85, 247, 0.4); border-radius: 8px; padding: 0; font-size: 0.7em; overflow: hidden; min-height: 140px; background-size: cover; background-position: right center; }
+    .thief-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0.3) 70%, transparent 100%); z-index: 0; }
     .thief-card > * { position: relative; z-index: 1; }
     .thief-card-header { padding: 6px; }
     .thief-rank-badge { font-size: 0.75em; padding: 2px 6px; border-radius: 4px; margin-left: 4px; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-    .thief-stats { display: flex; gap: 8px; margin: 6px 6px 8px 6px; justify-content: space-around; }
-    .thief-stat { text-align: center; background: rgba(0,0,0,0.4); padding: 4px 6px; border-radius: 6px; flex: 1; border: 1px solid rgba(255,255,255,0.1); }
-    .thief-stat-icon { font-size: 1.1em; margin-bottom: 2px; }
+    .thief-stats { display: flex; flex-direction: column; gap: 6px; margin: 6px 6px 8px 6px; max-width: 50%; }
+    .thief-stat { background: rgba(0,0,0,0.5); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: 6px; }
+    .thief-stat-icon { font-size: 1.2em; }
+    .thief-stat-info { flex: 1; }
     .thief-stat-label { font-size: 0.7em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
-    .thief-stat-value { font-weight: bold; color: #4ade80; font-size: 1.1em; }
+    .thief-stat-value { font-weight: bold; color: #4ade80; font-size: 1em; }
     .train-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 6px 6px 6px; }
     .train-btn { padding: 6px 4px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); border: 1px solid rgba(59, 130, 246, 0.5); border-radius: 6px; color: white; font-size: 0.8em; cursor: pointer; text-align: center; transition: all 0.2s; font-weight: bold; }
     .train-btn:disabled { background: rgba(55, 65, 81, 0.3); border-color: rgba(107, 114, 128, 0.3); color: #6b7280; }
@@ -1362,7 +1365,7 @@ function buySpecial(id){const u=specialUpgrades.find(x=>x.id===id);if(!u||u.owne
 function buyStorage(i){const s=storageTypes[i];if(money>=s.cost&&!storageLocations.find(x=>x.name===s.name)){money-=s.cost;storageLocations.push({...s,stored:0,id:Date.now()});vib([15,25,15]);updateAll()}}
 function deposit(id,amt){const s=storageLocations.find(x=>x.id===id);if(s){const mx=Math.min(amt,money,s.cap-s.stored);if(mx>0){money-=mx;s.stored+=mx;updateAll()}}}
 function withdraw(id){const s=storageLocations.find(x=>x.id===id);if(s?.stored>0){money+=s.stored;s.stored=0;updateAll()}}
-function hireThief(crewTypeId){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes.find(t=>t.id===crewTypeId)||crewTypes[0];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);playSound(850,150,'triangle',0.15);showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
+function hireThief(crewTypeId){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes.find(t=>t.id===crewTypeId)||crewTypes[0];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,80,40,60]);playSound(650,100,'triangle',0.15);setTimeout(()=>playSound(850,100,'sine',0.12),100);setTimeout(()=>playSound(1050,150,'triangle',0.18),200);const btn=event.target.closest('button');if(btn){btn.style.animation='hireSuccess 0.5s';setTimeout(()=>btn.style.animation='',500)}showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
 function trainCrew(id,attr){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib([15,25,15]);playSound(550,80,'sine',0.1);updateAll()}}
 function fireCrew(id){if(confirm('Fire this crew member?')){playSound(250,150,'sawtooth',0.12);thieves=thieves.filter(c=>c.id!==id);updateAll()}}
 
@@ -1527,9 +1530,10 @@ function updateAll(){
             const r=getCrewRank(c);const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'))||crewTypes[0];
             const costMult=(ct.id==='insider'?0.7:1);
             const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)*costMult),sc=Math.floor(7000*Math.pow(1.9,c.skill)*costMult),ec=Math.floor(4500*Math.pow(1.9,c.exp)*costMult);
-            const crewImgName=c.type||'enforcer';
-            const bgImage=`assets/crew_${crewImgName}.PNG`;
-            return `<div class="thief-card" style="background-image:url('${bgImage}')">
+            const crewImgName=`${c.name.toLowerCase()}_${c.type}`;
+            const bgImage=`assets/crew_${crewImgName}.png`;
+            const isNew=Date.now()-c.id<1000;
+            return `<div class="thief-card" style="background-image:url('${bgImage}');${isNew?'animation:crewAppear 0.6s ease-out;':''}">
                 <div class="thief-card-header">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                         <span style="font-weight:bold;font-size:0.95em;text-shadow:0 2px 4px rgba(0,0,0,0.9)">${ct.icon} ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span>
@@ -1540,13 +1544,17 @@ function updateAll(){
                 <div class="thief-stats">
                     <div class="thief-stat">
                         <div class="thief-stat-icon">💰</div>
-                        <div class="thief-stat-value">${fmt(getCrewIncome(c))}</div>
-                        <div class="thief-stat-label">Income/5s</div>
+                        <div class="thief-stat-info">
+                            <div class="thief-stat-label">Income/5s</div>
+                            <div class="thief-stat-value">${fmt(getCrewIncome(c))}</div>
+                        </div>
                     </div>
                     <div class="thief-stat">
                         <div class="thief-stat-icon">⚠️</div>
-                        <div class="thief-stat-value" style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</div>
-                        <div class="thief-stat-label">Theft Risk</div>
+                        <div class="thief-stat-info">
+                            <div class="thief-stat-label">Theft Risk</div>
+                            <div class="thief-stat-value" style="color:#ef4444">${(getCrewSteal(c)*100).toFixed(0)}%</div>
+                        </div>
                     </div>
                 </div>
                 <div class="train-grid">
