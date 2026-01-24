@@ -50,8 +50,9 @@
     .stat-value { font-weight: bold; color: #fbbf24; }
     .stat-label { color: #64748b; font-size: 0.8em; }
     
-    .click-section { display: flex; justify-content: center; align-items: center; padding: 8px; gap: 8px; position: relative; }
-    .click-button { width: 75px; height: 75px; border-radius: 50%; font-size: 2em; cursor: pointer; transition: all 0.1s; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .click-section { display: flex; justify-content: center; align-items: center; padding: 15px 8px; gap: 8px; position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); z-index: 100; pointer-events: none; }
+    .click-section > * { pointer-events: auto; }
+    .click-button { width: 98px; height: 98px; border-radius: 50%; font-size: 2.6em; cursor: pointer; transition: all 0.1s; position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; }
     .click-button:active { transform: scale(0.88); }
     .click-0 { border: 3px solid #22c55e; background: linear-gradient(145deg, #4ade80, #16a34a); box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); }
     .click-1 { border: 3px solid #8b5cf6; background: linear-gradient(145deg, #a78bfa, #7c3aed); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.5); }
@@ -62,11 +63,11 @@
     .click-6 { border: 5px solid #ffd700; background: linear-gradient(145deg, #fff, #ffd700); box-shadow: 0 0 40px rgba(255, 215, 0, 1); animation: godButton 1s infinite; }
     @keyframes godButton { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     
-    .click-effect { position: absolute; pointer-events: none; font-weight: bold; animation: floatUp 0.5s ease-out forwards; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10; }
-    .click-effect.normal { font-size: 0.4em; color: #fff; }
-    .click-effect.crit { font-size: 0.6em; color: #ffd700; animation: critFloat 0.6s ease-out forwards; }
-    @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-35px) scale(1.2); } }
-    @keyframes critFloat { 0% { opacity: 1; transform: translateY(0) scale(1.5); } 100% { opacity: 0; transform: translateY(-50px) scale(2); } }
+    .click-effect { position: absolute; pointer-events: none; font-weight: bold; animation: floatUp 0.5s ease-out forwards; text-shadow: 0 2px 4px rgba(0,0,0,0.8); z-index: 1000; }
+    .click-effect.normal { font-size: 0.8em; color: #fff; }
+    .click-effect.crit { font-size: 1.2em; color: #ffd700; animation: critFloat 0.6s ease-out forwards; }
+    @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-60px) scale(1.2); } }
+    @keyframes critFloat { 0% { opacity: 1; transform: translateY(0) scale(1.5); } 100% { opacity: 0; transform: translateY(-80px) scale(2); } }
     
     .side-panel { display: flex; flex-direction: column; gap: 3px; font-size: 0.55em; width: 60px; }
     .side-stat { background: rgba(0,0,0,0.3); padding: 3px 5px; border-radius: 5px; text-align: center; }
@@ -76,7 +77,7 @@
     .event-banner { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: linear-gradient(90deg, #f59e0b, #ef4444); padding: 3px 12px; border-radius: 10px; font-size: 0.7em; font-weight: bold; white-space: nowrap; animation: eventPop 0.3s ease-out; }
     @keyframes eventPop { 0% { transform: translateX(-50%) scale(0); } 100% { transform: translateX(-50%) scale(1); } }
     
-    .content-area { flex: 1; overflow-y: auto; padding: 5px; -webkit-overflow-scrolling: touch; }
+    .content-area { flex: 1; overflow-y: auto; padding: 5px 5px 140px 5px; -webkit-overflow-scrolling: touch; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
     
@@ -318,6 +319,10 @@
         <div class="settings-group">
             <h4>Preferences</h4>
             <div class="settings-row">
+                <label>Sound Effects</label>
+                <div class="toggle ${settings.sound?'on':''}" id="toggleSound" onclick="toggleSetting('sound')"></div>
+            </div>
+            <div class="settings-row">
                 <label>Vibration</label>
                 <div class="toggle ${settings.vibration?'on':''}" id="toggleVib" onclick="toggleSetting('vibration')"></div>
             </div>
@@ -422,7 +427,7 @@
 // === SETTINGS & PERSISTENCE ===
 const SAVE_KEY = 'criminalEmpireSave';
 const SAVE_VERSION = 2;
-let settings = { vibration: true, tips: true, debug: false };
+let settings = { vibration: true, tips: true, debug: false, sound: true };
 let lastSeen = Date.now();
 let shownTips = new Set();
 
@@ -431,6 +436,7 @@ let money=0,moneyPerSecond=0,clickPower=1,reputation=0,policeHeat=0,heatShield=0
 let critChance=0.05,critMult=3,luckChance=0,combo=0,lastClickTime=0,comboTimeout=null;
 let storageLocations=[],thieves=[],ownedTerritories=[],globalMult=1,heistBonus=0;
 let totalEarned=0,totalClicks=0,totalHeists=0,achievementsUnlocked=[];
+let isResetting=false;
 const maxThieves=6;
 
 const ranks=[{name:"🔰 Thug",rep:0},{name:"💜 Hustler",rep:100},{name:"💙 Runner",rep:400},{name:"💗 Boss",rep:1500},{name:"❤️ Kingpin",rep:6000},{name:"🧡 Godfather",rep:25000},{name:"👑 Legend",rep:100000}];
@@ -529,6 +535,19 @@ const achievements=[
 ];
 
 // === UTILITIES ===
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(freq=440,duration=50,type='sine',volume=0.1){
+    if(!settings.sound)return;
+    try{
+        const osc=audioCtx.createOscillator();
+        const gain=audioCtx.createGain();
+        osc.connect(gain);gain.connect(audioCtx.destination);
+        osc.frequency.value=freq;osc.type=type;
+        gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+duration/1000);
+        osc.start(audioCtx.currentTime);osc.stop(audioCtx.currentTime+duration/1000);
+    }catch(e){console.warn('Audio error',e)}
+}
 function vib(p){if(settings.vibration&&navigator.vibrate)navigator.vibrate(p)}
 function fmt(n){if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+Math.floor(n)}
 function fmtS(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(0)+'K';return Math.floor(n)}
@@ -545,6 +564,7 @@ function getCrewRank(c){const t=c.loyalty+c.skill+c.exp;if(t>=24)return 4;if(t>=
 
 // === SAVE/LOAD ===
 function saveGame(){
+    if(isResetting)return;
     const save={
         v:SAVE_VERSION,ts:Date.now(),
         money,moneyPerSecond,clickPower,reputation,policeHeat,heatShield,heatDecay,
@@ -617,11 +637,14 @@ function importSave(){
 
 function hardReset(){
     if(confirm('⚠️ Delete ALL progress and reset the game? This cannot be undone!')){
+        isResetting=true;
         try{
             localStorage.clear();
             sessionStorage.clear();
             if(caches){caches.keys().then(names=>{names.forEach(name=>caches.delete(name))})}
-            window.location.href = window.location.href.split('?')[0] + '?reset=' + Date.now();
+            setTimeout(()=>{
+                window.location.href = window.location.href.split('?')[0] + '?reset=' + Date.now();
+            },100);
         }catch(e){
             console.error('Reset error:',e);
             localStorage.clear();
@@ -640,6 +663,7 @@ function toggleSetting(key){
     updateSettingsUI();saveGame();
 }
 function updateSettingsUI(){
+    document.getElementById('toggleSound').className='toggle'+(settings.sound?' on':'');
     document.getElementById('toggleVib').className='toggle'+(settings.vibration?' on':'');
     document.getElementById('toggleTips').className='toggle'+(settings.tips?' on':'');
     document.getElementById('toggleDebug').className='toggle'+(settings.debug?' on':'');
@@ -708,28 +732,35 @@ function switchTab(tab,btn){
     btn.classList.add('active');
 }
 
-function clickMoney(){
+function clickMoney(event){
     vib(8);totalClicks++;
     const now=Date.now();
     if(now-lastClickTime<400){combo=Math.min(combo+1,20)}else{combo=Math.max(1,combo-1)}
     lastClickTime=now;clearTimeout(comboTimeout);comboTimeout=setTimeout(()=>{combo=0;updateAll()},1500);
-    
+
     const isCrit=Math.random()<critChance;const comboMult=1+combo*0.05;
-    let earned=Math.floor(clickPower*comboMult*(isCrit?critMult:1));if(isCrit)vib([15,20,15]);
+    let earned=Math.floor(clickPower*comboMult*(isCrit?critMult:1));
+    if(isCrit){vib([15,20,15]);playSound(800,100,'square',0.15)}
+    else{playSound(600,50,'sine',0.1)}
     money+=earned;totalEarned+=earned;reputation+=Math.ceil(earned/800);
     policeHeat=Math.min(100,policeHeat+0.08*(1-heatShield));
-    
+
     if(Math.random()<luckChance){
         const bonus=Math.floor(money*0.1+clickPower*10);money+=bonus;totalEarned+=bonus;
+        playSound(1200,200,'triangle',0.2);
         document.getElementById('eventBanner').style.display='block';
         document.getElementById('eventBanner').textContent=`🎉 +${fmt(bonus)}`;
         setTimeout(()=>document.getElementById('eventBanner').style.display='none',1500);
     }
-    
+
     checkAchievements();updateAll();
-    
+
     const e=document.createElement('div');e.className='click-effect '+(isCrit?'crit':'normal');
-    e.textContent=(isCrit?'💥':'+')+fmt(earned);e.style.left=(20+Math.random()*35)+'px';e.style.top=(20+Math.random()*35)+'px';
+    e.textContent=(isCrit?'💥':'+')+fmt(earned);
+    const offsetX=(Math.random()-0.5)*30;
+    e.style.left=`calc(50% + ${offsetX}px)`;
+    e.style.top='-60px';
+    e.style.transform='translateX(-50%)';
     document.getElementById('clickBtn').appendChild(e);setTimeout(()=>e.remove(),isCrit?600:500);
 }
 
