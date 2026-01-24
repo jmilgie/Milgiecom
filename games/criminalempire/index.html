@@ -705,6 +705,17 @@ const prestigeUpgradesData=[
     {id:'start2',name:'Quick Start',desc:'Start at rank 2',cost:5,owned:0,maxOwned:1,bonus:{type:'startRank',val:2}},
 ];
 
+const crewMissions=[
+    {id:'pickpocket',name:'Quick Pickpocket',icon:'👝',duration:300,baseReward:500,rep:10,skillReq:'skill',desc:'Small quick cash'},
+    {id:'carboost',name:'Car Boost',icon:'🚗',duration:900,baseReward:2000,rep:25,skillReq:'exp',desc:'Steal a car'},
+    {id:'scout',name:'Building Scout',icon:'🔍',duration:1800,effect:'heistCD',effectVal:60,skillReq:'loyalty',desc:'Reduce heist cooldowns'},
+    {id:'weapons',name:'Weapons Deal',icon:'💣',duration:3600,baseReward:15000,rep:100,skillReq:'skill',desc:'Sell contraband'},
+    {id:'recruit',name:'Recruit Search',icon:'🔎',duration:7200,effect:'crewSlot',skillReq:'loyalty',desc:'Find new crew member'},
+    {id:'training',name:'Training Camp',icon:'🥋',duration:14400,effect:'skillUp',skillReq:'exp',desc:'Gain random skill level'},
+    {id:'sabotage',name:'Sabotage',icon:'💥',duration:5400,effect:'heat',effectVal:-20,skillReq:'skill',desc:'Reduce police heat'},
+    {id:'intel',name:'Intel Gathering',icon:'📋',duration:10800,baseReward:50000,rep:200,skillReq:'exp',desc:'Big payout'},
+];
+
 const randomEvents=[
     {id:'lucky_break',name:'Lucky Break',icon:'💰',desc:'Found a cash stash!',weight:10,minRank:0,
         trigger:()=>{
