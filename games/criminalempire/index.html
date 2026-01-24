@@ -50,9 +50,10 @@
     .stat-value { font-weight: bold; color: #fbbf24; font-size: 1.15em; }
     .stat-label { color: #64748b; font-size: 0.75em; }
     
-    .click-section { display: flex; justify-content: center; align-items: center; padding: 4px 8px 4px 8px; gap: 8px; position: fixed; bottom: 54px; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6)); z-index: 100; pointer-events: none; height: 120px; }
+    .click-section { display: flex; justify-content: center; align-items: center; padding: 8px; gap: 8px; position: fixed; bottom: 54px; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.7)); z-index: 100; pointer-events: none; min-height: 115px; }
     .click-section > * { pointer-events: auto; }
-    .click-button { width: 98px; height: 98px; border-radius: 50%; font-size: 2.6em; cursor: pointer; transition: all 0.1s; position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; }
+    .click-button { width: 98px; height: 98px; border-radius: 50%; font-size: 2.6em; cursor: pointer; transition: all 0.1s; position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; border: none; }
+    .click-button::before { content: ''; position: absolute; inset: -15px; border-radius: 50%; background: transparent; }
     .click-button:active { transform: scale(0.88); }
     .click-0 { border: 3px solid #22c55e; background: linear-gradient(145deg, #4ade80, #16a34a); box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); }
     .click-1 { border: 3px solid #8b5cf6; background: linear-gradient(145deg, #a78bfa, #7c3aed); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.5); }
@@ -485,9 +486,9 @@ const bizUpgrades=[
     {name:"Food Cart",icon:"🌭",income:6,baseCost:120,owned:0,mult:1.12,minigame:null,maxOwned:90},
     {name:"Shop",icon:"🏪",income:30,baseCost:900,owned:0,mult:1.13,minigame:null,maxOwned:80},
     {name:"Restaurant",icon:"🍽️",income:120,baseCost:6000,owned:0,mult:1.13,minigame:null,maxOwned:70},
-    {name:"Factory",icon:"🏭",income:500,baseCost:35000,owned:0,mult:1.14,minigame:'factory',maxOwned:60},
+    {name:"Factory",icon:"🏭",income:500,baseCost:35000,owned:0,mult:1.14,minigame:'factory',maxOwned:30},
     {name:"Corp",icon:"🏢",income:2500,baseCost:250000,owned:0,mult:1.14,minigame:null,maxOwned:50},
-    {name:"Bank",icon:"🏦",income:12000,baseCost:2000000,owned:0,mult:1.15,minigame:'safe',maxOwned:40},
+    {name:"Bank",icon:"🏦",income:12000,baseCost:2000000,owned:0,mult:1.15,minigame:'safe',maxOwned:30},
     {name:"Casino",icon:"🎰",income:60000,baseCost:25000000,owned:0,mult:1.16,minigame:'casino',maxOwned:30}
 ];
 
@@ -576,6 +577,7 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(freq=440,duration=50,type='sine',volume=0.1){
     if(!settings.sound)return;
     try{
+        if(audioCtx.state==='suspended')audioCtx.resume();
         const osc=audioCtx.createOscillator();
         const gain=audioCtx.createGain();
         osc.connect(gain);gain.connect(audioCtx.destination);
@@ -953,9 +955,14 @@ function updateAll(){
         const hasMinigame=u.minigame&&tier>=MINIGAME_TIER;
         const atMax=u.owned>=u.maxOwned;
         const pipsPer=Math.ceil(u.maxOwned/5);const pipsOwned=Math.min(5,Math.floor(u.owned/pipsPer));
+        const currentPipProgress=((u.owned%pipsPer)/pipsPer)*100;
         return `<div class="upgrade-card ${can?'affordable':''} ${atMax?'maxed':''}">
             <div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span style="font-size:0.65em;color:#94a3b8">${u.owned}/${u.maxOwned}</span></div>
-            <div class="territory-pips">${Array(5).fill(0).map((_,j)=>`<div class="territory-pip ${j<pipsOwned?'filled':''}"></div>`).join('')}</div>
+            <div class="territory-pips">${Array(5).fill(0).map((_,j)=>{
+                if(j<pipsOwned)return `<div class="territory-pip filled"></div>`;
+                if(j===pipsOwned&&!atMax)return `<div class="territory-pip" style="background:linear-gradient(90deg,#22c55e ${currentPipProgress}%,rgba(255,255,255,0.2) ${currentPipProgress}%)"></div>`;
+                return `<div class="territory-pip"></div>`;
+            }).join('')}</div>
             <div class="upgrade-meta"><span>+$${u.income}/s</span><b style="color:#fbbf24">$${fmtS(cost)}</b></div>
             ${hasMinigame?`<button class="upgrade-btn minigame-btn" onclick="openMiniGame('${u.minigame}')">🎮 PLAY</button>`:`<button class="upgrade-btn" onclick="buyBiz(${i})" ${can&&!atMax?'':'disabled'}>${atMax?'✓ MAX':(u.minigame&&tier<MINIGAME_TIER?`Buy (🎮@${tierNames[MINIGAME_TIER]})`:'Buy')}</button>`}
         </div>`;
