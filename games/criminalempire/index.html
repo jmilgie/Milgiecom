@@ -616,12 +616,17 @@ function importSave(){
 }
 
 function hardReset(){
-    if(confirm('⚠️ Delete ALL progress? This cannot be undone!')){
-        if(confirm('Are you REALLY sure?')){
-            localStorage.removeItem(SAVE_KEY);
-            localStorage.removeItem('criminalEmpireSave');
+    if(confirm('⚠️ Delete ALL progress and reset the game? This cannot be undone!')){
+        try{
+            localStorage.clear();
             sessionStorage.clear();
-            setTimeout(()=>location.reload(true),100);
+            if(caches){caches.keys().then(names=>{names.forEach(name=>caches.delete(name))})}
+            window.location.href = window.location.href.split('?')[0] + '?reset=' + Date.now();
+        }catch(e){
+            console.error('Reset error:',e);
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload(true);
         }
     }
 }
