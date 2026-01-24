@@ -79,8 +79,13 @@
   </footer>
 
   <script>
-    // Keep just the one destination for now
     const PAGES = [
+      {
+        title: "Games",
+        href: "./games/",
+        desc: "Play our collection of browser-based games and interactive experiences.",
+        chips: ["Play", "Idle", "Fun"]
+      },
       {
         title: "Collectibles",
         href: "./collectibles/",
@@ -91,6 +96,12 @@
 
     // Tiny inline icon (no external assets)
     const ICONS = {
+      "Games": `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+          <circle cx="8" cy="12" r="2" stroke="currentColor" stroke-width="2"/>
+          <path d="M15 10v4M13 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>`,
       "Collectibles": `
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M7 7h10v10H7z" stroke="currentColor" stroke-width="2" />
