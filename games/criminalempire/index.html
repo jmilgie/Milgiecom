@@ -113,10 +113,10 @@
     
     /* Territory Cards */
     .territory-card { position: relative; background: rgba(59, 130, 246, 0.1); border: 2px solid rgba(59, 130, 246, 0.4); border-radius: 8px; padding: 8px; transition: all 0.2s; overflow: hidden; min-height: 100px; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; }
-    .territory-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5)); z-index: 0; }
+    .territory-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 40%, transparent 100%); z-index: 0; }
     .territory-card > * { position: relative; z-index: 1; }
     .territory-card.owned { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.3); }
-    .territory-card.owned::before { background: linear-gradient(to top, rgba(0,80,0,0.9), rgba(0,40,0,0.5)); }
+    .territory-card.owned::before { background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 40%, transparent 100%); }
     .territory-card .upgrade-header { text-shadow: 0 2px 4px rgba(0,0,0,0.9); }
     .territory-card .upgrade-header .upgrade-name { font-weight: bold; font-size: 0.85em; }
     .territory-pips { display: flex; gap: 3px; margin: 4px 0; }
