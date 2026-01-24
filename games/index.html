@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Games — Milgie.com</title>
+  <meta name="description" content="Milgie.com Games — play our collection of browser-based games." />
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    .gamesGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .gameTile {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      text-decoration: none;
+      color: var(--ink);
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: var(--shadow);
+      transition: transform .15s ease, border-color .15s ease;
+    }
+
+    .gameTile:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255,59,242,.55);
+    }
+
+    .gameTile::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      z-index: 0;
+    }
+
+    .gameTile::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(7,3,26,.95) 0%,
+        rgba(7,3,26,.75) 30%,
+        rgba(7,3,26,.25) 60%,
+        transparent 100%
+      );
+      z-index: 1;
+    }
+
+    .gameTile.criminal-empire::before {
+      background-image: url('./criminalempire/assets/DF65241F-FA2D-4341-B363-5729E4822304.png');
+    }
+
+    .gameTile .content {
+      position: relative;
+      z-index: 2;
+      padding: 20px;
+    }
+
+    .gameTile h3 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      font-weight: 950;
+      text-shadow: 0 2px 12px rgba(0,0,0,.6);
+    }
+
+    .gameTile p {
+      margin: 0 0 14px;
+      color: rgba(232,230,255,.85);
+      font-size: 14px;
+      line-height: 1.5;
+      text-shadow: 0 1px 8px rgba(0,0,0,.5);
+    }
+
+    .gameTile .chipRow {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .playBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(255,229,102,.96), rgba(255,59,242,.88));
+      color: #130a2a;
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 12px 32px rgba(255,59,242,.2);
+      transition: transform .15s ease, filter .15s ease;
+    }
+
+    .playBtn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    .backLink {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      transition: color .15s ease;
+    }
+
+    .backLink:hover {
+      color: var(--ink);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gameTile, .playBtn { transition: none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stars" aria-hidden="true"></div>
+  <div class="sun" aria-hidden="true"></div>
+  <div class="grid" aria-hidden="true"><div class="plane"></div></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <header>
+    <div class="wrap">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="../" title="Milgie.com Home">
+          <span class="logo" aria-hidden="true"></span>
+          <span>
+            <span class="title">Milgie<span class="glow">.com</span></span>
+          </span>
+        </a>
+
+        <div class="navlinks">
+          <a class="pill" href="../#portal">Portal</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <div class="wrap">
+      <a class="backLink" href="../">
+        <span aria-hidden="true">←</span> Back to Home
+      </a>
+
+      <section class="card portal" aria-label="Games">
+        <div class="portalHead">
+          <div>
+            <h2>Games</h2>
+            <p>Play our collection of browser-based games. More coming soon.</p>
+          </div>
+        </div>
+
+        <div class="gamesGrid">
+          <a class="gameTile criminal-empire" href="./criminalempire/" aria-label="Play Criminal Empire">
+            <div class="content">
+              <h3>Criminal Empire</h3>
+              <p>Build your underground empire from scratch. Click, invest, and rise through the ranks in this idle clicker game.</p>
+              <div class="chipRow">
+                <span class="chip">Idle</span>
+                <span class="chip">Clicker</span>
+                <span class="chip">Strategy</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- More games can be added here -->
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="foot">
+        <div>© <span id="year"></span> <strong>Milgie.com</strong></div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
