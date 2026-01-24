@@ -44,11 +44,11 @@
     .progress-fill { background: linear-gradient(90deg, #4ade80, #22c55e); height: 100%; transition: width 0.3s; }
     .progress-text { font-size: 0.55em; color: #94a3b8; white-space: nowrap; text-align: right; min-width: 70px; }
     
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 4px 8px; background: rgba(0,0,0,0.15); font-size: 0.6em; }
-    .stat-item { text-align: center; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px; cursor: pointer; }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 4px 8px; background: rgba(0,0,0,0.15); font-size: 0.7em; }
+    .stat-item { text-align: center; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 3px 2px; cursor: pointer; }
     .stat-item:hover { background: rgba(255,255,255,0.1); }
-    .stat-value { font-weight: bold; color: #fbbf24; }
-    .stat-label { color: #64748b; font-size: 0.8em; }
+    .stat-value { font-weight: bold; color: #fbbf24; font-size: 1.15em; }
+    .stat-label { color: #64748b; font-size: 0.75em; }
     
     .click-section { display: flex; justify-content: center; align-items: center; padding: 4px 8px 4px 8px; gap: 8px; position: fixed; bottom: 54px; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6)); z-index: 100; pointer-events: none; height: 120px; }
     .click-section > * { pointer-events: auto; }
@@ -69,24 +69,24 @@
     @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-60px) scale(1.2); } }
     @keyframes critFloat { 0% { opacity: 1; transform: translateY(0) scale(1.5); } 100% { opacity: 0; transform: translateY(-80px) scale(2); } }
     
-    .side-panel { display: flex; flex-direction: column; gap: 3px; font-size: 0.55em; width: 60px; }
-    .side-stat { background: rgba(0,0,0,0.3); padding: 3px 5px; border-radius: 5px; text-align: center; }
-    .side-stat .val { font-weight: bold; color: #4ade80; display: block; }
-    .side-stat .lbl { color: #64748b; font-size: 0.9em; }
+    .side-panel { display: flex; flex-direction: column; gap: 5px; font-size: 0.7em; width: 70px; }
+    .side-stat { background: linear-gradient(135deg, rgba(0,0,0,0.5), rgba(0,0,0,0.3)); padding: 5px 6px; border-radius: 8px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .side-stat .val { font-weight: bold; color: #4ade80; display: block; font-size: 1.2em; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .side-stat .lbl { color: #94a3b8; font-size: 0.85em; }
     
     .event-banner { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: linear-gradient(90deg, #f59e0b, #ef4444); padding: 3px 12px; border-radius: 10px; font-size: 0.7em; font-weight: bold; white-space: nowrap; animation: eventPop 0.3s ease-out; }
     @keyframes eventPop { 0% { transform: translateX(-50%) scale(0); } 100% { transform: translateX(-50%) scale(1); } }
     
-    .content-area { flex: 1; overflow-y: auto; padding: 5px 5px 185px 5px; -webkit-overflow-scrolling: touch; }
+    .content-area { flex: 1; overflow-y: auto; padding: 5px 5px 210px 5px; -webkit-overflow-scrolling: touch; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    .tab-bar { display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,255,255,0.1); position: fixed; bottom: 0; left: 0; right: 0; z-index: 99; }
-    .tab-btn { padding: 5px 2px; text-align: center; background: none; border: none; color: #64748b; font-size: 0.5em; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; transition: all 0.2s; }
-    .tab-btn.active { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+    .tab-bar { display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(0,0,0,0.95); border-top: 2px solid rgba(251, 191, 36, 0.3); position: fixed; bottom: 0; left: 0; right: 0; z-index: 99; height: 58px; }
+    .tab-btn { padding: 8px 4px; text-align: center; background: none; border: none; color: #64748b; font-size: 0.65em; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: all 0.2s; }
+    .tab-btn.active { color: #fbbf24; background: rgba(251, 191, 36, 0.15); border-top: 2px solid #fbbf24; margin-top: -2px; }
     .tab-btn.locked { color: #374151; pointer-events: none; }
-    .tab-btn span { font-size: 1.4em; }
-    .tab-btn .unlock-hint { font-size: 0.8em; color: #6b7280; }
+    .tab-btn span { font-size: 1.6em; }
+    .tab-btn .unlock-hint { font-size: 0.75em; color: #6b7280; }
     
     .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
     .section-title { font-size: 0.65em; font-weight: bold; color: #fbbf24; margin: 4px 0; display: flex; align-items: center; gap: 4px; }
@@ -112,7 +112,7 @@
     @keyframes mgPulse { 0%, 100% { box-shadow: 0 0 5px #a855f7; } 50% { box-shadow: 0 0 15px #a855f7; } }
     
     /* Territory Cards */
-    .territory-card { position: relative; background: rgba(59, 130, 246, 0.1); border: 2px solid rgba(59, 130, 246, 0.4); border-radius: 8px; padding: 8px; transition: all 0.2s; overflow: hidden; min-height: 100px; background-size: cover; background-position: center; }
+    .territory-card { position: relative; background: rgba(59, 130, 246, 0.1); border: 2px solid rgba(59, 130, 246, 0.4); border-radius: 8px; padding: 8px; transition: all 0.2s; overflow: hidden; min-height: 100px; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; }
     .territory-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5)); z-index: 0; }
     .territory-card > * { position: relative; z-index: 1; }
     .territory-card.owned { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.3); }
@@ -473,7 +473,7 @@ let critChance=0.05,critMult=3,luckChance=0,combo=0,lastClickTime=0,comboTimeout
 let storageLocations=[],thieves=[],ownedTerritories=[],globalMult=1,heistBonus=0;
 let totalEarned=0,totalClicks=0,totalHeists=0,achievementsUnlocked=[];
 let isResetting=false;
-const maxThieves=6;
+let maxThieves=6;
 
 const ranks=[{name:"🔰 Thug",rep:0},{name:"💜 Hustler",rep:100},{name:"💙 Runner",rep:400},{name:"💗 Boss",rep:1500},{name:"❤️ Kingpin",rep:6000},{name:"🧡 Godfather",rep:25000},{name:"👑 Legend",rep:100000}];
 const tierThresholds=[0,5,15,30,50,100];
@@ -492,13 +492,13 @@ const bizUpgrades=[
 ];
 
 const clickUpgrades=[
-    {name:"Gloves",icon:"🧤",mult:1.5,baseCost:50,owned:0,costMult:1.8,maxOwned:50},
-    {name:"Rings",icon:"💍",mult:1.5,baseCost:400,owned:0,costMult:2.0,maxOwned:50},
-    {name:"Watch",icon:"⌚",mult:1.8,baseCost:4000,owned:0,costMult:2.2,maxOwned:40},
-    {name:"Briefcase",icon:"💼",mult:2,baseCost:40000,owned:0,costMult:2.4,maxOwned:40},
-    {name:"Lambo",icon:"🏎️",mult:2,baseCost:400000,owned:0,costMult:2.6,maxOwned:30},
-    {name:"Yacht",icon:"🛥️",mult:2.5,baseCost:5000000,owned:0,costMult:2.8,maxOwned:20},
-    {name:"Jet",icon:"✈️",mult:3,baseCost:80000000,owned:0,costMult:3.0,maxOwned:10}
+    {name:"Gloves",icon:"🧤",mult:1.5,baseCost:50,owned:0,costMult:1.4,maxOwned:50},
+    {name:"Rings",icon:"💍",mult:1.5,baseCost:400,owned:0,costMult:1.5,maxOwned:50},
+    {name:"Watch",icon:"⌚",mult:1.8,baseCost:4000,owned:0,costMult:1.6,maxOwned:40},
+    {name:"Briefcase",icon:"💼",mult:2,baseCost:40000,owned:0,costMult:1.65,maxOwned:40},
+    {name:"Lambo",icon:"🏎️",mult:2,baseCost:400000,owned:0,costMult:1.7,maxOwned:30},
+    {name:"Yacht",icon:"🛥️",mult:2.5,baseCost:5000000,owned:0,costMult:1.75,maxOwned:20},
+    {name:"Jet",icon:"✈️",mult:3,baseCost:80000000,owned:0,costMult:1.8,maxOwned:10}
 ];
 
 const territories=[
@@ -506,8 +506,9 @@ const territories=[
     {id:1,name:"Docks",icon:"⚓",bonus:"heist",val:0.05,cost:100000,level:0,maxLvl:5,upCost:200000},
     {id:2,name:"Industrial",icon:"🏗️",bonus:"click",val:0.1,cost:350000,level:0,maxLvl:5,upCost:700000},
     {id:3,name:"Suburbs",icon:"🏡",bonus:"crit",val:0.02,cost:1200000,level:0,maxLvl:5,upCost:2400000},
-    {id:4,name:"Airport",icon:"✈️",bonus:"luck",val:0.01,cost:5000000,level:0,maxLvl:5,upCost:10000000},
-    {id:5,name:"Casino District",icon:"🎰",bonus:"all",val:0.03,cost:20000000,level:0,maxLvl:5,upCost:40000000}
+    {id:4,name:"Hideout",icon:"🏚️",bonus:"crew",val:1,cost:2500000,level:0,maxLvl:5,upCost:5000000},
+    {id:5,name:"Airport",icon:"✈️",bonus:"luck",val:0.01,cost:5000000,level:0,maxLvl:5,upCost:10000000},
+    {id:6,name:"Casino District",icon:"🎰",bonus:"all",val:0.03,cost:20000000,level:0,maxLvl:5,upCost:40000000}
 ];
 
 const heists=[
@@ -768,7 +769,7 @@ function checkAchievements(){
 
 // === CORE GAME ===
 function calcBonuses(){
-    globalMult=1;heistBonus=0;heatShield=0;let clickB=0,critB=0,luckB=0;
+    globalMult=1;heistBonus=0;heatShield=0;let clickB=0,critB=0,luckB=0;maxThieves=6;
     ownedTerritories.forEach(tid=>{
         const t=territories.find(x=>x.id===tid);if(!t)return;
         const v=t.val*(1+t.level*0.6);
@@ -777,6 +778,7 @@ function calcBonuses(){
         else if(t.bonus==='click')clickB+=v;
         else if(t.bonus==='crit')critB+=v;
         else if(t.bonus==='luck')luckB+=v;
+        else if(t.bonus==='crew')maxThieves+=Math.floor(v);
         else if(t.bonus==='all'){globalMult+=v;heistBonus+=v;clickB+=v;critB+=v;luckB+=v}
     });
     thieves.forEach(c=>{
@@ -876,7 +878,7 @@ function buySpecial(id){const u=specialUpgrades.find(x=>x.id===id);if(!u||u.owne
 function buyStorage(i){const s=storageTypes[i];if(money>=s.cost&&!storageLocations.find(x=>x.name===s.name)){money-=s.cost;storageLocations.push({...s,stored:0,id:Date.now()});vib([15,25,15]);updateAll()}}
 function deposit(id,amt){const s=storageLocations.find(x=>x.id===id);if(s){const mx=Math.min(amt,money,s.cap-s.stored);if(mx>0){money-=mx;s.stored+=mx;updateAll()}}}
 function withdraw(id){const s=storageLocations.find(x=>x.id===id);if(s?.stored>0){money+=s.stored;s.stored=0;updateAll()}}
-function hireThief(){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes[Math.floor(Math.random()*crewTypes.length)];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
+function hireThief(crewTypeId){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes.find(t=>t.id===crewTypeId)||crewTypes[0];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,30]);showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
 function trainCrew(id,attr){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib([15,25,15]);updateAll()}}
 function fireCrew(id){if(confirm('Fire this crew member?')){thieves=thieves.filter(c=>c.id!==id);updateAll()}}
 
@@ -964,7 +966,12 @@ function updateAll(){
         const cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));const can=money>=cost&&u.owned<u.maxOwned;
         const atMax=u.owned>=u.maxOwned;
         const pipsPer=Math.ceil(u.maxOwned/5);const pipsOwned=Math.min(5,Math.floor(u.owned/pipsPer));
-        return `<div class="upgrade-card ${can?'affordable':''} ${atMax?'maxed':''}"><div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span style="font-size:0.65em;color:#94a3b8">${u.owned}/${u.maxOwned}</span></div><div class="territory-pips">${Array(5).fill(0).map((_,j)=>`<div class="territory-pip ${j<pipsOwned?'filled':''}"></div>`).join('')}</div><div class="upgrade-meta"><span>x${u.mult}</span><b style="color:#fbbf24">$${fmtS(cost)}</b></div><button class="upgrade-btn" onclick="buyClick(${i})" ${can&&!atMax?'':'disabled'}>${atMax?'✓ MAX':'Buy'}</button></div>`;
+        const currentPipProgress=((u.owned%pipsPer)/pipsPer)*100;
+        return `<div class="upgrade-card ${can?'affordable':''} ${atMax?'maxed':''}"><div class="upgrade-header"><span class="upgrade-name">${u.icon} ${u.name}</span><span style="font-size:0.65em;color:#94a3b8">${u.owned}/${u.maxOwned}</span></div><div class="territory-pips">${Array(5).fill(0).map((_,j)=>{
+            if(j<pipsOwned)return `<div class="territory-pip filled"></div>`;
+            if(j===pipsOwned&&!atMax)return `<div class="territory-pip" style="background:linear-gradient(90deg,#22c55e ${currentPipProgress}%,rgba(255,255,255,0.2) ${currentPipProgress}%)"></div>`;
+            return `<div class="territory-pip"></div>`;
+        }).join('')}</div><div class="upgrade-meta"><span>x${u.mult}</span><b style="color:#fbbf24">$${fmtS(cost)}</b></div><button class="upgrade-btn" onclick="buyClick(${i})" ${can&&!atMax?'':'disabled'}>${atMax?'✓ MAX':'Buy'}</button></div>`;
     }).join('');
     
     // Territory content
@@ -973,11 +980,13 @@ function updateAll(){
         <div class="section-title">🗺️ Territories <span style="font-weight:normal;color:#94a3b8">(${ownedTerritories.length}/${territories.length})</span></div>
         <div class="grid-2col">${territories.map(t=>{
             const owned=ownedTerritories.includes(t.id);const can=money>=t.cost;const upCost=t.upCost*Math.pow(2,t.level);const canUp=owned&&t.level<t.maxLvl&&money>=upCost;
-            const bonusMap={income:'📈 Income',click:'👆 Click',heist:'🎯 Heist',crit:'⚡ Crit',luck:'🍀 Luck',all:'✨ All'};
+            const bonusMap={income:'📈 Income',click:'👆 Click',heist:'🎯 Heist',crit:'⚡ Crit',luck:'🍀 Luck',crew:'🥷 Crew',all:'✨ All'};
             const currVal=(t.val*(1+t.level*0.6)*100).toFixed(0);
-            const imgName=t.name==='Casino District'?'Casino':t.name;
+            const crewSlots=Math.floor(t.val*(1+t.level*0.6));
+            const bonusText=t.bonus==='crew'?`+${crewSlots} slots`:`+${currVal}% ${bonusMap[t.bonus]}`;
+            const imgName=t.name==='Casino District'?'Casino':t.name==='Hideout'?'Industrial':t.name;
             const bgImage=`assets/${imgName}.PNG`;
-            return `<div class="territory-card ${owned?'owned':''}" style="background-image:url('${bgImage}')"><div class="upgrade-header"><span class="upgrade-name">${t.icon} ${t.name}</span><span style="font-size:0.6em;color:#4ade80">+${currVal}% ${bonusMap[t.bonus]}</span></div><div class="territory-pips">${Array(t.maxLvl).fill(0).map((_,j)=>`<div class="territory-pip ${j<t.level?'filled':''}"></div>`).join('')}</div>${owned?`<button class="btn btn-green" style="width:100%" onclick="upgradeTerritory(${t.id})" ${canUp?'':'disabled'}>${t.level>=t.maxLvl?'✓ MAX':`⬆ ${fmtS(upCost)}`}</button>`:`<button class="btn btn-blue" style="width:100%" onclick="buyTerritory(${t.id})" ${can?'':'disabled'}>🎯 ${fmtS(t.cost)}</button>`}</div>`;
+            return `<div class="territory-card ${owned?'owned':''}" style="background-image:url('${bgImage}')"><div class="upgrade-header"><span class="upgrade-name">${t.icon} ${t.name}</span><span style="font-size:0.6em;color:#4ade80">${bonusText}</span></div><div class="territory-pips">${Array(t.maxLvl).fill(0).map((_,j)=>`<div class="territory-pip ${j<t.level?'filled':''}"></div>`).join('')}</div>${owned?(t.level>=t.maxLvl?'':`<button class="btn btn-green" style="width:100%" onclick="upgradeTerritory(${t.id})" ${canUp?'':'disabled'}>⬆ ${fmtS(upCost)}</button>`):`<button class="btn btn-blue" style="width:100%" onclick="buyTerritory(${t.id})" ${can?'':'disabled'}>🎯 ${fmtS(t.cost)}</button>`}</div>`;
         }).join('')}</div>
     `:`<div class="locked-content"><div class="lock-icon">🔒</div><h3>Territories</h3><p>Reach Rank 4 (❤️ Kingpin) to unlock territory control and earn passive bonuses!</p></div>`;
     
@@ -1005,7 +1014,7 @@ function updateAll(){
     const crewCost=10000*Math.pow(2.3,thieves.length);
     document.getElementById('crewContent').innerHTML=crewUnlocked?`
         <div class="section-title">🥷 Your Crew <span style="font-weight:normal;color:#94a3b8">(${thieves.length}/${maxThieves})</span></div>
-        <button class="btn btn-purple" onclick="hireThief()" style="width:100%;margin-bottom:8px;padding:10px;font-size:0.8em" ${money<crewCost||thieves.length>=maxThieves?'disabled':''}>${thieves.length>=maxThieves?'✓ MAX CREW':`Hire Crew Member - ${fmt(crewCost)}`}</button>
+        ${thieves.length>=maxThieves?`<div style="text-align:center;padding:10px;font-size:0.8em;color:#22c55e;font-weight:bold">✓ MAX CREW CAPACITY</div>`:`<div style="margin-bottom:8px"><div style="font-size:0.7em;color:#94a3b8;margin-bottom:4px;text-align:center">Hire ${fmt(crewCost)} - Choose Type:</div><div class="grid-2col" style="gap:4px">${crewTypes.map(ct=>`<button class="btn btn-purple" onclick="hireThief('${ct.id}')" style="padding:6px;font-size:0.7em;display:flex;flex-direction:column;align-items:center;gap:2px" ${money<crewCost?'disabled':''}><span style="font-size:1.3em">${ct.icon}</span><span style="font-weight:bold;color:${ct.color}">${ct.name}</span><span style="font-size:0.85em;color:#94a3b8">${ct.desc}</span></button>`).join('')}</div></div>`}
         <div style="font-size:0.6em;color:#94a3b8;margin-bottom:8px;padding:6px;background:rgba(0,0,0,0.2);border-radius:4px">
             💡 Crew earns money every 5 seconds but may steal from your cash! Train <b>Loyalty</b> to reduce theft risk.
         </div>
