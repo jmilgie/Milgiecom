@@ -27,7 +27,8 @@
     .money-sub .cash { color: #4ade80; }
     .money-sub .banked { color: #3b82f6; }
     .header-right { display: flex; align-items: center; gap: 6px; }
-    .settings-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 1em; }
+    .header-settings-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 1em; display: flex; align-items: center; justify-content: center; }
+    .header-settings-btn:hover { background: rgba(255,255,255,0.2); }
     .rank-badge { padding: 3px 8px; border-radius: 10px; font-weight: bold; font-size: 0.65em; }
     .rank-0-badge { background: linear-gradient(135deg, #6b7280, #4b5563); }
     .rank-1-badge { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
@@ -359,7 +360,7 @@
     </div>
     <div class="header-right">
         <div class="rank-badge rank-0-badge" id="rankBadge">🔰 Thug</div>
-        <button class="settings-btn" onclick="openSettings()">⚙️</button>
+        <button class="header-settings-btn" onclick="openSettings()">⚙️</button>
     </div>
 </div>
 <div class="progress-row">
@@ -616,7 +617,12 @@ function importSave(){
 
 function hardReset(){
     if(confirm('⚠️ Delete ALL progress? This cannot be undone!')){
-        if(confirm('Are you REALLY sure?')){localStorage.removeItem(SAVE_KEY);location.reload()}
+        if(confirm('Are you REALLY sure?')){
+            localStorage.removeItem(SAVE_KEY);
+            localStorage.removeItem('criminalEmpireSave');
+            sessionStorage.clear();
+            setTimeout(()=>location.reload(true),100);
+        }
     }
 }
 
