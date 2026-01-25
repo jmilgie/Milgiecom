@@ -1756,6 +1756,9 @@ function updateAll(){
             const skillStar=c.skillStar||0;
             const incomeStar=c.incomeStar||0;
             const fragCost=5;
+            const loyaltyStars='★'.repeat(loyaltyStar)+'☆'.repeat(5-loyaltyStar);
+            const skillStars='★'.repeat(skillStar)+'☆'.repeat(5-skillStar);
+            const incomeStars='★'.repeat(incomeStar)+'☆'.repeat(5-incomeStar);
             return `<div class="thief-card" style="background-image:url('${bgImage}');${isNew?'animation:crewAppear 0.6s ease-out;':''}">
                 <div class="thief-card-header">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -1784,15 +1787,15 @@ function updateAll(){
                 </div>
                 <div class="train-grid">
                     <button class="train-btn" onclick="upgradeCrewStat(${c.id},'loyalty')" ${coinFragments<fragCost||loyaltyStar>=5?'disabled':''}>
-                        <div>🛡️ ${'★'.repeat(loyaltyStar)}${'☆'.repeat(5-loyaltyStar)}</div>
+                        <div>🛡️ ${loyaltyStars}</div>
                         <div class="train-btn-label">Loyalty<br>🪙${loyaltyStar>=5?'MAX':fragCost}</div>
                     </button>
                     <button class="train-btn" onclick="upgradeCrewStat(${c.id},'skill')" ${coinFragments<fragCost||skillStar>=5?'disabled':''}>
-                        <div>⚡ ${'★'.repeat(skillStar)}${'☆'.repeat(5-skillStar)}</div>
+                        <div>⚡ ${skillStars}</div>
                         <div class="train-btn-label">Skill<br>🪙${skillStar>=5?'MAX':fragCost}</div>
                     </button>
                     <button class="train-btn" onclick="upgradeCrewStat(${c.id},'income')" ${coinFragments<fragCost||incomeStar>=5?'disabled':''}>
-                        <div>💎 ${'★'.repeat(incomeStar)}${'☆'.repeat(5-incomeStar)}</div>
+                        <div>💎 ${incomeStars}</div>
                         <div class="train-btn-label">Income<br>🪙${incomeStar>=5?'MAX':fragCost}</div>
                     </button>
                 </div>
