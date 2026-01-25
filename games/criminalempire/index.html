@@ -901,9 +901,10 @@ function getHeatChance(){return Math.min(policeHeat/100,0.45)}
 function getCrewPower(){return thieves.reduce((t,c)=>t+c.loyalty+c.skill+c.exp,0)}
 function getHeistChance(h){return Math.min(0.95,h.chance+getCrewPower()*0.004+heistBonus)}
 function getCrewIncome(c){
+    if(!c||!c.baseIncome)return 0;
     const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'));
     const typeMult=ct&&ct.bonus==='income'?1.5:1;
-    const levelMult=1+(c.level||1)*0.1;
+    const levelMult=1+((c.level||1)-1)*0.1;
     const incomeStar=c.incomeStar||0;
     const skillStar=c.skillStar||0;
     const incomeStarMult=1+incomeStar*0.3;
@@ -911,7 +912,8 @@ function getCrewIncome(c){
     return Math.floor(c.baseIncome*levelMult*typeMult*incomeStarMult*skillStarMult*globalMult);
 }
 function getCrewSteal(c){
-    const baseLoyalty=c.loyalty||1;
+    if(!c)return 0.20;
+    const baseLoyalty=c.loyalty||0;
     const loyaltyStar=c.loyaltyStar||0;
     const totalLoyalty=baseLoyalty+loyaltyStar*2;
     return Math.max(0.01,0.20-totalLoyalty*0.03);
@@ -1572,6 +1574,7 @@ function processCrew(){
     if(specialUpgrades.find(u=>u.id==='crewxp2')?.owned)xpMult+=1.0;
 
     thieves.forEach(c=>{
+        if(!c||!c.baseIncome)return;
         const stealChance=getCrewSteal(c);
         if(Math.random()<stealChance){
             const stolen=Math.floor(money*0.04*Math.random());
@@ -1743,8 +1746,9 @@ function updateAll(){
             💡 Crew earns money every 5 seconds but may steal from your cash! Train <b>Loyalty</b> to reduce theft risk.
         </div>
         <div class="grid-2col">${thieves.length?thieves.map(c=>{
+            if(!c||!c.name)return '';
             const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'))||crewTypes[0];
-            const crewImgName=`${c.name.toLowerCase()}_${c.type}`;
+            const crewImgName=`${c.name.toLowerCase()}_${c.type||'enforcer'}`;
             const bgImage=`assets/crew_${crewImgName}.png`;
             const isNew=Date.now()-c.id<1000;
             const level=c.level||1;
