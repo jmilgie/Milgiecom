@@ -2006,8 +2006,10 @@ function setupHoldToRepeat(){
         if(!btn||btn.disabled)return;
         if(btn.classList.contains('modal-close')||btn.classList.contains('tab-btn'))return;
 
+        // Exclude critical buttons that need confirm dialogs
         const clickHandler=btn.getAttribute('onclick');
         if(!clickHandler)return;
+        if(clickHandler.includes('hardReset')||clickHandler.includes('confirmPrestige')||clickHandler.includes('fireCrew'))return;
 
         isHolding=false;
         lastHoldButton=btn;
@@ -2038,8 +2040,10 @@ function setupHoldToRepeat(){
         if(!btn||btn.disabled)return;
         if(btn.classList.contains('modal-close')||btn.classList.contains('tab-btn'))return;
 
+        // Exclude critical buttons that need confirm dialogs
         const clickHandler=btn.getAttribute('onclick');
         if(!clickHandler)return;
+        if(clickHandler.includes('hardReset')||clickHandler.includes('confirmPrestige')||clickHandler.includes('fireCrew'))return;
 
         isHolding=false;
         lastHoldButton=btn;
