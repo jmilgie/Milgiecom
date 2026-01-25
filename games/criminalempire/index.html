@@ -52,7 +52,7 @@
     
     .click-section { display: flex; justify-content: center; align-items: center; padding: 8px; gap: 8px; position: fixed; bottom: 54px; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.7)); z-index: 100; pointer-events: none; min-height: 115px; }
     .click-section > * { pointer-events: auto; }
-    .click-button { width: 98px; height: 98px; border-radius: 50%; font-size: 2.6em; cursor: pointer; transition: all 0.1s; position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; border: none; }
+    .click-button { width: 98px; height: 98px; border-radius: 50%; font-size: 2.6em; cursor: pointer; transition: all 0.1s; position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; border: none; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
     .click-button::before { content: ''; position: absolute; inset: -15px; border-radius: 50%; background: transparent; }
     .click-button:active { transform: scale(0.88); }
     .click-0 { border: 3px solid #22c55e; background: linear-gradient(145deg, #4ade80, #16a34a); box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); }
@@ -190,7 +190,7 @@
     .locked-content p { font-size: 0.8em; }
     
     /* Buttons */
-    .btn { padding: 4px 8px; border: none; border-radius: 4px; font-weight: bold; font-size: 0.6em; cursor: pointer; transition: all 0.15s; }
+    .btn { padding: 4px 8px; border: none; border-radius: 4px; font-weight: bold; font-size: 0.6em; cursor: pointer; transition: all 0.15s; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
     .btn:not(:disabled):active { transform: scale(0.95); }
     .btn-green { background: linear-gradient(145deg, #22c55e, #16a34a); color: white; }
     .btn-purple { background: linear-gradient(145deg, #a855f7, #9333ea); color: white; }
@@ -2007,6 +2007,7 @@ function setupHoldToRepeat(){
         const clickHandler=btn.getAttribute('onclick');
         if(!clickHandler)return;
 
+        e.preventDefault();
         lastHoldButton=btn;
         holdTimer=setTimeout(()=>{
             holdInterval=setInterval(()=>{
@@ -2036,6 +2037,7 @@ function setupHoldToRepeat(){
         const clickHandler=btn.getAttribute('onclick');
         if(!clickHandler)return;
 
+        e.preventDefault();
         lastHoldButton=btn;
         holdTimer=setTimeout(()=>{
             holdInterval=setInterval(()=>{
