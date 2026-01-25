@@ -357,15 +357,15 @@
             <h4>Preferences</h4>
             <div class="settings-row">
                 <label>Sound Effects</label>
-                <div class="toggle ${settings.sound?'on':''}" id="toggleSound" onclick="toggleSetting('sound')"></div>
+                <div class="toggle" id="toggleSound" onclick="toggleSetting('sound')"></div>
             </div>
             <div class="settings-row">
                 <label>Vibration</label>
-                <div class="toggle ${settings.vibration?'on':''}" id="toggleVib" onclick="toggleSetting('vibration')"></div>
+                <div class="toggle" id="toggleVib" onclick="toggleSetting('vibration')"></div>
             </div>
             <div class="settings-row">
                 <label>Show Tips</label>
-                <div class="toggle ${settings.tips?'on':''}" id="toggleTips" onclick="toggleSetting('tips')"></div>
+                <div class="toggle" id="toggleTips" onclick="toggleSetting('tips')"></div>
             </div>
             <div class="settings-row">
                 <label>Debug Mode</label>
@@ -1992,6 +1992,61 @@ loadGame();
 document.body.className=`rank-${getRank()}`;
 if(settings.debug)document.getElementById('debugBtns').style.display='flex';
 updateAll();
+
+// === PRESS AND HOLD SYSTEM ===
+let holdTimer=null;
+let holdInterval=null;
+let lastHoldButton=null;
+
+function setupHoldToRepeat(){
+    document.addEventListener('mousedown',(e)=>{
+        const btn=e.target.closest('button, .money-circle');
+        if(!btn||btn.disabled)return;
+        if(btn.classList.contains('modal-close')||btn.classList.contains('tab-btn'))return;
+
+        const clickHandler=btn.getAttribute('onclick');
+        if(!clickHandler)return;
+
+        lastHoldButton=btn;
+        holdTimer=setTimeout(()=>{
+            holdInterval=setInterval(()=>{
+                if(btn.disabled)return;
+                try{eval(clickHandler)}catch(e){}
+            },100);
+        },1000);
+    });
+
+    const stopHold=()=>{
+        if(holdTimer){clearTimeout(holdTimer);holdTimer=null}
+        if(holdInterval){clearInterval(holdInterval);holdInterval=null}
+        lastHoldButton=null;
+    };
+
+    document.addEventListener('mouseup',stopHold);
+    document.addEventListener('mouseleave',(e)=>{if(e.target===document.body)stopHold()});
+    document.addEventListener('touchend',stopHold);
+    document.addEventListener('touchcancel',stopHold);
+
+    // Touch support
+    document.addEventListener('touchstart',(e)=>{
+        const btn=e.target.closest('button, .money-circle');
+        if(!btn||btn.disabled)return;
+        if(btn.classList.contains('modal-close')||btn.classList.contains('tab-btn'))return;
+
+        const clickHandler=btn.getAttribute('onclick');
+        if(!clickHandler)return;
+
+        lastHoldButton=btn;
+        holdTimer=setTimeout(()=>{
+            holdInterval=setInterval(()=>{
+                if(btn.disabled)return;
+                try{eval(clickHandler)}catch(e){}
+            },100);
+        },1000);
+    });
+}
+
+setupHoldToRepeat();
 
 setInterval(()=>{
     const incomeMultiplier=(activeEffects.incomeBoost?1+activeEffects.incomeBoost.val:1);
