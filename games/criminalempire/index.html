@@ -708,9 +708,11 @@ const policeUpgrades=[
 
 const specialUpgrades=[
     {id:"luck1",name:"🍀 Lucky Charm",desc:"+2% luck",cost:50000,owned:false,fx:()=>luckChance+=0.02},
+    {id:"crewxp1",name:"📚 Training Manual",desc:"Crew +50% XP",cost:75000,owned:false,fx:()=>{}},
     {id:"crit1",name:"⚡ Sharp Eye",desc:"+3% crit",cost:100000,owned:false,fx:()=>critChance+=0.03},
     {id:"crit2",name:"💥 Crit Master",desc:"+1x crit mult",cost:500000,owned:false,fx:()=>critMult+=1},
     {id:"luck2",name:"🎲 Gambler",desc:"+3% luck",cost:1000000,owned:false,fx:()=>luckChance+=0.03},
+    {id:"crewxp2",name:"🎓 Academy",desc:"Crew +100% XP",cost:2000000,owned:false,fx:()=>{}},
     {id:"crit3",name:"🔥 Devastation",desc:"+5% crit +2x",cost:5000000,owned:false,fx:()=>{critChance+=0.05;critMult+=2}},
     {id:"luck3",name:"✨ Fortune",desc:"+5% luck",cost:10000000,owned:false,fx:()=>luckChance+=0.05}
 ];
@@ -899,9 +901,30 @@ function getStored(){return storageLocations.reduce((t,s)=>t+s.stored,0)}
 function getHeatChance(){return Math.min(policeHeat/100,0.45)}
 function getCrewPower(){return thieves.reduce((t,c)=>t+c.loyalty+c.skill+c.exp,0)}
 function getHeistChance(h){return Math.min(0.95,h.chance+getCrewPower()*0.004+heistBonus)}
-function getCrewIncome(c){const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'));const typeMult=ct&&ct.bonus==='income'?1.5:1;return Math.floor((c.baseIncome*(1+c.exp*0.4)+c.skill*40)*globalMult*typeMult)}
-function getCrewSteal(c){return Math.max(0.01,0.18-c.loyalty*0.022)}
-function getCrewRank(c){const t=c.loyalty+c.skill+c.exp;if(t>=24)return 4;if(t>=15)return 3;if(t>=8)return 2;if(t>=3)return 1;return 0}
+function getCrewIncome(c){
+    const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'));
+    const typeMult=ct&&ct.bonus==='income'?1.5:1;
+    const levelMult=1+(c.level||1)*0.1;
+    const incomeStar=c.incomeStar||0;
+    const skillStar=c.skillStar||0;
+    const incomeStarMult=1+incomeStar*0.3;
+    const skillStarMult=1+skillStar*0.2;
+    return Math.floor(c.baseIncome*levelMult*typeMult*incomeStarMult*skillStarMult*globalMult);
+}
+function getCrewSteal(c){
+    const baseLoyalty=c.loyalty||1;
+    const loyaltyStar=c.loyaltyStar||0;
+    const totalLoyalty=baseLoyalty+loyaltyStar*2;
+    return Math.max(0.01,0.20-totalLoyalty*0.03);
+}
+function getCrewRank(c){
+    const level=c.level||1;
+    if(level>=10)return 4;
+    if(level>=7)return 3;
+    if(level>=4)return 2;
+    if(level>=2)return 1;
+    return 0;
+}
 
 // === SAVE/LOAD ===
 function saveGame(){
@@ -1412,7 +1435,12 @@ function attemptHeist(id){
         vib([25,40,25,40,25,40,80]);
         const reward=h.reward[0]+Math.floor(Math.random()*(h.reward[1]-h.reward[0]));
         money+=reward;totalEarned+=reward;lifetimeEarnings+=reward;reputation+=Math.ceil(reward/400);
-        showNotif('🎯 SUCCESS!','heist-win',`+${fmt(reward)}`);
+
+        // Award coin fragments based on heist difficulty
+        const fragReward=id+1;
+        coinFragments+=fragReward;
+
+        showNotif('🎯 SUCCESS!','heist-win',`+${fmt(reward)} +${fragReward}🪙`);
     }else{
         vib([80,40,80]);policeHeat=Math.min(100,policeHeat+h.heat);
         showNotif('💀 FAILED!','heist-fail','Increase crew power!');
@@ -1435,6 +1463,24 @@ function deposit(id,amt){const s=storageLocations.find(x=>x.id===id);if(s){const
 function withdraw(id){const s=storageLocations.find(x=>x.id===id);if(s?.stored>0){money+=s.stored;s.stored=0;updateAll()}}
 function hireThief(crewTypeId){const cost=10000*Math.pow(2.3,thieves.length);if(money>=cost&&thieves.length<maxThieves){money-=cost;const crewType=crewTypes.find(t=>t.id===crewTypeId)||crewTypes[0];thieves.push({id:Date.now(),name:crewNames[thieves.length%crewNames.length],type:crewType.id,baseIncome:180+Math.floor(Math.random()*250),loyalty:0,skill:0,exp:0});vib([25,40,25,40,80,40,60]);playSound(650,100,'triangle',0.15);setTimeout(()=>playSound(850,100,'sine',0.12),100);setTimeout(()=>playSound(1050,150,'triangle',0.18),200);const btn=event.target.closest('button');if(btn){btn.style.animation='hireSuccess 0.5s';setTimeout(()=>btn.style.animation='',500)}showTip('crew_hired',`Hired ${crewType.name}! ${crewType.desc}`);checkAchievements();updateAll()}}
 function trainCrew(id,attr){const c=thieves.find(x=>x.id===id);if(!c||c[attr]>=10)return;const costs={loyalty:2500,skill:7000,exp:4500};const cost=Math.floor(costs[attr]*Math.pow(1.9,c[attr]));if(money>=cost){money-=cost;c[attr]++;reputation+=8;vib([15,25,15]);playSound(550,80,'sine',0.1);updateAll()}}
+function upgradeCrewStat(id,stat){
+    const c=thieves.find(x=>x.id===id);
+    if(!c)return;
+
+    const fragCost=5;
+    const starField=stat+'Star';
+    const currentStar=c[starField]||0;
+
+    if(coinFragments<fragCost||currentStar>=5)return;
+
+    coinFragments-=fragCost;
+    c[starField]=currentStar+1;
+
+    playSound(750,120,'triangle',0.15);
+    vib([20,30,20]);
+    updateAll();
+}
+
 function fireCrew(id){if(confirm('Fire this crew member?')){playSound(250,150,'sawtooth',0.12);thieves=thieves.filter(c=>c.id!==id);updateAll()}}
 
 // === CREW HIRE CAROUSEL ===
@@ -1521,6 +1567,11 @@ function confirmCrewHire(){
 }
 
 function processCrew(){
+    // Calculate XP multiplier from upgrades
+    let xpMult=1;
+    if(specialUpgrades.find(u=>u.id==='crewxp1')?.owned)xpMult+=0.5;
+    if(specialUpgrades.find(u=>u.id==='crewxp2')?.owned)xpMult+=1.0;
+
     thieves.forEach(c=>{
         const stealChance=getCrewSteal(c);
         if(Math.random()<stealChance){
@@ -1528,7 +1579,21 @@ function processCrew(){
             money=Math.max(0,money-stolen);
             if(stolen>100)showNotif(`🥷 ${c.name} stole!`,'theft',`-${fmt(stolen)}`);
         }else{
-            const income=getCrewIncome(c);money+=income;totalEarned+=income;
+            const income=getCrewIncome(c);
+            money+=income;
+            totalEarned+=income;
+
+            // Award XP and check for level up
+            const xpGain=Math.floor(5*xpMult);
+            c.xp=(c.xp||0)+xpGain;
+            const level=c.level||1;
+            const xpNeeded=level*100;
+            if(c.xp>=xpNeeded){
+                c.xp-=xpNeeded;
+                c.level=level+1;
+                showNotif(`⬆️ ${c.name} Level Up!`,'income',`Now Lv.${c.level}`);
+                playSound(900,150,'triangle',0.18);
+            }
         }
     });
 }
@@ -1679,19 +1744,27 @@ function updateAll(){
             💡 Crew earns money every 5 seconds but may steal from your cash! Train <b>Loyalty</b> to reduce theft risk.
         </div>
         <div class="grid-2col">${thieves.length?thieves.map(c=>{
-            const r=getCrewRank(c);const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'))||crewTypes[0];
-            const costMult=(ct.id==='insider'?0.7:1);
-            const lc=Math.floor(2500*Math.pow(1.9,c.loyalty)*costMult),sc=Math.floor(7000*Math.pow(1.9,c.skill)*costMult),ec=Math.floor(4500*Math.pow(1.9,c.exp)*costMult);
+            const ct=crewTypes.find(t=>t.id===(c.type||'enforcer'))||crewTypes[0];
             const crewImgName=`${c.name.toLowerCase()}_${c.type}`;
             const bgImage=`assets/crew_${crewImgName}.png`;
             const isNew=Date.now()-c.id<1000;
+            const level=c.level||1;
+            const xp=c.xp||0;
+            const xpNeeded=level*100;
+            const xpPct=(xp/xpNeeded)*100;
+            const loyaltyStar=c.loyaltyStar||0;
+            const skillStar=c.skillStar||0;
+            const incomeStar=c.incomeStar||0;
+            const fragCost=5;
             return `<div class="thief-card" style="background-image:url('${bgImage}');${isNew?'animation:crewAppear 0.6s ease-out;':''}">
                 <div class="thief-card-header">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                        <span style="font-weight:bold;font-size:0.95em;text-shadow:0 2px 4px rgba(0,0,0,0.9)">${ct.icon} ${c.name}<span class="thief-rank-badge" style="background:${crewRankColors[r]}">${crewRanks[r]}</span></span>
+                        <span style="font-weight:bold;font-size:0.95em;text-shadow:0 2px 4px rgba(0,0,0,0.9)">${ct.icon} ${c.name} <span style="color:#fbbf24">Lv.${level}</span></span>
                         <button class="btn btn-red" style="padding:3px 7px;font-size:0.75em" onclick="fireCrew(${c.id})">✕</button>
                     </div>
-                    <div style="font-size:0.7em;color:${ct.color};font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.9)">${ct.name} - ${ct.desc}</div>
+                    <div style="font-size:0.7em;color:${ct.color};font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.9)">${ct.name}</div>
+                    <div style="background:rgba(0,0,0,0.5);border-radius:4px;height:4px;margin-top:3px;overflow:hidden"><div style="background:#4ade80;height:100%;width:${xpPct}%;transition:width 0.3s"></div></div>
+                    <div style="font-size:0.55em;color:#94a3b8;text-align:center;margin-top:1px;text-shadow:0 1px 2px rgba(0,0,0,0.9)">XP: ${xp}/${xpNeeded}</div>
                 </div>
                 <div class="thief-stats">
                     <div class="thief-stat">
@@ -1710,17 +1783,17 @@ function updateAll(){
                     </div>
                 </div>
                 <div class="train-grid">
-                    <button class="train-btn" onclick="trainCrew(${c.id},'loyalty')" ${money<lc||c.loyalty>=10?'disabled':''}>
-                        <div>🛡️ ${c.loyalty}/10</div>
-                        <div class="train-btn-label">Loyalty<br>${fmtS(lc)}</div>
+                    <button class="train-btn" onclick="upgradeCrewStat(${c.id},'loyalty')" ${coinFragments<fragCost||loyaltyStar>=5?'disabled':''}>
+                        <div>🛡️ ${'★'.repeat(loyaltyStar)}${'☆'.repeat(5-loyaltyStar)}</div>
+                        <div class="train-btn-label">Loyalty<br>🪙${loyaltyStar>=5?'MAX':fragCost}</div>
                     </button>
-                    <button class="train-btn" onclick="trainCrew(${c.id},'skill')" ${money<sc||c.skill>=10?'disabled':''}>
-                        <div>⚡ ${c.skill}/10</div>
-                        <div class="train-btn-label">Skill<br>${fmtS(sc)}</div>
+                    <button class="train-btn" onclick="upgradeCrewStat(${c.id},'skill')" ${coinFragments<fragCost||skillStar>=5?'disabled':''}>
+                        <div>⚡ ${'★'.repeat(skillStar)}${'☆'.repeat(5-skillStar)}</div>
+                        <div class="train-btn-label">Skill<br>🪙${skillStar>=5?'MAX':fragCost}</div>
                     </button>
-                    <button class="train-btn" onclick="trainCrew(${c.id},'exp')" ${money<ec||c.exp>=10?'disabled':''}>
-                        <div>📈 ${c.exp}/10</div>
-                        <div class="train-btn-label">Experience<br>${fmtS(ec)}</div>
+                    <button class="train-btn" onclick="upgradeCrewStat(${c.id},'income')" ${coinFragments<fragCost||incomeStar>=5?'disabled':''}>
+                        <div>💎 ${'★'.repeat(incomeStar)}${'☆'.repeat(5-incomeStar)}</div>
+                        <div class="train-btn-label">Income<br>🪙${incomeStar>=5?'MAX':fragCost}</div>
                     </button>
                 </div>
             </div>`;
