@@ -1999,6 +1999,8 @@ let holdInterval=null;
 let lastHoldButton=null;
 
 function setupHoldToRepeat(){
+    let isHolding=false;
+
     document.addEventListener('mousedown',(e)=>{
         const btn=e.target.closest('button, .money-circle');
         if(!btn||btn.disabled)return;
@@ -2007,9 +2009,10 @@ function setupHoldToRepeat(){
         const clickHandler=btn.getAttribute('onclick');
         if(!clickHandler)return;
 
-        e.preventDefault();
+        isHolding=false;
         lastHoldButton=btn;
         holdTimer=setTimeout(()=>{
+            isHolding=true;
             holdInterval=setInterval(()=>{
                 if(btn.disabled)return;
                 try{eval(clickHandler)}catch(e){}
@@ -2020,6 +2023,7 @@ function setupHoldToRepeat(){
     const stopHold=()=>{
         if(holdTimer){clearTimeout(holdTimer);holdTimer=null}
         if(holdInterval){clearInterval(holdInterval);holdInterval=null}
+        isHolding=false;
         lastHoldButton=null;
     };
 
@@ -2037,9 +2041,10 @@ function setupHoldToRepeat(){
         const clickHandler=btn.getAttribute('onclick');
         if(!clickHandler)return;
 
-        e.preventDefault();
+        isHolding=false;
         lastHoldButton=btn;
         holdTimer=setTimeout(()=>{
+            isHolding=true;
             holdInterval=setInterval(()=>{
                 if(btn.disabled)return;
                 try{eval(clickHandler)}catch(e){}
