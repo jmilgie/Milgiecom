@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1371,6 +1370,7 @@ function fireCrew(id){if(confirm('Fire this crew member?')){playSound(250,150,'s
 
 function processCrew(){
     thieves.forEach(c=>{
+        if(!c||!c.baseIncome)return;
         const stealChance=getCrewSteal(c);
         if(Math.random()<stealChance){
             const stolen=Math.floor(money*0.04*Math.random());
