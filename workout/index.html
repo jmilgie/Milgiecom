@@ -1835,19 +1835,30 @@ body {
     let displayDetail = '';
     
     if (exercise.type === 'sets') {
-      displayDetail = `Set ${player.currentSetIndex + 1} of ${exercise.sets} • ${exercise.reps} reps`;
+      const currentSet = player.currentSetIndex + 1;
+      const totalSets = exercise.sets;
+      
       if (player.phase === 'rest') {
         displayName = 'Rest';
-        displayDetail = `Next: ${exercise.name} Set ${player.currentSetIndex + 2}`;
+        // During rest, we're resting AFTER completing currentSetIndex, so next set is currentSetIndex + 2
+        const nextSet = Math.min(currentSet + 1, totalSets);
+        displayDetail = `Next: ${exercise.name} Set ${nextSet} of ${totalSets}`;
+      } else {
+        displayDetail = `Set ${currentSet} of ${totalSets} • ${exercise.reps} reps`;
       }
     } else if (exercise.type === 'timed-sequence' && exercise.sequence) {
       const seq = exercise.sequence[player.currentSequenceIndex];
       if (seq) {
-        displayName = seq.name;
-        displayDetail = `${player.currentSetIndex + 1} of ${seq.reps}`;
+        const currentRep = player.currentSetIndex + 1;
+        const totalReps = seq.reps;
+        
         if (player.phase === 'rest') {
           displayName = 'Rest';
-          displayDetail = `Next: ${seq.name}`;
+          const nextRep = Math.min(currentRep + 1, totalReps);
+          displayDetail = `Next: ${seq.name} (${nextRep} of ${totalReps})`;
+        } else {
+          displayName = seq.name;
+          displayDetail = `${currentRep} of ${totalReps}`;
         }
       }
     } else if (exercise.type === 'instruction') {
@@ -2226,12 +2237,14 @@ body {
       updateWorkoutView();
       // Wait for user to mark set complete
     } else if (player.phase === 'rest') {
-      // Rest done, prep for next set
-      player.currentSetIndex++;
+      // Rest done, move to next set
+      // currentSetIndex was already incremented when we started rest
+      // Now check if we still have sets to do
       if (player.currentSetIndex >= exercise.sets) {
         // All sets done, move to next exercise
         advanceToNextExercise();
       } else {
+        // Prep for the next set
         startTimer(state.settings.prepTime, 'prep');
       }
     }
@@ -2253,12 +2266,14 @@ body {
         updateWorkoutView();
       }
     } else if (player.phase === 'work') {
-      // Work done, start rest
-      player.currentSetIndex++;
-      if (player.currentSetIndex >= currentSeq.reps) {
-        // This part of sequence done
+      // Work/hold done - this counts as completing the current rep
+      const completedRep = player.currentSetIndex + 1;
+      
+      if (completedRep >= currentSeq.reps) {
+        // This sequence item is done
         player.currentSetIndex = 0;
         player.currentSequenceIndex++;
+        
         if (player.currentSequenceIndex >= sequence.length) {
           // All sequence done
           advanceToNextExercise();
@@ -2267,11 +2282,12 @@ body {
           startTimer(state.settings.prepTime, 'prep');
         }
       } else {
-        // Rest before next rep
+        // More reps to do - increment and rest
+        player.currentSetIndex++;
         startTimer(currentSeq.rest || state.settings.microRest, 'rest');
       }
     } else if (player.phase === 'rest') {
-      // Rest done, prep for next rep
+      // Rest done, prep for next rep (index already incremented when rest started)
       startTimer(state.settings.prepTime, 'prep');
     }
   }
@@ -2285,27 +2301,38 @@ body {
     }
     
     if (exercise.type === 'sets') {
-      player.currentSetIndex++;
-      if (player.currentSetIndex >= exercise.sets) {
-        // All sets done
+      // Just completed set at currentSetIndex
+      const completedSet = player.currentSetIndex + 1; // 1-based for comparison
+      
+      if (completedSet >= exercise.sets) {
+        // All sets done, move to next exercise
         advanceToNextExercise();
       } else {
-        // Rest before next set
+        // More sets to do - increment index and start rest
+        player.currentSetIndex++;
         const restTime = getRestTime(exercise.rest);
         startTimer(restTime, 'rest');
       }
     } else if (exercise.type === 'timed-sequence') {
       const seq = exercise.sequence[player.currentSequenceIndex];
-      player.currentSetIndex++;
-      if (player.currentSetIndex >= seq.reps) {
+      // Just completed rep at currentSetIndex
+      const completedRep = player.currentSetIndex + 1; // 1-based for comparison
+      
+      if (completedRep >= seq.reps) {
+        // This sequence item is done
         player.currentSetIndex = 0;
         player.currentSequenceIndex++;
+        
         if (player.currentSequenceIndex >= exercise.sequence.length) {
+          // All sequence items done
           advanceToNextExercise();
         } else {
+          // Prep for next sequence item
           startTimer(state.settings.prepTime, 'prep');
         }
       } else {
+        // More reps to do - increment and start rest
+        player.currentSetIndex++;
         startTimer(seq.rest || state.settings.microRest, 'rest');
       }
     }
@@ -2335,14 +2362,56 @@ body {
 
   function skipToNext() {
     const exercise = getCurrentExercise();
+    stopTimer();
     
-    if (player.phase === 'rest' || player.phase === 'prep') {
-      stopTimer();
-      onTimerComplete();
-    } else if (player.phase === 'work' && player.timeRemaining > 0) {
-      stopTimer();
-      onTimerComplete();
+    if (player.phase === 'confirm') {
+      // Skip this entire exercise
+      advanceToNextExercise();
+    } else if (player.phase === 'prep') {
+      // Skip prep, go straight to work
+      if (exercise.type === 'sets') {
+        player.phase = 'work';
+        player.timeRemaining = 0;
+        player.timeTotal = 0;
+        updateWorkoutView();
+      } else if (exercise.type === 'timed-sequence') {
+        const seq = exercise.sequence[player.currentSequenceIndex];
+        if (seq && seq.time) {
+          startTimer(seq.time, 'work');
+        } else {
+          player.phase = 'work';
+          player.timeRemaining = 0;
+          player.timeTotal = 0;
+          updateWorkoutView();
+        }
+      }
+    } else if (player.phase === 'rest') {
+      // Skip rest, go to prep for next set/rep
+      if (exercise.type === 'sets') {
+        if (player.currentSetIndex >= exercise.sets) {
+          advanceToNextExercise();
+        } else {
+          startTimer(state.settings.prepTime, 'prep');
+        }
+      } else if (exercise.type === 'timed-sequence') {
+        const seq = exercise.sequence[player.currentSequenceIndex];
+        if (player.currentSetIndex >= seq.reps) {
+          player.currentSetIndex = 0;
+          player.currentSequenceIndex++;
+          if (player.currentSequenceIndex >= exercise.sequence.length) {
+            advanceToNextExercise();
+          } else {
+            startTimer(state.settings.prepTime, 'prep');
+          }
+        } else {
+          startTimer(state.settings.prepTime, 'prep');
+        }
+      }
+    } else if (player.phase === 'work') {
+      // Skip current set/rep - mark it complete
+      markSetComplete();
     } else {
+      // Default: mark complete
       markSetComplete();
     }
   }
