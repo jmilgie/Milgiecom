@@ -622,6 +622,89 @@ body {
   color: var(--accent);
 }
 
+/* ===== PROGRAM SELECTOR ===== */
+.program-selector {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.program-selector label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.program-selector select {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+}
+
+.program-selector select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.program-selector select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Loading State */
+.app.loading .intro-view {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 1000;
+}
+
+.loading-overlay.hidden {
+  display: none;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
 .session-selector {
   background: var(--surface);
   border-radius: 16px;
@@ -1066,14 +1149,18 @@ body {
   </style>
 </head>
 <body>
-  <div class="app">
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading workout programs...</div>
+  </div>
+
+  <div class="app" id="app">
     <!-- Header -->
     <header class="header">
-      <div class="logo">UPPER BODY</div>
-      <div class="session-tabs">
-        <button class="session-tab active" data-session="A">A</button>
-        <button class="session-tab" data-session="B">B</button>
-        <button class="session-tab" data-session="C">C</button>
+      <div class="logo" id="programLogo">WORKOUT</div>
+      <div class="session-tabs" id="sessionTabs">
+        <!-- Dynamically populated -->
       </div>
       <div class="header-actions">
         <button class="icon-btn" id="historyBtn" title="History">📊</button>
@@ -1087,11 +1174,18 @@ body {
   <!-- Intro/Overview View -->
   <div class="view intro-view active" id="introView">
     <div class="intro-header">
-      <h1 class="intro-title">UPPER BODY PROGRAM</h1>
-      <p class="intro-subtitle">3-day rotation • Pull-up progression • Strength focus</p>
+      <h1 class="intro-title" id="programTitle">WORKOUT PROGRAM</h1>
+      <p class="intro-subtitle" id="programSubtitle">Loading...</p>
     </div>
 
-    <div class="program-explanation">
+    <div class="program-selector">
+      <label for="programSelect">Select Program</label>
+      <select id="programSelect">
+        <option value="">Loading programs...</option>
+      </select>
+    </div>
+
+    <div class="program-explanation" id="programExplanation">
       <h3>📋 How It Works</h3>
       <p><b>Rotate through A → B → C</b> each workout day. Rest at least one day between sessions. Most people train 3-4 days per week.</p>
       <p><b>Example week:</b> Monday (A), Wednesday (B), Friday (C), then next week continue with A, B, C...</p>
@@ -1121,19 +1215,8 @@ body {
 
     <div class="session-selector">
       <h3>Select Today's Session</h3>
-      <div class="session-buttons">
-        <button class="session-btn active" data-session="A">
-          <div class="letter">A</div>
-          <div class="focus">Bench + Row</div>
-        </button>
-        <button class="session-btn" data-session="B">
-          <div class="letter">B</div>
-          <div class="focus">OHP + Back</div>
-        </button>
-        <button class="session-btn" data-session="C">
-          <div class="letter">C</div>
-          <div class="focus">Volume + Arms</div>
-        </button>
+      <div class="session-buttons" id="sessionButtons">
+        <!-- Dynamically populated -->
       </div>
     </div>
 
@@ -1338,9 +1421,17 @@ body {
   'use strict';
 
   // ===== STORAGE =====
-  const STORAGE_KEY = 'upper_body_coach_v2';
-  
+  const STORAGE_KEY = 'workout_coach_v3';
+  const DATA_PATH = 'data/';
+
+  // ===== PROGRAM DATA (loaded dynamically) =====
+  let availablePrograms = [];
+  let currentProgram = null;
+  let INSTRUCTIONS = {};
+  let WORKOUTS = {};
+
   const defaultState = {
+    currentProgramId: null,
     session: 'A',
     settings: {
       prepTime: 8,
@@ -1373,6 +1464,158 @@ body {
   }
 
   let state = loadState();
+
+  // ===== PROGRAM LOADING =====
+  async function loadProgramsList() {
+    try {
+      const response = await fetch(DATA_PATH + 'programs.json');
+      if (!response.ok) throw new Error('Failed to load programs list');
+      const data = await response.json();
+      availablePrograms = data.programs || [];
+      return availablePrograms;
+    } catch (e) {
+      console.error('Error loading programs list:', e);
+      return [];
+    }
+  }
+
+  async function loadProgram(programInfo) {
+    try {
+      const response = await fetch(DATA_PATH + programInfo.file);
+      if (!response.ok) throw new Error('Failed to load program: ' + programInfo.file);
+      const program = await response.json();
+
+      currentProgram = program;
+      INSTRUCTIONS = program.instructions || {};
+      WORKOUTS = program.sessions || {};
+
+      // Apply program's default settings if user hasn't customized them
+      if (program.settings) {
+        const savedSettings = state.settings;
+        state.settings = {
+          ...program.settings,
+          soundMode: savedSettings.soundMode || 'beep'
+        };
+      }
+
+      // Validate session exists in this program
+      if (!WORKOUTS[state.session]) {
+        state.session = Object.keys(WORKOUTS)[0] || 'A';
+      }
+
+      state.currentProgramId = program.id;
+      saveState();
+
+      return program;
+    } catch (e) {
+      console.error('Error loading program:', e);
+      return null;
+    }
+  }
+
+  function updateProgramUI() {
+    if (!currentProgram) return;
+
+    // Update logo
+    const logoText = currentProgram.name.split('—')[0].trim().toUpperCase();
+    const programLogo = document.getElementById('programLogo');
+    if (programLogo) programLogo.textContent = logoText;
+
+    // Update intro title and subtitle
+    const programTitle = document.getElementById('programTitle');
+    const programSubtitle = document.getElementById('programSubtitle');
+    if (programTitle) programTitle.textContent = currentProgram.name.toUpperCase();
+    if (programSubtitle) programSubtitle.textContent = currentProgram.description;
+
+    // Update session tabs in header
+    renderSessionTabs();
+
+    // Update session buttons in intro
+    renderSessionButtons();
+
+    // Update rotation visual
+    updateRotationVisual();
+  }
+
+  function renderSessionTabs() {
+    const sessionTabs = document.getElementById('sessionTabs');
+    if (!sessionTabs || !WORKOUTS) return;
+
+    const sessions = Object.keys(WORKOUTS);
+    sessionTabs.innerHTML = sessions.map(key =>
+      `<button class="session-tab ${key === state.session ? 'active' : ''}" data-session="${key}">${key}</button>`
+    ).join('');
+
+    // Re-attach event listeners
+    sessionTabs.querySelectorAll('.session-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        if (player.active) return;
+        selectSession(tab.dataset.session);
+      });
+    });
+  }
+
+  function renderSessionButtons() {
+    const sessionButtons = document.getElementById('sessionButtons');
+    if (!sessionButtons || !WORKOUTS) return;
+
+    const sessions = Object.keys(WORKOUTS);
+    sessionButtons.innerHTML = sessions.map(key => {
+      const session = WORKOUTS[key];
+      const focus = session.name.split('—')[1]?.trim() || key;
+      return `
+        <button class="session-btn ${key === state.session ? 'active' : ''}" data-session="${key}">
+          <div class="letter">${key}</div>
+          <div class="focus">${focus}</div>
+        </button>
+      `;
+    }).join('');
+
+    // Re-attach event listeners
+    sessionButtons.querySelectorAll('.session-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectSession(btn.dataset.session);
+      });
+    });
+  }
+
+  function updateRotationVisual() {
+    const sessions = Object.keys(WORKOUTS);
+    sessions.forEach(key => {
+      const el = document.getElementById(`rotation${key}`);
+      if (el) el.classList.toggle('active', key === state.session);
+    });
+  }
+
+  function populateProgramSelector() {
+    const select = document.getElementById('programSelect');
+    if (!select) return;
+
+    select.innerHTML = availablePrograms.map(p =>
+      `<option value="${p.id}" ${p.id === state.currentProgramId ? 'selected' : ''}>${p.name}</option>`
+    ).join('');
+
+    select.addEventListener('change', async (e) => {
+      const programInfo = availablePrograms.find(p => p.id === e.target.value);
+      if (programInfo) {
+        showLoading();
+        await loadProgram(programInfo);
+        updateProgramUI();
+        renderWorkoutOverview();
+        hideLoading();
+      }
+    });
+  }
+
+  function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.remove('hidden');
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
 
   // ===== AUDIO =====
   let audioCtx = null;
@@ -1409,256 +1652,25 @@ body {
   }
 
   // ===== EXERCISE DATA =====
-  const INSTRUCTIONS = {
-    "Warm-up: Dead Hang": `<p><b>Setup:</b> Grab bar shoulder-width, hang with knees bent if needed.</p>
-<p><b>Do it:</b> Hang with shoulders "set" (pulled slightly down, not jammed into ears). Keep ribs down, light brace. Breathe slowly.</p>
-<p><b>Goal:</b> Build grip strength and shoulder tolerance for pull-ups.</p>`,
+  // INSTRUCTIONS and WORKOUTS are now loaded dynamically from JSON files
+  // See data/WORKOUT_FORMAT.md for the JSON schema
 
-    "Warm-up: Scapular Work": `<p><b>Setup:</b> Hang from bar, elbows locked straight.</p>
-<p><b>Move:</b> Pull shoulder blades down and back (like putting them in your back pockets). Body rises slightly. Return to relaxed hang.</p>
-<p><b>Key:</b> Do NOT bend elbows. This is purely a shoulder blade movement.</p>`,
-
-    "Warm-up: Scapular Pull-ups": `<p><b>Setup:</b> Hang from bar, elbows locked straight.</p>
-<p><b>Move:</b> Pull shoulder blades down and back (like putting them in your back pockets). Body rises slightly. Return to relaxed hang.</p>
-<p><b>Key:</b> Do NOT bend elbows. This is purely a shoulder blade movement.</p>`,
-
-    "Warm-up: Scapular Push-ups": `<p><b>Setup:</b> Get in push-up position with arms straight.</p>
-<p><b>Move:</b> Let your shoulder blades come together (chest sinks slightly), then push them apart (upper back rounds slightly).</p>
-<p><b>Key:</b> Arms stay straight the whole time. Only your shoulder blades move.</p>`,
-
-    "Warm-up: Prone Y-T-W": `<p><b>Setup:</b> Lie face down on bench or floor. Light weights or none.</p>
-<p><b>Y:</b> Arms angled overhead like a "Y". Lift, pause 1 sec, lower.</p>
-<p><b>T:</b> Arms straight out to sides like a "T". Lift, pause, lower.</p>
-<p><b>W:</b> Elbows bent, squeeze shoulder blades down/back like making a "W".</p>
-<p><b>Do 8 of each shape.</b></p>`,
-
-    "Ramp Sets": `<p><b>What:</b> 2-4 light warm-up sets for your first barbell exercise.</p>
-<p><b>How:</b> Start with empty bar, gradually increase weight each set.</p>
-<p><b>Example:</b> Empty bar → 50% → 70% → 85% of working weight.</p>
-<p><b>Goal:</b> Groove the movement pattern and prepare your muscles.</p>
-<p>Take your time, then tap SET DONE when ready to continue.</p>`,
-
-    "Shoulder Health: Prone T": `<p><b>Setup:</b> Face down on bench, arms hanging straight down.</p>
-<p><b>Move:</b> Raise arms out to sides (making a T), leading with thumbs up.</p>
-<p><b>Key:</b> Squeeze shoulder blades together at top. Use light weight or none.</p>`,
-
-    "Shoulder Health: Prone Y": `<p><b>Setup:</b> Face down on bench, arms hanging straight down.</p>
-<p><b>Move:</b> Raise arms overhead at 45° angle (making a Y), thumbs up.</p>
-<p><b>Key:</b> Keep shoulders away from ears. Control the movement.</p>`,
-
-    "Shoulder Health: External Rotation": `<p><b>Setup:</b> Lie on your side. Top arm's elbow pinned to ribs, bent 90°. Hold light weight.</p>
-<p><b>Move:</b> Keeping elbow glued to side, rotate forearm upward toward ceiling.</p>
-<p><b>Key:</b> Slow and controlled. This builds rotator cuff strength.</p>`,
-
-    "Arms: DB Curls": `<p><b>Setup:</b> Stand tall, dumbbells at sides, palms forward.</p>
-<p><b>Curl:</b> Bend elbows to bring weights up. Keep upper arms still.</p>
-<p><b>Lower:</b> Slow and controlled back to start.</p>`,
-
-    "Arms: Overhead Triceps": `<p><b>Setup:</b> Hold one dumbbell or kettlebell overhead with both hands.</p>
-<p><b>Lower:</b> Bend elbows to lower weight behind head.</p>
-<p><b>Press:</b> Extend arms back to start. Keep elbows pointing up.</p>`,
-
-    "Cool-down: Scapular Pull-ups": `<p><b>Easy practice to finish.</b></p>
-<p>Same as warm-up scapular pull-ups, but keep it light and controlled.</p>
-<p>Focus on the mind-muscle connection with your shoulder blades.</p>`,
-
-    "Warm-up": `<p><b>Complete these in order:</b></p>
-<p>1. <b>Dead Hang</b> - 2×15-30s. Grip the bar, hang with shoulders engaged (not shrugged to ears). Breathe slowly.</p>
-<p>2. <b>Scapular Pull-ups</b> - 2×6-10. From hang, pull shoulder blades down and back without bending elbows. Small movement, big activation.</p>
-<p>3. <b>Scapular Push-ups</b> - 2×8-12. In push-up position, let shoulder blades come together, then push them apart. Arms stay straight.</p>
-<p>4. <b>Prone Y-T-W</b> - 1 round of 8 each. Face down, make Y/T/W shapes with arms, squeezing shoulder blades.</p>
-<p>5. <b>Ramp Sets</b> - 2-4 light sets of your first barbell exercise, gradually increasing weight.</p>`,
-
-    "Dead Hang": `<p><b>Setup:</b> Grab bar shoulder-width, hang with knees bent if needed.</p>
-<p><b>Do it:</b> Hang with shoulders "set" (pulled slightly down, not jammed into ears). Keep ribs down, light brace. Breathe slowly.</p>
-<p><b>Goal:</b> Build grip strength and shoulder tolerance for pull-ups.</p>`,
-
-    "Scapular Pull-ups": `<p><b>Setup:</b> Hang from bar, elbows locked straight.</p>
-<p><b>Move:</b> Pull shoulder blades down and back (like putting them in your back pockets). Body rises slightly. Return to relaxed hang.</p>
-<p><b>Key:</b> Do NOT bend elbows. This is purely a shoulder blade movement.</p>`,
-
-    "Top Hold (Chin Over Bar)": `<p><b>Setup:</b> Jump or step to get chin over bar.</p>
-<p><b>Hold:</b> Keep chin over bar, chest lifted, shoulders down. Hold for prescribed time.</p>
-<p><b>Don't:</b> Crank your neck up. Keep eyes forward, let back do the work.</p>`,
-
-    "Negative Pull-up": `<p><b>Setup:</b> Jump to top position (chin above bar). Start tight: shoulders down, abs braced.</p>
-<p><b>Lower:</b> Descend slowly for prescribed seconds. Control the entire way down. Elbows track toward ribs.</p>
-<p><b>Finish:</b> Full hang with control (don't just drop).</p>`,
-
-    "Mid-point Hold": `<p><b>Setup:</b> Jump to top, then lower until elbows are about 90°.</p>
-<p><b>Hold:</b> Keep shoulders down, chest tall. Hold for prescribed time.</p>
-<p><b>Why:</b> Strengthens the "sticking point" range.</p>`,
-
-    "Perfect Singles": `<p><b>What:</b> Single clean pull-ups with full rest between.</p>
-<p><b>Do:</b> Full hang → chin over bar → controlled lower. If you can't get chin over, do: jump to top → 2s hold → slow negative.</p>
-<p><b>Rule:</b> NEVER grind. Stop before form breaks down.</p>`,
-
-    "Barbell Bench Press": `<p><b>Setup:</b> Eyes under bar, feet flat behind knees, grip just wider than shoulders.</p>
-<p><b>Unrack:</b> Squeeze shoulder blades BACK and DOWN. Hold bar over mid-chest.</p>
-<p><b>Lower:</b> Bar to lower chest/sternum, elbows ~45° from torso (not flared out).</p>
-<p><b>Press:</b> Push up and slightly back toward face. Keep blades pinned.</p>
-<p><b>Breathing:</b> Big breath before lowering, hold during press, exhale at top.</p>`,
-
-    "Paused Bench Press": `<p>Same as bench press, but:</p>
-<p><b>Pause:</b> After bar touches chest, hold it STILL for 1-2 seconds (no bounce), then press.</p>
-<p><b>Why:</b> Builds strength at the hardest point. Forces good positioning.</p>`,
-
-    "Close-Grip Bench Press": `<p><b>Grip:</b> Hands about shoulder-width (closer than regular, but not touching).</p>
-<p><b>Elbows:</b> Keep tucked ~30-45° from torso.</p>
-<p><b>Goal:</b> Triceps strength and bench lockout power.</p>`,
-
-    "Standing Barbell OHP": `<p><b>Setup:</b> Feet shoulder-width, bar at upper chest/clavicle, grip just outside shoulders.</p>
-<p><b>Brace:</b> Squeeze glutes, ribs down, light ab brace. Don't lean back!</p>
-<p><b>Press:</b> Bar goes up in near-vertical path. Move head back as it passes, then forward under bar at top.</p>`,
-
-    "Barbell Row (Pause)": `<p><b>Setup:</b> Feet hip-width, hinge at hips until torso ~30-45° to floor. Neutral spine.</p>
-<p><b>Row:</b> Pull bar to lower ribs/upper stomach. Elbows back. <b>Pause 1 second at top.</b></p>
-<p><b>Lower:</b> Control down. Don't jerk with lower back.</p>
-<p><b>Cues:</b> "Proud chest." "Pull elbows to hips." "No shrugging."</p>`,
-
-    "Barbell Row (Tempo)": `<p>Same as barbell row, but:</p>
-<p><b>Tempo:</b> Lower the bar for 3 FULL SECONDS every rep.</p>
-<p><b>Why:</b> Increases difficulty without more weight. Builds back control.</p>`,
-
-    "Incline Dumbbell Press": `<p><b>Setup:</b> Bench at low incline, DBs at upper chest, feet planted.</p>
-<p><b>Press:</b> Push up and slightly together. Don't bang DBs at top.</p>
-<p><b>Lower:</b> Slow, controlled, elbows ~45° from torso.</p>`,
-
-    "One-Arm Dumbbell Row": `<p><b>Setup:</b> One knee + hand on bench, spine long. Other hand holds DB.</p>
-<p><b>Row:</b> Pull DB toward hip. <b>Pause 1 second at top.</b></p>
-<p><b>Lower:</b> Slow down, let shoulder blade stretch at bottom.</p>
-<p><b>Key:</b> Keep hips mostly square (don't twist torso).</p>`,
-
-    "Push-ups": `<p><b>Setup:</b> Hands under shoulders (or slightly wider). Body straight from head to heels.</p>
-<p><b>Lower:</b> Chest toward floor, elbows ~30-45° from torso.</p>
-<p><b>Press:</b> Push floor away. Keep core braced, no sagging hips.</p>
-<p><b>Options:</b> Hands on bench (easier) or feet elevated (harder).</p>`,
-
-    "Rear Delt Fly": `<p><b>Setup:</b> Hinge at hips, torso angled down, DBs hang below shoulders.</p>
-<p><b>Move:</b> Raise arms out to sides making a "T", slight elbow bend.</p>
-<p><b>Control:</b> Slow, strict reps. Stop before shrugging.</p>`,
-
-    "Lateral Raise": `<p><b>Setup:</b> Stand tall, slight elbow bend, DBs at sides.</p>
-<p><b>Raise:</b> Lift to shoulder height. Lead with elbows, not hands.</p>
-<p><b>Key:</b> No swinging. Use lighter weight if needed.</p>`,
-
-    "Curls": `<p><b>Setup:</b> Stand tall, elbows close to sides.</p>
-<p><b>Curl:</b> Bring weight up by bending elbows only. Don't lean back or swing.</p>
-<p><b>Lower:</b> Slow and controlled.</p>`,
-
-    "Hammer Curl": `<p><b>Setup:</b> Hold DBs with thumbs up (neutral grip).</p>
-<p><b>Curl:</b> Raise without rotating wrist. Elbow stays close to side.</p>
-<p><b>Benefit:</b> Trains forearms and elbow flexors for pull-up support.</p>`,
-
-    "Skull Crushers": `<p><b>Setup:</b> Lie on bench, hold bar above chest, elbows pointed up.</p>
-<p><b>Lower:</b> Bend elbows, bring bar toward forehead/top of head. Upper arms stay still.</p>
-<p><b>Press:</b> Extend elbows to return. Smooth and controlled.</p>
-<p><b>Note:</b> If elbows hurt, switch to close-grip bench.</p>`,
-
-    "Overhead Triceps Extension": `<p><b>Setup:</b> Hold one KB/DB overhead with both hands.</p>
-<p><b>Lower:</b> Bend elbows, bring weight behind head with control.</p>
-<p><b>Raise:</b> Extend elbows back to overhead. Keep ribs down.</p>`,
-
-    "Shoulder Health Block": `<p><b>Do 2 rounds with light weight (or bodyweight):</b></p>
-<p>• <b>Prone T Raises:</b> 12-20 reps. Face down on bench, arms out to sides, lift with shoulder blades.</p>
-<p>• <b>Prone Y Raises:</b> 10-15 reps. Face down, arms in Y shape, lift slowly.</p>
-<p>• <b>Side-lying External Rotation:</b> 12-20/side. Lie on side, top elbow pinned to ribs, rotate forearm up.</p>
-<p><b>Goal:</b> Control and activation, not load.</p>`,
-
-    "Arms Superset": `<p><b>Do 3 rounds, minimal rest between exercises:</b></p>
-<p>• <b>DB Curls:</b> 10-15 reps</p>
-<p>• <b>Overhead Triceps Extension:</b> 10-15 reps</p>
-<p><b>Rest 45-75 seconds between rounds.</b></p>`,
-
-    "Hanging Reinforcement": `<p><b>Easy practice to reinforce pull-up mechanics:</b></p>
-<p>• <b>Dead Hang:</b> 2×20-40 seconds</p>
-<p>• <b>Scapular Pull-ups:</b> 2×6-10 reps</p>
-<p><b>Keep it easy.</b> This is groove practice, not a workout.</p>`,
-
-    "Rest": `<p><b>Rest time.</b></p>
-<p>Walk around, breathe, hydrate. Shake out your arms.</p>
-<p>Mentally prepare for the next set.</p>`,
-
-    "Finish": `<p><b>Great work!</b></p>
-<p>Hydrate, do some easy shoulder circles.</p>
-<p>Consider noting your main lift weights for next time.</p>`
+  // Fallback data in case loading fails
+  const FALLBACK_INSTRUCTIONS = {
+    "Finish": "<p><b>Great work!</b></p><p>Workout complete.</p>"
   };
 
-  // Workout definitions - simplified for cleaner flow
-  const WORKOUTS = {
+  const FALLBACK_WORKOUTS = {
     A: {
-      name: "Upper A — Bench + Row + Pull-up Practice",
+      name: "Default Workout",
       exercises: [
-        { name: "Warm-up: Dead Hang", type: "timed-sequence", sequence: [
-          { name: "Dead Hang", time: 25, rest: 30, reps: 2 }
-        ]},
-        { name: "Warm-up: Scapular Work", type: "sets", sets: 2, reps: "8-10", rest: "micro", instructions: "Scapular Pull-ups" },
-        { name: "Warm-up: Scapular Push-ups", type: "sets", sets: 2, reps: "8-12", rest: "micro", instructions: "Scapular Pull-ups" },
-        { name: "Warm-up: Prone Y-T-W", type: "sets", sets: 1, reps: "8 each shape", rest: "micro" },
-        { name: "Ramp Sets", type: "instruction", time: null },
-        { name: "Pull-up Practice", type: "timed-sequence", sequence: [
-          { name: "Top Hold (Chin Over Bar)", time: 8, rest: 60, reps: 5 },
-          { name: "Negative Pull-up", time: 6, rest: 60, reps: 5 },
-          { name: "Dead Hang", time: 20, rest: 60, reps: 5 }
-        ]},
-        { name: "Barbell Bench Press", type: "sets", sets: 4, reps: "5-8", rest: "main" },
-        { name: "Barbell Row (Pause)", type: "sets", sets: 4, reps: "6-10", rest: "main" },
-        { name: "Incline Dumbbell Press", type: "sets", sets: 3, reps: "8-15", rest: "accessory" },
-        { name: "Rear Delt Fly", type: "sets", sets: 3, reps: "15-25", rest: "accessory" },
-        { name: "Close-Grip Bench Press", type: "sets", sets: 3, reps: "6-10", rest: "main", note: "Or Skull Crushers 3×8-12" },
-        { name: "Finish", type: "complete" }
-      ]
-    },
-    B: {
-      name: "Upper B — Pull-up Strength + OHP + Back",
-      exercises: [
-        { name: "Warm-up: Dead Hang", type: "timed-sequence", sequence: [
-          { name: "Dead Hang", time: 25, rest: 30, reps: 2 }
-        ]},
-        { name: "Warm-up: Scapular Pull-ups", type: "sets", sets: 2, reps: "6-10", rest: "micro" },
-        { name: "Warm-up: Scapular Push-ups", type: "sets", sets: 2, reps: "8-12", rest: "micro" },
-        { name: "Warm-up: Prone Y-T-W", type: "sets", sets: 1, reps: "8 each shape", rest: "micro" },
-        { name: "Ramp Sets", type: "instruction", time: null },
-        { name: "Pull-up Strength", type: "timed-sequence", sequence: [
-          { name: "Perfect Singles", time: null, rest: 75, reps: 8, instruction: "8 single pull-ups with full rest. Jump-assist if needed." },
-          { name: "Negative Pull-up", time: 6, rest: 60, reps: 6, instruction: "3 sets of 2 slow negatives" },
-          { name: "Mid-point Hold", time: 8, rest: 45, reps: 2 }
-        ]},
-        { name: "Standing Barbell OHP", type: "sets", sets: 4, reps: "5-8", rest: "main" },
-        { name: "One-Arm Dumbbell Row", type: "sets", sets: 3, reps: "10-15 each", rest: "accessory", note: "Or Barbell Row 3×8-12" },
-        { name: "Push-ups", type: "sets", sets: 3, reps: "near failure", rest: "accessory", note: "Or DB Bench 3×10-15" },
-        { name: "Curls", type: "sets", sets: 3, reps: "8-12", rest: "accessory" },
-        { name: "Hammer Curl", type: "sets", sets: 2, reps: "10-15", rest: "accessory" },
-        { name: "Lateral Raise", type: "sets", sets: 3, reps: "12-20", rest: "accessory" },
-        { name: "Finish", type: "complete" }
-      ]
-    },
-    C: {
-      name: "Upper C — Volume + Shoulder Health + Arms",
-      exercises: [
-        { name: "Warm-up: Dead Hang", type: "timed-sequence", sequence: [
-          { name: "Dead Hang", time: 20, rest: 30, reps: 2 }
-        ]},
-        { name: "Warm-up: Scapular Pull-ups", type: "sets", sets: 2, reps: "6-10", rest: "micro" },
-        { name: "Warm-up: Scapular Push-ups", type: "sets", sets: 2, reps: "8-12", rest: "micro" },
-        { name: "Warm-up: Prone Y-T-W", type: "sets", sets: 1, reps: "8 each shape", rest: "micro" },
-        { name: "Ramp Sets", type: "instruction", time: null },
-        { name: "Paused Bench Press", type: "sets", sets: 3, reps: "5-8", rest: "main", note: "Or Close-Grip Bench 3×6-10" },
-        { name: "Barbell Row (Tempo)", type: "sets", sets: 3, reps: "8-12", rest: "main" },
-        { name: "Push-ups", type: "sets", sets: 2, reps: "stop 1-2 shy of failure", rest: "accessory" },
-        { name: "Shoulder Health: Prone T", type: "sets", sets: 2, reps: "12-20", rest: "micro" },
-        { name: "Shoulder Health: Prone Y", type: "sets", sets: 2, reps: "10-15", rest: "micro" },
-        { name: "Shoulder Health: External Rotation", type: "sets", sets: 2, reps: "12-20 per side", rest: "micro" },
-        { name: "Arms: DB Curls", type: "sets", sets: 3, reps: "10-15", rest: "accessory" },
-        { name: "Arms: Overhead Triceps", type: "sets", sets: 3, reps: "10-15", rest: "accessory" },
-        { name: "Hanging Reinforcement", type: "timed-sequence", sequence: [
-          { name: "Dead Hang", time: 30, rest: 45, reps: 2 }
-        ]},
-        { name: "Cool-down: Scapular Pull-ups", type: "sets", sets: 2, reps: "6-10", rest: "micro" },
         { name: "Finish", type: "complete" }
       ]
     }
   };
+
+  // Note: INSTRUCTIONS and WORKOUTS variables are declared at the top of the script
+  // and populated when a program is loaded via loadProgram()
 
   // ===== PLAYER STATE =====
   let player = {
@@ -2501,41 +2513,63 @@ body {
       showToast('Finish current workout first');
       return;
     }
-    
+
     state.session = session;
     saveState();
-    
+
     // Update header tabs
     $$('.session-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.session === session);
     });
-    
+
     // Update intro session buttons
     $$('.session-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.session === session);
     });
-    
+
+    // Update rotation visual
+    updateRotationVisual();
+
+    // Update workout overview and view
+    renderWorkoutOverview();
     updateWorkoutView();
   }
 
   // ===== INIT =====
-  function init() {
-    // Session tabs in header
-    $$('.session-tab').forEach(tab => {
-      tab.addEventListener('click', () => selectSession(tab.dataset.session));
-      tab.classList.toggle('active', tab.dataset.session === state.session);
-    });
-    
-    // Session buttons in intro view
-    $$('.session-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!player.active) {
-          selectSession(btn.dataset.session);
-          renderWorkoutOverview();
-        }
-      });
-    });
-    
+  async function init() {
+    // Load programs first
+    await loadProgramsList();
+
+    if (availablePrograms.length === 0) {
+      // No programs found, show error
+      document.getElementById('loadingOverlay').innerHTML = `
+        <div style="text-align: center; padding: 24px;">
+          <h2 style="color: var(--danger); margin-bottom: 16px;">No Programs Found</h2>
+          <p style="color: var(--text-muted);">Could not load workout programs from data/programs.json</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Populate program selector
+    populateProgramSelector();
+
+    // Load last used program or first available
+    let programToLoad = availablePrograms[0];
+    if (state.currentProgramId) {
+      const savedProgram = availablePrograms.find(p => p.id === state.currentProgramId);
+      if (savedProgram) programToLoad = savedProgram;
+    }
+
+    await loadProgram(programToLoad);
+    updateProgramUI();
+
+    // Hide loading overlay
+    hideLoading();
+
+    // Session tabs are now rendered dynamically by updateProgramUI()
+    // Session buttons are now rendered dynamically by updateProgramUI()
+
     // Main controls
     els.mainBtn.addEventListener('click', handleMainButton);
     els.prevBtn.addEventListener('click', previousExercise);

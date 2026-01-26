@@ -1,0 +1,10 @@
+{
+  "programs": [
+    {
+      "id": "upper-body-pull-up-focus",
+      "file": "upper-body-program.json",
+      "name": "Upper Body — Pull-up Focus",
+      "description": "3-day upper body program for pull-up strength and pressing power"
+    }
+  ]
+}
