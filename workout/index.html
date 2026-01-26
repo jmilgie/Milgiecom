@@ -1,2011 +1,2570 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Upper Body Workout Coach (A/B/C) — Offline + Timers</title>
-  <meta name="theme-color" content="#0b1020" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Upper Body Coach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --bg:#0b1020;
-      --panel:#121a33;
-      --panel2:#0f1630;
-      --text:#eaf0ff;
-      --muted:#a9b6e6;
-      --accent:#6ee7ff;
-      --accent2:#8b5cf6;
-      --danger:#ff5c7a;
-      --ok:#45f7a2;
-      --warn:#ffd166;
-      --border:rgba(255,255,255,.12);
-      --shadow:0 10px 30px rgba(0,0,0,.35);
-      --radius:18px;
-      --radius2:14px;
-      --tap:56px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-raised: #1a1a1a;
+      --border: rgba(255,255,255,0.08);
+      --text: #ffffff;
+      --text-muted: #888;
+      --accent: #00ff88;
+      --accent-glow: rgba(0, 255, 136, 0.15);
+      --warning: #ff9500;
+      --danger: #ff3b5c;
+      --rest: #6366f1;
+      --prep: #f59e0b;
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-body: 'DM Sans', -apple-system, sans-serif;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:var(--sans);
-      background: radial-gradient(1200px 900px at 30% -10%, rgba(110,231,255,.22), transparent 60%),
-                  radial-gradient(900px 700px at 100% 10%, rgba(139,92,246,.22), transparent 55%),
-                  linear-gradient(180deg, #070a16, var(--bg));
-      color:var(--text);
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
-      overflow-x:hidden;
-    }
+```
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .app{
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 14px 14px 92px;
-    }
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
 
-    header{
-      position: sticky;
-      top:0;
-      z-index: 50;
-      backdrop-filter: blur(10px);
-      background: linear-gradient(180deg, rgba(11,16,32,.92), rgba(11,16,32,.55));
-      border-bottom: 1px solid var(--border);
-      padding: 12px 0 10px;
-      margin: 0 -14px 14px;
-    }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
 
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding: 0 14px;
-    }
+/* ===== APP SHELL ===== */
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 
-    .brand{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-      min-width: 0;
-    }
-    .brand h1{
-      font-size: 16px;
-      letter-spacing:.2px;
-      margin:0;
-      font-weight: 750;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow: ellipsis;
-    }
-    .brand .sub{
-      font-size: 12px;
-      color: var(--muted);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow: ellipsis;
-    }
+/* ===== HEADER ===== */
+.header {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      background: rgba(18,26,51,.65);
-      box-shadow: var(--shadow);
-      border-radius: 999px;
-      user-select:none;
-    }
+.logo {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
 
-    .pill small{color:var(--muted); font-size:12px}
-    .pill strong{font-family:var(--mono); font-weight:800; font-size: 12px}
+.session-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: 12px;
+}
 
-    .grid{
-      display:grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap:14px;
-    }
+.session-tab {
+  width: 44px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
 
-    @media (max-width: 900px){
-      .grid{grid-template-columns: 1fr}
-    }
+.session-tab.active {
+  background: var(--accent);
+  color: var(--bg);
+}
 
-    .card{
-      border:1px solid var(--border);
-      background: linear-gradient(180deg, rgba(18,26,51,.82), rgba(15,22,48,.82));
-      box-shadow: var(--shadow);
-      border-radius: var(--radius);
-      overflow:hidden;
-    }
-    .card .hd{
-      padding: 14px 14px 10px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .card .hd h2{
-      margin:0;
-      font-size: 15px;
-      font-weight: 760;
-      letter-spacing:.2px;
-    }
-    .card .hd .meta{
-      color:var(--muted);
-      font-size:12px;
-    }
-    .card .bd{padding: 12px 14px 14px}
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
 
-    .row{display:flex; gap:10px; flex-wrap:wrap}
-    .row>*{flex:1 1 auto}
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s;
+}
 
-    .btn{
-      height: var(--tap);
-      padding: 0 14px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      font-weight: 750;
-      letter-spacing: .2px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-      cursor:pointer;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-      transition: transform .05s ease, background .15s ease;
-    }
-    .btn:active{transform: scale(.99)}
-    .btn.primary{
-      background: linear-gradient(90deg, rgba(110,231,255,.2), rgba(139,92,246,.22));
-      border-color: rgba(110,231,255,.3);
-    }
-    .btn.danger{
-      background: rgba(255,92,122,.13);
-      border-color: rgba(255,92,122,.35);
-    }
-    .btn.ok{
-      background: rgba(69,247,162,.12);
-      border-color: rgba(69,247,162,.35);
-    }
-    .btn.ghost{
-      background: transparent;
-      border-color: rgba(255,255,255,.14);
-    }
-    .btn.small{
-      height: 44px;
-      border-radius: 12px;
-      font-size: 13px;
-      padding: 0 12px;
-    }
+.icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
-    .seg{
-      display:flex;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow:hidden;
-      background: rgba(255,255,255,.04);
-    }
-    .seg button{
-      flex:1;
-      height: 44px;
-      border:0;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 780;
-      cursor:pointer;
-    }
-    .seg button.on{
-      background: rgba(110,231,255,.13);
-      color: var(--text);
-    }
+/* ===== MAIN CONTENT ===== */
+.main {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
 
-    .statline{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-    }
-    .statline .kv{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .statline .kv b{color: var(--text); font-family:var(--mono); font-size: 12px}
+/* ===== VIEWS ===== */
+.view {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+}
 
-    .bigTimer{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
-    }
-    .time{
-      font-family: var(--mono);
-      font-weight: 900;
-      font-size: 54px;
-      letter-spacing: .8px;
-      line-height: 1;
-      text-align:center;
-      margin: 8px 0 2px;
-    }
-    .phase{
-      text-align:center;
-      color: var(--muted);
-      font-weight: 700;
-      font-size: 13px;
-    }
+.view.active {
+  display: flex;
+}
 
-    .progress{
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.08);
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .bar{
-      height:100%;
-      width:0%;
-      background: linear-gradient(90deg, rgba(110,231,255,.85), rgba(139,92,246,.85));
-      border-radius: 999px;
-      transition: width .25s linear;
-    }
+/* ===== WORKOUT VIEW ===== */
+.workout-view {
+  padding: 0;
+}
 
-    .exerciseTitle{
-      margin: 8px 0 2px;
-      font-size: 18px;
-      font-weight: 860;
-      letter-spacing:.2px;
-    }
-    .exerciseSub{
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-    }
+/* Current Exercise Display */
+.current-exercise {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
 
-    details{
-      border:1px solid rgba(255,255,255,.10);
-      border-radius: 14px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,.04);
-    }
-    details summary{
-      cursor:pointer;
-      font-weight: 800;
-      color: var(--text);
-      list-style:none;
-      outline:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    details summary::-webkit-details-marker{display:none}
-    .help{
-      margin-top:10px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-    .help b{color: var(--text)}
+.current-exercise::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
 
-    .list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .item{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
-      border-radius: 14px;
-      padding: 10px 12px;
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      justify-content:space-between;
-    }
-    .item .left{min-width:0}
-    .item .name{
-      font-weight: 850;
-      font-size: 14px;
-      margin:0 0 2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .item .desc{
-      margin:0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height:1.35;
-    }
-    .badge{
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 900;
-      padding: 8px 10px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.12);
-      color: var(--text);
-      background: rgba(0,0,0,.18);
-      white-space:nowrap;
-    }
-    .badge.ok{border-color: rgba(69,247,162,.35); background: rgba(69,247,162,.10)}
-    .badge.warn{border-color: rgba(255,209,102,.35); background: rgba(255,209,102,.10)}
-    .badge.info{border-color: rgba(110,231,255,.35); background: rgba(110,231,255,.10)}
-    .badge.danger{border-color: rgba(255,92,122,.35); background: rgba(255,92,122,.10)}
+.current-exercise.timer-active::before {
+  opacity: 1;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
 
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      margin: 10px 0;
-    }
-    label{
-      font-size:12px;
-      color: var(--muted);
-      font-weight: 800;
-      letter-spacing:.2px;
-    }
-    input, select, textarea{
-      border:1px solid rgba(255,255,255,.12);
-      border-radius: 14px;
-      background: rgba(0,0,0,.22);
-      color: var(--text);
-      padding: 12px 12px;
-      font-size: 15px;
-      outline:none;
-    }
-    textarea{min-height: 84px; resize: vertical}
-    .hint{
-      color: var(--muted);
-      font-size: 12px;
-      line-height:1.35;
-    }
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
 
-    .stickyControls{
-      position: fixed;
-      left:0; right:0; bottom:0;
-      z-index: 60;
-      background: linear-gradient(180deg, rgba(11,16,32,.1), rgba(11,16,32,.92) 40%, rgba(11,16,32,.98));
-      border-top:1px solid var(--border);
-      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-      backdrop-filter: blur(10px);
-    }
-    .controlsWrap{
-      max-width: 980px;
-      margin: 0 auto;
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
-    .controlsWrap .btn{flex:1}
-    .controlsWrap .btn.small{flex:0 0 auto}
+.progress-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--border);
+}
 
-    .toast{
-      position: fixed;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 80;
-      background: rgba(0,0,0,.55);
-      border:1px solid rgba(255,255,255,.14);
-      padding: 10px 12px;
-      border-radius: 999px;
-      color: var(--text);
-      font-weight: 800;
-      font-size: 13px;
-      box-shadow: var(--shadow);
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .18s ease;
-      max-width: 92vw;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .toast.on{opacity:1}
-    .mono{font-family:var(--mono)}
-    .muted{color:var(--muted)}
-    .tiny{font-size: 12px}
-    .divider{height:1px; background: rgba(255,255,255,.10); margin: 12px 0}
-    .kpi{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-      margin-top:10px;
-    }
-    .kpi .box{
-      border:1px solid rgba(255,255,255,.10);
-      border-radius: 14px;
-      background: rgba(255,255,255,.04);
-      padding: 10px 12px;
-    }
-    .kpi .box .t{color:var(--muted); font-size:12px; font-weight:800}
-    .kpi .box .v{font-family:var(--mono); font-weight:900; font-size: 14px; margin-top:4px}
-    .hide{display:none !important;}
+.progress-bar {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.2s linear;
+}
+
+.progress-bar.rest { background: var(--rest); }
+.progress-bar.prep { background: var(--prep); }
+
+.step-counter {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.phase-badge.work {
+  background: rgba(0, 255, 136, 0.15);
+  color: var(--accent);
+}
+
+.phase-badge.rest {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--rest);
+}
+
+.phase-badge.prep {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--prep);
+}
+
+.phase-badge.ready {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-muted);
+}
+
+.exercise-name {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 8vw, 56px);
+  letter-spacing: 2px;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.exercise-detail {
+  font-size: 18px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.timer-display {
+  font-family: var(--font-display);
+  font-size: clamp(72px, 20vw, 120px);
+  letter-spacing: 4px;
+  line-height: 1;
+  margin-bottom: 24px;
+}
+
+.timer-display.rest { color: var(--rest); }
+.timer-display.prep { color: var(--prep); }
+.timer-display.work { color: var(--accent); }
+
+/* Instructions Panel */
+.instructions-panel {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.instructions-toggle {
+  width: 100%;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.instructions-toggle .arrow {
+  transition: transform 0.2s;
+}
+
+.instructions-toggle.open .arrow {
+  transform: rotate(180deg);
+}
+
+.instructions-content {
+  display: none;
+  padding: 0 20px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.instructions-content.open {
+  display: block;
+}
+
+.instructions-content p {
+  margin-bottom: 12px;
+}
+
+.instructions-content b {
+  color: var(--text);
+}
+
+/* ===== CONFIRMATION VIEW ===== */
+.confirm-view {
+  background: var(--bg);
+}
+
+.confirm-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.confirm-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.confirm-step {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.confirm-title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.confirm-subtitle {
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.confirm-instructions {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.confirm-instructions h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.confirm-instructions-text {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.confirm-instructions-text p {
+  margin-bottom: 10px;
+}
+
+.confirm-instructions-text b {
+  color: var(--text);
+}
+
+/* Upcoming List */
+.upcoming-section {
+  margin-top: 24px;
+}
+
+.upcoming-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upcoming-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: 10px;
+}
+
+.upcoming-item.current {
+  border: 1px solid var(--accent);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.upcoming-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.upcoming-item.current .upcoming-number {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.upcoming-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.upcoming-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upcoming-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ===== INTRO/OVERVIEW VIEW ===== */
+.intro-view {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.intro-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.intro-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.intro-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.program-explanation {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.program-explanation h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.program-explanation p {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.program-explanation p:last-child {
+  margin-bottom: 0;
+}
+
+.rotation-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px 0;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 12px;
+}
+
+.rotation-day {
+  text-align: center;
+}
+
+.rotation-day .letter {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.rotation-day .letter.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.rotation-day .label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rotation-arrow {
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+.workout-overview {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.workout-overview h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.overview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overview-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 10px;
+}
+
+.overview-item.warmup {
+  opacity: 0.7;
+}
+
+.overview-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.overview-item.main .overview-number {
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.overview-info {
+  flex: 1;
+}
+
+.overview-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.overview-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.overview-tag {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.overview-tag.main {
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.session-selector {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.session-selector h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.session-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.session-btn {
+  flex: 1;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.session-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.session-btn .letter {
+  font-family: var(--font-display);
+  font-size: 32px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.session-btn.active .letter {
+  color: var(--accent);
+}
+
+.session-btn .focus {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ===== HISTORY VIEW ===== */
+.history-view {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.history-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  letter-spacing: 2px;
+}
+
+.back-btn {
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.history-session-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.history-info {
+  flex: 1;
+}
+
+.history-date {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.history-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.history-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted);
+}
+
+/* ===== SETTINGS VIEW ===== */
+.settings-view {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.settings-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  letter-spacing: 2px;
+}
+
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.settings-section-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.setting-item {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 8px;
+}
+
+.setting-item label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.setting-item input,
+.setting-item select {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.setting-item input:focus,
+.setting-item select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.setting-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.danger-zone {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.danger-btn {
+  width: 100%;
+  padding: 14px;
+  background: rgba(255, 59, 92, 0.1);
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== BOTTOM CONTROLS ===== */
+.bottom-controls {
+  flex-shrink: 0;
+  padding: 16px;
+  padding-bottom: calc(16px + var(--safe-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.controls-row {
+  display: flex;
+  gap: 12px;
+}
+
+.control-btn {
+  flex: 1;
+  height: 56px;
+  border: none;
+  border-radius: 14px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.control-btn:active {
+  transform: scale(0.98);
+}
+
+.control-btn.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.control-btn.secondary {
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.control-btn.danger {
+  background: rgba(255, 59, 92, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 59, 92, 0.3);
+}
+
+.control-btn.small {
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn.cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 59, 92, 0.3);
+  color: var(--danger);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--surface-raised);
+  color: var(--text);
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s;
+  z-index: 100;
+  border: 1px solid var(--border);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
+}
+
+.modal-overlay.show {
+  display: flex;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 360px;
+  width: 100%;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.modal-text {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.modal-btn.cancel {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.modal-btn.confirm {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.modal-btn.danger {
+  background: var(--danger);
+  color: white;
+}
+
+/* Log Modal */
+.log-field {
+  margin-bottom: 16px;
+}
+
+.log-field label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.log-field input,
+.log-field textarea {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.log-field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.log-field input:focus,
+.log-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+```
+
   </style>
 </head>
-
 <body>
-  <div class="toast" id="toast">Saved</div>
-
-  <header>
-    <div class="topbar">
-      <div class="brand">
-        <h1>Upper Body Workout Coach</h1>
-        <div class="sub">A / B / C sessions • timers • auto-progress • offline local storage</div>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">UPPER BODY</div>
+      <div class="session-tabs">
+        <button class="session-tab active" data-session="A">A</button>
+        <button class="session-tab" data-session="B">B</button>
+        <button class="session-tab" data-session="C">C</button>
       </div>
-      <div class="pill" aria-label="workout status">
-        <small>Status</small>
-        <strong id="statusPill">Ready</strong>
+      <div class="header-actions">
+        <button class="icon-btn" id="historyBtn" title="History">📊</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+      </div>
+    </header>
+
+```
+<!-- Main Content -->
+<main class="main">
+  <!-- Intro/Overview View -->
+  <div class="view intro-view active" id="introView">
+    <div class="intro-header">
+      <h1 class="intro-title">UPPER BODY PROGRAM</h1>
+      <p class="intro-subtitle">3-day rotation • Pull-up progression • Strength focus</p>
+    </div>
+
+    <div class="program-explanation">
+      <h3>📋 How It Works</h3>
+      <p><b>Rotate through A → B → C</b> each workout day. Rest at least one day between sessions. Most people train 3-4 days per week.</p>
+      <p><b>Example week:</b> Monday (A), Wednesday (B), Friday (C), then next week continue with A, B, C...</p>
+      <div class="rotation-visual">
+        <div class="rotation-day">
+          <div class="letter active" id="rotationA">A</div>
+          <div class="label">Bench + Row</div>
+        </div>
+        <div class="rotation-arrow">→</div>
+        <div class="rotation-day">
+          <div class="letter" id="rotationB">B</div>
+          <div class="label">OHP + Pull</div>
+        </div>
+        <div class="rotation-arrow">→</div>
+        <div class="rotation-day">
+          <div class="letter" id="rotationC">C</div>
+          <div class="label">Volume</div>
+        </div>
+        <div class="rotation-arrow">→</div>
+        <div class="rotation-day">
+          <div class="letter">↺</div>
+          <div class="label">Repeat</div>
+        </div>
+      </div>
+      <p><b>Pull-up focus:</b> Every session includes pull-up practice or strength work. The goal is building toward clean, controlled pull-ups over time.</p>
+    </div>
+
+    <div class="session-selector">
+      <h3>Select Today's Session</h3>
+      <div class="session-buttons">
+        <button class="session-btn active" data-session="A">
+          <div class="letter">A</div>
+          <div class="focus">Bench + Row</div>
+        </button>
+        <button class="session-btn" data-session="B">
+          <div class="letter">B</div>
+          <div class="focus">OHP + Back</div>
+        </button>
+        <button class="session-btn" data-session="C">
+          <div class="letter">C</div>
+          <div class="focus">Volume + Arms</div>
+        </button>
       </div>
     </div>
-  </header>
 
-  <div class="app">
-    <div class="grid">
-
-      <!-- LEFT: Player -->
-      <section class="card" aria-label="Workout player">
-        <div class="hd">
-          <div>
-            <h2>Workout Player</h2>
-            <div class="meta" id="playerMeta">Pick A/B/C, then press Start. The workout will auto-advance.</div>
-          </div>
-          <div class="seg" role="tablist" aria-label="Session selector">
-            <button id="tabA" class="on" aria-selected="true">A</button>
-            <button id="tabB" aria-selected="false">B</button>
-            <button id="tabC" aria-selected="false">C</button>
-          </div>
-        </div>
-
-        <div class="bd">
-          <div class="statline">
-            <div class="kv">Step <b id="stepCount">0/0</b></div>
-            <div class="kv">Up next <b id="nextLabel">—</b></div>
-            <div class="kv">Session <b id="sessionLabel">A</b></div>
-          </div>
-
-          <div class="bigTimer" style="margin-top:10px">
-            <div class="time" id="timeDisplay">00:00</div>
-            <div class="phase" id="phaseDisplay">Ready</div>
-            <div class="progress" aria-label="timer progress">
-              <div class="bar" id="progressBar"></div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div>
-            <div class="exerciseTitle" id="exerciseTitle">Select a session</div>
-            <div class="exerciseSub" id="exerciseSub">This page is designed for phone use: big buttons, auto-timers, clear cues.</div>
-          </div>
-
-          <div class="divider"></div>
-
-          <details id="detailsHow">
-            <summary>How to do it (tap to expand)</summary>
-            <div class="help" id="howText"></div>
-          </details>
-
-          <div class="divider"></div>
-
-          <details id="detailsLog">
-            <summary>Log (optional)</summary>
-            <div class="help">
-              <div class="field">
-                <label for="logWeight">Weight used</label>
-                <input id="logWeight" inputmode="decimal" placeholder="e.g., Bench 95 lb" />
-                <div class="hint">Tip: log just the main lifts (bench, OHP, row). Stored locally.</div>
-              </div>
-              <div class="field">
-                <label for="logNotes">Notes (pain, form cues, wins)</label>
-                <textarea id="logNotes" placeholder="e.g., shoulders felt good, paused reps helped"></textarea>
-              </div>
-              <button class="btn ok" id="btnSaveLog">Save log for this step</button>
-            </div>
-          </details>
-
-          <div class="divider"></div>
-
-          <details open>
-            <summary>Today’s run list</summary>
-            <div class="list" id="runList"></div>
-          </details>
-
-        </div>
-      </section>
-
-      <!-- RIGHT: Settings + History -->
-      <aside class="card" aria-label="Settings and history">
-        <div class="hd">
-          <div>
-            <h2>Settings</h2>
-            <div class="meta">Tune timers for your pace. Everything persists in localStorage.</div>
-          </div>
-          <button class="btn small ghost" id="btnResetAll" title="Reset local storage">Reset</button>
-        </div>
-
-        <div class="bd">
-          <div class="field">
-            <label for="prepSeconds">Auto “Get ready” countdown (seconds)</label>
-            <input id="prepSeconds" type="number" min="3" max="45" step="1" />
-            <div class="hint">This runs before every timed block so you can set up safely.</div>
-          </div>
-
-          <div class="field">
-            <label for="restMain">Rest after main barbell sets (seconds)</label>
-            <input id="restMain" type="number" min="30" max="300" step="5" />
-            <div class="hint">Bench/OHP/Row default: 150–180 sec. Adjust to your reality.</div>
-          </div>
-
-          <div class="field">
-            <label for="restAccessory">Rest after accessory sets (seconds)</label>
-            <input id="restAccessory" type="number" min="20" max="180" step="5" />
-            <div class="hint">DB work / raises / curls default: 60–90 sec.</div>
-          </div>
-
-          <div class="field">
-            <label for="restMicro">Rest inside pull-up practice (seconds)</label>
-            <input id="restMicro" type="number" min="20" max="120" step="5" />
-            <div class="hint">Used for singles/holds/negatives. Keep it tidy.</div>
-          </div>
-
-          <div class="field">
-            <label for="soundMode">Sound / vibration</label>
-            <select id="soundMode">
-              <option value="beep">Beep</option>
-              <option value="vibe">Vibrate (if supported)</option>
-              <option value="both">Beep + Vibrate</option>
-              <option value="off">Off</option>
-            </select>
-            <div class="hint">Phones sometimes require an interaction before audio works (press Start once).</div>
-          </div>
-
-          <div class="kpi">
-            <div class="box">
-              <div class="t">Last session</div>
-              <div class="v" id="kpiLast">—</div>
-            </div>
-            <div class="box">
-              <div class="t">Sessions completed</div>
-              <div class="v" id="kpiCount">0</div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <details>
-            <summary>History (tap)</summary>
-            <div class="help" id="historyBox"></div>
-          </details>
-
-          <div class="divider"></div>
-
-          <details>
-            <summary>Safety & pacing rules</summary>
-            <div class="help">
-              <p><b>Never grind pull-ups.</b> No missed reps. Focus on clean holds/negatives/singles.</p>
-              <p><b>Main lifts</b> (bench/OHP/rows): stop with ~2 reps “in reserve” most of the time. Avoid maxing.</p>
-              <p><b>If something hurts sharply</b> (not normal effort): stop that movement and skip to the next step.</p>
-              <p><b>Cycle integration:</b> on lifting days keep the ride moderate, or lift before cycling if you want more strength.</p>
-            </div>
-          </details>
-
-        </div>
-      </aside>
-
+    <div class="workout-overview">
+      <h3 id="overviewTitle">Session A Overview</h3>
+      <div class="overview-list" id="overviewList"></div>
     </div>
   </div>
 
-  <!-- Sticky bottom controls (phone-friendly) -->
-  <div class="stickyControls" role="group" aria-label="Workout controls">
-    <div class="controlsWrap">
-      <button class="btn danger small" id="btnBack" title="Previous step">◀</button>
-      <button class="btn primary" id="btnStartPause">Start</button>
-      <button class="btn small ghost" id="btnSkip" title="Skip timer / next step">Skip ▶</button>
+  <!-- Workout View (Active Exercise) -->
+  <div class="view workout-view" id="workoutView">
+    <div class="current-exercise" id="currentExercise">
+      <div class="progress-indicator">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      
+      <div class="step-counter" id="stepCounter">STEP 0 OF 0</div>
+      <div class="phase-badge ready" id="phaseBadge">
+        <span id="phaseText">READY</span>
+      </div>
+      <h1 class="exercise-name" id="exerciseName">Select Session</h1>
+      <p class="exercise-detail" id="exerciseDetail">Choose A, B, or C to begin</p>
+      <div class="timer-display" id="timerDisplay">00:00</div>
+    </div>
+
+    <div class="instructions-panel">
+      <button class="instructions-toggle" id="instructionsToggle">
+        <span>How to do it</span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="instructions-content" id="instructionsContent"></div>
+    </div>
+  </div>
+
+  <!-- Confirm View (Before starting each exercise) -->
+  <div class="view confirm-view" id="confirmView">
+    <div class="confirm-content">
+      <div class="confirm-header">
+        <div class="confirm-step" id="confirmStep">NEXT UP</div>
+        <h2 class="confirm-title" id="confirmTitle">Exercise Name</h2>
+        <p class="confirm-subtitle" id="confirmSubtitle">3 sets × 8-12 reps</p>
+      </div>
+
+      <div class="confirm-instructions">
+        <h3>📖 Instructions</h3>
+        <div class="confirm-instructions-text" id="confirmInstructions"></div>
+      </div>
+
+      <div class="upcoming-section">
+        <div class="upcoming-title">Coming Up</div>
+        <div class="upcoming-list" id="upcomingList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History View -->
+  <div class="view history-view" id="historyView">
+    <div class="history-header">
+      <h2 class="history-title">HISTORY</h2>
+      <button class="back-btn" id="historyBackBtn">← Back</button>
+    </div>
+
+    <div class="history-stats">
+      <div class="stat-card">
+        <div class="stat-value" id="totalWorkouts">0</div>
+        <div class="stat-label">Workouts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="thisWeek">0</div>
+        <div class="stat-label">This Week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="streak">0</div>
+        <div class="stat-label">Day Streak</div>
+      </div>
+    </div>
+
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <!-- Settings View -->
+  <div class="view settings-view" id="settingsView">
+    <div class="settings-header">
+      <h2 class="settings-title">SETTINGS</h2>
+      <button class="back-btn" id="settingsBackBtn">← Back</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Timers</div>
+      
+      <div class="setting-item">
+        <label for="prepTime">Get Ready Countdown</label>
+        <input type="number" id="prepTime" min="3" max="30" step="1">
+        <div class="setting-hint">Seconds to prepare before each timed segment</div>
+      </div>
+
+      <div class="setting-item">
+        <label for="mainRest">Main Lift Rest</label>
+        <input type="number" id="mainRest" min="60" max="300" step="15">
+        <div class="setting-hint">Rest between bench/OHP/row sets (seconds)</div>
+      </div>
+
+      <div class="setting-item">
+        <label for="accessoryRest">Accessory Rest</label>
+        <input type="number" id="accessoryRest" min="30" max="180" step="15">
+        <div class="setting-hint">Rest between accessory exercises (seconds)</div>
+      </div>
+
+      <div class="setting-item">
+        <label for="microRest">Pull-up Practice Rest</label>
+        <input type="number" id="microRest" min="30" max="120" step="15">
+        <div class="setting-hint">Rest during pull-up holds/negatives</div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Audio</div>
+      
+      <div class="setting-item">
+        <label for="soundMode">Sound Mode</label>
+        <select id="soundMode">
+          <option value="beep">Beep</option>
+          <option value="vibrate">Vibrate</option>
+          <option value="both">Beep + Vibrate</option>
+          <option value="off">Off</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="danger-zone">
+      <div class="settings-section-title">Danger Zone</div>
+      <button class="danger-btn" id="resetBtn">Reset All Data</button>
+    </div>
+  </div>
+</main>
+
+<!-- Bottom Controls -->
+<div class="bottom-controls">
+  <div class="controls-row" id="controlsRow">
+    <button class="control-btn secondary small" id="prevBtn" disabled>◀</button>
+    <button class="control-btn primary" id="mainBtn">START</button>
+    <button class="control-btn secondary small" id="skipBtn" disabled>▶</button>
+    <button class="control-btn cancel small" id="cancelBtn" style="display:none" title="End workout">✕</button>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- Toast -->
+
+  <div class="toast" id="toast">Saved!</div>
+
+  <!-- Confirm Modal -->
+
+  <div class="modal-overlay" id="resetModal">
+    <div class="modal">
+      <h3 class="modal-title">Reset All Data?</h3>
+      <p class="modal-text">This will clear all your workout history, logs, and settings. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="resetCancel">Cancel</button>
+        <button class="modal-btn danger" id="resetConfirm">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel Workout Modal -->
+
+  <div class="modal-overlay" id="cancelWorkoutModal">
+    <div class="modal">
+      <h3 class="modal-title">End Workout?</h3>
+      <p class="modal-text">This will end your current workout without saving. Are you sure?</p>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="cancelWorkoutNo">Keep Going</button>
+        <button class="modal-btn danger" id="cancelWorkoutYes">End Workout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Modal -->
+
+  <div class="modal-overlay" id="logModal">
+    <div class="modal">
+      <h3 class="modal-title">Log This Set</h3>
+      <div class="log-field">
+        <label for="logWeight">Weight Used</label>
+        <input type="text" id="logWeight" placeholder="e.g., 135 lbs">
+      </div>
+      <div class="log-field">
+        <label for="logNotes">Notes</label>
+        <textarea id="logNotes" placeholder="How did it feel? Any form cues?"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="logCancel">Skip</button>
+        <button class="modal-btn confirm" id="logSave">Save</button>
+      </div>
     </div>
   </div>
 
 <script>
-(() => {
-  // ---------- Local storage keys ----------
-  const LS_KEY = "ub_coach_v1";
+(function() {
+  'use strict';
+
+  // ===== STORAGE =====
+  const STORAGE_KEY = 'upper_body_coach_v2';
+  
   const defaultState = {
-    session: "A",
+    session: 'A',
     settings: {
-      prepSeconds: 8,
-      restMain: 165,
-      restAccessory: 75,
-      restMicro: 60,
-      soundMode: "beep",
+      prepTime: 8,
+      mainRest: 150,
+      accessoryRest: 75,
+      microRest: 60,
+      soundMode: 'beep'
     },
-    player: {
-      running: false,
-      paused: false,
-      stepIndex: 0,
-      phase: "READY", // READY, PREP, WORK, REST, DONE
-      remaining: 0,
-      phaseTotal: 0,
-      lastTick: 0
-    },
-    logs: {}, // stepId -> {weight, notes, ts}
-    history: [] // {ts, session, durationSeconds, completedSteps}
+    history: [],
+    logs: {}
   };
 
-  function loadState(){
-    try{
-      const raw = localStorage.getItem(LS_KEY);
-      if(!raw) return structuredClone(defaultState);
-      const parsed = JSON.parse(raw);
-      // merge shallowly to keep forward-compat
+  function loadState() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return { ...defaultState };
+      const parsed = JSON.parse(saved);
       return {
-        ...structuredClone(defaultState),
+        ...defaultState,
         ...parsed,
-        settings: {...structuredClone(defaultState.settings), ...(parsed.settings||{})},
-        player: {...structuredClone(defaultState.player), ...(parsed.player||{})},
-        logs: parsed.logs || {},
-        history: parsed.history || []
+        settings: { ...defaultState.settings, ...parsed.settings }
       };
-    } catch(e){
-      return structuredClone(defaultState);
+    } catch (e) {
+      return { ...defaultState };
     }
   }
 
-  function saveState(){
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-    toast("Saved");
-    refreshKPIs();
-  }
-
-  function resetAll(){
-    state = structuredClone(defaultState);
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-    toast("Reset complete");
-    initUI();
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 
   let state = loadState();
 
-  // ---------- Audio / vibration ----------
+  // ===== AUDIO =====
   let audioCtx = null;
-  function beep(){
-    if(state.settings.soundMode === "off") return;
-    const doVibe = (state.settings.soundMode === "vibe" || state.settings.soundMode === "both");
-    const doBeep = (state.settings.soundMode === "beep" || state.settings.soundMode === "both");
-
-    if(doVibe && navigator.vibrate){
-      navigator.vibrate([60, 30, 60]);
+  
+  function playBeep(freq = 880, duration = 100) {
+    if (state.settings.soundMode === 'off') return;
+    
+    const doVibrate = state.settings.soundMode === 'vibrate' || state.settings.soundMode === 'both';
+    const doBeep = state.settings.soundMode === 'beep' || state.settings.soundMode === 'both';
+    
+    if (doVibrate && navigator.vibrate) {
+      navigator.vibrate([50, 30, 50]);
     }
-    if(!doBeep) return;
-
-    try{
-      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = "sine";
-      o.frequency.value = 880;
-      g.gain.value = 0.06;
-      o.connect(g);
-      g.connect(audioCtx.destination);
-      o.start();
-      setTimeout(()=>{ o.stop(); }, 120);
-    } catch(e){
-      // ignore
+    
+    if (doBeep) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.1;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        setTimeout(() => osc.stop(), duration);
+      } catch (e) {}
     }
   }
 
-  // ---------- Workout data model ----------
-  // Each "step" is either:
-  // - timer-driven (prep->work->rest loops) or
-  // - instruction-only (no timer) but still auto-progresses using a short prep
-  // For phone usability: "work" is the set period or practice period; then rest starts automatically.
-  // For non-timed (e.g., "perform 4 sets"), we guide you through sets with rest between.
-
-  function mkStepId(session, idx){ return `${session}_${idx}`; }
-
-  function fmtSetsReps(sets, reps){
-    if(!sets) return "";
-    const r = Array.isArray(reps) ? `${reps[0]}–${reps[1]}` : reps;
-    return `${sets} sets × ${r}`;
-  }
-
+  // ===== EXERCISE DATA =====
   const INSTRUCTIONS = {
-    // --- Pull-up components ---
-    "Dead Hang": `
-      <p><b>Setup:</b> grab the bar with hands about shoulder-width. Knees bent is fine. Start from a full hang with shoulders not jammed into your ears.</p>
-      <p><b>Do it:</b> hang while keeping ribs down and a light brace. Let shoulder blades stay “set” (not shrugged). Breathe slowly.</p>
-      <p><b>Stop if:</b> you feel sharp shoulder pain, numbness/tingling, or your grip is failing suddenly.</p>
-      <p><b>Goal:</b> build grip + shoulder tolerance for pull-ups. Over time increase hold duration.</p>
-    `,
-    "Scapular Pull-ups": `
-      <p><b>What it is:</b> a pull-up “start” without bending the elbows.</p>
-      <p><b>Setup:</b> hang from the bar. Elbows locked straight. Knees can be bent.</p>
-      <p><b>Move:</b> pull your shoulder blades down and back (like putting them in your back pockets). Your body rises a little. Then return to the relaxed hang.</p>
-      <p><b>Cues:</b> “Shoulders away from ears.” “Chest tall.” Do not bend elbows.</p>
-      <p><b>Common mistake:</b> turning it into tiny pull-ups by bending elbows.</p>
-    `,
-    "Top Hold (Chin Over Bar)": `
-      <p><b>Setup:</b> use a small jump or step to get your chin over the bar. Knees bent is fine.</p>
-      <p><b>Hold:</b> keep chin over the bar, chest lifted, shoulders down. Hold for the prescribed seconds.</p>
-      <p><b>Goal:</b> teach your body the top position and build strength where you’re currently weakest.</p>
-      <p><b>Do not:</b> crank your neck. Keep eyes forward and let the back do the work.</p>
-    `,
-    "Negative Pull-up": `
-      <p><b>Setup:</b> jump/step to the top position (chin above bar). Start tight: shoulders down, abs lightly braced.</p>
-      <p><b>Lower:</b> descend slowly for the prescribed seconds. Control the whole way. Keep elbows tracking down toward your ribs.</p>
-      <p><b>Finish:</b> return to a full hang with control (don’t drop).</p>
-      <p><b>Goal:</b> negatives are the fastest way to turn “barely 1” into multiple clean reps.</p>
-    `,
-    "Mid-point Hold (90° Elbows)": `
-      <p><b>Setup:</b> jump to the top, then lower until elbows are about 90° (halfway).</p>
-      <p><b>Hold:</b> keep shoulders down and chest tall, hold for the prescribed seconds.</p>
-      <p><b>Why:</b> strengthens the “sticking point” range and improves control.</p>
-    `,
+    "Warm-up: Dead Hang": `<p><b>Setup:</b> Grab bar shoulder-width, hang with knees bent if needed.</p>
+<p><b>Do it:</b> Hang with shoulders "set" (pulled slightly down, not jammed into ears). Keep ribs down, light brace. Breathe slowly.</p>
+<p><b>Goal:</b> Build grip strength and shoulder tolerance for pull-ups.</p>`,
 
-    // --- Main lifts ---
-    "Barbell Bench Press": `
-      <p><b>Setup:</b> lie on the bench with eyes under the bar. Feet flat and slightly behind knees for stability. Grip a bit wider than shoulder-width.</p>
-      <p><b>Unrack:</b> squeeze shoulder blades <b>back and down</b>. Lift bar out and hold above mid-chest.</p>
-      <p><b>Lower:</b> bar comes down to lower chest / sternum area, elbows ~45° from your torso (not flared straight out).</p>
-      <p><b>Press:</b> push the bar up and slightly back toward your face. Keep shoulder blades pinned; don’t shrug.</p>
-      <p><b>Breathing:</b> big breath before lowering; hold during press; exhale at the top.</p>
-      <p><b>Safety:</b> if you bench alone, use conservative loads and leave reps in reserve.</p>
-    `,
-    "Paused Bench Press": `
-      <p>Same setup as bench press, but:</p>
-      <p><b>Pause:</b> after the bar touches your chest, hold it still for <b>1–2 seconds</b> (no bouncing), then press.</p>
-      <p><b>Why:</b> builds strength without needing tiny weight jumps; improves control and shoulder positioning.</p>
-    `,
-    "Close-Grip Bench Press": `
-      <p><b>Goal:</b> triceps + stronger bench lockout.</p>
-      <p><b>Grip:</b> hands about shoulder-width (closer than regular bench, but not “hands touching”).</p>
-      <p><b>Elbows:</b> keep elbows tucked ~30–45° from torso. Lower to lower chest, press up smoothly.</p>
-      <p><b>Tip:</b> if wrists feel weird, widen grip slightly.</p>
-    `,
-    "Standing Barbell Overhead Press": `
-      <p><b>Setup:</b> stand tall with feet about shoulder width. Bar starts at upper chest/clavicle. Grip just outside shoulder width.</p>
-      <p><b>Brace:</b> squeeze glutes, ribs down, light abdominal brace. Don’t lean back to “cheat” it.</p>
-      <p><b>Press:</b> bar goes up in a near-vertical path. Move your head slightly back as it passes, then forward under the bar at the top.</p>
-      <p><b>Lower:</b> return to upper chest with control.</p>
-      <p><b>Common mistakes:</b> over-arching the low back, shrugging shoulders, bar drifting forward.</p>
-    `,
-    "Barbell Row (Pause at Top)": `
-      <p><b>Setup:</b> stand with feet hip-width. Hinge at the hips until torso is around 30–45° to the floor. Keep a neutral spine.</p>
-      <p><b>Row:</b> pull the bar toward your lower ribs / upper stomach. Elbows move back. <b>Pause 1 second</b> at the top.</p>
-      <p><b>Lower:</b> return the bar down with control. Don’t jerk with your lower back.</p>
-      <p><b>Cues:</b> “Proud chest.” “Pull elbows to hips.” “No shrugging.”</p>
-    `,
-    "Barbell Row (Tempo)": `
-      <p>Same as barbell row, but:</p>
-      <p><b>Tempo:</b> lower the bar for <b>3 seconds</b> every rep. Keep the hinge position stable.</p>
-      <p><b>Why:</b> increases difficulty without needing more plates; builds back control and posture.</p>
-    `,
+    "Warm-up: Scapular Work": `<p><b>Setup:</b> Hang from bar, elbows locked straight.</p>
+<p><b>Move:</b> Pull shoulder blades down and back (like putting them in your back pockets). Body rises slightly. Return to relaxed hang.</p>
+<p><b>Key:</b> Do NOT bend elbows. This is purely a shoulder blade movement.</p>`,
 
-    // --- Dumbbell / bodyweight accessories ---
-    "Incline Dumbbell Press": `
-      <p><b>Setup:</b> set the bench to a low incline. Start with dumbbells at upper chest. Feet planted.</p>
-      <p><b>Press:</b> push up and slightly together. Don’t bang dumbbells at the top.</p>
-      <p><b>Lower:</b> slow, controlled, elbows ~45° from torso.</p>
-      <p><b>Tip:</b> keep shoulder blades back/down; avoid shrugging.</p>
-    `,
-    "Dumbbell Bench Press": `
-      <p><b>Setup:</b> dumbbells start at chest level. Shoulder blades pinned back/down like barbell bench.</p>
-      <p><b>Press:</b> push up; keep wrists stacked over elbows. Controlled reps.</p>
-      <p><b>Why:</b> great volume builder with limited equipment.</p>
-    `,
-    "One-Arm Dumbbell Row": `
-      <p><b>Setup:</b> one knee + hand on bench, spine long. Other hand holds DB.</p>
-      <p><b>Row:</b> pull DB toward your hip. <b>Pause 1 second</b> at the top.</p>
-      <p><b>Lower:</b> slow down; let the shoulder blade stretch at bottom.</p>
-      <p><b>Common mistake:</b> twisting torso a lot. Keep hips mostly square.</p>
-    `,
-    "Push-ups": `
-      <p><b>Setup:</b> hands under shoulders (or slightly wider). Body straight line from head to heels (or knees if modified).</p>
-      <p><b>Lower:</b> chest toward floor/bench. Elbows about 30–45° from torso.</p>
-      <p><b>Press:</b> push the floor away. Keep core braced and avoid sagging hips.</p>
-      <p><b>Options:</b> hands on bench (easier) or feet on bench (harder).</p>
-    `,
-    "Rear Delt Fly": `
-      <p><b>Setup:</b> hinge at hips, torso angled down. Dumbbells hang below shoulders.</p>
-      <p><b>Move:</b> raise arms out to the sides with a slight elbow bend, like making a “T”.</p>
-      <p><b>Control:</b> slow, strict reps. Stop before shrugging.</p>
-      <p><b>Why:</b> balances pressing, improves posture, protects shoulders.</p>
-    `,
-    "Lateral Raise": `
-      <p><b>Setup:</b> stand tall, slight bend in elbows, dumbbells at sides.</p>
-      <p><b>Raise:</b> lift to shoulder height (or slightly below). Lead with elbows.</p>
-      <p><b>Control:</b> no swinging. If needed, use lighter weights and slow down.</p>
-    `,
-    "Curl-bar Curl": `
-      <p><b>Setup:</b> stand tall, elbows close to sides, curl bar in hands.</p>
-      <p><b>Curl:</b> bring bar up by bending elbows only. Don’t lean back.</p>
-      <p><b>Lower:</b> slow. Keep wrists neutral.</p>
-      <p><b>Why:</b> helps pull-ups when you’re at low rep numbers.</p>
-    `,
-    "Hammer Curl": `
-      <p><b>Setup:</b> hold dumbbells or kettlebells with thumbs up (neutral grip).</p>
-      <p><b>Curl:</b> raise without rotating wrist. Keep elbow close to side.</p>
-      <p><b>Benefit:</b> trains forearms and elbow flexors; great for pull-up support.</p>
-    `,
-    "Skull Crushers (curl bar)": `
-      <p><b>Setup:</b> lie on bench. Hold curl bar above chest with elbows pointed up.</p>
-      <p><b>Lower:</b> bend elbows, bringing bar toward forehead/top of head. Upper arms stay mostly still.</p>
-      <p><b>Press:</b> extend elbows to return. Keep reps smooth and controlled.</p>
-      <p><b>If elbows hurt:</b> switch to close-grip bench.</p>
-    `,
-    "Overhead Triceps Extension (KB/DB)": `
-      <p><b>Setup:</b> hold one kettlebell/dumbbell overhead with both hands.</p>
-      <p><b>Lower:</b> bend elbows, bring weight behind head under control.</p>
-      <p><b>Raise:</b> extend elbows back to overhead. Keep ribs down.</p>
-    `,
+    "Warm-up: Scapular Pull-ups": `<p><b>Setup:</b> Hang from bar, elbows locked straight.</p>
+<p><b>Move:</b> Pull shoulder blades down and back (like putting them in your back pockets). Body rises slightly. Return to relaxed hang.</p>
+<p><b>Key:</b> Do NOT bend elbows. This is purely a shoulder blade movement.</p>`,
 
-    // --- Shoulder health block ---
-    "Prone Y-T-W": `
-      <p><b>Setup:</b> lie face down on a bench (or hinge forward). Light weights or none.</p>
-      <p><b>Y:</b> arms angled overhead like a “Y”. Lift, pause 1 sec, lower.</p>
-      <p><b>T:</b> arms straight out to sides like a “T”. Lift, pause, lower.</p>
-      <p><b>W:</b> elbows bent, squeeze shoulder blades down/back like making a “W”.</p>
-      <p><b>Why:</b> builds scapular control and shoulder health without cables.</p>
-    `,
-    "Prone T Raise": `
-      <p>Face down on bench, arms out to sides (T). Lift with shoulder blades, not traps. Pause 1 sec at top.</p>
-    `,
-    "Prone Y Raise": `
-      <p>Face down on bench, arms in a Y shape. Lift slowly, keep shoulders away from ears. Pause at top.</p>
-    `,
-    "Side-lying External Rotation": `
-      <p><b>Setup:</b> lie on your side. Top arm holds a light DB with elbow pinned to your ribs, elbow bent 90°.</p>
-      <p><b>Rotate:</b> keep elbow glued to side and rotate forearm upward. Move slowly.</p>
-      <p><b>Why:</b> strengthens rotator cuff — key for pain-free pressing/pull-ups.</p>
-    `
+    "Warm-up: Scapular Push-ups": `<p><b>Setup:</b> Get in push-up position with arms straight.</p>
+<p><b>Move:</b> Let your shoulder blades come together (chest sinks slightly), then push them apart (upper back rounds slightly).</p>
+<p><b>Key:</b> Arms stay straight the whole time. Only your shoulder blades move.</p>`,
+
+    "Warm-up: Prone Y-T-W": `<p><b>Setup:</b> Lie face down on bench or floor. Light weights or none.</p>
+<p><b>Y:</b> Arms angled overhead like a "Y". Lift, pause 1 sec, lower.</p>
+<p><b>T:</b> Arms straight out to sides like a "T". Lift, pause, lower.</p>
+<p><b>W:</b> Elbows bent, squeeze shoulder blades down/back like making a "W".</p>
+<p><b>Do 8 of each shape.</b></p>`,
+
+    "Ramp Sets": `<p><b>What:</b> 2-4 light warm-up sets for your first barbell exercise.</p>
+<p><b>How:</b> Start with empty bar, gradually increase weight each set.</p>
+<p><b>Example:</b> Empty bar → 50% → 70% → 85% of working weight.</p>
+<p><b>Goal:</b> Groove the movement pattern and prepare your muscles.</p>
+<p>Take your time, then tap SET DONE when ready to continue.</p>`,
+
+    "Shoulder Health: Prone T": `<p><b>Setup:</b> Face down on bench, arms hanging straight down.</p>
+<p><b>Move:</b> Raise arms out to sides (making a T), leading with thumbs up.</p>
+<p><b>Key:</b> Squeeze shoulder blades together at top. Use light weight or none.</p>`,
+
+    "Shoulder Health: Prone Y": `<p><b>Setup:</b> Face down on bench, arms hanging straight down.</p>
+<p><b>Move:</b> Raise arms overhead at 45° angle (making a Y), thumbs up.</p>
+<p><b>Key:</b> Keep shoulders away from ears. Control the movement.</p>`,
+
+    "Shoulder Health: External Rotation": `<p><b>Setup:</b> Lie on your side. Top arm's elbow pinned to ribs, bent 90°. Hold light weight.</p>
+<p><b>Move:</b> Keeping elbow glued to side, rotate forearm upward toward ceiling.</p>
+<p><b>Key:</b> Slow and controlled. This builds rotator cuff strength.</p>`,
+
+    "Arms: DB Curls": `<p><b>Setup:</b> Stand tall, dumbbells at sides, palms forward.</p>
+<p><b>Curl:</b> Bend elbows to bring weights up. Keep upper arms still.</p>
+<p><b>Lower:</b> Slow and controlled back to start.</p>`,
+
+    "Arms: Overhead Triceps": `<p><b>Setup:</b> Hold one dumbbell or kettlebell overhead with both hands.</p>
+<p><b>Lower:</b> Bend elbows to lower weight behind head.</p>
+<p><b>Press:</b> Extend arms back to start. Keep elbows pointing up.</p>`,
+
+    "Cool-down: Scapular Pull-ups": `<p><b>Easy practice to finish.</b></p>
+<p>Same as warm-up scapular pull-ups, but keep it light and controlled.</p>
+<p>Focus on the mind-muscle connection with your shoulder blades.</p>`,
+
+    "Warm-up": `<p><b>Complete these in order:</b></p>
+<p>1. <b>Dead Hang</b> - 2×15-30s. Grip the bar, hang with shoulders engaged (not shrugged to ears). Breathe slowly.</p>
+<p>2. <b>Scapular Pull-ups</b> - 2×6-10. From hang, pull shoulder blades down and back without bending elbows. Small movement, big activation.</p>
+<p>3. <b>Scapular Push-ups</b> - 2×8-12. In push-up position, let shoulder blades come together, then push them apart. Arms stay straight.</p>
+<p>4. <b>Prone Y-T-W</b> - 1 round of 8 each. Face down, make Y/T/W shapes with arms, squeezing shoulder blades.</p>
+<p>5. <b>Ramp Sets</b> - 2-4 light sets of your first barbell exercise, gradually increasing weight.</p>`,
+
+    "Dead Hang": `<p><b>Setup:</b> Grab bar shoulder-width, hang with knees bent if needed.</p>
+<p><b>Do it:</b> Hang with shoulders "set" (pulled slightly down, not jammed into ears). Keep ribs down, light brace. Breathe slowly.</p>
+<p><b>Goal:</b> Build grip strength and shoulder tolerance for pull-ups.</p>`,
+
+    "Scapular Pull-ups": `<p><b>Setup:</b> Hang from bar, elbows locked straight.</p>
+<p><b>Move:</b> Pull shoulder blades down and back (like putting them in your back pockets). Body rises slightly. Return to relaxed hang.</p>
+<p><b>Key:</b> Do NOT bend elbows. This is purely a shoulder blade movement.</p>`,
+
+    "Top Hold (Chin Over Bar)": `<p><b>Setup:</b> Jump or step to get chin over bar.</p>
+<p><b>Hold:</b> Keep chin over bar, chest lifted, shoulders down. Hold for prescribed time.</p>
+<p><b>Don't:</b> Crank your neck up. Keep eyes forward, let back do the work.</p>`,
+
+    "Negative Pull-up": `<p><b>Setup:</b> Jump to top position (chin above bar). Start tight: shoulders down, abs braced.</p>
+<p><b>Lower:</b> Descend slowly for prescribed seconds. Control the entire way down. Elbows track toward ribs.</p>
+<p><b>Finish:</b> Full hang with control (don't just drop).</p>`,
+
+    "Mid-point Hold": `<p><b>Setup:</b> Jump to top, then lower until elbows are about 90°.</p>
+<p><b>Hold:</b> Keep shoulders down, chest tall. Hold for prescribed time.</p>
+<p><b>Why:</b> Strengthens the "sticking point" range.</p>`,
+
+    "Perfect Singles": `<p><b>What:</b> Single clean pull-ups with full rest between.</p>
+<p><b>Do:</b> Full hang → chin over bar → controlled lower. If you can't get chin over, do: jump to top → 2s hold → slow negative.</p>
+<p><b>Rule:</b> NEVER grind. Stop before form breaks down.</p>`,
+
+    "Barbell Bench Press": `<p><b>Setup:</b> Eyes under bar, feet flat behind knees, grip just wider than shoulders.</p>
+<p><b>Unrack:</b> Squeeze shoulder blades BACK and DOWN. Hold bar over mid-chest.</p>
+<p><b>Lower:</b> Bar to lower chest/sternum, elbows ~45° from torso (not flared out).</p>
+<p><b>Press:</b> Push up and slightly back toward face. Keep blades pinned.</p>
+<p><b>Breathing:</b> Big breath before lowering, hold during press, exhale at top.</p>`,
+
+    "Paused Bench Press": `<p>Same as bench press, but:</p>
+<p><b>Pause:</b> After bar touches chest, hold it STILL for 1-2 seconds (no bounce), then press.</p>
+<p><b>Why:</b> Builds strength at the hardest point. Forces good positioning.</p>`,
+
+    "Close-Grip Bench Press": `<p><b>Grip:</b> Hands about shoulder-width (closer than regular, but not touching).</p>
+<p><b>Elbows:</b> Keep tucked ~30-45° from torso.</p>
+<p><b>Goal:</b> Triceps strength and bench lockout power.</p>`,
+
+    "Standing Barbell OHP": `<p><b>Setup:</b> Feet shoulder-width, bar at upper chest/clavicle, grip just outside shoulders.</p>
+<p><b>Brace:</b> Squeeze glutes, ribs down, light ab brace. Don't lean back!</p>
+<p><b>Press:</b> Bar goes up in near-vertical path. Move head back as it passes, then forward under bar at top.</p>`,
+
+    "Barbell Row (Pause)": `<p><b>Setup:</b> Feet hip-width, hinge at hips until torso ~30-45° to floor. Neutral spine.</p>
+<p><b>Row:</b> Pull bar to lower ribs/upper stomach. Elbows back. <b>Pause 1 second at top.</b></p>
+<p><b>Lower:</b> Control down. Don't jerk with lower back.</p>
+<p><b>Cues:</b> "Proud chest." "Pull elbows to hips." "No shrugging."</p>`,
+
+    "Barbell Row (Tempo)": `<p>Same as barbell row, but:</p>
+<p><b>Tempo:</b> Lower the bar for 3 FULL SECONDS every rep.</p>
+<p><b>Why:</b> Increases difficulty without more weight. Builds back control.</p>`,
+
+    "Incline Dumbbell Press": `<p><b>Setup:</b> Bench at low incline, DBs at upper chest, feet planted.</p>
+<p><b>Press:</b> Push up and slightly together. Don't bang DBs at top.</p>
+<p><b>Lower:</b> Slow, controlled, elbows ~45° from torso.</p>`,
+
+    "One-Arm Dumbbell Row": `<p><b>Setup:</b> One knee + hand on bench, spine long. Other hand holds DB.</p>
+<p><b>Row:</b> Pull DB toward hip. <b>Pause 1 second at top.</b></p>
+<p><b>Lower:</b> Slow down, let shoulder blade stretch at bottom.</p>
+<p><b>Key:</b> Keep hips mostly square (don't twist torso).</p>`,
+
+    "Push-ups": `<p><b>Setup:</b> Hands under shoulders (or slightly wider). Body straight from head to heels.</p>
+<p><b>Lower:</b> Chest toward floor, elbows ~30-45° from torso.</p>
+<p><b>Press:</b> Push floor away. Keep core braced, no sagging hips.</p>
+<p><b>Options:</b> Hands on bench (easier) or feet elevated (harder).</p>`,
+
+    "Rear Delt Fly": `<p><b>Setup:</b> Hinge at hips, torso angled down, DBs hang below shoulders.</p>
+<p><b>Move:</b> Raise arms out to sides making a "T", slight elbow bend.</p>
+<p><b>Control:</b> Slow, strict reps. Stop before shrugging.</p>`,
+
+    "Lateral Raise": `<p><b>Setup:</b> Stand tall, slight elbow bend, DBs at sides.</p>
+<p><b>Raise:</b> Lift to shoulder height. Lead with elbows, not hands.</p>
+<p><b>Key:</b> No swinging. Use lighter weight if needed.</p>`,
+
+    "Curls": `<p><b>Setup:</b> Stand tall, elbows close to sides.</p>
+<p><b>Curl:</b> Bring weight up by bending elbows only. Don't lean back or swing.</p>
+<p><b>Lower:</b> Slow and controlled.</p>`,
+
+    "Hammer Curl": `<p><b>Setup:</b> Hold DBs with thumbs up (neutral grip).</p>
+<p><b>Curl:</b> Raise without rotating wrist. Elbow stays close to side.</p>
+<p><b>Benefit:</b> Trains forearms and elbow flexors for pull-up support.</p>`,
+
+    "Skull Crushers": `<p><b>Setup:</b> Lie on bench, hold bar above chest, elbows pointed up.</p>
+<p><b>Lower:</b> Bend elbows, bring bar toward forehead/top of head. Upper arms stay still.</p>
+<p><b>Press:</b> Extend elbows to return. Smooth and controlled.</p>
+<p><b>Note:</b> If elbows hurt, switch to close-grip bench.</p>`,
+
+    "Overhead Triceps Extension": `<p><b>Setup:</b> Hold one KB/DB overhead with both hands.</p>
+<p><b>Lower:</b> Bend elbows, bring weight behind head with control.</p>
+<p><b>Raise:</b> Extend elbows back to overhead. Keep ribs down.</p>`,
+
+    "Shoulder Health Block": `<p><b>Do 2 rounds with light weight (or bodyweight):</b></p>
+<p>• <b>Prone T Raises:</b> 12-20 reps. Face down on bench, arms out to sides, lift with shoulder blades.</p>
+<p>• <b>Prone Y Raises:</b> 10-15 reps. Face down, arms in Y shape, lift slowly.</p>
+<p>• <b>Side-lying External Rotation:</b> 12-20/side. Lie on side, top elbow pinned to ribs, rotate forearm up.</p>
+<p><b>Goal:</b> Control and activation, not load.</p>`,
+
+    "Arms Superset": `<p><b>Do 3 rounds, minimal rest between exercises:</b></p>
+<p>• <b>DB Curls:</b> 10-15 reps</p>
+<p>• <b>Overhead Triceps Extension:</b> 10-15 reps</p>
+<p><b>Rest 45-75 seconds between rounds.</b></p>`,
+
+    "Hanging Reinforcement": `<p><b>Easy practice to reinforce pull-up mechanics:</b></p>
+<p>• <b>Dead Hang:</b> 2×20-40 seconds</p>
+<p>• <b>Scapular Pull-ups:</b> 2×6-10 reps</p>
+<p><b>Keep it easy.</b> This is groove practice, not a workout.</p>`,
+
+    "Rest": `<p><b>Rest time.</b></p>
+<p>Walk around, breathe, hydrate. Shake out your arms.</p>
+<p>Mentally prepare for the next set.</p>`,
+
+    "Finish": `<p><b>Great work!</b></p>
+<p>Hydrate, do some easy shoulder circles.</p>
+<p>Consider noting your main lift weights for next time.</p>`
   };
 
-  function getHow(name){
-    return INSTRUCTIONS[name] || `<p class="muted">No instructions found for this item.</p>`;
-  }
-
-  // Build workout steps:
-  // Each step can contain multiple "blocks":
-  // - action blocks: timed practice or set-count blocks with auto rest timers.
-  // We'll model "set-count blocks" as repeating loops with quick prompts.
+  // Workout definitions - simplified for cleaner flow
   const WORKOUTS = {
     A: {
-      title: "Upper A — Bench + Row + Pull-up Practice",
-      steps: [
-        stepWarmup(),
-        stepPullupPracticeA(),
-        stepMainLift("Barbell Bench Press", {sets:4, reps:[5,8], restType:"main"}),
-        stepMainLift("Barbell Row (Pause at Top)", {sets:4, reps:[6,10], restType:"main"}),
-        stepAccessory("Incline Dumbbell Press", {sets:3, reps:[8,15], restType:"accessory"}),
-        stepAccessory("Rear Delt Fly", {sets:3, reps:[15,25], restType:"accessory"}),
-        stepAccessoryChoice("Triceps", [
-          {name:"Close-Grip Bench Press", sets:3, reps:[6,10], restType:"main"},
-          {name:"Skull Crushers (curl bar)", sets:3, reps:[8,12], restType:"accessory"}
-        ], "Pick one based on comfort. Elbows cranky? Close-grip bench."),
-        stepDone()
+      name: "Upper A — Bench + Row + Pull-up Practice",
+      exercises: [
+        { name: "Warm-up: Dead Hang", type: "timed-sequence", sequence: [
+          { name: "Dead Hang", time: 25, rest: 30, reps: 2 }
+        ]},
+        { name: "Warm-up: Scapular Work", type: "sets", sets: 2, reps: "8-10", rest: "micro", instructions: "Scapular Pull-ups" },
+        { name: "Warm-up: Scapular Push-ups", type: "sets", sets: 2, reps: "8-12", rest: "micro", instructions: "Scapular Pull-ups" },
+        { name: "Warm-up: Prone Y-T-W", type: "sets", sets: 1, reps: "8 each shape", rest: "micro" },
+        { name: "Ramp Sets", type: "instruction", time: null },
+        { name: "Pull-up Practice", type: "timed-sequence", sequence: [
+          { name: "Top Hold (Chin Over Bar)", time: 8, rest: 60, reps: 5 },
+          { name: "Negative Pull-up", time: 6, rest: 60, reps: 5 },
+          { name: "Dead Hang", time: 20, rest: 60, reps: 5 }
+        ]},
+        { name: "Barbell Bench Press", type: "sets", sets: 4, reps: "5-8", rest: "main" },
+        { name: "Barbell Row (Pause)", type: "sets", sets: 4, reps: "6-10", rest: "main" },
+        { name: "Incline Dumbbell Press", type: "sets", sets: 3, reps: "8-15", rest: "accessory" },
+        { name: "Rear Delt Fly", type: "sets", sets: 3, reps: "15-25", rest: "accessory" },
+        { name: "Close-Grip Bench Press", type: "sets", sets: 3, reps: "6-10", rest: "main", note: "Or Skull Crushers 3×8-12" },
+        { name: "Finish", type: "complete" }
       ]
     },
     B: {
-      title: "Upper B — Pull-up Strength + OHP + Back",
-      steps: [
-        stepWarmup(),
-        stepPullupStrengthB(),
-        stepMainLift("Standing Barbell Overhead Press", {sets:4, reps:[5,8], restType:"main"}),
-        stepAccessoryChoice("Row variation", [
-          {name:"One-Arm Dumbbell Row", sets:3, reps:[10,15], restType:"accessory", perSide:true},
-          {name:"Barbell Row (Pause at Top)", sets:3, reps:[8,12], restType:"main"}
-        ], "Choose DB rows if you want strict control; barbell if you want simpler setup."),
-        stepAccessoryChoice("Pressing volume", [
-          {name:"Dumbbell Bench Press", sets:3, reps:[10,15], restType:"accessory"},
-          {name:"Push-ups", sets:3, reps:"near-failure (leave 1–2 reps)", restType:"accessory"}
-        ], "Pick DB press for consistent reps; pick push-ups for simplicity."),
-        stepAccessory("Curl-bar Curl", {sets:3, reps:[8,12], restType:"accessory"}),
-        stepAccessory("Hammer Curl", {sets:2, reps:[10,15], restType:"accessory"}),
-        stepAccessory("Lateral Raise", {sets:3, reps:[12,20], restType:"accessory"}),
-        stepDone()
+      name: "Upper B — Pull-up Strength + OHP + Back",
+      exercises: [
+        { name: "Warm-up: Dead Hang", type: "timed-sequence", sequence: [
+          { name: "Dead Hang", time: 25, rest: 30, reps: 2 }
+        ]},
+        { name: "Warm-up: Scapular Pull-ups", type: "sets", sets: 2, reps: "6-10", rest: "micro" },
+        { name: "Warm-up: Scapular Push-ups", type: "sets", sets: 2, reps: "8-12", rest: "micro" },
+        { name: "Warm-up: Prone Y-T-W", type: "sets", sets: 1, reps: "8 each shape", rest: "micro" },
+        { name: "Ramp Sets", type: "instruction", time: null },
+        { name: "Pull-up Strength", type: "timed-sequence", sequence: [
+          { name: "Perfect Singles", time: null, rest: 75, reps: 8, instruction: "8 single pull-ups with full rest. Jump-assist if needed." },
+          { name: "Negative Pull-up", time: 6, rest: 60, reps: 6, instruction: "3 sets of 2 slow negatives" },
+          { name: "Mid-point Hold", time: 8, rest: 45, reps: 2 }
+        ]},
+        { name: "Standing Barbell OHP", type: "sets", sets: 4, reps: "5-8", rest: "main" },
+        { name: "One-Arm Dumbbell Row", type: "sets", sets: 3, reps: "10-15 each", rest: "accessory", note: "Or Barbell Row 3×8-12" },
+        { name: "Push-ups", type: "sets", sets: 3, reps: "near failure", rest: "accessory", note: "Or DB Bench 3×10-15" },
+        { name: "Curls", type: "sets", sets: 3, reps: "8-12", rest: "accessory" },
+        { name: "Hammer Curl", type: "sets", sets: 2, reps: "10-15", rest: "accessory" },
+        { name: "Lateral Raise", type: "sets", sets: 3, reps: "12-20", rest: "accessory" },
+        { name: "Finish", type: "complete" }
       ]
     },
     C: {
-      title: "Upper C — Volume + Shoulder Health + Arms",
-      steps: [
-        stepWarmupLight(),
-        stepAccessoryChoice("Bench variation", [
-          {name:"Paused Bench Press", sets:3, reps:[5,8], restType:"main"},
-          {name:"Close-Grip Bench Press", sets:3, reps:[6,10], restType:"main"}
-        ], "Stick with one for 8 weeks to see clean progress."),
-        stepMainLift("Barbell Row (Tempo)", {sets:3, reps:[8,12], restType:"main"}),
-        stepAccessory("Push-ups", {sets:2, reps:"stop 1–2 reps shy of failure", restType:"accessory"}),
-        stepShoulderHealthBlock(),
-        stepArmsSuperset(),
-        stepHangReinforcement(),
-        stepDone()
+      name: "Upper C — Volume + Shoulder Health + Arms",
+      exercises: [
+        { name: "Warm-up: Dead Hang", type: "timed-sequence", sequence: [
+          { name: "Dead Hang", time: 20, rest: 30, reps: 2 }
+        ]},
+        { name: "Warm-up: Scapular Pull-ups", type: "sets", sets: 2, reps: "6-10", rest: "micro" },
+        { name: "Warm-up: Scapular Push-ups", type: "sets", sets: 2, reps: "8-12", rest: "micro" },
+        { name: "Warm-up: Prone Y-T-W", type: "sets", sets: 1, reps: "8 each shape", rest: "micro" },
+        { name: "Ramp Sets", type: "instruction", time: null },
+        { name: "Paused Bench Press", type: "sets", sets: 3, reps: "5-8", rest: "main", note: "Or Close-Grip Bench 3×6-10" },
+        { name: "Barbell Row (Tempo)", type: "sets", sets: 3, reps: "8-12", rest: "main" },
+        { name: "Push-ups", type: "sets", sets: 2, reps: "stop 1-2 shy of failure", rest: "accessory" },
+        { name: "Shoulder Health: Prone T", type: "sets", sets: 2, reps: "12-20", rest: "micro" },
+        { name: "Shoulder Health: Prone Y", type: "sets", sets: 2, reps: "10-15", rest: "micro" },
+        { name: "Shoulder Health: External Rotation", type: "sets", sets: 2, reps: "12-20 per side", rest: "micro" },
+        { name: "Arms: DB Curls", type: "sets", sets: 3, reps: "10-15", rest: "accessory" },
+        { name: "Arms: Overhead Triceps", type: "sets", sets: 3, reps: "10-15", rest: "accessory" },
+        { name: "Hanging Reinforcement", type: "timed-sequence", sequence: [
+          { name: "Dead Hang", time: 30, rest: 45, reps: 2 }
+        ]},
+        { name: "Cool-down: Scapular Pull-ups", type: "sets", sets: 2, reps: "6-10", rest: "micro" },
+        { name: "Finish", type: "complete" }
       ]
     }
   };
 
-  // ---------- Step builders ----------
-  function stepWarmup(){
-    return {
-      type:"guided",
-      name:"Warm-up (7–8 min)",
-      badge:"Info",
-      summary:"Dead hang, scap pull-ups, scap push-ups, prone Y-T-W, then ramp sets.",
-      how: `
-        <p>This is the same every workout and should take about 7–8 minutes.</p>
-        <p><b>Order:</b> (1) Dead hang 2×15–30s • (2) Scap pull-ups 2×6–10 • (3) Scap push-ups 2×8–12 • (4) Prone Y-T-W 1 round (8/8/8) • (5) Ramp sets for the first barbell lift.</p>
-        <p><b>Ramp sets:</b> do 2–4 light sets increasing weight gradually (example: empty bar → light → moderate) before your working sets.</p>
-      `,
-      blocks: [
-        timedBlock("Dead Hang", 30, "work", "micro"),
-        timedBlock("Rest", null, "rest", "micro"),
-        timedBlock("Dead Hang", 30, "work", "micro"),
-        timedBlock("Scapular Pull-ups", null, "sets", "micro", {sets:2, reps:"6–10"}),
-        timedBlock("Scapular Push-ups", null, "sets", "micro", {sets:2, reps:"8–12"}),
-        timedBlock("Prone Y-T-W", null, "sets", "micro", {sets:1, reps:"8 Y / 8 T / 8 W"}),
-        {
-          kind:"note",
-          label:"Ramp sets (no timer)",
-          text:"Do 2–4 warm-up sets for your next barbell lift. Keep them easy. Then press Next."
-        }
-      ]
-    };
+  // ===== PLAYER STATE =====
+  let player = {
+    active: false,
+    paused: false,
+    currentExerciseIndex: 0,
+    currentSetIndex: 0,
+    currentSequenceIndex: 0,
+    phase: 'ready', // ready, prep, work, rest, confirm
+    timeRemaining: 0,
+    timeTotal: 0,
+    timerInterval: null,
+    sessionStartTime: null
+  };
+
+  // ===== DOM ELEMENTS =====
+  const $ = id => document.getElementById(id);
+  const $$ = sel => document.querySelectorAll(sel);
+
+  const views = {
+    intro: $('introView'),
+    workout: $('workoutView'),
+    confirm: $('confirmView'),
+    history: $('historyView'),
+    settings: $('settingsView')
+  };
+
+  const els = {
+    stepCounter: $('stepCounter'),
+    phaseBadge: $('phaseBadge'),
+    phaseText: $('phaseText'),
+    exerciseName: $('exerciseName'),
+    exerciseDetail: $('exerciseDetail'),
+    timerDisplay: $('timerDisplay'),
+    progressBar: $('progressBar'),
+    currentExercise: $('currentExercise'),
+    instructionsToggle: $('instructionsToggle'),
+    instructionsContent: $('instructionsContent'),
+    confirmStep: $('confirmStep'),
+    confirmTitle: $('confirmTitle'),
+    confirmSubtitle: $('confirmSubtitle'),
+    confirmInstructions: $('confirmInstructions'),
+    upcomingList: $('upcomingList'),
+    controlsRow: $('controlsRow'),
+    mainBtn: $('mainBtn'),
+    prevBtn: $('prevBtn'),
+    skipBtn: $('skipBtn'),
+    cancelBtn: $('cancelBtn'),
+    toast: $('toast')
+  };
+
+  // ===== UTILITY FUNCTIONS =====
+  function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
-  function stepWarmupLight(){
-    return {
-      type:"guided",
-      name:"Warm-up (lighter)",
-      badge:"Info",
-      summary:"Same pattern, slightly faster on volume day.",
-      how: `
-        <p>Same warm-up idea, just a touch shorter.</p>
-        <p><b>Order:</b> Dead hang 1–2×20s • Scap pull-ups 2×6–10 • Scap push-ups 2×8–12 • Prone Y-T-W 1 round.</p>
-      `,
-      blocks: [
-        timedBlock("Dead Hang", 25, "work", "micro"),
-        timedBlock("Scapular Pull-ups", null, "sets", "micro", {sets:2, reps:"6–10"}),
-        timedBlock("Scapular Push-ups", null, "sets", "micro", {sets:2, reps:"8–12"}),
-        timedBlock("Prone Y-T-W", null, "sets", "micro", {sets:1, reps:"8 Y / 8 T / 8 W"}),
-        { kind:"note", label:"Ramp sets (optional)", text:"If bench/row feels stiff today, do 1–2 quick ramp sets before your first barbell lift." }
-      ]
-    };
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 
-  function stepPullupPracticeA(){
-    return {
-      type:"pullupA",
-      name:"Pull-up practice (10 min loop)",
-      badge:"Info",
-      summary:"Top hold → negative → hang. Clean reps only. No grinding.",
-      how: `
-        <p><b>Goal:</b> accumulate high-quality practice without missing reps.</p>
-        <p>You’ll repeat a loop for about 10 minutes:</p>
-        <ul>
-          <li><b>Top hold</b> 5–10 seconds</li>
-          <li><b>Negative</b> 4–6 seconds down</li>
-          <li><b>Dead hang</b> 15–25 seconds</li>
-        </ul>
-        <p><b>Progress weekly:</b> add 1 sec to holds or negatives, or add one extra loop.</p>
-      `,
-      blocks: [
-        loopBlock("Top Hold (Chin Over Bar)", {workSeconds: 8, restSeconds: null, loops: 5, mode:"hold"}),
-        loopBlock("Negative Pull-up", {workSeconds: 6, restSeconds: state.settings.restMicro, loops: 5, mode:"neg"}),
-        loopBlock("Dead Hang", {workSeconds: 20, restSeconds: state.settings.restMicro, loops: 5, mode:"hang"}),
-        { kind:"note", label:"How many loops?", text:"Default is 5 loops. If you feel fresh, do 6. If form degrades, stop at 4." }
-      ]
-    };
+  let toastTimeout = null;
+  function showToast(message) {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    els.toast.textContent = message;
+    els.toast.classList.add('show');
+    toastTimeout = setTimeout(() => els.toast.classList.remove('show'), 2000);
   }
 
-  function stepPullupStrengthB(){
-    return {
-      type:"pullupB",
-      name:"Pull-up strength block",
-      badge:"Warn",
-      summary:"Perfect singles → negatives → mid-point holds. Never miss reps.",
-      how: `
-        <p><b>Rule:</b> never miss a rep. Stop before you turn into a shaking noodle.</p>
-        <p><b>Sequence:</b></p>
-        <ol>
-          <li><b>Perfect singles</b>: 6–10 singles (60–90s rest). If you can’t reliably get chin over, do jump-to-top + 1–2s hold + controlled lower.</li>
-          <li><b>Negatives</b>: 3 sets × 2 negatives, each 5–8 seconds down.</li>
-          <li><b>Mid-point holds</b>: 2 holds × 5–10 seconds at about 90° elbows.</li>
-        </ol>
-        <p><b>Progress weekly:</b> slower negatives, longer holds, or 1 more perfect single.</p>
-      `,
-      blocks: [
-        setBlock("Perfect Singles (Pull-up)", {sets: 8, reps:"1", restType:"micro", hint:"If the full rep is not clean, do jump-to-top + 2s hold + slow lower."}),
-        setBlock("Negative Pull-up", {sets: 3, reps:"2 negatives (5–8 sec each)", restType:"micro"}),
-        timedBlock("Mid-point Hold (90° Elbows)", 8, "work", "micro"),
-        timedBlock("Rest", null, "rest", "micro"),
-        timedBlock("Mid-point Hold (90° Elbows)", 8, "work", "micro"),
-      ]
-    };
+  function showView(viewName) {
+    Object.values(views).forEach(v => v.classList.remove('active'));
+    views[viewName].classList.add('active');
   }
 
-  function stepMainLift(name, cfg){
-    return {
-      type:"lift",
-      name,
-      badge:"Main",
-      summary: fmtSetsReps(cfg.sets, cfg.reps),
-      how: getHow(name),
-      blocks: [
-        { kind:"note", label:"Ramp sets", text:"Do 2–4 warm-up sets (no timer) before working sets. Then press Next." },
-        setBlock(name, cfg)
-      ]
-    };
+  function getCurrentWorkout() {
+    return WORKOUTS[state.session];
   }
 
-  function stepAccessory(name, cfg){
-    return {
-      type:"acc",
-      name,
-      badge:"Accessory",
-      summary: fmtSetsReps(cfg.sets, cfg.reps),
-      how: getHow(name),
-      blocks: [
-        setBlock(name, cfg)
-      ]
-    };
+  function getCurrentExercise() {
+    const workout = getCurrentWorkout();
+    if (!workout || !workout.exercises || player.currentExerciseIndex >= workout.exercises.length) {
+      return { name: 'Unknown', type: 'instruction' };
+    }
+    return workout.exercises[player.currentExerciseIndex];
   }
 
-  function stepAccessoryChoice(groupName, options, note){
-    return {
-      type:"choice",
-      name: groupName,
-      badge:"Choice",
-      summary: note,
-      how: `<p>${note}</p>`,
-      choice: options,
-      blocks: [] // will be generated based on selected option
-    };
+  function getRestTime(restType) {
+    switch (restType) {
+      case 'main': return state.settings.mainRest;
+      case 'accessory': return state.settings.accessoryRest;
+      case 'micro': return state.settings.microRest;
+      default: return state.settings.accessoryRest;
+    }
   }
 
-  function stepShoulderHealthBlock(){
-    return {
-      type:"shoulder",
-      name:"Shoulder health block (2 rounds)",
-      badge:"Info",
-      summary:"Prone T → Prone Y → Side-lying external rotation.",
-      how: `
-        <p><b>Do 2 rounds</b> with strict control and light weights.</p>
-        <ul>
-          <li><b>Prone T raises:</b> 12–20</li>
-          <li><b>Prone Y raises:</b> 10–15</li>
-          <li><b>Side-lying external rotations:</b> 12–20/side</li>
-        </ul>
-        <p>Use 5 lb (or even no weight) if needed. The goal is control, not load.</p>
-      `,
-      blocks: [
-        setBlock("Prone T Raise", {sets:2, reps:"12–20", restType:"accessory"}),
-        setBlock("Prone Y Raise", {sets:2, reps:"10–15", restType:"accessory"}),
-        setBlock("Side-lying External Rotation", {sets:2, reps:"12–20/side", restType:"accessory"}),
-      ]
-    };
+  function getInstructions(name) {
+    return INSTRUCTIONS[name] || INSTRUCTIONS[name.split(' (')[0]] || `<p>Perform ${name} with good form.</p>`;
   }
 
-  function stepArmsSuperset(){
-    return {
-      type:"superset",
-      name:"Arms superset (3 rounds)",
-      badge:"Info",
-      summary:"DB curls + overhead triceps extension. Minimal rest.",
-      how: `
-        <p><b>Do 3 rounds:</b></p>
-        <ul>
-          <li><b>DB curls:</b> 10–15 reps (choose a weight you can control)</li>
-          <li><b>Overhead triceps extension:</b> 10–15 reps (KB/DB)</li>
-        </ul>
-        <p><b>Rest:</b> 45–75 seconds between rounds. Keep reps smooth.</p>
-      `,
-      blocks: [
-        supersetBlock([
-          {name:"DB Curls", reps:"10–15"},
-          {name:"Overhead Triceps Extension (KB/DB)", reps:"10–15"}
-        ], {rounds:3, restType:"accessory"})
-      ]
-    };
-  }
-
-  function stepHangReinforcement(){
-    return {
-      type:"micro",
-      name:"Hanging reinforcement",
-      badge:"Info",
-      summary:"Easy hangs + scapular pull-ups to reinforce pull-up mechanics.",
-      how: `
-        <p>This is easy practice to reinforce the pattern without fatigue.</p>
-        <p><b>Do:</b> Dead hang 2×20–40s, then scapular pull-ups 2×6–10.</p>
-      `,
-      blocks: [
-        timedBlock("Dead Hang", 30, "work", "micro"),
-        timedBlock("Rest", null, "rest", "micro"),
-        timedBlock("Dead Hang", 30, "work", "micro"),
-        setBlock("Scapular Pull-ups", {sets:2, reps:"6–10", restType:"micro"})
-      ]
-    };
-  }
-
-  function stepDone(){
-    return {
-      type:"done",
-      name:"Finish",
-      badge:"OK",
-      summary:"Great work. Save completion to history.",
-      how: `
-        <p><b>Done.</b> Hydrate, easy shoulder circles, and note your main lift weights if you want progression next time.</p>
-        <p>Tip: after cycling days, you can add 2 quick sets of hangs + scap pull-ups to speed up pull-up progress.</p>
-      `,
-      blocks: [
-        { kind:"complete" }
-      ]
-    };
-  }
-
-  // ---------- Blocks ----------
-  function timedBlock(label, seconds, phaseKind, restProfile, setsMeta){
-    // label: exercise name or "Rest"
-    // seconds: number or null (use rest profile)
-    // phaseKind: "work" | "rest" | "sets"
-    return {
-      kind: phaseKind === "sets" ? "sets" : "timer",
-      label,
-      seconds,
-      restProfile,
-      setsMeta: setsMeta || null
-    };
-  }
-
-  function setBlock(name, cfg){
-    // sets with auto rest between sets
-    return {
-      kind:"setRunner",
-      label:name,
-      cfg
-    };
-  }
-
-  function loopBlock(name, cfg){
-    return {
-      kind:"loop",
-      label:name,
-      cfg
-    };
-  }
-
-  function supersetBlock(exercises, cfg){
-    return {
-      kind:"superset",
-      label:"Superset",
-      exercises,
-      cfg
-    };
-  }
-
-  // ---------- Build "flattened timeline" ----------
-  // For usability: we create a sequence of "playerSteps" which are atomic timed/instruction phases:
-  // ex: "Bench set 1 (do reps)" -> "Rest" -> "Bench set 2" -> ...
-  function buildTimeline(sessionKey){
-    const session = WORKOUTS[sessionKey];
-    const timeline = [];
-    let stepCounter = 0;
-
-    session.steps.forEach((step, stepIdx) => {
-      // For choice steps, use stored selection or default first option.
-      if(step.type === "choice"){
-        const choiceKey = `choice_${sessionKey}_${stepIdx}`;
-        const selectedName = state.logs[choiceKey]?.selected || step.choice[0].name;
-        const selected = step.choice.find(o => o.name === selectedName) || step.choice[0];
-
-        // insert an instruction tile about the choice (but auto-proceeds)
-        timeline.push({
-          id: mkStepId(sessionKey, stepCounter++),
-          sessionKey, stepIdx,
-          title: step.name,
-          subtitle: step.summary,
-          kind: "choiceInfo",
-          choiceKey,
-          choiceOptions: step.choice.map(o => o.name),
-          selected: selected.name,
-          howHTML: `<p><b>Selected:</b> ${escapeHtml(selected.name)}</p><p class="muted tiny">You can change this in the step card below before starting, or later from the run list.</p>` + (getHow(selected.name) || ""),
-          phase: "INFO",
-          duration: 0
-        });
-
-        // add the selected block as a set runner
-        const cfg = {sets:selected.sets, reps:selected.reps, restType:selected.restType, perSide: selected.perSide || false};
-        timeline.push(...expandSetRunner(sessionKey, stepIdx, selected.name, cfg, stepCounter));
-        stepCounter = timeline.length;
-        return;
+  function renderWorkoutOverview() {
+    const workout = getCurrentWorkout();
+    $('overviewTitle').textContent = `Session ${state.session} Overview`;
+    
+    const exercises = workout.exercises.filter(ex => ex.type !== 'complete');
+    
+    $('overviewList').innerHTML = exercises.map((ex, i) => {
+      const isWarmup = ex.name.toLowerCase().includes('warm-up') || ex.name === 'Ramp Sets';
+      const isMain = ex.type === 'sets' && ex.rest === 'main';
+      
+      let meta = '';
+      if (ex.type === 'sets') {
+        meta = `${ex.sets} sets × ${ex.reps}`;
+      } else if (ex.type === 'timed-sequence') {
+        const totalTime = ex.sequence.reduce((sum, s) => sum + (s.time || 30) * s.reps + s.rest * (s.reps - 1), 0);
+        meta = `~${Math.round(totalTime / 60)} min`;
+      } else if (ex.type === 'instruction') {
+        meta = 'Self-paced';
       }
-
-      // Expand blocks
-      const blocks = step.blocks || [];
-      // Add a step header entry (info-only)
-      timeline.push({
-        id: mkStepId(sessionKey, stepCounter++),
-        sessionKey, stepIdx,
-        title: step.name,
-        subtitle: step.summary || "",
-        kind: "stepHeader",
-        howHTML: step.how || getHow(step.name),
-        phase:"INFO",
-        duration: 0
-      });
-
-      blocks.forEach((b) => {
-        if(b.kind === "timer"){
-          const dur = (b.seconds == null) ? restSecondsForProfile(b.restProfile) : b.seconds;
-          // Add prep countdown before timed segments (except if duration==0)
-          timeline.push(...prepThenTimer(sessionKey, stepIdx, b.label, dur, "TIMER", stepCounter));
-          stepCounter = timeline.length;
-        }
-        else if(b.kind === "note"){
-          timeline.push({
-            id: mkStepId(sessionKey, stepCounter++),
-            sessionKey, stepIdx,
-            title: b.label,
-            subtitle: b.text,
-            kind: "note",
-            howHTML: `<p>${escapeHtml(b.text)}</p>`,
-            phase: "INFO",
-            duration: 0
-          });
-        }
-        else if(b.kind === "setRunner"){
-          timeline.push(...expandSetRunner(sessionKey, stepIdx, b.label, b.cfg, stepCounter));
-          stepCounter = timeline.length;
-        }
-        else if(b.kind === "loop"){
-          timeline.push(...expandLoop(sessionKey, stepIdx, b.label, b.cfg, stepCounter));
-          stepCounter = timeline.length;
-        }
-        else if(b.kind === "superset"){
-          timeline.push(...expandSuperset(sessionKey, stepIdx, b.exercises, b.cfg, stepCounter));
-          stepCounter = timeline.length;
-        }
-        else if(b.kind === "complete"){
-          timeline.push({
-            id: mkStepId(sessionKey, stepCounter++),
-            sessionKey, stepIdx,
-            title: "Complete session",
-            subtitle: "Tap Finish to save to history.",
-            kind: "complete",
-            howHTML: `<p>Nice work. When you’re ready, press <b>Finish Session</b>.</p>`,
-            phase: "DONE",
-            duration: 0
-          });
-        }
-      });
-    });
-
-    return timeline;
-  }
-
-  function prepThenTimer(sessionKey, stepIdx, label, seconds, kind, stepCounter){
-    const prep = Math.max(3, clampInt(state.settings.prepSeconds, 3, 45));
-    const arr = [];
-    arr.push({
-      id: mkStepId(sessionKey, stepCounter++),
-      sessionKey, stepIdx,
-      title: "Get ready",
-      subtitle: `Next: ${label}`,
-      kind: "prep",
-      howHTML: `<p><b>Next:</b> ${escapeHtml(label)}</p><p class="muted tiny">Set up your position and breathe. Timer starts automatically.</p>` + getHow(label),
-      phase: "PREP",
-      duration: prep
-    });
-    arr.push({
-      id: mkStepId(sessionKey, stepCounter++),
-      sessionKey, stepIdx,
-      title: label,
-      subtitle: `Timer: ${seconds}s`,
-      kind: kind,
-      howHTML: getHow(label),
-      phase: "WORK",
-      duration: seconds
-    });
-    return arr;
-  }
-
-  function expandSetRunner(sessionKey, stepIdx, label, cfg, stepCounter){
-    const sets = cfg.sets || 1;
-    const reps = cfg.reps;
-    const rest = restSecondsForType(cfg.restType || "accessory");
-    const perSide = !!cfg.perSide;
-    const arr = [];
-
-    // add an info entry that explains the movement and the scheme
-    arr.push({
-      id: mkStepId(sessionKey, stepCounter++),
-      sessionKey, stepIdx,
-      title: label,
-      subtitle: `${sets} sets × ${Array.isArray(reps)? `${reps[0]}–${reps[1]}`: reps}${perSide? " (per side)" : ""}`,
-      kind: "scheme",
-      howHTML: getHow(label),
-      phase: "INFO",
-      duration: 0
-    });
-
-    for(let s=1; s<=sets; s++){
-      // "Do the set" prompt — no timer (you control rep speed), but we still give you a prep countdown so you can set up.
-      const prep = Math.max(3, clampInt(state.settings.prepSeconds, 3, 45));
-      arr.push({
-        id: mkStepId(sessionKey, stepCounter++),
-        sessionKey, stepIdx,
-        title: `Get ready`,
-        subtitle: `${label} — set ${s}/${sets}`,
-        kind: "prep",
-        howHTML: `<p><b>${escapeHtml(label)}</b> — set <b>${s}/${sets}</b></p>
-                  <p class="muted tiny">Set up safely; the prompt will auto-advance to the set screen.</p>` + getHow(label),
-        phase: "PREP",
-        duration: prep
-      });
-
-      arr.push({
-        id: mkStepId(sessionKey, stepCounter++),
-        sessionKey, stepIdx,
-        title: `${label} — Set ${s}/${sets}`,
-        subtitle: `Do ${Array.isArray(reps)? `${reps[0]}–${reps[1]}`: reps}${perSide? " / side" : ""}. Stop with ~2 reps in reserve.`,
-        kind: "set",
-        howHTML: getHow(label) + `<p class="muted tiny"><b>Target:</b> ${escapeHtml(Array.isArray(reps)? `${reps[0]}–${reps[1]}`: reps)}${perSide? " per side" : ""}</p>`,
-        phase: "INFO",
-        duration: 0
-      });
-
-      if(s < sets){
-        arr.push(...prepThenTimer(sessionKey, stepIdx, "Rest", rest, "REST", stepCounter));
-        stepCounter = arr.length;
-      }
-    }
-    return arr;
-  }
-
-  function expandLoop(sessionKey, stepIdx, label, cfg, stepCounter){
-    const loops = cfg.loops || 4;
-    const workSeconds = cfg.workSeconds || 8;
-    const restSeconds = (cfg.restSeconds == null) ? restSecondsForType("micro") : cfg.restSeconds;
-    const arr = [];
-
-    arr.push({
-      id: mkStepId(sessionKey, stepCounter++),
-      sessionKey, stepIdx,
-      title: label,
-      subtitle: `${loops} loops • ${workSeconds}s work`,
-      kind: "scheme",
-      howHTML: getHow(label),
-      phase:"INFO",
-      duration: 0
-    });
-
-    for(let i=1; i<=loops; i++){
-      arr.push(...prepThenTimer(sessionKey, stepIdx, `${label} (loop ${i}/${loops})`, workSeconds, "TIMER", stepCounter));
-      stepCounter = arr.length;
-
-      // Rest between loops (except after last if you want)
-      if(i < loops && restSeconds > 0){
-        arr.push(...prepThenTimer(sessionKey, stepIdx, "Rest", restSeconds, "REST", stepCounter));
-        stepCounter = arr.length;
-      }
-    }
-    return arr;
-  }
-
-  function expandSuperset(sessionKey, stepIdx, exercises, cfg, stepCounter){
-    const rounds = cfg.rounds || 3;
-    const rest = restSecondsForType(cfg.restType || "accessory");
-    const arr = [];
-    arr.push({
-      id: mkStepId(sessionKey, stepCounter++),
-      sessionKey, stepIdx,
-      title: `Superset`,
-      subtitle: `${rounds} rounds`,
-      kind:"scheme",
-      howHTML: `<p><b>Superset:</b> do both movements back-to-back, then rest.</p>` +
-               exercises.map(ex => `<p>• <b>${escapeHtml(ex.name)}</b>: ${escapeHtml(ex.reps)}</p>`).join("") +
-               `<p class="muted tiny">Rest ${rest}s between rounds.</p>`,
-      phase:"INFO",
-      duration:0
-    });
-
-    for(let r=1; r<=rounds; r++){
-      // For each exercise, show an info step (no timer) with prep countdown before each to keep flow safe.
-      for(const ex of exercises){
-        const prep = Math.max(3, clampInt(state.settings.prepSeconds, 3, 45));
-        arr.push({
-          id: mkStepId(sessionKey, stepCounter++),
-          sessionKey, stepIdx,
-          title:"Get ready",
-          subtitle:`Round ${r}/${rounds}: ${ex.name}`,
-          kind:"prep",
-          howHTML:`<p><b>Round ${r}/${rounds}</b> — next: <b>${escapeHtml(ex.name)}</b> (${escapeHtml(ex.reps)})</p>` + (getHow(ex.name) || ""),
-          phase:"PREP",
-          duration: prep
-        });
-        arr.push({
-          id: mkStepId(sessionKey, stepCounter++),
-          sessionKey, stepIdx,
-          title:`${ex.name}`,
-          subtitle:`Round ${r}/${rounds} • Do ${ex.reps}`,
-          kind:"set",
-          howHTML:(getHow(ex.name) || `<p>${escapeHtml(ex.name)}: ${escapeHtml(ex.reps)}</p>`),
-          phase:"INFO",
-          duration:0
-        });
-      }
-
-      if(r < rounds){
-        arr.push(...prepThenTimer(sessionKey, stepIdx, "Rest", rest, "REST", stepCounter));
-        stepCounter = arr.length;
-      }
-    }
-    return arr;
-  }
-
-  // ---------- Helpers ----------
-  function restSecondsForType(type){
-    if(type === "main") return clampInt(state.settings.restMain, 30, 300);
-    if(type === "micro") return clampInt(state.settings.restMicro, 20, 120);
-    return clampInt(state.settings.restAccessory, 20, 180);
-  }
-  function restSecondsForProfile(profile){
-    if(profile === "main") return restSecondsForType("main");
-    if(profile === "micro") return restSecondsForType("micro");
-    return restSecondsForType("accessory");
-  }
-  function clampInt(v, a, b){
-    v = parseInt(v, 10);
-    if(Number.isNaN(v)) v = a;
-    return Math.max(a, Math.min(b, v));
-  }
-  function mmss(secs){
-    secs = Math.max(0, Math.floor(secs));
-    const m = Math.floor(secs/60);
-    const s = secs%60;
-    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-  }
-  function escapeHtml(str){
-    return String(str).replace(/[&<>"']/g, (m)=>({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[m]));
-  }
-
-  // ---------- Player state & runtime ----------
-  let timeline = buildTimeline(state.session);
-  let sessionStartTs = null;
-
-  function currentNode(){ return timeline[state.player.stepIndex] || null; }
-  function nextNode(){ return timeline[state.player.stepIndex+1] || null; }
-
-  function setSession(key){
-    state.session = key;
-    state.player.running = false;
-    state.player.paused = false;
-    state.player.stepIndex = 0;
-    state.player.phase = "READY";
-    state.player.remaining = 0;
-    state.player.phaseTotal = 0;
-    state.player.lastTick = 0;
-    timeline = buildTimeline(key);
-    sessionStartTs = null;
-    saveSilently();
-    initUI();
-    toast(`Session ${key} loaded`);
-  }
-
-  function saveSilently(){
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-  }
-
-  // If current node is timed, set timer
-  function enterNode(idx){
-    state.player.stepIndex = idx;
-    const node = currentNode();
-    state.player.phase = node?.phase || "READY";
-    if(node && node.duration && node.duration > 0){
-      state.player.phaseTotal = node.duration;
-      state.player.remaining = node.duration;
-      state.player.lastTick = performance.now();
-    } else {
-      state.player.phaseTotal = 0;
-      state.player.remaining = 0;
-      state.player.lastTick = performance.now();
-    }
-    saveSilently();
-    render();
-  }
-
-  function start(){
-    if(state.player.running && state.player.paused){
-      state.player.paused = false;
-      state.player.lastTick = performance.now();
-      saveSilently();
-      render();
-      return;
-    }
-    if(state.player.running) return;
-
-    state.player.running = true;
-    state.player.paused = false;
-    sessionStartTs = Date.now();
-
-    // ensure first node
-    if(state.player.stepIndex < 0 || state.player.stepIndex >= timeline.length){
-      enterNode(0);
-    } else {
-      // if at READY with zero timeline, rebuild
-      timeline = buildTimeline(state.session);
-      render();
-    }
-
-    // If current node has 0 duration, we still want auto-advance only when user presses Skip/Next.
-    // But for timed nodes, it auto-advances.
-    saveSilently();
-    toast("Started");
-    render();
-  }
-
-  function pause(){
-    if(!state.player.running) return;
-    state.player.paused = true;
-    saveSilently();
-    toast("Paused");
-    render();
-  }
-
-  function toggleStartPause(){
-    // ensure audio context allowed
-    if(audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
-    if(!state.player.running) start();
-    else if(state.player.paused) start(); // resume
-    else pause();
-  }
-
-  function back(){
-    const idx = Math.max(0, state.player.stepIndex - 1);
-    enterNode(idx);
-    toast("Back");
-  }
-
-  function skip(){
-    // Skip current timer or jump to next node
-    const node = currentNode();
-    if(node && node.duration > 0){
-      state.player.remaining = 1; // force finish on next tick
-      state.player.lastTick = performance.now() - 1000;
-      render();
-      return;
-    }
-    advance();
-  }
-
-  function advance(){
-    const idx = state.player.stepIndex + 1;
-    if(idx >= timeline.length){
-      finishSession();
-      return;
-    }
-    enterNode(idx);
-    const node = currentNode();
-    if(node && node.duration > 0){
-      beep();
-    }
-  }
-
-  function finishSession(){
-    // Record session completion (best effort)
-    const completedSteps = state.player.stepIndex + 1;
-    const durationSeconds = sessionStartTs ? Math.floor((Date.now() - sessionStartTs)/1000) : null;
-
-    state.history.unshift({
-      ts: Date.now(),
-      session: state.session,
-      durationSeconds: durationSeconds ?? 0,
-      completedSteps
-    });
-    state.history = state.history.slice(0, 30);
-
-    state.player.running = false;
-    state.player.paused = false;
-    state.player.phase = "DONE";
-    saveState();
-    toast("Session saved to history");
-    render();
-  }
-
-  function tick(){
-    if(!state.player.running || state.player.paused) return;
-
-    const node = currentNode();
-    if(!node) return;
-
-    // If current node is timed
-    if(node.duration && node.duration > 0){
-      const now = performance.now();
-      const dt = (now - state.player.lastTick) / 1000;
-      state.player.lastTick = now;
-      state.player.remaining -= dt;
-
-      // Countdown beeps at 3..2..1 for prep and rest and timers
-      const r = Math.ceil(state.player.remaining);
-      if(r === 3 || r === 2 || r === 1){
-        // Avoid spamming: only beep when crossing boundary
-        // We'll check close to integer boundaries
-        if(Math.abs(state.player.remaining - r) < 0.06){
-          beep();
-        }
-      }
-
-      if(state.player.remaining <= 0){
-        beep();
-        saveSilently();
-        advance();
-        return;
-      }
-      saveSilently();
-    }
-  }
-
-  setInterval(tick, 200);
-
-  // ---------- Run list & UI ----------
-  const el = (id)=>document.getElementById(id);
-  const statusPill = el("statusPill");
-  const stepCount = el("stepCount");
-  const nextLabel = el("nextLabel");
-  const sessionLabel = el("sessionLabel");
-  const timeDisplay = el("timeDisplay");
-  const phaseDisplay = el("phaseDisplay");
-  const progressBar = el("progressBar");
-  const exerciseTitle = el("exerciseTitle");
-  const exerciseSub = el("exerciseSub");
-  const howText = el("howText");
-  const runList = el("runList");
-  const playerMeta = el("playerMeta");
-
-  const btnStartPause = el("btnStartPause");
-  const btnBack = el("btnBack");
-  const btnSkip = el("btnSkip");
-
-  const tabA = el("tabA");
-  const tabB = el("tabB");
-  const tabC = el("tabC");
-
-  const prepSeconds = el("prepSeconds");
-  const restMain = el("restMain");
-  const restAccessory = el("restAccessory");
-  const restMicro = el("restMicro");
-  const soundMode = el("soundMode");
-
-  const btnResetAll = el("btnResetAll");
-
-  const logWeight = el("logWeight");
-  const logNotes = el("logNotes");
-  const btnSaveLog = el("btnSaveLog");
-
-  const kpiLast = el("kpiLast");
-  const kpiCount = el("kpiCount");
-  const historyBox = el("historyBox");
-
-  function toast(msg){
-    const t = el("toast");
-    t.textContent = msg;
-    t.classList.add("on");
-    clearTimeout(toast._to);
-    toast._to = setTimeout(()=>t.classList.remove("on"), 900);
-  }
-
-  function refreshKPIs(){
-    const h = state.history || [];
-    kpiCount.textContent = String(h.length);
-    if(h.length){
-      const last = h[0];
-      const d = new Date(last.ts);
-      const dur = last.durationSeconds ? `${Math.floor(last.durationSeconds/60)}m ${last.durationSeconds%60}s` : "—";
-      kpiLast.textContent = `${last.session} • ${d.toLocaleDateString()} • ${dur}`;
-    } else {
-      kpiLast.textContent = "—";
-    }
-
-    // History box
-    if(!h.length){
-      historyBox.innerHTML = `<p class="muted">No history yet. Finish a session and it’ll appear here.</p>`;
-      return;
-    }
-    const rows = h.slice(0, 10).map(x=>{
-      const d = new Date(x.ts);
-      const dur = x.durationSeconds ? `${Math.floor(x.durationSeconds/60)}m ${x.durationSeconds%60}s` : "—";
-      return `<div class="item">
-        <div class="left">
-          <p class="name">Session ${escapeHtml(x.session)} • ${escapeHtml(d.toLocaleDateString())}</p>
-          <p class="desc">Duration: ${escapeHtml(dur)} • Steps completed: ${escapeHtml(String(x.completedSteps))}</p>
-        </div>
-        <span class="badge info">${escapeHtml(new Date(x.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}))}</span>
-      </div>`;
-    }).join("");
-    historyBox.innerHTML = rows;
-  }
-
-  function renderTabs(){
-    tabA.classList.toggle("on", state.session==="A");
-    tabB.classList.toggle("on", state.session==="B");
-    tabC.classList.toggle("on", state.session==="C");
-    tabA.setAttribute("aria-selected", state.session==="A");
-    tabB.setAttribute("aria-selected", state.session==="B");
-    tabC.setAttribute("aria-selected", state.session==="C");
-  }
-
-  function render(){
-    // Rebuild timeline if settings changed (rest durations)
-    // We'll keep it simple: rebuild only when not running, or when current node label "Rest" depends on settings.
-    // But for clarity, always rebuild runList; keep current index stable if possible.
-    const idx = state.player.stepIndex;
-    const oldId = timeline[idx]?.id;
-    timeline = buildTimeline(state.session);
-
-    // Attempt to restore current index by matching id
-    if(oldId){
-      const newIdx = timeline.findIndex(n => n.id === oldId);
-      if(newIdx >= 0) state.player.stepIndex = newIdx;
-    }
-
-    renderTabs();
-    sessionLabel.textContent = state.session;
-
-    const node = currentNode();
-    const next = nextNode();
-
-    stepCount.textContent = `${Math.min(state.player.stepIndex+1, timeline.length)}/${timeline.length}`;
-    nextLabel.textContent = next ? (next.title || "—") : "—";
-
-    // Status pill
-    let status = "Ready";
-    if(state.player.running && state.player.paused) status = "Paused";
-    else if(state.player.running) status = "Running";
-    else if(state.player.phase === "DONE") status = "Done";
-    statusPill.textContent = status;
-
-    // Player meta
-    const sessionTitle = WORKOUTS[state.session].title;
-    playerMeta.textContent = sessionTitle;
-
-    // Timer display
-    if(node && node.duration > 0){
-      timeDisplay.textContent = mmss(state.player.remaining);
-      phaseDisplay.textContent = node.phase === "PREP" ? "Get ready" :
-                                node.phase === "WORK" ? "Timer running" :
-                                node.phase === "DONE" ? "Complete" : "Timer";
-      const pct = state.player.phaseTotal ? (1 - (state.player.remaining / state.player.phaseTotal)) * 100 : 0;
-      progressBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-    } else {
-      timeDisplay.textContent = "00:00";
-      phaseDisplay.textContent = node ? "Do the step" : "Ready";
-      progressBar.style.width = `0%`;
-    }
-
-    // Exercise title + sub
-    if(!node){
-      exerciseTitle.textContent = "Select a session";
-      exerciseSub.textContent = "Pick A/B/C and press Start.";
-      howText.innerHTML = `<p class="muted">No active step.</p>`;
-    } else {
-      exerciseTitle.textContent = node.title || "Step";
-      exerciseSub.textContent = node.subtitle || "";
-      howText.innerHTML = node.howHTML || `<p class="muted">No instructions.</p>`;
-    }
-
-    // Start/Pause button label
-    if(!state.player.running) btnStartPause.textContent = "Start";
-    else if(state.player.paused) btnStartPause.textContent = "Resume";
-    else btnStartPause.textContent = "Pause";
-
-    // Run list
-    renderRunList();
-
-    // KPIs
-    refreshKPIs();
-  }
-
-  function renderRunList(){
-    // Show a compact list of top-level plan steps, and highlight current timeline node.
-    const currentIdx = state.player.stepIndex;
-    const nodes = timeline;
-
-    // Make list items for timeline nodes but keep it scannable: show only headers, schemes, timers, rests, and sets
-    // We'll display a rolling window around current position for phone usability:
-    const start = Math.max(0, currentIdx - 6);
-    const end = Math.min(nodes.length, currentIdx + 10);
-
-    const windowNodes = nodes.slice(start, end);
-
-    runList.innerHTML = windowNodes.map((n, i)=>{
-      const idx = start + i;
-      const active = idx === currentIdx;
-      const badge = badgeForNode(n);
-      const desc = n.subtitle || "";
+      
+      let tag = '';
+      if (isWarmup) tag = 'Warm-up';
+      else if (isMain) tag = 'Main';
+      else if (ex.type === 'timed-sequence') tag = 'Timed';
+      else tag = 'Accessory';
+      
       return `
-        <div class="item" style="${active ? "outline: 2px solid rgba(110,231,255,.45);" : ""}">
-          <div class="left">
-            <p class="name">${escapeHtml(n.title)}</p>
-            <p class="desc">${escapeHtml(desc)}</p>
+        <div class="overview-item ${isWarmup ? 'warmup' : ''} ${isMain ? 'main' : ''}">
+          <div class="overview-number">${i + 1}</div>
+          <div class="overview-info">
+            <div class="overview-name">${ex.name}</div>
+            <div class="overview-meta">${meta}</div>
           </div>
-          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end">
-            <span class="badge ${badge.cls}">${escapeHtml(badge.txt)}</span>
-            ${n.kind==="choiceInfo" ? renderChoiceMini(n) : ""}
-            <button class="btn small ghost" onclick="window.__ubJump(${idx})">Go</button>
-          </div>
+          <div class="overview-tag ${isMain ? 'main' : ''}">${tag}</div>
         </div>
       `;
-    }).join("");
+    }).join('');
+    
+    // Update rotation visual
+    ['A', 'B', 'C'].forEach(s => {
+      const el = $(`rotation${s}`);
+      if (el) el.classList.toggle('active', s === state.session);
+    });
+    
+    // Update session buttons
+    document.querySelectorAll('.session-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.session === state.session);
+    });
+  }
 
-    // expose jump
-    window.__ubJump = (idx) => {
-      enterNode(idx);
-      toast("Jumped");
+  // ===== VIEW UPDATES =====
+  function updateWorkoutView() {
+    const workout = getCurrentWorkout();
+    const exercise = getCurrentExercise();
+    const totalExercises = workout.exercises.length;
+    
+    els.stepCounter.textContent = `STEP ${player.currentExerciseIndex + 1} OF ${totalExercises}`;
+    
+    // Phase badge
+    els.phaseBadge.className = `phase-badge ${player.phase}`;
+    const phaseNames = {
+      ready: 'READY',
+      prep: 'GET READY',
+      work: 'GO',
+      rest: 'REST',
+      confirm: 'NEXT UP'
     };
-
-    // expose choice change
-    window.__ubChoose = (choiceKey, name) => {
-      state.logs[choiceKey] = {...(state.logs[choiceKey]||{}), selected:name, ts: Date.now()};
-      saveSilently();
-      toast(`Selected: ${name}`);
-      render();
-    };
-  }
-
-  function renderChoiceMini(node){
-    const opts = node.choiceOptions || [];
-    if(!opts.length) return "";
-    return `
-      <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; max-width: 220px">
-        ${opts.map(o=>{
-          const on = o === node.selected;
-          return `<button class="btn small ${on ? "primary":"ghost"}" onclick="window.__ubChoose('${escapeHtml(node.choiceKey)}','${escapeHtml(o)}')" style="height:36px; padding:0 10px">${escapeHtml(shorten(o, 18))}</button>`;
-        }).join("")}
-      </div>
-    `;
-  }
-
-  function shorten(s, n){
-    s = String(s);
-    if(s.length <= n) return s;
-    return s.slice(0, n-1) + "…";
-  }
-
-  function badgeForNode(n){
-    if(n.kind === "prep") return {txt:"PREP", cls:"warn"};
-    if(n.kind === "REST") return {txt:"REST", cls:"warn"};
-    if(n.title === "Rest") return {txt:"REST", cls:"warn"};
-    if(n.kind === "TIMER") return {txt:"TIMER", cls:"info"};
-    if(n.kind === "set") return {txt:"SET", cls:"info"};
-    if(n.kind === "scheme") return {txt:"PLAN", cls:"info"};
-    if(n.kind === "complete") return {txt:"DONE", cls:"ok"};
-    if(n.kind === "stepHeader") return {txt:"STEP", cls:"info"};
-    if(n.kind === "note") return {txt:"NOTE", cls:"info"};
-    if(n.kind === "choiceInfo") return {txt:"CHOOSE", cls:"info"};
-    return {txt:"—", cls:"info"};
-  }
-
-  // ---------- Settings wiring ----------
-  function initSettingsUI(){
-    prepSeconds.value = state.settings.prepSeconds;
-    restMain.value = state.settings.restMain;
-    restAccessory.value = state.settings.restAccessory;
-    restMicro.value = state.settings.restMicro;
-    soundMode.value = state.settings.soundMode;
-
-    prepSeconds.onchange = () => { state.settings.prepSeconds = clampInt(prepSeconds.value,3,45); saveState(); render(); };
-    restMain.onchange = () => { state.settings.restMain = clampInt(restMain.value,30,300); saveState(); render(); };
-    restAccessory.onchange = () => { state.settings.restAccessory = clampInt(restAccessory.value,20,180); saveState(); render(); };
-    restMicro.onchange = () => { state.settings.restMicro = clampInt(restMicro.value,20,120); saveState(); render(); };
-    soundMode.onchange = () => { state.settings.soundMode = soundMode.value; saveState(); };
-  }
-
-  // ---------- Logging ----------
-  function saveLogForCurrent(){
-    const node = currentNode();
-    if(!node) return;
-    const key = `log_${node.id}`;
-    state.logs[key] = {
-      weight: logWeight.value.trim(),
-      notes: logNotes.value.trim(),
-      ts: Date.now()
-    };
-    saveState();
-  }
-
-  function loadLogForCurrent(){
-    const node = currentNode();
-    if(!node) return;
-    const key = `log_${node.id}`;
-    const l = state.logs[key];
-    logWeight.value = l?.weight || "";
-    logNotes.value = l?.notes || "";
-  }
-
-  // Update logs box when node changes
-  const _render = render;
-  render = function(){
-    _render();
-    loadLogForCurrent();
-  };
-
-  // ---------- Init ----------
-  function initUI(){
-    renderTabs();
-    initSettingsUI();
-
-    // Attach events
-    btnStartPause.onclick = () => {
-      // kick audio (some browsers)
-      if(!audioCtx) {
-        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        catch(e){}
+    els.phaseText.textContent = phaseNames[player.phase] || 'READY';
+    
+    // Exercise info
+    let displayName = exercise.name;
+    let displayDetail = '';
+    
+    if (exercise.type === 'sets') {
+      displayDetail = `Set ${player.currentSetIndex + 1} of ${exercise.sets} • ${exercise.reps} reps`;
+      if (player.phase === 'rest') {
+        displayName = 'Rest';
+        displayDetail = `Next: ${exercise.name} Set ${player.currentSetIndex + 2}`;
       }
-      toggleStartPause();
-    };
-    btnBack.onclick = back;
-    btnSkip.onclick = () => {
-      const node = currentNode();
-      if(node?.kind === "complete"){
-        // finish
-        finishSession();
-        return;
+    } else if (exercise.type === 'timed-sequence' && exercise.sequence) {
+      const seq = exercise.sequence[player.currentSequenceIndex];
+      if (seq) {
+        displayName = seq.name;
+        displayDetail = `${player.currentSetIndex + 1} of ${seq.reps}`;
+        if (player.phase === 'rest') {
+          displayName = 'Rest';
+          displayDetail = `Next: ${seq.name}`;
+        }
       }
-      skip();
-      toast("Next");
-    };
-
-    tabA.onclick = () => setSession("A");
-    tabB.onclick = () => setSession("B");
-    tabC.onclick = () => setSession("C");
-
-    btnResetAll.onclick = () => {
-      // no confirm dialog per your requirement; just do it
-      resetAll();
-    };
-
-    btnSaveLog.onclick = saveLogForCurrent;
-
-    // Build timeline and render
-    timeline = buildTimeline(state.session);
-
-    // Make sure index valid
-    if(state.player.stepIndex >= timeline.length) state.player.stepIndex = 0;
-
-    // If previously running, keep it paused on reload (safer on mobile refresh)
-    if(state.player.running){
-      state.player.paused = true;
-      state.player.running = true;
-      toast("Restored (paused)");
+    } else if (exercise.type === 'instruction') {
+      displayDetail = 'Follow the instructions below';
+    } else if (exercise.type === 'complete') {
+      displayDetail = 'Tap Finish to save your workout';
     }
-    saveSilently();
-    render();
+    
+    els.exerciseName.textContent = displayName;
+    els.exerciseDetail.textContent = displayDetail;
+    
+    // Timer
+    els.timerDisplay.textContent = formatTime(player.timeRemaining);
+    els.timerDisplay.className = `timer-display ${player.phase}`;
+    
+    // Progress bar
+    const progress = player.timeTotal > 0 ? ((player.timeTotal - player.timeRemaining) / player.timeTotal) * 100 : 0;
+    els.progressBar.style.width = `${progress}%`;
+    els.progressBar.className = `progress-bar ${player.phase}`;
+    
+    // Active state for glow
+    els.currentExercise.classList.toggle('timer-active', player.active && !player.paused && player.timeRemaining > 0);
+    
+    // Instructions
+    els.instructionsContent.innerHTML = getInstructions(displayName);
+    
+    // Button states
+    els.prevBtn.disabled = !player.active || player.currentExerciseIndex === 0;
+    els.skipBtn.disabled = !player.active;
+    els.cancelBtn.style.display = player.active ? 'flex' : 'none';
+    
+    // Main button
+    if (!player.active) {
+      els.mainBtn.textContent = 'START';
+      els.mainBtn.className = 'control-btn primary';
+    } else if (player.paused) {
+      els.mainBtn.textContent = 'RESUME';
+      els.mainBtn.className = 'control-btn primary';
+    } else if (exercise.type === 'complete') {
+      els.mainBtn.textContent = 'FINISH';
+      els.mainBtn.className = 'control-btn primary';
+    } else if (player.phase === 'ready' || player.phase === 'confirm') {
+      els.mainBtn.textContent = 'BEGIN';
+      els.mainBtn.className = 'control-btn primary';
+    } else if (player.phase === 'work' && player.timeRemaining <= 0) {
+      els.mainBtn.textContent = 'SET DONE';
+      els.mainBtn.className = 'control-btn primary';
+    } else {
+      els.mainBtn.textContent = 'PAUSE';
+      els.mainBtn.className = 'control-btn secondary';
+    }
   }
 
-  initUI();
+  function updateConfirmView() {
+    const workout = getCurrentWorkout();
+    const exercise = getCurrentExercise();
+    const totalExercises = workout.exercises.length;
+    
+    els.confirmStep.textContent = `STEP ${player.currentExerciseIndex + 1} OF ${totalExercises}`;
+    els.confirmTitle.textContent = exercise.name;
+    
+    if (exercise.type === 'sets') {
+      els.confirmSubtitle.textContent = `${exercise.sets} sets × ${exercise.reps}`;
+    } else if (exercise.type === 'timed-sequence') {
+      els.confirmSubtitle.textContent = 'Timed practice sequence';
+    } else if (exercise.type === 'complete') {
+      els.confirmSubtitle.textContent = 'Great job!';
+    } else {
+      els.confirmSubtitle.textContent = 'Guided exercise';
+    }
+    
+    els.confirmInstructions.innerHTML = getInstructions(exercise.name);
+    
+    // Upcoming list
+    const upcoming = [];
+    for (let i = player.currentExerciseIndex; i < Math.min(player.currentExerciseIndex + 5, totalExercises); i++) {
+      const ex = workout.exercises[i];
+      let meta = '';
+      if (ex.type === 'sets') meta = `${ex.sets} sets × ${ex.reps}`;
+      else if (ex.type === 'timed-sequence') meta = 'Timed sequence';
+      else if (ex.type === 'complete') meta = 'Complete';
+      else meta = 'Guided';
+      
+      upcoming.push({
+        number: i + 1,
+        name: ex.name,
+        meta: meta,
+        current: i === player.currentExerciseIndex
+      });
+    }
+    
+    els.upcomingList.innerHTML = upcoming.map(item => `
+      <div class="upcoming-item ${item.current ? 'current' : ''}">
+        <div class="upcoming-number">${item.number}</div>
+        <div class="upcoming-info">
+          <div class="upcoming-name">${item.name}</div>
+          <div class="upcoming-meta">${item.meta}</div>
+        </div>
+      </div>
+    `).join('');
+    
+    // Update main button for confirm view
+    if (exercise.type === 'complete') {
+      els.mainBtn.textContent = 'FINISH';
+    } else {
+      els.mainBtn.textContent = "I'M READY";
+    }
+    els.mainBtn.className = 'control-btn primary';
+    
+    // Update other button states for confirm view
+    els.prevBtn.disabled = player.currentExerciseIndex === 0;
+    els.skipBtn.disabled = false;
+    els.cancelBtn.style.display = 'flex';
+  }
 
-  // Expose for debugging
-  window.__ub = {
-    getState: ()=>state,
-    setSession,
-    start, pause, skip, back,
-    buildTimeline: ()=>buildTimeline(state.session)
-  };
+  function updateHistoryView() {
+    const history = state.history || [];
+    
+    // Stats
+    $('totalWorkouts').textContent = history.length;
+    
+    // This week
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const thisWeek = history.filter(h => h.timestamp > weekAgo).length;
+    $('thisWeek').textContent = thisWeek;
+    
+    // Streak (consecutive days)
+    let streak = 0;
+    if (history.length > 0) {
+      const days = new Set();
+      history.forEach(h => {
+        const date = new Date(h.timestamp);
+        days.add(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`);
+      });
+      
+      const today = new Date();
+      let checkDate = new Date(today);
+      
+      while (true) {
+        const key = `${checkDate.getFullYear()}-${checkDate.getMonth()}-${checkDate.getDate()}`;
+        if (days.has(key)) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else if (streak === 0) {
+          // Check yesterday if today hasn't been done yet
+          checkDate.setDate(checkDate.getDate() - 1);
+          const yesterdayKey = `${checkDate.getFullYear()}-${checkDate.getMonth()}-${checkDate.getDate()}`;
+          if (!days.has(yesterdayKey)) break;
+        } else {
+          break;
+        }
+      }
+    }
+    $('streak').textContent = streak;
+    
+    // History list
+    const historyList = $('historyList');
+    if (history.length === 0) {
+      historyList.innerHTML = '<div class="history-empty">No workouts yet. Complete a session to see your history.</div>';
+    } else {
+      historyList.innerHTML = history.slice(0, 20).map(h => {
+        const date = new Date(h.timestamp);
+        const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const duration = h.duration ? `${Math.floor(h.duration / 60)}m ${h.duration % 60}s` : '';
+        const sessionName = WORKOUTS[h.session]?.name.split('—')[1]?.trim() || 'Workout';
+        
+        return `
+          <div class="history-item">
+            <div class="history-session-badge">${escapeHtml(h.session)}</div>
+            <div class="history-info">
+              <div class="history-date">${escapeHtml(dateStr)}</div>
+              <div class="history-meta">${escapeHtml(sessionName)} ${duration ? '• ' + escapeHtml(duration) : ''}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
 
-  // Small helper: make "Rest" instructions consistent
-  INSTRUCTIONS["Rest"] = `
-    <p><b>Rest time.</b> Walk around, breathe, sip water.</p>
-    <p><b>After main lifts:</b> keep rest longer so your next set stays strong.</p>
-    <p><b>After accessories:</b> shorter rest is fine.</p>
-  `;
+  function updateSettingsView() {
+    $('prepTime').value = state.settings.prepTime;
+    $('mainRest').value = state.settings.mainRest;
+    $('accessoryRest').value = state.settings.accessoryRest;
+    $('microRest').value = state.settings.microRest;
+    $('soundMode').value = state.settings.soundMode;
+  }
 
+  // ===== TIMER LOGIC =====
+  let lastBeepedSecond = -1;
+  
+  function startTimer(duration, phase) {
+    stopTimer();
+    
+    player.timeTotal = duration;
+    player.timeRemaining = duration;
+    player.phase = phase;
+    lastBeepedSecond = -1; // Reset beep tracker
+    
+    updateWorkoutView();
+    
+    if (duration <= 0) return;
+    
+    const startTime = Date.now();
+    
+    player.timerInterval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      player.timeRemaining = Math.max(0, duration - elapsed);
+      
+      // Countdown beeps at 3, 2, 1 - only once per second
+      const remaining = Math.ceil(player.timeRemaining);
+      if (remaining <= 3 && remaining > 0 && remaining !== lastBeepedSecond) {
+        lastBeepedSecond = remaining;
+        playBeep(remaining === 1 ? 1200 : 880, 80);
+      }
+      
+      updateWorkoutView();
+      
+      if (player.timeRemaining <= 0) {
+        stopTimer();
+        playBeep(1400, 200);
+        onTimerComplete();
+      }
+    }, 50);
+  }
+
+  function stopTimer() {
+    if (player.timerInterval) {
+      clearInterval(player.timerInterval);
+      player.timerInterval = null;
+    }
+  }
+
+  function pauseTimer() {
+    stopTimer();
+    player.paused = true;
+    updateWorkoutView();
+  }
+
+  function resumeTimer() {
+    player.paused = false;
+    if (player.timeRemaining > 0) {
+      startTimer(player.timeRemaining, player.phase);
+    } else {
+      updateWorkoutView();
+    }
+  }
+
+  // ===== WAKE LOCK =====
+  let wakeLock = null;
+  
+  async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          wakeLock = null;
+        });
+      } catch (e) {
+        // Wake lock not available or denied
+      }
+    }
+  }
+  
+  function releaseWakeLock() {
+    if (wakeLock) {
+      wakeLock.release();
+      wakeLock = null;
+    }
+  }
+
+  // ===== CANCEL WORKOUT =====
+  function cancelWorkout() {
+    stopTimer();
+    releaseWakeLock();
+    
+    player.active = false;
+    player.paused = false;
+    player.currentExerciseIndex = 0;
+    player.currentSetIndex = 0;
+    player.currentSequenceIndex = 0;
+    player.phase = 'ready';
+    player.timeRemaining = 0;
+    player.timeTotal = 0;
+    
+    goToIntro();
+    showToast('Workout cancelled');
+  }
+
+  // ===== WORKOUT FLOW =====
+  function startSession() {
+    player.active = true;
+    player.paused = false;
+    player.currentExerciseIndex = 0;
+    player.currentSetIndex = 0;
+    player.currentSequenceIndex = 0;
+    player.phase = 'confirm';
+    player.sessionStartTime = Date.now();
+    
+    requestWakeLock();
+    
+    showView('confirm');
+    updateConfirmView();
+    updateWorkoutView(); // Update button states
+  }
+
+  function goToIntro() {
+    showView('intro');
+    renderWorkoutOverview();
+    els.mainBtn.textContent = 'START WORKOUT';
+    els.mainBtn.className = 'control-btn primary';
+    els.prevBtn.disabled = true;
+    els.skipBtn.disabled = true;
+    els.cancelBtn.style.display = 'none';
+  }
+
+  function showConfirmForExercise() {
+    player.phase = 'confirm';
+    player.currentSetIndex = 0;
+    player.currentSequenceIndex = 0;
+    stopTimer();
+    showView('confirm');
+    updateConfirmView();
+  }
+
+  function beginExercise() {
+    const exercise = getCurrentExercise();
+    
+    showView('workout');
+    
+    if (exercise.type === 'complete') {
+      player.phase = 'ready';
+      player.timeRemaining = 0;
+      player.timeTotal = 0;
+      updateWorkoutView();
+      return;
+    }
+    
+    if (exercise.type === 'instruction') {
+      // No timer, just show instructions
+      player.phase = 'work';
+      player.timeRemaining = 0;
+      player.timeTotal = 0;
+      updateWorkoutView();
+      return;
+    }
+    
+    if (exercise.type === 'sets') {
+      // Start prep for first set
+      startTimer(state.settings.prepTime, 'prep');
+      return;
+    }
+    
+    if (exercise.type === 'timed-sequence') {
+      // Start prep for first item in sequence
+      startTimer(state.settings.prepTime, 'prep');
+      return;
+    }
+  }
+
+  function onTimerComplete() {
+    const exercise = getCurrentExercise();
+    
+    if (exercise.type === 'sets') {
+      handleSetsTimerComplete(exercise);
+    } else if (exercise.type === 'timed-sequence') {
+      handleSequenceTimerComplete(exercise);
+    }
+  }
+
+  function handleSetsTimerComplete(exercise) {
+    if (player.phase === 'prep') {
+      // Prep done, now it's work time (user does the set)
+      player.phase = 'work';
+      player.timeRemaining = 0;
+      player.timeTotal = 0;
+      updateWorkoutView();
+      // Wait for user to mark set complete
+    } else if (player.phase === 'rest') {
+      // Rest done, prep for next set
+      player.currentSetIndex++;
+      if (player.currentSetIndex >= exercise.sets) {
+        // All sets done, move to next exercise
+        advanceToNextExercise();
+      } else {
+        startTimer(state.settings.prepTime, 'prep');
+      }
+    }
+  }
+
+  function handleSequenceTimerComplete(exercise) {
+    const sequence = exercise.sequence;
+    const currentSeq = sequence[player.currentSequenceIndex];
+    
+    if (player.phase === 'prep') {
+      // Prep done, start work timer
+      if (currentSeq.time) {
+        startTimer(currentSeq.time, 'work');
+      } else {
+        // No timer (like perfect singles), wait for user
+        player.phase = 'work';
+        player.timeRemaining = 0;
+        player.timeTotal = 0;
+        updateWorkoutView();
+      }
+    } else if (player.phase === 'work') {
+      // Work done, start rest
+      player.currentSetIndex++;
+      if (player.currentSetIndex >= currentSeq.reps) {
+        // This part of sequence done
+        player.currentSetIndex = 0;
+        player.currentSequenceIndex++;
+        if (player.currentSequenceIndex >= sequence.length) {
+          // All sequence done
+          advanceToNextExercise();
+        } else {
+          // Prep for next sequence item
+          startTimer(state.settings.prepTime, 'prep');
+        }
+      } else {
+        // Rest before next rep
+        startTimer(currentSeq.rest || state.settings.microRest, 'rest');
+      }
+    } else if (player.phase === 'rest') {
+      // Rest done, prep for next rep
+      startTimer(state.settings.prepTime, 'prep');
+    }
+  }
+
+  function markSetComplete() {
+    const exercise = getCurrentExercise();
+    
+    if (exercise.type === 'instruction' || exercise.type === 'complete') {
+      advanceToNextExercise();
+      return;
+    }
+    
+    if (exercise.type === 'sets') {
+      player.currentSetIndex++;
+      if (player.currentSetIndex >= exercise.sets) {
+        // All sets done
+        advanceToNextExercise();
+      } else {
+        // Rest before next set
+        const restTime = getRestTime(exercise.rest);
+        startTimer(restTime, 'rest');
+      }
+    } else if (exercise.type === 'timed-sequence') {
+      const seq = exercise.sequence[player.currentSequenceIndex];
+      player.currentSetIndex++;
+      if (player.currentSetIndex >= seq.reps) {
+        player.currentSetIndex = 0;
+        player.currentSequenceIndex++;
+        if (player.currentSequenceIndex >= exercise.sequence.length) {
+          advanceToNextExercise();
+        } else {
+          startTimer(state.settings.prepTime, 'prep');
+        }
+      } else {
+        startTimer(seq.rest || state.settings.microRest, 'rest');
+      }
+    }
+  }
+
+  function advanceToNextExercise() {
+    const workout = getCurrentWorkout();
+    player.currentExerciseIndex++;
+    
+    if (player.currentExerciseIndex >= workout.exercises.length) {
+      // Workout complete
+      finishWorkout();
+      return;
+    }
+    
+    showConfirmForExercise();
+  }
+
+  function previousExercise() {
+    if (player.currentExerciseIndex > 0) {
+      player.currentExerciseIndex--;
+      player.currentSetIndex = 0;
+      player.currentSequenceIndex = 0;
+      showConfirmForExercise();
+    }
+  }
+
+  function skipToNext() {
+    const exercise = getCurrentExercise();
+    
+    if (player.phase === 'rest' || player.phase === 'prep') {
+      stopTimer();
+      onTimerComplete();
+    } else if (player.phase === 'work' && player.timeRemaining > 0) {
+      stopTimer();
+      onTimerComplete();
+    } else {
+      markSetComplete();
+    }
+  }
+
+  function finishWorkout() {
+    stopTimer();
+    releaseWakeLock();
+    
+    // Save to history
+    const duration = player.sessionStartTime ? Math.floor((Date.now() - player.sessionStartTime) / 1000) : 0;
+    state.history.unshift({
+      session: state.session,
+      timestamp: Date.now(),
+      duration: duration
+    });
+    state.history = state.history.slice(0, 100); // Keep last 100
+    saveState();
+    
+    // Reset player
+    player.active = false;
+    player.paused = false;
+    player.currentExerciseIndex = 0;
+    player.currentSetIndex = 0;
+    player.currentSequenceIndex = 0;
+    player.phase = 'ready';
+    player.timeRemaining = 0;
+    player.timeTotal = 0;
+    
+    showToast('Workout saved!');
+    goToIntro();
+  }
+
+  // ===== EVENT HANDLERS =====
+  function handleMainButton() {
+    // Init audio context on user interaction
+    if (!audioCtx) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {}
+    }
+    
+    // Handle intro view - start workout
+    if (views.intro.classList.contains('active')) {
+      startSession();
+      return;
+    }
+    
+    const exercise = getCurrentExercise();
+    
+    if (!player.active) {
+      goToIntro();
+      return;
+    }
+    
+    if (player.phase === 'confirm') {
+      if (exercise.type === 'complete') {
+        finishWorkout();
+      } else {
+        beginExercise();
+      }
+      return;
+    }
+    
+    if (player.paused) {
+      resumeTimer();
+      return;
+    }
+    
+    if (exercise.type === 'complete') {
+      finishWorkout();
+      return;
+    }
+    
+    if (player.phase === 'work' && player.timeRemaining <= 0) {
+      // User marking set complete
+      markSetComplete();
+      return;
+    }
+    
+    if (player.timerInterval) {
+      pauseTimer();
+    }
+  }
+
+  function selectSession(session) {
+    if (player.active) {
+      showToast('Finish current workout first');
+      return;
+    }
+    
+    state.session = session;
+    saveState();
+    
+    // Update header tabs
+    $$('.session-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.session === session);
+    });
+    
+    // Update intro session buttons
+    $$('.session-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.session === session);
+    });
+    
+    updateWorkoutView();
+  }
+
+  // ===== INIT =====
+  function init() {
+    // Session tabs in header
+    $$('.session-tab').forEach(tab => {
+      tab.addEventListener('click', () => selectSession(tab.dataset.session));
+      tab.classList.toggle('active', tab.dataset.session === state.session);
+    });
+    
+    // Session buttons in intro view
+    $$('.session-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!player.active) {
+          selectSession(btn.dataset.session);
+          renderWorkoutOverview();
+        }
+      });
+    });
+    
+    // Main controls
+    els.mainBtn.addEventListener('click', handleMainButton);
+    els.prevBtn.addEventListener('click', previousExercise);
+    els.skipBtn.addEventListener('click', skipToNext);
+    els.cancelBtn.addEventListener('click', () => {
+      $('cancelWorkoutModal').classList.add('show');
+    });
+    
+    // Cancel workout modal
+    $('cancelWorkoutNo').addEventListener('click', () => {
+      $('cancelWorkoutModal').classList.remove('show');
+    });
+    $('cancelWorkoutYes').addEventListener('click', () => {
+      $('cancelWorkoutModal').classList.remove('show');
+      cancelWorkout();
+    });
+    
+    // Instructions toggle
+    els.instructionsToggle.addEventListener('click', () => {
+      els.instructionsToggle.classList.toggle('open');
+      els.instructionsContent.classList.toggle('open');
+    });
+    
+    // Header buttons
+    $('historyBtn').addEventListener('click', () => {
+      updateHistoryView();
+      showView('history');
+    });
+    
+    $('settingsBtn').addEventListener('click', () => {
+      updateSettingsView();
+      showView('settings');
+    });
+    
+    // Back buttons
+    $('historyBackBtn').addEventListener('click', () => {
+      if (player.active) {
+        if (player.phase === 'confirm') {
+          showView('confirm');
+          updateConfirmView();
+        } else {
+          showView('workout');
+          updateWorkoutView();
+        }
+      } else {
+        goToIntro();
+      }
+    });
+    
+    $('settingsBackBtn').addEventListener('click', () => {
+      if (player.active) {
+        if (player.phase === 'confirm') {
+          showView('confirm');
+          updateConfirmView();
+        } else {
+          showView('workout');
+          updateWorkoutView();
+        }
+      } else {
+        goToIntro();
+      }
+    });
+    
+    // Settings inputs
+    ['prepTime', 'mainRest', 'accessoryRest', 'microRest', 'soundMode'].forEach(id => {
+      $(id).addEventListener('change', (e) => {
+        const value = id === 'soundMode' ? e.target.value : parseInt(e.target.value);
+        state.settings[id] = value;
+        saveState();
+        showToast('Settings saved');
+      });
+    });
+    
+    // Reset button
+    $('resetBtn').addEventListener('click', () => {
+      $('resetModal').classList.add('show');
+    });
+    
+    $('resetCancel').addEventListener('click', () => {
+      $('resetModal').classList.remove('show');
+    });
+    
+    $('resetConfirm').addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      state = { ...defaultState };
+      $('resetModal').classList.remove('show');
+      showToast('All data reset');
+      updateSettingsView();
+      updateWorkoutView();
+    });
+    
+    // Initial render - show intro view
+    goToIntro();
+  }
+
+  init();
 })();
 </script>
+
 </body>
 </html>
