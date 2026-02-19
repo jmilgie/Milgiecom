@@ -1,144 +1,142 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="synthwave">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Games — Milgie.com</title>
-  <meta name="description" content="Milgie.com Games — play our collection of browser-based games." />
+  <meta name="description" content="Milgie.com Games — browser-based games and interactive experiences." />
+  <link rel="stylesheet" href="../themes.css">
   <link rel="stylesheet" href="../styles.css">
   <style>
-    .gamesGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 18px;
-    }
-
-    .gameTile {
-      position: relative;
-      border-radius: var(--radius);
-      overflow: hidden;
-      text-decoration: none;
-      color: var(--ink);
-      min-height: 280px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      border: 1px solid rgba(255,255,255,.14);
-      box-shadow: var(--shadow);
-      transition: transform .15s ease, border-color .15s ease;
-    }
-
-    .gameTile:hover {
-      transform: translateY(-4px);
-      border-color: rgba(255,59,242,.55);
-    }
-
-    .gameTile::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-size: cover;
-      background-position: center;
-      z-index: 0;
-    }
-
-    .gameTile::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        to top,
-        rgba(7,3,26,.95) 0%,
-        rgba(7,3,26,.75) 30%,
-        rgba(7,3,26,.25) 60%,
-        transparent 100%
-      );
-      z-index: 1;
-    }
-
+    /* ---- Game-image override (relative to this page) ---- */
     .gameTile.criminal-empire::before {
       background-image: url('./criminalempire/assets/DF65241F-FA2D-4341-B363-5729E4822304.png');
     }
 
-    .gameTile .content {
-      position: relative;
-      z-index: 2;
-      padding: 20px;
+    /* Classified tile dark noise BG */
+    .gameTile.classified::before {
+      background:
+        repeating-linear-gradient(
+          45deg,
+          rgba(255,255,255,.015) 0px, rgba(255,255,255,.015) 1px,
+          transparent 1px, transparent 8px
+        ),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
     }
 
-    .gameTile h3 {
-      margin: 0 0 8px;
-      font-size: 22px;
-      text-transform: uppercase;
-      letter-spacing: .8px;
-      font-weight: 950;
-      text-shadow: 0 2px 12px rgba(0,0,0,.6);
+    /* Games-page hero bar */
+    .games-hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 560px) {
+      .games-hero { grid-template-columns: 1fr; }
     }
 
-    .gameTile p {
-      margin: 0 0 14px;
-      color: rgba(232,230,255,.85);
-      font-size: 14px;
-      line-height: 1.5;
-      text-shadow: 0 1px 8px rgba(0,0,0,.5);
-    }
-
-    .gameTile .chipRow {
+    /* Filters */
+    .filter-bar {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      margin-bottom: 20px;
     }
-
-    .playBtn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-radius: 12px;
-      background: linear-gradient(90deg, rgba(255,229,102,.96), rgba(255,59,242,.88));
-      color: #130a2a;
-      font-weight: 900;
-      font-size: 12px;
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      text-decoration: none;
-      border: 1px solid rgba(255,255,255,.12);
-      box-shadow: 0 12px 32px rgba(255,59,242,.2);
-      transition: transform .15s ease, filter .15s ease;
-    }
-
-    .playBtn:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-    }
-
-    .backLink {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+    .filter-btn {
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: var(--glass);
       color: var(--muted);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 18px;
-      transition: color .15s ease;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      transition: border-color .15s ease, background .15s ease, color .15s ease, border-radius .4s ease;
+      user-select: none;
     }
-
-    .backLink:hover {
+    [data-theme="industrial"] .filter-btn { border-radius: 3px; }
+    .filter-btn:hover,
+    .filter-btn.active {
+      border-color: var(--tile-hover-border);
+      background: var(--tile-hover-bg);
       color: var(--ink);
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .gameTile, .playBtn { transition: none !important; }
+    /* Large feature tile */
+    .gameTile.featured {
+      min-height: 380px;
+    }
+    @media (min-width: 700px) {
+      .gameTile.featured {
+        grid-column: 1 / -1;
+        min-height: 340px;
+      }
+    }
+
+    /* Stats row on game cards */
+    .game-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .game-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .game-stat-label {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+    .game-stat-val {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      color: var(--ink);
+    }
+
+    /* Classified tile sizing */
+    .gameTile.classified {
+      min-height: 260px;
     }
   </style>
+  <script>
+    (function(){
+      var t = localStorage.getItem("milgie-theme") || "synthwave";
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
 </head>
 
 <body>
-  <div class="stars" aria-hidden="true"></div>
-  <div class="sun" aria-hidden="true"></div>
-  <div class="grid" aria-hidden="true"><div class="plane"></div></div>
-  <div class="scanlines" aria-hidden="true"></div>
+  <!-- Ambient layers -->
+  <div class="stars"          aria-hidden="true"></div>
+  <div class="sun"            aria-hidden="true"></div>
+  <div class="grid"           aria-hidden="true"><div class="plane"></div></div>
+  <div class="hex-grid"       aria-hidden="true"></div>
+  <div class="scan-beam"      aria-hidden="true"></div>
+  <div class="noise-vignette" aria-hidden="true"></div>
+  <div class="scanlines"      aria-hidden="true"></div>
+
+  <!-- Industrial status bar -->
+  <div class="status-bar-header" aria-hidden="true">
+    <div class="wrap">
+      <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
+      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 1 ACTIVE</span>
+      <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
+      <span class="sbh-spacer"></span>
+      <span class="sbh-time" id="sys-time">--:--:--</span>
+    </div>
+  </div>
 
   <header>
     <div class="wrap">
@@ -152,6 +150,12 @@
 
         <div class="navlinks">
           <a class="pill" href="../#portal">Portal</a>
+          <a class="pill" href="./" aria-current="page">Games</a>
+          <a class="pill" href="../collectibles/">Collectibles</a>
+          <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Switch theme">
+            <span class="t-icon" aria-hidden="true" id="themeIcon">✦</span>
+            <span id="themeLabel">Industrial</span>
+          </button>
         </div>
       </nav>
     </div>
@@ -159,34 +163,121 @@
 
   <main id="top">
     <div class="wrap">
-      <a class="backLink" href="../">
-        <span aria-hidden="true">←</span> Back to Home
-      </a>
 
-      <section class="card portal" aria-label="Games">
-        <div class="portalHead">
-          <div>
-            <h2>Games</h2>
-            <p>Play our collection of browser-based games. More coming soon.</p>
-          </div>
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="../">Home</a>
+        <span class="sep" aria-hidden="true">/</span>
+        <span class="current">Games</span>
+      </nav>
+
+      <!-- Games hero bar -->
+      <div class="games-hero">
+        <div>
+          <h1 style="margin:0 0 6px; font-size:clamp(26px,3.5vw,42px);">
+            <span class="glow">Games</span>
+          </h1>
+          <p style="margin:0; color:var(--muted); font-size:13px;">
+            Browser-based games &amp; interactive experiences.
+          </p>
         </div>
+        <span class="section-badge">1 Active · 2 Incoming</span>
+      </div>
 
+      <!-- Filter bar -->
+      <div class="filter-bar" role="group" aria-label="Filter games">
+        <button class="filter-btn active">All</button>
+        <button class="filter-btn">Idle</button>
+        <button class="filter-btn">Strategy</button>
+        <button class="filter-btn">Clicker</button>
+      </div>
+
+      <!-- Games grid -->
+      <section class="card portal" aria-label="Games catalog">
         <div class="gamesGrid">
-          <a class="gameTile criminal-empire" href="./criminalempire/" aria-label="Play Criminal Empire">
+
+          <!-- FEATURED: Criminal Empire -->
+          <a class="gameTile criminal-empire featured" href="./criminalempire/" aria-label="Play Criminal Empire">
             <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Online</span>
+                <span class="status-sep" aria-hidden="true">·</span>
+                <span class="status-type">Idle / Clicker / Strategy</span>
+              </div>
               <h3>Criminal Empire</h3>
-              <p>Build your underground empire from scratch. Click, invest, and rise through the ranks in this idle clicker game.</p>
+              <p>Build your underground empire from scratch. Click for cash, hire crew, capture territories, and rise through six ranks — from street thug to crime lord.</p>
+              <div class="game-stats">
+                <div class="game-stat">
+                  <span class="game-stat-label">Type</span>
+                  <span class="game-stat-val">Idle Clicker</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Platform</span>
+                  <span class="game-stat-val">Browser</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Status</span>
+                  <span class="game-stat-val" style="color:#00ff88">Active</span>
+                </div>
+              </div>
               <div class="chipRow">
                 <span class="chip">Idle</span>
                 <span class="chip">Clicker</span>
                 <span class="chip">Strategy</span>
+                <span class="chip">Free</span>
+              </div>
+              <div style="margin-top:16px">
+                <span class="playBtn">
+                  Launch Mission ▶
+                </span>
               </div>
             </div>
           </a>
 
-          <!-- More games can be added here -->
+          <!-- CLASSIFIED: Coming Soon A -->
+          <div class="gameTile classified" aria-label="Classified — in development" role="article">
+            <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" style="background:#ff9a00;box-shadow:0 0 8px #ff9a00" aria-hidden="true"></span>
+                <span class="status-label" style="color:#ff9a00">In Development</span>
+              </div>
+              <h3>???</h3>
+              <p>Details classified. More intel inbound.</p>
+              <div class="chipRow">
+                <span class="chip">Action</span>
+                <span class="chip">???</span>
+              </div>
+            </div>
+            <div class="classified-badge" aria-hidden="true">
+              <div class="classified-text">CLASSIFIED</div>
+              <div class="classified-sub">Access Restricted</div>
+            </div>
+          </div>
+
+          <!-- CLASSIFIED: Coming Soon B -->
+          <div class="gameTile classified" aria-label="Classified — in development" role="article">
+            <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" style="background:#ff9a00;box-shadow:0 0 8px #ff9a00" aria-hidden="true"></span>
+                <span class="status-label" style="color:#ff9a00">In Development</span>
+              </div>
+              <h3>???</h3>
+              <p>Details classified. More intel inbound.</p>
+              <div class="chipRow">
+                <span class="chip">Strategy</span>
+                <span class="chip">???</span>
+              </div>
+            </div>
+            <div class="classified-badge" aria-hidden="true">
+              <div class="classified-text">CLASSIFIED</div>
+              <div class="classified-sub">Access Restricted</div>
+            </div>
+          </div>
+
         </div>
       </section>
+
     </div>
   </main>
 
@@ -194,12 +285,56 @@
     <div class="wrap">
       <div class="foot">
         <div>© <span id="year"></span> <strong>Milgie.com</strong></div>
+        <div class="foot-right">
+          <span class="mono" id="footer-theme-label" style="opacity:.5;font-size:11px">THEME: SYNTHWAVE</span>
+        </div>
       </div>
     </div>
   </footer>
 
   <script>
+    /* Theme System */
+    const THEME_LABELS = {
+      synthwave: { icon: "✦", next: "Industrial", footLabel: "THEME: SYNTHWAVE" },
+      industrial: { icon: "⬡", next: "Synthwave",  footLabel: "THEME: INDUSTRIAL" }
+    };
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("milgie-theme", theme);
+      const meta = THEME_LABELS[theme] || THEME_LABELS.synthwave;
+      document.getElementById("themeIcon").textContent  = meta.icon;
+      document.getElementById("themeLabel").textContent = meta.next;
+      document.getElementById("footer-theme-label").textContent = meta.footLabel;
+    }
+
+    document.getElementById("themeToggle").addEventListener("click", function() {
+      const cur = document.documentElement.getAttribute("data-theme") || "synthwave";
+      applyTheme(cur === "synthwave" ? "industrial" : "synthwave");
+    });
+
+    applyTheme(localStorage.getItem("milgie-theme") || "synthwave");
+
+    /* Clock */
+    function updateClock() {
+      const now = new Date();
+      const el = document.getElementById("sys-time");
+      if (el) el.textContent = [now.getHours(), now.getMinutes(), now.getSeconds()]
+        .map(n => String(n).padStart(2, "0")).join(":");
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* Year */
     document.getElementById("year").textContent = new Date().getFullYear();
+
+    /* Filter buttons (UI only — full filtering requires data attributes, extend as needed) */
+    document.querySelectorAll(".filter-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        this.classList.add("active");
+      });
+    });
   </script>
 </body>
 </html>
