@@ -132,8 +132,23 @@
     <div class="item-seal" aria-hidden="true"></div>
   </div>
 
-  <!-- REAL ASSET (mirrors Canvas Series) -->
-  <figure class="item-media asset-slot asset-tall" style="padding:0;">
+<!-- REAL ASSET (mirrors Canvas Series) -->
+<figure class="item-media asset-slot asset-tall" style="padding:0;">
+  <video
+    class="hero-anim"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="metadata"
+    poster="./milgie-gaming-system/assets/hero-item.png"
+    style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+  >
+    <!-- Optional: include WebM first for smaller files when supported -->
+    <source src="./milgie-gaming-system/assets/hero-item-animated.webm" type="video/webm" />
+    <source src="./milgie-gaming-system/assets/hero-item-animated.mp4" type="video/mp4" />
+
+    <!-- Fallback if video can't play -->
     <img
       src="./milgie-gaming-system/assets/hero-item.png"
       alt="Milgie Gaming System — integrated display with SNES-style controllers and external speaker"
@@ -141,7 +156,8 @@
       decoding="async"
       style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
     />
-  </figure>
+  </video>
+</figure>
 
   <div class="item-details">
     <div class="details-grid">
