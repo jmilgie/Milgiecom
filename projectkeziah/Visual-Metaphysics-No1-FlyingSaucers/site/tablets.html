@@ -3,160 +3,284 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visual Metaphysics No. 1 — Engraved Tablets (Interactive)</title>
+  <title>Visual Metaphysics No. 1 — Engraved Tablets</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      color-scheme: dark;
-      --bg: #050507;
-      --fg: #f6f6f6;
-      --accent: #9fb4ff;
+      --accent: #c9a96e;
+      --accent2: #9fb4ff;
+      --bg: #06070d;
     }
 
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: "Inter", "Segoe UI", Arial, sans-serif;
-      background: radial-gradient(circle at 50% 20%, #111421 0%, var(--bg) 60%);
-      color: var(--fg);
+    html, body {
+      width: 100%; height: 100%;
       overflow: hidden;
+      background: var(--bg);
+      font-family: "Playfair Display", Georgia, serif;
+      color: #f0ece0;
     }
 
-    #scene-root {
-      position: fixed;
-      inset: 0;
-    }
+    canvas { display: block; }
 
-    .ui {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      padding: 1rem;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
+    /* ── Top bar ── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      padding: 0.9rem 1.4rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
       pointer-events: none;
-      z-index: 10;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0));
+      z-index: 20;
     }
 
-    .ui h1 {
-      margin: 0;
-      font-size: clamp(1rem, 1.5vw + 0.8rem, 1.6rem);
-      line-height: 1.2;
-      text-wrap: balance;
+    #topbar h1 {
+      font-size: clamp(0.85rem, 1.3vw + 0.5rem, 1.25rem);
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+      color: #e8dfc9;
     }
 
-    .controls {
+    #back-btn {
       pointer-events: auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    .controls button,
-    .controls a {
-      border: 1px solid rgba(255,255,255,0.3);
-      background: rgba(6, 8, 16, 0.75);
-      color: var(--fg);
-      text-decoration: none;
-      padding: 0.45rem 0.7rem;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      backdrop-filter: blur(6px);
-      cursor: pointer;
-    }
-
-    .controls button:hover,
-    .controls a:hover {
-      border-color: var(--accent);
+      background: rgba(10,8,4,0.65);
+      border: 1px solid rgba(201,169,110,0.4);
       color: var(--accent);
+      font-family: inherit;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      padding: 0.42rem 0.9rem;
+      border-radius: 999px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    #back-btn:hover {
+      border-color: var(--accent);
+      background: rgba(201,169,110,0.12);
+      color: #f0e0c0;
     }
 
-    .hint {
+    /* ── Tablet label ── */
+    #tablet-label {
       position: fixed;
-      bottom: 0.75rem;
+      bottom: 4.5rem;
       left: 50%;
       transform: translateX(-50%);
-      max-width: calc(100vw - 2rem);
-      font-size: 0.85rem;
       text-align: center;
-      padding: 0.45rem 0.75rem;
-      border-radius: 0.7rem;
-      background: rgba(8, 10, 22, 0.72);
-      border: 1px solid rgba(255,255,255,0.2);
       pointer-events: none;
-      z-index: 10;
+      z-index: 20;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    #tablet-label.visible { opacity: 1; }
+    #tablet-label .name {
+      font-size: clamp(1rem, 2vw + 0.5rem, 1.5rem);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-shadow: 0 0 40px rgba(201,169,110,0.5);
+    }
+    #tablet-label .sub {
+      font-size: 0.78rem;
+      color: rgba(240,236,224,0.5);
+      letter-spacing: 0.1em;
+      margin-top: 0.25rem;
     }
 
+    /* ── Hint bar ── */
+    #hint {
+      position: fixed;
+      bottom: 1.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      letter-spacing: 0.07em;
+      color: rgba(240,236,224,0.38);
+      pointer-events: none;
+      z-index: 20;
+      white-space: nowrap;
+      transition: opacity 0.8s;
+    }
+    #hint.hidden { opacity: 0; }
+
+    /* ── Nav arrows ── */
+    .nav-arrow {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 20;
+      background: rgba(10,8,4,0.5);
+      border: 1px solid rgba(201,169,110,0.3);
+      color: var(--accent);
+      width: 2.8rem; height: 2.8rem;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      backdrop-filter: blur(6px);
+      transition: opacity 0.4s, border-color 0.2s, background 0.2s, transform 0.2s;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .nav-arrow.visible { opacity: 1; pointer-events: auto; }
+    .nav-arrow:hover {
+      border-color: var(--accent);
+      background: rgba(201,169,110,0.15);
+      transform: translateY(-50%) scale(1.1);
+    }
+    #nav-prev { left: 1.2rem; }
+    #nav-next { right: 1.2rem; }
+
+    /* ── Close / back-to-overview button (shows when focused) ── */
+    #close-btn {
+      position: fixed;
+      top: 4.5rem;
+      right: 1.4rem;
+      z-index: 20;
+      background: rgba(10,8,4,0.6);
+      border: 1px solid rgba(201,169,110,0.35);
+      color: var(--accent);
+      font-family: inherit;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s, background 0.2s, border-color 0.2s;
+    }
+    #close-btn.visible { opacity: 1; pointer-events: auto; }
+    #close-btn:hover {
+      border-color: var(--accent);
+      background: rgba(201,169,110,0.12);
+    }
+
+    /* ── Tablet number dots ── */
+    #dots {
+      position: fixed;
+      bottom: 2.6rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0.55rem;
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    #dots.visible { opacity: 1; }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(201,169,110,0.3);
+      transition: background 0.4s, transform 0.3s;
+    }
+    .dot.active {
+      background: var(--accent);
+      transform: scale(1.5);
+    }
+
+    /* ── Loading screen ── */
+    #loading {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.2rem;
+      z-index: 100;
+      transition: opacity 0.8s;
+    }
+    #loading.fade { opacity: 0; pointer-events: none; }
+    #loading-title {
+      font-size: 1.1rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    #loading-bar-wrap {
+      width: 200px;
+      height: 2px;
+      background: rgba(201,169,110,0.15);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    #loading-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, #c9a96e, #f0d090);
+      border-radius: 999px;
+      transition: width 0.3s;
+    }
+
+    /* ── Fallback ── */
     #fallback {
       display: none;
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       overflow-y: auto;
-      padding: 1rem 1rem 2rem;
-      background: linear-gradient(#090a12, #020204);
-      z-index: 5;
+      padding: 2rem;
+      background: #09090f;
     }
-
-    #fallback p {
-      margin: 0 0 1rem;
-      color: #d6d6d6;
-    }
-
-    .fallback-grid {
+    #fallback .grid {
       display: grid;
-      gap: 1rem;
+      gap: 1.5rem;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      margin-top: 1.5rem;
     }
-
-    .fallback-grid img {
+    #fallback img {
       width: 100%;
-      border-radius: 0.8rem;
-      border: 1px solid rgba(255,255,255,0.25);
-      box-shadow: 0 18px 45px rgba(0,0,0,0.45);
-      background: #000;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(255,255,255,0.1);
     }
-
-    body.webgl-disabled {
-      overflow: auto;
-    }
-
-    body.webgl-disabled #scene-root,
-    body.webgl-disabled .hint {
-      display: none;
-    }
-
-    body.webgl-disabled #fallback {
-      display: block;
-    }
+    body.no-webgl #loading,
+    body.no-webgl canvas { display: none; }
+    body.no-webgl #fallback { display: block; }
   </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <div class="ui">
-    <h1>Visual Metaphysics No. 1 — Engraved Tablets (Interactive)</h1>
-    <div class="controls" aria-label="Tablet navigation controls">
-      <button type="button" data-focus="0">Left Tablet (1)</button>
-      <button type="button" data-focus="1">Center Tablet (2)</button>
-      <button type="button" data-focus="2">Right Tablet (3)</button>
-      <a href="landing-page.html">Back to Landing</a>
-    </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <div id="loading-title">Preparing the tablets…</div>
+    <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
   </div>
 
-  <div id="scene-root" aria-hidden="true"></div>
+  <!-- UI -->
+  <div id="topbar">
+    <h1>Visual Metaphysics No. 1 &mdash; Engraved Tablets</h1>
+    <a href="landing-page.html" id="back-btn">← Back</a>
+  </div>
 
-  <p class="hint">Drag to orbit • Pinch / wheel to zoom • Right-drag / two-finger drag to pan • Keys 1–3 jump between tablets</p>
+  <button id="close-btn">✕ Overview</button>
 
+  <div id="tablet-label">
+    <div class="name" id="label-name"></div>
+    <div class="sub" id="label-sub"></div>
+  </div>
+
+  <div id="dots">
+    <div class="dot" data-idx="0"></div>
+    <div class="dot" data-idx="1"></div>
+    <div class="dot" data-idx="2"></div>
+  </div>
+
+  <button class="nav-arrow" id="nav-prev" aria-label="Previous tablet">&#8592;</button>
+  <button class="nav-arrow" id="nav-next" aria-label="Next tablet">&#8594;</button>
+
+  <div id="hint">Click a tablet to inspect &nbsp;·&nbsp; Drag &amp; scroll to explore &nbsp;·&nbsp; Keys 1 – 3</div>
+
+  <!-- Fallback -->
   <section id="fallback" aria-live="polite">
-    <p>Your browser does not support WebGL. Showing static tablet images instead.</p>
-    <div class="fallback-grid">
-      <img src="img/tablet-left.png" alt="Engraved tablet: Left panel" />
-      <img src="img/tablet-center.png" alt="Engraved tablet: Center panel" />
-      <img src="img/tablet-right.png" alt="Engraved tablet: Right panel" />
+    <p style="color:#a08060">WebGL unavailable. Showing static images.</p>
+    <div class="grid">
+      <img src="img/tablet-left.png" alt="Left Tablet" />
+      <img src="img/tablet-center.png" alt="Center Tablet" />
+      <img src="img/tablet-right.png" alt="Right Tablet" />
     </div>
   </section>
 
@@ -164,248 +288,584 @@
     import * as THREE from 'https://esm.sh/three@0.160.0';
     import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-    const hasWebGL = (() => {
+    /* ─────────── WebGL check ─────────── */
+    const hasGL = (() => {
       try {
-        const canvas = document.createElement('canvas');
-        return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
-      } catch {
-        return false;
-      }
+        const c = document.createElement('canvas');
+        return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
+      } catch { return false; }
     })();
+    if (!hasGL) { document.body.classList.add('no-webgl'); throw new Error('no webgl'); }
 
-    if (!hasWebGL) {
-      document.body.classList.add('webgl-disabled');
-      throw new Error('WebGL unavailable');
-    }
+    /* ─────────── Tablet meta ─────────── */
+    const TABLETS = [
+      { src: 'img/tablet-left.png',   name: 'Tablet I',   sub: 'Flight Formations' },
+      { src: 'img/tablet-center.png', name: 'Tablet II',  sub: 'Data Records'      },
+      { src: 'img/tablet-right.png',  name: 'Tablet III', sub: 'Cosmic Taxonomy'   },
+    ];
 
-    const root = document.getElementById('scene-root');
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    /* ─────────── Renderer ─────────── */
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    root.appendChild(renderer.domElement);
-    const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    document.body.appendChild(renderer.domElement);
 
+    /* ─────────── Scene / camera ─────────── */
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x050507, 9, 20);
+    scene.background = new THREE.Color(0x06070d);
+    scene.fog = new THREE.FogExp2(0x06070d, 0.045);
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 120);
-    camera.position.set(0, 1.55, 8.2);
+    const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.05, 200);
+    camera.position.set(0, 0.8, 11);
 
+    /* ─────────── Controls ─────────── */
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.minDistance = 1.15;
-    controls.maxDistance = 16;
-    controls.zoomSpeed = 1.1;
+    controls.dampingFactor = 0.07;
+    controls.minDistance = 0.4;
+    controls.maxDistance = 20;
+    controls.zoomSpeed = 0.9;
+    controls.rotateSpeed = 0.6;
+    controls.panSpeed = 0.6;
     controls.enablePan = true;
-    controls.target.set(0, 0.2, 0);
+    controls.target.set(0, 0, 0);
+    controls.enabled = false; // disabled until focused
 
-    const ambient = new THREE.HemisphereLight(0xcad6ff, 0x111111, 0.55);
-    scene.add(ambient);
+    /* ─────────── Lighting ─────────── */
+    scene.add(new THREE.AmbientLight(0x1a1a2e, 2));
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    keyLight.position.set(6, 9, 7);
+    const keyLight = new THREE.DirectionalLight(0xfff3e0, 2.8);
+    keyLight.position.set(3, 7, 6);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 40;
+    keyLight.shadow.camera.left = -8;
+    keyLight.shadow.camera.right = 8;
+    keyLight.shadow.camera.top = 8;
+    keyLight.shadow.camera.bottom = -8;
+    keyLight.shadow.bias = -0.002;
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0x88a2ff, 0.4);
-    fillLight.position.set(-5, 2, 5);
+    const fillLight = new THREE.DirectionalLight(0x8090c0, 0.7);
+    fillLight.position.set(-5, 3, 4);
     scene.add(fillLight);
 
-    const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(16, 80),
-      new THREE.MeshStandardMaterial({
-        color: 0x06070c,
-        roughness: 0.95,
-        metalness: 0.05,
-      })
-    );
-    floor.rotation.x = -Math.PI * 0.5;
-    floor.position.y = -1.75;
+    const rimLight = new THREE.DirectionalLight(0xc9a96e, 0.5);
+    rimLight.position.set(0, 2, -8);
+    scene.add(rimLight);
+
+    // Per-tablet point lights (warm glow on active)
+    const spotLights = TABLETS.map((_, i) => {
+      const l = new THREE.PointLight(0xc9a96e, 0, 4);
+      l.position.set(0, 0, 2.5);
+      return l;
+    });
+
+    /* ─────────── Floor plane ─────────── */
+    const floorGeo = new THREE.PlaneGeometry(60, 60, 1, 1);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x06070c,
+      roughness: 0.98,
+      metalness: 0.0,
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -2.6;
+    floor.receiveShadow = true;
     scene.add(floor);
 
+    /* ─────────── Particle dust ─────────── */
+    const PART_COUNT = 420;
+    const partPositions = new Float32Array(PART_COUNT * 3);
+    const partSizes = new Float32Array(PART_COUNT);
+    const partOpacity = new Float32Array(PART_COUNT);
+    for (let i = 0; i < PART_COUNT; i++) {
+      partPositions[i * 3 + 0] = (Math.random() - 0.5) * 20;
+      partPositions[i * 3 + 1] = (Math.random() - 0.5) * 10 + 2;
+      partPositions[i * 3 + 2] = (Math.random() - 0.5) * 12;
+      partSizes[i] = Math.random() * 2.5 + 0.5;
+      partOpacity[i] = Math.random();
+    }
+    const partGeo = new THREE.BufferGeometry();
+    partGeo.setAttribute('position', new THREE.BufferAttribute(partPositions, 3));
+    partGeo.setAttribute('size', new THREE.BufferAttribute(partSizes, 1));
+    const partMat = new THREE.PointsMaterial({
+      color: 0xc9a96e,
+      size: 0.018,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.25,
+      depthWrite: false,
+    });
+    scene.add(new THREE.Points(partGeo, partMat));
+
+    /* ─────────── Build tablet meshes ─────────── */
+    const TABLET_W = 2.0;
+    const TABLET_H = 3.6;
+    const TABLET_D = 0.22;
+    const SPREAD = 3.6; // x offset between tablets
+
+    // Slightly inward arc
+    const tabletGroups = [];
+    const clickTargets = [];
+
     const textureLoader = new THREE.TextureLoader();
-    const imageFiles = ['img/tablet-left.png', 'img/tablet-center.png', 'img/tablet-right.png'];
-    const tabletPositions = [-2.8, 0, 2.8];
 
-    let tablets;
-    try {
-      tablets = await Promise.all(
-        imageFiles.map(async (url, idx) => {
-        const engravingMap = await textureLoader.loadAsync(url);
-        engravingMap.colorSpace = THREE.SRGBColorSpace;
-        engravingMap.wrapS = THREE.ClampToEdgeWrapping;
-        engravingMap.wrapT = THREE.ClampToEdgeWrapping;
-        engravingMap.anisotropy = maxAnisotropy;
-
-        const roughnessMap = engravingMap.clone();
-        roughnessMap.needsUpdate = true;
-        roughnessMap.anisotropy = maxAnisotropy;
-
-        const displacementMap = engravingMap.clone();
-        displacementMap.needsUpdate = true;
-        displacementMap.anisotropy = maxAnisotropy;
-
-        const tabletWidth = 1.85;
-        const tabletHeight = 3.5;
-
-        const baseMaterial = new THREE.MeshStandardMaterial({
-          color: 0x0d0d10,
-          roughness: 0.75,
-          metalness: 0.2,
-        });
-
-        const textureMaterial = new THREE.MeshPhysicalMaterial({
-          map: engravingMap,
-          roughnessMap,
-          displacementMap,
-          displacementScale: 0.02,
-          roughness: 0.2,
-          metalness: 0.2,
-          clearcoat: 0.5,
-          clearcoatRoughness: 0.2,
-          sheen: 0.08,
-          emissive: 0x060606,
-          emissiveIntensity: 0.08,
-        });
-        const tabletGroup = new THREE.Group();
-        tabletGroup.position.set(tabletPositions[idx], 0, 0);
-        tabletGroup.userData.index = idx;
-
-        const base = new THREE.Mesh(
-          new THREE.BoxGeometry(tabletWidth, tabletHeight, 0.24, 1, 1, 1),
-          baseMaterial
-        );
-        tabletGroup.add(base);
-
-        const engravingFace = new THREE.Mesh(
-          new THREE.PlaneGeometry(tabletWidth * 0.93, tabletHeight * 0.94, 82, 156),
-          textureMaterial
-        );
-        engravingFace.position.z = 0.122;
-        tabletGroup.add(engravingFace);
-
-        const edge = new THREE.Mesh(
-          new THREE.BoxGeometry(tabletWidth + 0.05, tabletHeight + 0.05, 0.05),
-          new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.45, metalness: 0.5 })
-        );
-        edge.position.z = -0.14;
-        mesh.add(edge);
-
-          scene.add(mesh);
-          return mesh;
-        })
-      );
-    } catch (error) {
-      console.error('Failed to load tablet textures:', error);
-      document.body.classList.add('webgl-disabled');
-      throw error;
+    function setProgress(p) {
+      document.getElementById('loading-bar').style.width = (p * 100) + '%';
     }
 
-    const moveState = {
+    let loadedCount = 0;
+    const textures = await Promise.all(
+      TABLETS.map((t, i) => new Promise((resolve, reject) => {
+        textureLoader.load(t.src, tex => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          loadedCount++;
+          setProgress(loadedCount / TABLETS.length);
+          resolve(tex);
+        }, undefined, reject);
+      }))
+    );
+
+    TABLETS.forEach((meta, idx) => {
+      const tex = textures[idx];
+      const group = new THREE.Group();
+
+      // Arc arrangement: center at 0, sides angled inward slightly
+      const arcAngle = (idx - 1) * 0.18; // radians inward
+      group.position.set((idx - 1) * SPREAD, 0, -Math.abs(idx - 1) * 0.35);
+      group.rotation.y = -arcAngle;
+      group.userData.index = idx;
+      group.userData.basePos = group.position.clone();
+      group.userData.baseRotY = group.rotation.y;
+
+      // Stone slab body
+      const bodyGeo = new THREE.BoxGeometry(TABLET_W, TABLET_H, TABLET_D, 1, 1, 1);
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x1a1612,
+        roughness: 0.88,
+        metalness: 0.06,
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
+
+      // Beveled edges (chamfer strips)
+      const chamferMat = new THREE.MeshStandardMaterial({ color: 0x0e0c09, roughness: 0.6, metalness: 0.15 });
+      const chamferSize = 0.06;
+      // top/bottom bars
+      const hBar = new THREE.Mesh(new THREE.BoxGeometry(TABLET_W + chamferSize * 2, chamferSize, TABLET_D + chamferSize * 2), chamferMat);
+      const hBar2 = hBar.clone();
+      hBar.position.y = TABLET_H / 2 + chamferSize / 2;
+      hBar2.position.y = -TABLET_H / 2 - chamferSize / 2;
+      // left/right bars
+      const vBar = new THREE.Mesh(new THREE.BoxGeometry(chamferSize, TABLET_H, TABLET_D + chamferSize * 2), chamferMat);
+      const vBar2 = vBar.clone();
+      vBar.position.x = -TABLET_W / 2 - chamferSize / 2;
+      vBar2.position.x = TABLET_W / 2 + chamferSize / 2;
+      [hBar, hBar2, vBar, vBar2].forEach(m => { m.castShadow = true; group.add(m); });
+
+      // Engraving face (high-poly plane for texture detail)
+      const faceGeo = new THREE.PlaneGeometry(TABLET_W * 0.9, TABLET_H * 0.92, 128, 230);
+      const faceMat = new THREE.MeshPhysicalMaterial({
+        map: tex,
+        roughness: 0.22,
+        metalness: 0.18,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.18,
+        emissive: new THREE.Color(0x1a1008),
+        emissiveIntensity: 0.06,
+      });
+      const face = new THREE.Mesh(faceGeo, faceMat);
+      face.position.z = TABLET_D / 2 + 0.001;
+      face.castShadow = false;
+      group.add(face);
+
+      // Glow outline (slightly larger, emissive, behind the tablet)
+      const glowGeo = new THREE.PlaneGeometry(TABLET_W + 0.12, TABLET_H + 0.12);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0xc9a96e,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.FrontSide,
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.position.z = TABLET_D / 2 - 0.01;
+      group.add(glow);
+      group.userData.glowMat = glowMat;
+      group.userData.glowTarget = 0;
+      group.userData.glowCurrent = 0;
+
+      // Point light attached to this group
+      spotLights[idx].position.set((idx - 1) * SPREAD, 0, 3);
+      scene.add(spotLights[idx]);
+
+      // Click target = the face mesh (largest hit area)
+      clickTargets.push(face);
+      face.userData.tabletIndex = idx;
+
+      scene.add(group);
+      tabletGroups.push(group);
+    });
+
+    /* ─────────── State machine ─────────── */
+    // modes: 'overview' | 'spinning' | 'focused'
+    let mode = 'overview';
+    let focusedIdx = -1;
+
+    // Camera animation
+    const camAnim = {
       active: false,
       elapsed: 0,
-      duration: 0.52,
-      from: {
-        camera: new THREE.Vector3(),
-        target: new THREE.Vector3(),
-      },
-      to: {
-        camera: new THREE.Vector3(),
-        target: new THREE.Vector3(),
+      duration: 1.1,
+      fromPos: new THREE.Vector3(),
+      toPos: new THREE.Vector3(),
+      fromTarget: new THREE.Vector3(),
+      toTarget: new THREE.Vector3(),
+      onDone: null,
+    };
+
+    // Per-tablet spin animation
+    const spinAnim = {
+      active: false,
+      idx: -1,
+      elapsed: 0,
+      duration: 0.85,
+      startRotY: 0,
+      loops: 1.5, // full spins + settle
+    };
+
+    // Hover state
+    let hoveredIdx = -1;
+
+    /* ─────────── Easing ─────────── */
+    const ease = {
+      outCubic: t => 1 - Math.pow(1 - t, 3),
+      outQuint: t => 1 - Math.pow(1 - t, 5),
+      inOutCubic: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+      outBack: t => {
+        const c1 = 1.70158, c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
       },
     };
 
-    function focusTablet(index) {
-      const targetMesh = tablets[index];
-      if (!targetMesh) return;
-
-      const target = new THREE.Vector3(targetMesh.position.x, 0.15, 0);
-      const offset = new THREE.Vector3(0, 0.72, 3.2);
-
-      moveState.active = true;
-      moveState.elapsed = 0;
-      moveState.from.camera.copy(camera.position);
-      moveState.from.target.copy(controls.target);
-      moveState.to.target.copy(target);
-      moveState.to.camera.copy(target).add(offset);
+    /* ─────────── Camera targets ─────────── */
+    function overviewCamTarget() {
+      return {
+        pos: new THREE.Vector3(0, 0.8, 11),
+        target: new THREE.Vector3(0, 0, 0),
+      };
     }
 
-    document.querySelectorAll('[data-focus]').forEach((button) => {
-      button.addEventListener('click', () => {
-        focusTablet(Number(button.getAttribute('data-focus')));
+    function focusCamTarget(idx) {
+      const g = tabletGroups[idx];
+      return {
+        pos: new THREE.Vector3(g.userData.basePos.x, 0.2, 3.8),
+        target: new THREE.Vector3(g.userData.basePos.x, 0, 0),
+      };
+    }
+
+    function startCamAnim(toPos, toTarget, duration, onDone) {
+      camAnim.active = true;
+      camAnim.elapsed = 0;
+      camAnim.duration = duration;
+      camAnim.fromPos.copy(camera.position);
+      camAnim.fromTarget.copy(controls.target);
+      camAnim.toPos.copy(toPos);
+      camAnim.toTarget.copy(toTarget);
+      camAnim.onDone = onDone || null;
+    }
+
+    /* ─────────── Focus / unfocus ─────────── */
+    function focusTablet(idx) {
+      if (mode === 'spinning') return;
+      if (idx === focusedIdx && mode === 'focused') return;
+
+      const g = tabletGroups[idx];
+      mode = 'spinning';
+      controls.enabled = false;
+
+      // Glow up
+      g.userData.glowTarget = 0.18;
+
+      // Kill glow on previously focused
+      if (focusedIdx >= 0 && focusedIdx !== idx) {
+        tabletGroups[focusedIdx].userData.glowTarget = 0;
+        tabletGroups[focusedIdx].userData.spotTarget = 0;
+      }
+
+      // Spin the tablet
+      spinAnim.active = true;
+      spinAnim.idx = idx;
+      spinAnim.elapsed = 0;
+      spinAnim.startRotY = g.rotation.y;
+
+      // Move camera toward the tablet while it spins
+      const ft = focusCamTarget(idx);
+      startCamAnim(ft.pos, ft.target, camAnim.duration, () => {
+        mode = 'focused';
+        focusedIdx = idx;
+        controls.enabled = true;
+        controls.target.copy(ft.target);
+        controls.minDistance = 0.4;
+        controls.maxDistance = 5.5;
+        updateUI();
       });
-    });
 
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const pointerDown = { x: 0, y: 0 };
+      // Update spotlight
+      spotLights[idx].intensity = 2.2;
 
-    function raycastFromEvent(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
-      return raycaster.intersectObjects(clickableTablets, false)[0];
+      focusedIdx = idx;
+      updateUI();
     }
 
-    renderer.domElement.addEventListener('pointerdown', (event) => {
-      pointerDown.x = event.clientX;
-      pointerDown.y = event.clientY;
+    function returnToOverview() {
+      if (mode === 'spinning') return;
+      mode = 'overview';
+      controls.enabled = false;
+
+      // Fade out focused tablet glow
+      if (focusedIdx >= 0) {
+        tabletGroups[focusedIdx].userData.glowTarget = 0;
+        spotLights[focusedIdx].intensity = 0;
+      }
+      focusedIdx = -1;
+
+      const ov = overviewCamTarget();
+      startCamAnim(ov.pos, ov.target, 0.9, () => {
+        controls.target.copy(ov.target);
+        controls.minDistance = 4;
+        controls.maxDistance = 20;
+        updateUI();
+      });
+
+      updateUI();
+    }
+
+    /* ─────────── UI updates ─────────── */
+    const labelEl = document.getElementById('tablet-label');
+    const labelName = document.getElementById('label-name');
+    const labelSub = document.getElementById('label-sub');
+    const dotsEl = document.getElementById('dots');
+    const dotEls = document.querySelectorAll('.dot');
+    const hintEl = document.getElementById('hint');
+    const closeBtn = document.getElementById('close-btn');
+    const navPrev = document.getElementById('nav-prev');
+    const navNext = document.getElementById('nav-next');
+    let hintTimer = null;
+
+    function updateUI() {
+      const focused = mode === 'focused' || mode === 'spinning';
+
+      // Label
+      if (focused && focusedIdx >= 0) {
+        labelName.textContent = TABLETS[focusedIdx].name;
+        labelSub.textContent = TABLETS[focusedIdx].sub;
+        labelEl.classList.add('visible');
+      } else {
+        labelEl.classList.remove('visible');
+      }
+
+      // Dots
+      if (focused) {
+        dotsEl.classList.add('visible');
+        dotEls.forEach((d, i) => d.classList.toggle('active', i === focusedIdx));
+      } else {
+        dotsEl.classList.remove('visible');
+      }
+
+      // Close button
+      closeBtn.classList.toggle('visible', mode === 'focused');
+
+      // Nav arrows
+      const showLeft = mode === 'focused' && focusedIdx > 0;
+      const showRight = mode === 'focused' && focusedIdx < TABLETS.length - 1;
+      navPrev.classList.toggle('visible', showLeft);
+      navNext.classList.toggle('visible', showRight);
+
+      // Hint
+      if (focused) {
+        hintEl.textContent = 'Drag · Scroll to zoom · ← → navigate';
+        hintEl.classList.remove('hidden');
+        clearTimeout(hintTimer);
+        hintTimer = setTimeout(() => hintEl.classList.add('hidden'), 4000);
+      } else {
+        hintEl.textContent = 'Click a tablet to inspect  ·  Drag & scroll to explore  ·  Keys 1 – 3';
+        hintEl.classList.remove('hidden');
+        clearTimeout(hintTimer);
+        hintTimer = setTimeout(() => hintEl.classList.add('hidden'), 6000);
+      }
+    }
+
+    /* ─────────── Interaction ─────────── */
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const pointerStart = { x: 0, y: 0, time: 0 };
+
+    renderer.domElement.addEventListener('pointerdown', e => {
+      pointerStart.x = e.clientX;
+      pointerStart.y = e.clientY;
+      pointerStart.time = performance.now();
     });
 
-    renderer.domElement.addEventListener('pointerup', (event) => {
-      const dragDistance = Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y);
-      if (dragDistance > 8 || event.button !== 0) return;
+    renderer.domElement.addEventListener('pointerup', e => {
+      if (e.button !== 0) return;
+      const dx = e.clientX - pointerStart.x;
+      const dy = e.clientY - pointerStart.y;
+      const dt = performance.now() - pointerStart.time;
+      if (Math.hypot(dx, dy) > 9 || dt > 400) return; // drag, not click
 
-      const hit = raycastFromEvent(event);
-      if (!hit) return;
-      focusTablet(hit.object.parent.userData.index);
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(clickTargets, false);
+      if (hits.length > 0) {
+        const idx = hits[0].object.userData.tabletIndex;
+        if (mode === 'focused' && focusedIdx === idx) return; // already focused, don't re-trigger
+        focusTablet(idx);
+      }
     });
 
-    renderer.domElement.addEventListener('pointermove', (event) => {
-      const hit = raycastFromEvent(event);
-      renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
+    renderer.domElement.addEventListener('pointermove', e => {
+      if (mode === 'focused') { renderer.domElement.style.cursor = 'grab'; return; }
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(clickTargets, false);
+      const newHover = hits.length > 0 ? hits[0].object.userData.tabletIndex : -1;
+
+      if (newHover !== hoveredIdx) {
+        // Update glow on hover for non-focused tablets
+        if (hoveredIdx >= 0 && hoveredIdx !== focusedIdx) {
+          tabletGroups[hoveredIdx].userData.glowTarget = 0;
+        }
+        if (newHover >= 0 && newHover !== focusedIdx) {
+          tabletGroups[newHover].userData.glowTarget = 0.07;
+        }
+        hoveredIdx = newHover;
+      }
+      renderer.domElement.style.cursor = newHover >= 0 ? 'pointer' : 'grab';
     });
 
-    renderer.domElement.style.cursor = 'grab';
+    closeBtn.addEventListener('click', returnToOverview);
+    navPrev.addEventListener('click', () => focusedIdx > 0 && focusTablet(focusedIdx - 1));
+    navNext.addEventListener('click', () => focusedIdx < TABLETS.length - 1 && focusTablet(focusedIdx + 1));
 
-    window.addEventListener('keydown', (event) => {
-      if (event.key === '1') focusTablet(0);
-      if (event.key === '2') focusTablet(1);
-      if (event.key === '3') focusTablet(2);
-      if (event.key === 'ArrowLeft') focusTablet(0);
-      if (event.key === 'ArrowRight') focusTablet(2);
+    window.addEventListener('keydown', e => {
+      if (e.key === '1') focusTablet(0);
+      if (e.key === '2') focusTablet(1);
+      if (e.key === '3') focusTablet(2);
+      if (e.key === 'Escape') returnToOverview();
+      if (e.key === 'ArrowLeft' && mode === 'focused' && focusedIdx > 0) focusTablet(focusedIdx - 1);
+      if (e.key === 'ArrowRight' && mode === 'focused' && focusedIdx < TABLETS.length - 1) focusTablet(focusedIdx + 1);
     });
 
+    /* ─────────── Resize ─────────── */
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    });
+
+    /* ─────────── Clock & render loop ─────────── */
     const clock = new THREE.Clock();
+    let time = 0;
 
     function animate() {
       requestAnimationFrame(animate);
-      const delta = clock.getDelta();
+      const delta = Math.min(clock.getDelta(), 0.05);
+      time += delta;
 
-      if (moveState.active) {
-        moveState.elapsed += delta;
-        const t = Math.min(moveState.elapsed / moveState.duration, 1);
-        const eased = 1 - Math.pow(1 - t, 3);
-        camera.position.lerpVectors(moveState.from.camera, moveState.to.camera, eased);
-        controls.target.lerpVectors(moveState.from.target, moveState.to.target, eased);
-        if (t >= 1) moveState.active = false;
+      /* ── Camera animation ── */
+      if (camAnim.active) {
+        camAnim.elapsed += delta;
+        const t = Math.min(camAnim.elapsed / camAnim.duration, 1);
+        const et = ease.outQuint(t);
+        camera.position.lerpVectors(camAnim.fromPos, camAnim.toPos, et);
+        controls.target.lerpVectors(camAnim.fromTarget, camAnim.toTarget, et);
+        if (t >= 1) {
+          camAnim.active = false;
+          if (camAnim.onDone) camAnim.onDone();
+        }
       }
+
+      /* ── Spin animation ── */
+      if (spinAnim.active) {
+        spinAnim.elapsed += delta;
+        const t = Math.min(spinAnim.elapsed / spinAnim.duration, 1);
+        const et = ease.outBack(t);
+        const g = tabletGroups[spinAnim.idx];
+        // Spin: full 360 * loops, settle back to base angle
+        g.rotation.y = spinAnim.startRotY + Math.PI * 2 * spinAnim.loops * et;
+        if (t >= 1) {
+          g.rotation.y = g.userData.baseRotY; // snap to exact rest
+          spinAnim.active = false;
+        }
+      }
+
+      /* ── Tablet idle animations (only in overview) ── */
+      tabletGroups.forEach((g, i) => {
+        if (spinAnim.active && spinAnim.idx === i) return;
+        if (mode === 'focused' && focusedIdx === i) return;
+
+        const phase = i * 1.2;
+        if (mode !== 'focused' || focusedIdx !== i) {
+          // Gentle float
+          g.position.y = g.userData.basePos.y + Math.sin(time * 0.55 + phase) * 0.06;
+          // Tiny rock
+          g.rotation.z = Math.sin(time * 0.38 + phase) * 0.012;
+          if (mode === 'overview') {
+            g.rotation.y = g.userData.baseRotY + Math.sin(time * 0.25 + phase) * 0.025;
+          }
+        }
+
+        // Glow fade
+        const gd = g.userData;
+        gd.glowCurrent += (gd.glowTarget - gd.glowCurrent) * 0.08;
+        gd.glowMat.opacity = gd.glowCurrent;
+      });
+
+      // Spotlight intensity follow focused idx
+      tabletGroups.forEach((g, i) => {
+        const targetIntensity = (i === focusedIdx && mode === 'focused') ? 2.2 : 0;
+        spotLights[i].intensity += (targetIntensity - spotLights[i].intensity) * 0.05;
+      });
+
+      /* ── Particle drift ── */
+      const pos = partGeo.attributes.position.array;
+      for (let i = 0; i < PART_COUNT; i++) {
+        pos[i * 3 + 1] -= delta * (0.04 + Math.sin(i) * 0.02);
+        if (pos[i * 3 + 1] < -4) pos[i * 3 + 1] = 8 + Math.random() * 2;
+        pos[i * 3 + 0] += Math.sin(time * 0.2 + i * 0.7) * 0.0015;
+      }
+      partGeo.attributes.position.needsUpdate = true;
 
       controls.update();
       renderer.render(scene, camera);
     }
 
-    focusTablet(1);
-    animate();
+    /* ─────────── Dismiss loading screen ─────────── */
+    setProgress(1);
+    setTimeout(() => {
+      const el = document.getElementById('loading');
+      el.classList.add('fade');
+      setTimeout(() => el.remove(), 900);
+    }, 300);
 
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    });
+    updateUI();
+    animate();
   </script>
 </body>
 </html>
