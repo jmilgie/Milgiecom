@@ -145,6 +145,10 @@
               <span class="stat-key">Collectibles</span>
               <a class="tile-arrow" href="./collectibles/" style="margin:0">Enter ▶</a>
             </div>
+            <div class="stat">
+              <span class="stat-key">Project Keziah</span>
+              <a class="tile-arrow" href="./projectkeziah/" style="margin:0">Explore ▶</a>
+            </div>
           </div>
 
         </div>
@@ -257,8 +261,22 @@
           <path d="M3 9v6M21 9v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         </svg>`,
         label: "Enter →"
+      },
+      {
+        title: "Project Keziah",
+        href: "./projectkeziah/",
+        desc: "An archive of Visual Metaphysics work with interactive tablets designed for research and exploration.",
+        chips: ["Archive", "Interactive", "Research"],
+        icon: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M8 7h8M8 11h8M8 15h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="16.5" cy="16.5" r="1.5" stroke="currentColor" stroke-width="1.6"/>
+        </svg>`,
+        label: "Explore →"
       }
     ];
+
+    document.getElementById("sectorBadge").textContent = `${PAGES.length} Sectors Online`;
 
     function escapeHtml(str) {
       return String(str)
