@@ -9,11 +9,12 @@
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto+Mono&display=swap');
         
         :root {
-            --color-primary: #D2B48C; /* Tan */
-            --color-secondary: #556B2F; /* Dark Olive Green */
-            --color-accent: #8B4513; /* Saddle Brown */
-            --color-light: #F5F5DC; /* Beige */
-            --color-dark: #2F4F4F; /* Dark Slate Gray */
+            --color-primary: #d4af37; /* Rich Gold */
+            --color-secondary: #b8860b; /* Dark Goldenrod */
+            --color-accent: #f4cf67; /* Bright Gold Hover */
+            --color-light: #0e0e0e; /* Near Black */
+            --color-dark: #f5e7b4; /* Warm Pale Gold Text */
+            --color-card: #171717; /* Card Surface */
             --font-heading: 'Playfair Display', serif;
             --font-body: 'Roboto Mono', monospace;
         }
@@ -37,9 +38,10 @@
         header {
             padding: 3rem 1rem;
             text-align: center;
-            background-color: var(--color-primary);
+            background: linear-gradient(160deg, #1b1b1b 0%, #080808 100%);
             color: var(--color-dark);
             position: relative;
+            border-bottom: 3px solid var(--color-primary);
         }
         
         .period-stamp {
@@ -48,8 +50,9 @@
             right: 1rem;
             font-size: 1.2rem;
             padding: 0.5rem;
-            border: 2px solid var(--color-dark);
+            border: 2px solid var(--color-primary);
             transform: rotate(5deg);
+            color: var(--color-primary);
         }
         
         h1 {
@@ -103,8 +106,8 @@
         .project-card {
             width: 100%;
             max-width: 350px;
-            background-color: white;
-            border: 5px solid var(--color-primary);
+            background-color: var(--color-card);
+            border: 2px solid var(--color-primary);
             overflow: hidden;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             display: flex;
@@ -113,7 +116,8 @@
         
         .project-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 24px rgba(212, 175, 55, 0.2);
+            border-color: var(--color-accent);
         }
         
         .project-image {
@@ -132,7 +136,7 @@
         .project-title {
             font-family: var(--font-heading);
             font-size: 1.4rem;
-            color: var(--color-secondary);
+            color: var(--color-primary);
             margin-bottom: 1rem;
         }
         
@@ -145,13 +149,21 @@
             display: inline-block;
             padding: 0.8rem 1.5rem;
             background-color: var(--color-secondary);
-            color: var(--color-light);
+            color: #111;
             text-decoration: none;
             font-family: var(--font-heading);
             text-align: center;
             transition: background-color 0.3s ease;
             align-self: flex-start;
             margin-top: auto;
+        }
+
+        .project-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: auto;
+            width: 100%;
         }
         
         .project-link:hover {
@@ -161,7 +173,7 @@
         /* About Section */
         .about-section {
             background-color: var(--color-secondary);
-            color: var(--color-light);
+            color: #111;
             padding: 2rem 1.5rem;
             margin: 2rem 0;
             border-radius: 5px;
@@ -177,12 +189,13 @@
         
         /* Footer */
         footer {
-            background-color: var(--color-dark);
-            color: var(--color-light);
+            background-color: #050505;
+            color: var(--color-dark);
             text-align: center;
             padding: 1.5rem 1rem;
             font-size: 0.9rem;
             width: 100%;
+            border-top: 2px solid var(--color-primary);
         }
         
         .footer-links {
@@ -196,9 +209,11 @@
         .footer-links a {
             color: var(--color-primary);
             text-decoration: none;
+            transition: color 0.3s ease;
         }
-        
+
         .footer-links a:hover {
+            color: var(--color-accent);
             text-decoration: underline;
         }
         
@@ -225,7 +240,7 @@
             display: inline-block;
             padding: 0.8rem 1.5rem;
             background-color: var(--color-accent);
-            color: var(--color-light);
+            color: #111;
             text-decoration: none;
             font-family: var(--font-heading);
             font-size: 1.1rem;
@@ -238,7 +253,7 @@
         }
         
         .special-button:hover {
-            background-color: var(--color-secondary);
+            background-color: var(--color-accent);
             transform: translateY(-3px);
         }
         
@@ -356,12 +371,12 @@
     <header class="fade-in">
         <div class="period-stamp">1956-2025</div>
         <h1>Visual Metaphysics</h1>
-        <h2>Digital Recreation Project</h2>
+        <h2>Flagship Interactive Archive & Digital Recreation Project</h2>
     </header>
     
     <main>
         <section class="intro-section fade-in">
-            <h3>Rediscovering Lost Mid-Century Masterpieces</h3>
+            <h3>Experience the Flagship Interactive Exhibit</h3>
             <p>Welcome to the Visual Metaphysics Digital Recreation Project, dedicated to preserving and studying the innovative information charts created by Fred Keziah in the 1950s. These remarkable works combine philosophical exploration with the distinctive aesthetic sensibilities of mid-century modern design.</p>
             <p>Each project in this collection represents a meticulous digital recreation based on archival research, bringing these lost treasures back into public view after decades of obscurity.</p>
         </section>
@@ -372,7 +387,10 @@
                 <div class="project-content">
                     <h4 class="project-title">No. 1: Flying Saucers (1956)</h4>
                     <p class="project-description">A graphic colored chart picturing 228 drawings of saucer shapes, formations, maneuvers and spacepeople. Numerous listings of colors, sounds, speeds, sizes, etc. Originally published on July 2, 1956. Our recreation is based on the 2nd edition from 1958.</p>
-                    <a href="Visual-Metaphysics-No1-FlyingSaucers/site/landing-page.html" class="project-link">Explore</a>
+                    <div class="project-actions">
+                        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/landing-page.html" class="project-link">Read Background</a>
+                        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/tablets.html" class="project-link">Open Interactive Tablets</a>
+                    </div>
                 </div>
             </div>
             

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flying Saucers Interactive Tablets</title>
+    <style>
+        :root {
+            --bg: #0c0c0c;
+            --panel: #171717;
+            --gold: #d4af37;
+            --gold-soft: #f5e7b4;
+            --gold-hover: #f4cf67;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Roboto Mono", monospace;
+            background: var(--bg);
+            color: var(--gold-soft);
+            line-height: 1.6;
+        }
+
+        header {
+            text-align: center;
+            padding: 2.5rem 1rem 1.5rem;
+            border-bottom: 2px solid var(--gold);
+            background: linear-gradient(160deg, #1a1a1a 0%, #050505 100%);
+        }
+
+        h1 {
+            margin: 0 0 0.75rem;
+            font-family: "Playfair Display", serif;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .subhead {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            text-decoration: none;
+            color: #111;
+            background: var(--gold);
+            padding: 0.7rem 1rem;
+            border-radius: 0.35rem;
+            font-weight: 700;
+        }
+
+        .btn:hover {
+            background: var(--gold-hover);
+        }
+
+        main {
+            width: min(1100px, 92vw);
+            margin: 2rem auto 3rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .tablet {
+            background: var(--panel);
+            border: 1px solid var(--gold);
+            padding: 0.75rem;
+        }
+
+        .tablet img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid #3a3a3a;
+        }
+
+        .tablet a {
+            color: var(--gold);
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 0.5rem;
+        }
+
+        .tablet a:hover {
+            color: var(--gold-hover);
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>No. 1: Flying Saucers — Interactive Tablets</h1>
+        <p class="subhead">Explore the core tablet groups from the 1958 chart recreation. Open each tablet to inspect details in full resolution.</p>
+        <div class="actions">
+            <a class="btn" href="landing-page.html">Read Background</a>
+            <a class="btn" href="../../index.html">Back to Project Index</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="grid">
+            <article class="tablet">
+                <img src="img/ufoshapes.png" alt="UFO Shapes Tablet">
+                <a href="img/ufoshapes.png">Open UFO Shapes Tablet</a>
+            </article>
+            <article class="tablet">
+                <img src="img/flightformations.png" alt="Flight Formations Tablet">
+                <a href="img/flightformations.png">Open Flight Formations Tablet</a>
+            </article>
+            <article class="tablet">
+                <img src="img/datatables.png" alt="Data Tables Tablet">
+                <a href="img/datatables.png">Open Data Tables Tablet</a>
+            </article>
+            <article class="tablet">
+                <img src="img/spacepeople.png" alt="Spacepeople Tablet">
+                <a href="img/spacepeople.png">Open Spacepeople Tablet</a>
+            </article>
+        </section>
+    </main>
+</body>
+</html>
