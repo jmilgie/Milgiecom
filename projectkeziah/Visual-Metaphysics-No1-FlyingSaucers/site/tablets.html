@@ -228,7 +228,6 @@
     const tabletPositions = [-2.8, 0, 2.8];
 
     let tablets;
-    const clickableTablets = [];
     try {
       tablets = await Promise.all(
         imageFiles.map(async (url, idx) => {
@@ -290,11 +289,10 @@
           new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.45, metalness: 0.5 })
         );
         edge.position.z = -0.14;
-        tabletGroup.add(edge);
+        mesh.add(edge);
 
-          scene.add(tabletGroup);
-          clickableTablets.push(base);
-          return tabletGroup;
+          scene.add(mesh);
+          return mesh;
         })
       );
     } catch (error) {
