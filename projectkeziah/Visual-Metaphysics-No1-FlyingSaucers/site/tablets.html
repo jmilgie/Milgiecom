@@ -195,8 +195,9 @@
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 2.8;
-    controls.maxDistance = 15;
+    controls.minDistance = 1.15;
+    controls.maxDistance = 16;
+    controls.zoomSpeed = 1.1;
     controls.enablePan = true;
     controls.target.set(0, 0.2, 0);
 
@@ -320,7 +321,7 @@
       if (!targetMesh) return;
 
       const target = new THREE.Vector3(targetMesh.position.x, 0.15, 0);
-      const offset = new THREE.Vector3(0, 0.95, 4.4);
+      const offset = new THREE.Vector3(0, 0.72, 3.2);
 
       moveState.active = true;
       moveState.elapsed = 0;
