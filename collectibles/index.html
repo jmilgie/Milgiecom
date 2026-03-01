@@ -261,13 +261,27 @@
 
           <!-- REAL ASSET (no placeholder) -->
           <figure class="item-media asset-slot asset-tall" style="padding:0;">
-            <img
-              src="./canvas-series/assets/hero-item.png"
-              alt="Collectible Canvas Series — Edition: SpongeBob SquarePants — hero image"
-              loading="lazy"
-              decoding="async"
+            <video
+              class="hero-anim"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster="./canvas-series/assets/hero-item.png"
               style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
-            />
+            >
+              <source src="./canvas-series/assets/Curate_Your_Digital_Manor_version_2.webm" type="video/webm" />
+              <source src="./canvas-series/assets/Curate_Your_Digital_Manor_version_2.mp4" type="video/mp4" />
+
+              <img
+                src="./canvas-series/assets/hero-item.png"
+                alt="Collectible Canvas Series — Edition: SpongeBob SquarePants — hero image"
+                loading="lazy"
+                decoding="async"
+                style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;"
+              />
+            </video>
           </figure>
 
           <div class="item-details">
