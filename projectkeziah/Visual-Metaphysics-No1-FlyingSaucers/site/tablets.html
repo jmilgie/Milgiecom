@@ -154,9 +154,9 @@
   <section id="fallback" aria-live="polite">
     <p>Your browser does not support WebGL. Showing static tablet images instead.</p>
     <div class="fallback-grid">
-      <img src="img/spacepeople.png" alt="Engraved tablet: Space People" />
-      <img src="img/ufoshapes.png" alt="Engraved tablet: UFO Shapes" />
-      <img src="img/flightformations.png" alt="Engraved tablet: Flight Formations" />
+      <img src="img/tablet-left.png" alt="Engraved tablet: Left panel" />
+      <img src="img/tablet-center.png" alt="Engraved tablet: Center panel" />
+      <img src="img/tablet-right.png" alt="Engraved tablet: Right panel" />
     </div>
   </section>
 
@@ -223,11 +223,13 @@
     scene.add(floor);
 
     const textureLoader = new THREE.TextureLoader();
-    const imageFiles = ['img/spacepeople.png', 'img/ufoshapes.png', 'img/flightformations.png'];
+    const imageFiles = ['img/tablet-left.png', 'img/tablet-center.png', 'img/tablet-right.png'];
     const tabletPositions = [-2.8, 0, 2.8];
 
-    const tablets = await Promise.all(
-      imageFiles.map(async (url, idx) => {
+    let tablets;
+    try {
+      tablets = await Promise.all(
+        imageFiles.map(async (url, idx) => {
         const engravingMap = await textureLoader.loadAsync(url);
         engravingMap.colorSpace = THREE.SRGBColorSpace;
         engravingMap.wrapS = THREE.ClampToEdgeWrapping;
@@ -268,10 +270,15 @@
         edge.position.z = -0.14;
         mesh.add(edge);
 
-        scene.add(mesh);
-        return mesh;
-      })
-    );
+          scene.add(mesh);
+          return mesh;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to load tablet textures:', error);
+      document.body.classList.add('webgl-disabled');
+      throw error;
+    }
 
     const moveState = {
       active: false,
