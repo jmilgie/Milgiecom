@@ -79,29 +79,76 @@
     #fullsize-viewer:active { cursor: grabbing; }
     #fullsize-viewer.hidden { display: none; }
 
-    /* The image sits at absolute 0,0; transform moves it into view */
     #poster-img {
-      position: absolute;
-      top: 0; left: 0;
-      display: block;
+      position: absolute; top: 0; left: 0; display: block;
       transform-origin: 0 0;
-      /* width/height set by JS to natural dimensions */
       image-rendering: -webkit-optimize-contrast;
       border: 1px solid rgba(201,169,110,0.1);
       box-shadow: 0 0 120px rgba(0,0,0,0.8);
       will-change: transform;
-      user-select: none;
-      -webkit-user-drag: none;
+      user-select: none; -webkit-user-drag: none;
     }
 
-    /* ── Tablets view ── */
-    #tablets-view {
+    /* ── 3D Tri-Framed Poster view ── */
+    #triframe-view {
       position: fixed; inset: 0;
     }
-    #tablets-view.hidden { display: none; }
-    #tablets-frame { width: 100%; height: 100%; border: none; }
+    #triframe-view.hidden { display: none; }
+    #triframe-canvas { display: block; width: 100%; height: 100%; }
 
-    /* ── HUD elements ── */
+    /* Tri-frame UI overlay */
+    #tf-label {
+      position: fixed; bottom: 4.5rem; left: 50%; transform: translateX(-50%);
+      text-align: center; pointer-events: none; z-index: 20;
+      opacity: 0; transition: opacity 0.5s;
+    }
+    #tf-label.visible { opacity: 1; }
+    #tf-label .name {
+      font-size: clamp(0.9rem, 1.8vw + 0.4rem, 1.4rem);
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold); text-shadow: 0 0 40px rgba(201,169,110,0.5);
+    }
+    #tf-label .sub { font-size: 0.74rem; color: rgba(240,236,224,0.45); letter-spacing: 0.1em; margin-top: 0.2rem; }
+
+    .tf-nav {
+      position: fixed; top: 50%; transform: translateY(-50%); z-index: 20;
+      background: rgba(10,8,4,0.5); border: 1px solid var(--gold-dim);
+      color: var(--gold); width: 2.6rem; height: 2.6rem; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.1rem; backdrop-filter: blur(6px);
+      transition: opacity 0.4s, border-color 0.2s, background 0.2s, transform 0.2s;
+      opacity: 0; pointer-events: none; border: 1px solid var(--gold-dim);
+    }
+    .tf-nav.visible { opacity: 1; pointer-events: auto; }
+    .tf-nav:hover { border-color: var(--gold); background: rgba(201,169,110,0.15); transform: translateY(-50%) scale(1.1); }
+    #tf-prev { left: 1.2rem; }
+    #tf-next { right: 1.2rem; }
+
+    #tf-close {
+      position: fixed; top: 4.5rem; right: 1.4rem; z-index: 20;
+      background: rgba(10,8,4,0.6); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.78rem;
+      letter-spacing: 0.08em; padding: 0.38rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s, background 0.2s;
+    }
+    #tf-close.visible { opacity: 1; pointer-events: auto; }
+    #tf-close:hover { background: rgba(201,169,110,0.12); }
+
+    #tf-dots {
+      position: fixed; bottom: 2.6rem; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 0.5rem; z-index: 20;
+      opacity: 0; pointer-events: none; transition: opacity 0.5s;
+    }
+    #tf-dots.visible { opacity: 1; }
+    .tf-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(201,169,110,0.25); transition: background 0.3s, transform 0.3s;
+    }
+    .tf-dot.active { background: var(--gold); transform: scale(1.5); }
+
+    /* ── HUD ── */
     #zoom-level {
       position: fixed; bottom: 3.8rem; right: 1.4rem; z-index: 30;
       font-size: 0.7rem; letter-spacing: 0.12em; color: rgba(201,169,110,0.5);
@@ -157,317 +204,530 @@
   <div class="topbar-right">
     <div id="view-toggle" role="group" aria-label="View mode">
       <button class="toggle-btn active" id="btn-fullsize" aria-pressed="true">Full Poster</button>
-      <button class="toggle-btn" id="btn-tablets" aria-pressed="false">3D Tablets</button>
+      <button class="toggle-btn" id="btn-tablets" aria-pressed="false">Tri-Framed Poster</button>
     </div>
-    <a href="landing-page.html" id="back-btn">← Back</a>
+    <a href="index.html" id="back-btn">← Back</a>
   </div>
 </div>
 
-<!-- Fullsize pan/zoom viewer — image positioned absolutely inside -->
+<!-- Full-poster pan/zoom -->
 <div id="fullsize-viewer">
   <img id="poster-img" src="img/fullSize.png" alt="Visual Metaphysics No. 1 — Full Poster" draggable="false" />
 </div>
 
-<!-- Tablets embedded view -->
-<div id="tablets-view" class="hidden"></div>
+<!-- Tri-Framed Poster 3D view -->
+<div id="triframe-view" class="hidden">
+  <canvas id="triframe-canvas"></canvas>
+</div>
 
+<!-- Tri-frame UI -->
+<div id="tf-label">
+  <div class="name" id="tf-name"></div>
+  <div class="sub" id="tf-sub"></div>
+</div>
+<div id="tf-dots">
+  <div class="tf-dot" data-i="0"></div>
+  <div class="tf-dot" data-i="1"></div>
+  <div class="tf-dot" data-i="2"></div>
+</div>
+<button class="tf-nav" id="tf-prev" aria-label="Previous frame">&#8592;</button>
+<button class="tf-nav" id="tf-next" aria-label="Next frame">&#8594;</button>
+<button id="tf-close">✕ Overview</button>
+
+<!-- Shared HUD -->
 <div id="zoom-level" class="hidden">100%</div>
 <button id="reset-btn">Reset view</button>
 <div id="hint">Drag to pan &nbsp;·&nbsp; Scroll or pinch to zoom &nbsp;·&nbsp; Double-click to zoom in</div>
 
-<script>
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.160.0';
+import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+/* ══════════════════════════════════════
+   PAN/ZOOM ENGINE (Full Poster view)
+══════════════════════════════════════ */
 (function () {
   'use strict';
-
-  /* ── Elements ── */
-  const viewer     = document.getElementById('fullsize-viewer');
-  const tabletsDiv = document.getElementById('tablets-view');
-  const img        = document.getElementById('poster-img');
-  const btnFull    = document.getElementById('btn-fullsize');
-  const btnTab     = document.getElementById('btn-tablets');
-  const hintEl     = document.getElementById('hint');
-  const zoomEl     = document.getElementById('zoom-level');
-  const resetBtn   = document.getElementById('reset-btn');
-  const loadingEl  = document.getElementById('loading');
+  const viewer   = document.getElementById('fullsize-viewer');
+  const img      = document.getElementById('poster-img');
+  const btnFull  = document.getElementById('btn-fullsize');
+  const hintEl   = document.getElementById('hint');
+  const zoomEl   = document.getElementById('zoom-level');
+  const resetBtn = document.getElementById('reset-btn');
   const loadingBar = document.getElementById('loading-bar');
 
-  /* ── Pan/zoom state ── */
-  const MIN_SCALE = 0.1;
-  const MAX_SCALE = 10;
-  let scale = 1;
-  let ox = 0, oy = 0; // image origin offset (top-left corner position in viewport coords)
+  const MIN_SCALE = 0.1, MAX_SCALE = 10;
+  let scale = 1, ox = 0, oy = 0;
+  let hintTimer = null, zoomTimer = null, dragging = false;
+  let dragX = 0, dragY = 0, dragOx = 0, dragOy = 0;
+  let touches = [], pinchStartDist = 0, pinchStartScale = 1;
+  let pinchStartOx = 0, pinchStartOy = 0, pinchMidX = 0, pinchMidY = 0;
+  let touchStartOx = 0, touchStartOy = 0, touchOriginX = 0, touchOriginY = 0;
 
-  /* ── Current view ── */
-  let currentView = 'fullsize';
-  let tabletsLoaded = false;
-  let hintTimer = null;
-  let zoomTimer = null;
+  window._panzoom = { setActive };
 
-  /* ── Apply transform directly on the img ── */
   function commit(animated) {
     img.style.transition = animated ? 'transform 0.38s cubic-bezier(0.22,1,0.36,1)' : 'none';
-    img.style.transform = `translate(${ox}px, ${oy}px) scale(${scale})`;
+    img.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`;
   }
-
-  /* ── Fit image to viewport ── */
   function fitToView(animated) {
-    if (!img.naturalWidth || !img.naturalHeight) return;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    // Use 90% of viewport, leaving room for topbar
-    const fitScale = Math.min(
-      (vw * 0.94) / img.naturalWidth,
-      (vh * 0.90) / img.naturalHeight
-    );
+    if (!img.naturalWidth) return;
+    const fitScale = Math.min((innerWidth*0.94)/img.naturalWidth, (innerHeight*0.90)/img.naturalHeight);
     scale = Math.max(MIN_SCALE, fitScale);
-    // Center in viewport
-    ox = (vw - img.naturalWidth * scale) / 2;
-    oy = (vh - img.naturalHeight * scale) / 2;
-    commit(animated);
-    updateHUD();
-    resetBtn.classList.remove('visible');
+    ox = (innerWidth  - img.naturalWidth  * scale) / 2;
+    oy = (innerHeight - img.naturalHeight * scale) / 2;
+    commit(animated); updateHUD(); resetBtn.classList.remove('visible');
   }
-
-  /* ── Clamp pan so image can't fly completely off-screen ── */
   function clamp() {
-    const iw = img.naturalWidth  * scale;
-    const ih = img.naturalHeight * scale;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const pad = 80; // px of image that must stay visible
-    ox = Math.max(pad - iw, Math.min(vw - pad, ox));
-    oy = Math.max(pad - ih, Math.min(vh - pad, oy));
+    const iw = img.naturalWidth*scale, ih = img.naturalHeight*scale, pad = 80;
+    ox = Math.max(pad-iw, Math.min(innerWidth-pad, ox));
+    oy = Math.max(pad-ih, Math.min(innerHeight-pad, oy));
   }
-
-  /* ── Zoom around a viewport point (cx, cy) ── */
-  function zoomAt(cx, cy, newScale) {
-    newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
-    // Keep the image point under (cx,cy) fixed
-    const ratio = newScale / scale;
-    ox = cx - (cx - ox) * ratio;
-    oy = cy - (cy - oy) * ratio;
-    scale = newScale;
-    clamp();
-    commit(false);
-    updateHUD();
+  function zoomAt(cx, cy, ns) {
+    ns = Math.max(MIN_SCALE, Math.min(MAX_SCALE, ns));
+    const r = ns/scale; ox = cx-(cx-ox)*r; oy = cy-(cy-oy)*r; scale=ns;
+    clamp(); commit(false); updateHUD();
   }
-
-  /* ── HUD ── */
   function updateHUD() {
-    zoomEl.textContent = Math.round(scale * 100) + '%';
-    zoomEl.classList.remove('hidden');
-    clearTimeout(zoomTimer);
-    zoomTimer = setTimeout(() => zoomEl.classList.add('hidden'), 1600);
-    const panned = Math.abs(ox - (window.innerWidth  - img.naturalWidth  * scale) / 2) > 4 ||
-                   Math.abs(oy - (window.innerHeight - img.naturalHeight * scale) / 2) > 4;
-    resetBtn.classList.toggle('visible', scale > 1.08 || panned);
+    zoomEl.textContent = Math.round(scale*100)+'%'; zoomEl.classList.remove('hidden');
+    clearTimeout(zoomTimer); zoomTimer = setTimeout(()=>zoomEl.classList.add('hidden'),1600);
+    const cx = (innerWidth-img.naturalWidth*scale)/2, cy = (innerHeight-img.naturalHeight*scale)/2;
+    resetBtn.classList.toggle('visible', scale>1.08 || Math.abs(ox-cx)>4 || Math.abs(oy-cy)>4);
   }
-
-  /* ── View switching ── */
-  function setView(v) {
-    currentView = v;
-    btnFull.classList.toggle('active', v === 'fullsize');
-    btnFull.setAttribute('aria-pressed', v === 'fullsize');
-    btnTab.classList.toggle('active',  v === 'tablets');
-    btnTab.setAttribute('aria-pressed', v === 'tablets');
-
-    if (v === 'fullsize') {
-      viewer.classList.remove('hidden');
-      tabletsDiv.classList.add('hidden');
-      hintEl.textContent = 'Drag to pan  ·  Scroll or pinch to zoom  ·  Double-click to zoom in  ·  0 to reset';
+  function setActive(yes) {
+    if (yes) {
+      hintEl.textContent = 'Drag to pan · Scroll / pinch to zoom · Double-click to zoom · 0 to reset';
       hintEl.classList.remove('hidden');
-      clearTimeout(hintTimer);
-      hintTimer = setTimeout(() => hintEl.classList.add('hidden'), 5500);
-    } else {
-      viewer.classList.add('hidden');
-      tabletsDiv.classList.remove('hidden');
-      hintEl.classList.add('hidden');
-      zoomEl.classList.add('hidden');
-      resetBtn.classList.remove('visible');
-      if (!tabletsLoaded) {
-        tabletsLoaded = true;
-        const iframe = document.createElement('iframe');
-        iframe.id = 'tablets-frame';
-        iframe.src = 'tablets.html?embed=1';
-        iframe.title = '3D Tablets';
-        iframe.style.cssText = 'width:100%;height:100%;border:none;';
-        tabletsDiv.appendChild(iframe);
-      }
+      clearTimeout(hintTimer); hintTimer = setTimeout(()=>hintEl.classList.add('hidden'), 5500);
     }
   }
-
-  btnFull.addEventListener('click', () => setView('fullsize'));
-  btnTab.addEventListener('click',  () => setView('tablets'));
-  resetBtn.addEventListener('click', () => fitToView(true));
-
-  /* ── Mouse drag ── */
-  let dragging = false;
-  let dragX = 0, dragY = 0, dragOx = 0, dragOy = 0;
 
   viewer.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
-    dragging = true;
-    dragX = e.clientX; dragY = e.clientY;
-    dragOx = ox; dragOy = oy;
-    viewer.setPointerCapture(e.pointerId);
-    viewer.style.cursor = 'grabbing';
+    if (e.button!==0) return; dragging=true;
+    dragX=e.clientX; dragY=e.clientY; dragOx=ox; dragOy=oy;
+    viewer.setPointerCapture(e.pointerId); viewer.style.cursor='grabbing';
   });
-
   viewer.addEventListener('pointermove', e => {
     if (!dragging) return;
-    ox = dragOx + (e.clientX - dragX);
-    oy = dragOy + (e.clientY - dragY);
-    clamp();
-    commit(false);
-    updateHUD();
+    ox=dragOx+(e.clientX-dragX); oy=dragOy+(e.clientY-dragY);
+    clamp(); commit(false); updateHUD();
   });
-
-  viewer.addEventListener('pointerup', () => {
-    dragging = false;
-    viewer.style.cursor = 'grab';
-  });
-
-  /* ── Wheel zoom ── */
+  viewer.addEventListener('pointerup', ()=>{ dragging=false; viewer.style.cursor='grab'; });
   viewer.addEventListener('wheel', e => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-    zoomAt(e.clientX, e.clientY, scale * factor);
-  }, { passive: false });
-
-  /* ── Double-click zoom ── */
+    e.preventDefault(); zoomAt(e.clientX,e.clientY, scale*(e.deltaY<0?1.12:1/1.12));
+  }, {passive:false});
   viewer.addEventListener('dblclick', e => {
-    const centerX = (window.innerWidth  - img.naturalWidth  * scale) / 2;
-    const centerY = (window.innerHeight - img.naturalHeight * scale) / 2;
-    const atCenter = Math.abs(ox - centerX) < 5 && Math.abs(oy - centerY) < 5 && scale < 1.1;
-    if (atCenter || scale > 3) {
-      fitToView(true);
-    } else {
-      const ns = Math.min(scale * 2.8, MAX_SCALE);
-      zoomAt(e.clientX, e.clientY, ns);
-      img.style.transition = 'transform 0.42s cubic-bezier(0.22,1,0.36,1)';
-      img.style.transform = `translate(${ox}px, ${oy}px) scale(${scale})`;
-    }
+    const cx=(innerWidth-img.naturalWidth*scale)/2, cy=(innerHeight-img.naturalHeight*scale)/2;
+    if (Math.abs(ox-cx)<5&&Math.abs(oy-cy)<5&&scale<1.1||scale>3) { fitToView(true); return; }
+    zoomAt(e.clientX,e.clientY,Math.min(scale*2.8,MAX_SCALE));
+    img.style.transition='transform 0.42s cubic-bezier(0.22,1,0.36,1)';
+    img.style.transform=`translate(${ox}px,${oy}px) scale(${scale})`;
   });
-
-  /* ── Touch (pinch + pan) ── */
-  let touches = [];
-  let pinchStartDist = 0, pinchStartScale = 0;
-  let pinchStartOx = 0, pinchStartOy = 0;
-  let pinchMidX = 0, pinchMidY = 0;
-  let touchStartOx = 0, touchStartOy = 0;
-  let touchOriginX = 0, touchOriginY = 0;
-
   viewer.addEventListener('touchstart', e => {
-    e.preventDefault();
-    touches = Array.from(e.touches);
-    if (touches.length === 1) {
-      dragging = true;
-      touchOriginX = touches[0].clientX; touchOriginY = touches[0].clientY;
-      touchStartOx = ox; touchStartOy = oy;
-    } else if (touches.length === 2) {
-      dragging = false;
-      pinchStartDist = Math.hypot(
-        touches[1].clientX - touches[0].clientX,
-        touches[1].clientY - touches[0].clientY
-      );
-      pinchStartScale = scale;
-      pinchStartOx = ox; pinchStartOy = oy;
-      pinchMidX = (touches[0].clientX + touches[1].clientX) / 2;
-      pinchMidY = (touches[0].clientY + touches[1].clientY) / 2;
+    e.preventDefault(); touches=Array.from(e.touches);
+    if (touches.length===1) { dragging=true; touchOriginX=touches[0].clientX; touchOriginY=touches[0].clientY; touchStartOx=ox; touchStartOy=oy; }
+    else if (touches.length===2) {
+      dragging=false;
+      pinchStartDist=Math.hypot(touches[1].clientX-touches[0].clientX,touches[1].clientY-touches[0].clientY);
+      pinchStartScale=scale; pinchStartOx=ox; pinchStartOy=oy;
+      pinchMidX=(touches[0].clientX+touches[1].clientX)/2; pinchMidY=(touches[0].clientY+touches[1].clientY)/2;
     }
-  }, { passive: false });
-
+  },{passive:false});
   viewer.addEventListener('touchmove', e => {
-    e.preventDefault();
-    const cur = Array.from(e.touches);
-    if (cur.length === 1 && dragging) {
-      ox = touchStartOx + (cur[0].clientX - touchOriginX);
-      oy = touchStartOy + (cur[0].clientY - touchOriginY);
-      clamp(); commit(false); updateHUD();
-    } else if (cur.length === 2 && pinchStartDist > 0) {
-      const dist = Math.hypot(
-        cur[1].clientX - cur[0].clientX,
-        cur[1].clientY - cur[0].clientY
-      );
-      const ns = Math.max(MIN_SCALE, Math.min(MAX_SCALE, pinchStartScale * (dist / pinchStartDist)));
-      // Scale around pinch midpoint
-      const ratio = ns / pinchStartScale;
-      ox = pinchMidX - (pinchMidX - pinchStartOx) * ratio;
-      oy = pinchMidY - (pinchMidY - pinchStartOy) * ratio;
-      scale = ns;
-      clamp(); commit(false); updateHUD();
+    e.preventDefault(); const cur=Array.from(e.touches);
+    if (cur.length===1&&dragging) { ox=touchStartOx+(cur[0].clientX-touchOriginX); oy=touchStartOy+(cur[0].clientY-touchOriginY); clamp();commit(false);updateHUD(); }
+    else if (cur.length===2&&pinchStartDist>0) {
+      const d=Math.hypot(cur[1].clientX-cur[0].clientX,cur[1].clientY-cur[0].clientY);
+      const ns=Math.max(MIN_SCALE,Math.min(MAX_SCALE,pinchStartScale*(d/pinchStartDist)));
+      const r=ns/pinchStartScale; ox=pinchMidX-(pinchMidX-pinchStartOx)*r; oy=pinchMidY-(pinchMidY-pinchStartOy)*r; scale=ns;
+      clamp();commit(false);updateHUD(); touches=cur;
     }
-  }, { passive: false });
-
+  },{passive:false});
   viewer.addEventListener('touchend', e => {
-    touches = Array.from(e.touches);
-    if (touches.length === 0) {
-      dragging = false;
-      pinchStartDist = 0;
-    } else if (touches.length === 1) {
-      // Switching from pinch to single-finger pan
-      pinchStartDist = 0;
-      dragging = true;
-      touchOriginX = touches[0].clientX; touchOriginY = touches[0].clientY;
-      touchStartOx = ox; touchStartOy = oy;
-    }
-  }, { passive: true });
-
-  /* ── Keyboard ── */
+    touches=Array.from(e.touches);
+    if (!touches.length) { dragging=false; pinchStartDist=0; }
+    else if (touches.length===1) { pinchStartDist=0; dragging=true; touchOriginX=touches[0].clientX; touchOriginY=touches[0].clientY; touchStartOx=ox; touchStartOy=oy; }
+  },{passive:true});
   window.addEventListener('keydown', e => {
-    if (currentView !== 'fullsize') return;
-    const step = 80;
-    switch (e.key) {
-      case 'ArrowLeft':  ox += step; clamp(); commit(true); updateHUD(); break;
-      case 'ArrowRight': ox -= step; clamp(); commit(true); updateHUD(); break;
-      case 'ArrowUp':    oy += step; clamp(); commit(true); updateHUD(); break;
-      case 'ArrowDown':  oy -= step; clamp(); commit(true); updateHUD(); break;
-      case '+': case '=': zoomAt(innerWidth/2, innerHeight/2, scale * 1.25); break;
-      case '-': zoomAt(innerWidth/2, innerHeight/2, scale / 1.25); break;
-      case '0': fitToView(true); break;
-      case 'Tab': e.preventDefault(); setView(currentView === 'fullsize' ? 'tablets' : 'fullsize'); break;
-    }
+    if (viewer.classList.contains('hidden')) return;
+    const s=80;
+    if (e.key==='ArrowLeft')  { ox+=s; clamp();commit(true);updateHUD(); }
+    if (e.key==='ArrowRight') { ox-=s; clamp();commit(true);updateHUD(); }
+    if (e.key==='ArrowUp')    { oy+=s; clamp();commit(true);updateHUD(); }
+    if (e.key==='ArrowDown')  { oy-=s; clamp();commit(true);updateHUD(); }
+    if (e.key==='+'||e.key==='=') zoomAt(innerWidth/2,innerHeight/2,scale*1.25);
+    if (e.key==='-') zoomAt(innerWidth/2,innerHeight/2,scale/1.25);
+    if (e.key==='0') fitToView(true);
   });
+  window.addEventListener('resize', ()=>fitToView(false));
+  resetBtn.addEventListener('click', ()=>fitToView(true));
 
-  /* ── Resize ── */
-  window.addEventListener('resize', () => fitToView(false));
+  window._fitToView = fitToView;
+  window._panzoomReady = false;
 
-  /* ── Image ready ── */
-  function onReady() {
-    loadingBar.style.width = '100%';
-    // Set img element to its natural pixel size — transform will scale/position it
+  function onImgReady() {
     img.style.width  = img.naturalWidth  + 'px';
     img.style.height = img.naturalHeight + 'px';
     fitToView(false);
-
-    // Read URL param AFTER image is ready so naturalWidth is known
-    const initView = new URLSearchParams(location.search).get('view') || 'fullsize';
-    setView(initView);
-
-    setTimeout(() => {
-      loadingEl.classList.add('fade');
-      setTimeout(() => loadingEl.remove(), 700);
-    }, 200);
+    window._panzoomReady = true;
+    loadingBar.style.width = '60%'; // partial — 3D will finish it
+    window.dispatchEvent(new Event('panzoom-ready'));
   }
+  if (img.complete && img.naturalWidth>0) onImgReady();
+  else { img.addEventListener('load', onImgReady); img.addEventListener('error', ()=>{ window.dispatchEvent(new Event('panzoom-ready')); }); }
 
-  if (img.complete && img.naturalWidth > 0) {
-    onReady();
-  } else {
-    img.addEventListener('load', onReady);
-    img.addEventListener('error', () => {
-      loadingEl.classList.add('fade');
-      setTimeout(() => loadingEl.remove(), 700);
-      viewer.innerHTML = '<p style="color:rgba(240,236,224,0.3);font-size:0.9rem;letter-spacing:0.07em;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)">Could not load fullSize.png</p>';
-    });
-    // Simulated progress
-    let p = 0;
-    const t = setInterval(() => {
-      p = Math.min(p + Math.random() * 0.1, 0.9);
-      loadingBar.style.width = (p * 100) + '%';
-      if (img.complete) clearInterval(t);
-    }, 100);
-  }
+  let lp=0;
+  const lt=setInterval(()=>{ lp=Math.min(lp+Math.random()*0.08,0.58); loadingBar.style.width=(lp*100)+'%'; if(img.complete)clearInterval(lt); },120);
 })();
+
+
+/* ══════════════════════════════════════
+   TRI-FRAMED POSTER — Three.js scene
+══════════════════════════════════════ */
+
+const FRAMES = [
+  { src: 'img/tablet-left.png',   name: 'Frame I',   sub: 'Flight Formations' },
+  { src: 'img/tablet-center.png', name: 'Frame II',  sub: 'Data Records'      },
+  { src: 'img/tablet-right.png',  name: 'Frame III', sub: 'Cosmic Taxonomy'   },
+];
+
+const canvas3d   = document.getElementById('triframe-canvas');
+const tfView     = document.getElementById('triframe-view');
+const tfLabel    = document.getElementById('tf-label');
+const tfName     = document.getElementById('tf-name');
+const tfSub      = document.getElementById('tf-sub');
+const tfDots     = document.getElementById('tf-dots');
+const dotEls     = document.querySelectorAll('.tf-dot');
+const tfClose    = document.getElementById('tf-close');
+const tfPrev     = document.getElementById('tf-prev');
+const tfNext     = document.getElementById('tf-next');
+const hintEl     = document.getElementById('hint');
+const loadingBar = document.getElementById('loading-bar');
+const loadingEl  = document.getElementById('loading');
+
+const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06070d);
+scene.fog = new THREE.FogExp2(0x06070d, 0.042);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.05, 200);
+camera.position.set(0, 0.8, 11);
+
+const controls = new OrbitControls(camera, canvas3d);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 0.4; controls.maxDistance = 20;
+controls.zoomSpeed = 0.9; controls.rotateSpeed = 0.6; controls.panSpeed = 0.6;
+controls.target.set(0, 0, 0); controls.enabled = false;
+
+// Lights
+scene.add(new THREE.AmbientLight(0x1a1a2e, 2));
+const key = new THREE.DirectionalLight(0xfff3e0, 2.8);
+key.position.set(3,7,6); key.castShadow=true;
+key.shadow.mapSize.set(2048,2048); key.shadow.bias=-0.002;
+scene.add(key);
+scene.add(Object.assign(new THREE.DirectionalLight(0x8090c0,0.7), {position: new THREE.Vector3(-5,3,4)}));
+scene.add(Object.assign(new THREE.DirectionalLight(0xc9a96e,0.5), {position: new THREE.Vector3(0,2,-8)}));
+
+// Floor
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(60,60),
+  new THREE.MeshStandardMaterial({color:0x06070c,roughness:0.98})
+);
+floor.rotation.x=-Math.PI/2; floor.position.y=-2.6; floor.receiveShadow=true;
+scene.add(floor);
+
+// Particles
+const PARTS = 400;
+const pPos = new Float32Array(PARTS*3);
+for(let i=0;i<PARTS;i++){
+  pPos[i*3]=(Math.random()-.5)*20; pPos[i*3+1]=(Math.random()-.5)*10+2; pPos[i*3+2]=(Math.random()-.5)*12;
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+scene.add(new THREE.Points(pGeo, new THREE.PointsMaterial({color:0xc9a96e,size:0.018,sizeAttenuation:true,transparent:true,opacity:0.22,depthWrite:false})));
+
+// Build frames
+const W=2.0, H=3.6, D=0.22, SPREAD=3.6;
+const frameGroups=[], clickTargets=[], spotLights=[];
+
+const texLoader = new THREE.TextureLoader();
+const textures  = await Promise.all(FRAMES.map(f => new Promise((res,rej)=>texLoader.load(f.src,t=>{
+  t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); res(t);
+},undefined,rej))));
+
+FRAMES.forEach((meta,idx)=>{
+  const tex = textures[idx];
+  const g = new THREE.Group();
+  const arc = (idx-1)*0.18;
+  g.position.set((idx-1)*SPREAD, 0, -Math.abs(idx-1)*0.35);
+  g.rotation.y = -arc;
+  g.userData = { index:idx, basePos:g.position.clone(), baseRotY:-arc, glowTarget:0, glowCurrent:0, glowMat:null };
+
+  // Stone body
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(W,H,D),
+    new THREE.MeshStandardMaterial({color:0x1a1612,roughness:0.88,metalness:0.06})
+  );
+  body.castShadow=true; body.receiveShadow=true; g.add(body);
+
+  // Chamfer edges
+  const cMat = new THREE.MeshStandardMaterial({color:0x0e0c09,roughness:0.6,metalness:0.15});
+  const cs = 0.06;
+  const tops = [
+    new THREE.Mesh(new THREE.BoxGeometry(W+cs*2,cs,D+cs*2),cMat),
+    new THREE.Mesh(new THREE.BoxGeometry(W+cs*2,cs,D+cs*2),cMat),
+    new THREE.Mesh(new THREE.BoxGeometry(cs,H,D+cs*2),cMat),
+    new THREE.Mesh(new THREE.BoxGeometry(cs,H,D+cs*2),cMat),
+  ];
+  tops[0].position.y= H/2+cs/2; tops[1].position.y=-H/2-cs/2;
+  tops[2].position.x=-W/2-cs/2; tops[3].position.x= W/2+cs/2;
+  tops.forEach(m=>{m.castShadow=true;g.add(m);});
+
+  // Engraving face
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(W*0.9, H*0.92, 64, 115),
+    new THREE.MeshPhysicalMaterial({
+      map:tex, roughness:0.22, metalness:0.18,
+      clearcoat:0.45, clearcoatRoughness:0.18,
+      emissive:new THREE.Color(0x1a1008), emissiveIntensity:0.06
+    })
+  );
+  face.position.z = D/2+0.001; g.add(face);
+  face.userData.frameIndex = idx; clickTargets.push(face);
+
+  // Glow outline
+  const glowMat = new THREE.MeshBasicMaterial({color:0xc9a96e,transparent:true,opacity:0,depthWrite:false});
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(W+0.14,H+0.14),glowMat);
+  glow.position.z = D/2-0.01; g.add(glow);
+  g.userData.glowMat = glowMat;
+
+  // Spotlight
+  const spot = new THREE.PointLight(0xc9a96e,0,4);
+  spot.position.set((idx-1)*SPREAD,0,3); scene.add(spot); spotLights.push(spot);
+
+  scene.add(g); frameGroups.push(g);
+});
+
+// ── State ──
+let mode = 'overview'; // 'overview' | 'spinning' | 'focused'
+let focusedIdx = -1, hoveredIdx = -1;
+
+const camAnim = {
+  active:false, elapsed:0, duration:1.1,
+  fromPos:new THREE.Vector3(), toPos:new THREE.Vector3(),
+  fromTgt:new THREE.Vector3(), toTgt:new THREE.Vector3(),
+  onDone:null
+};
+const spinAnim = { active:false, idx:-1, elapsed:0, duration:0.85, startRotY:0 };
+
+function outQuint(t){ return 1-Math.pow(1-t,5); }
+function outBack(t){ const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+
+function startCam(toPos,toTgt,dur,onDone){
+  camAnim.active=true; camAnim.elapsed=0; camAnim.duration=dur;
+  camAnim.fromPos.copy(camera.position); camAnim.fromTgt.copy(controls.target);
+  camAnim.toPos.copy(toPos); camAnim.toTgt.copy(toTgt); camAnim.onDone=onDone||null;
+}
+
+function overviewCam(){ return {pos:new THREE.Vector3(0,0.8,11),tgt:new THREE.Vector3(0,0,0)}; }
+function focusCam(idx){ const g=frameGroups[idx]; return {pos:new THREE.Vector3(g.userData.basePos.x,0.2,3.8),tgt:new THREE.Vector3(g.userData.basePos.x,0,0)}; }
+
+function focusFrame(idx){
+  if(mode==='spinning') return;
+  if(idx===focusedIdx&&mode==='focused') return;
+  const g = frameGroups[idx];
+  mode='spinning'; controls.enabled=false;
+  g.userData.glowTarget=0.18;
+  if(focusedIdx>=0&&focusedIdx!==idx) { frameGroups[focusedIdx].userData.glowTarget=0; spotLights[focusedIdx].intensity=0; }
+  spinAnim.active=true; spinAnim.idx=idx; spinAnim.elapsed=0; spinAnim.startRotY=g.rotation.y;
+  const fc=focusCam(idx);
+  startCam(fc.pos,fc.tgt,camAnim.duration,()=>{
+    mode='focused'; focusedIdx=idx; controls.enabled=true;
+    controls.target.copy(fc.tgt); controls.minDistance=0.4; controls.maxDistance=5.5;
+    updateTFUI();
+  });
+  spotLights[idx].intensity=2.2; focusedIdx=idx; updateTFUI();
+}
+
+function returnOverview(){
+  if(mode==='spinning') return;
+  mode='overview'; controls.enabled=false;
+  if(focusedIdx>=0){ frameGroups[focusedIdx].userData.glowTarget=0; spotLights[focusedIdx].intensity=0; }
+  focusedIdx=-1;
+  const ov=overviewCam();
+  startCam(ov.pos,ov.tgt,0.9,()=>{ controls.target.copy(ov.tgt); controls.minDistance=4; controls.maxDistance=20; updateTFUI(); });
+  updateTFUI();
+}
+
+let tfHintTimer=null;
+function updateTFUI(){
+  const focused=(mode==='focused'||mode==='spinning')&&focusedIdx>=0;
+  tfName.textContent = focused ? FRAMES[focusedIdx].name : '';
+  tfSub.textContent  = focused ? FRAMES[focusedIdx].sub  : '';
+  tfLabel.classList.toggle('visible', focused);
+  tfDots.classList.toggle('visible', focused);
+  dotEls.forEach((d,i)=>d.classList.toggle('active',i===focusedIdx));
+  tfClose.classList.toggle('visible', mode==='focused');
+  tfPrev.classList.toggle('visible', mode==='focused'&&focusedIdx>0);
+  tfNext.classList.toggle('visible', mode==='focused'&&focusedIdx<FRAMES.length-1);
+  if (focused){
+    hintEl.textContent='Drag · Scroll to zoom · ← → navigate'; hintEl.classList.remove('hidden');
+    clearTimeout(tfHintTimer); tfHintTimer=setTimeout(()=>hintEl.classList.add('hidden'),4000);
+  } else {
+    hintEl.textContent='Click a frame to inspect  ·  Drag & scroll  ·  Keys 1–3'; hintEl.classList.remove('hidden');
+    clearTimeout(tfHintTimer); tfHintTimer=setTimeout(()=>hintEl.classList.add('hidden'),6000);
+  }
+}
+
+tfClose.addEventListener('click', returnOverview);
+tfPrev.addEventListener('click', ()=>focusedIdx>0&&focusFrame(focusedIdx-1));
+tfNext.addEventListener('click', ()=>focusedIdx<FRAMES.length-1&&focusFrame(focusedIdx+1));
+
+// Raycaster
+const raycaster=new THREE.Raycaster(), ndc=new THREE.Vector2();
+const pDown={x:0,y:0,t:0};
+
+canvas3d.addEventListener('pointerdown',e=>{pDown.x=e.clientX;pDown.y=e.clientY;pDown.t=performance.now();});
+canvas3d.addEventListener('pointerup',e=>{
+  if(e.button!==0) return;
+  if(Math.hypot(e.clientX-pDown.x,e.clientY-pDown.y)>9||performance.now()-pDown.t>400) return;
+  const rect=canvas3d.getBoundingClientRect();
+  ndc.x=((e.clientX-rect.left)/rect.width)*2-1;
+  ndc.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(ndc,camera);
+  const hits=raycaster.intersectObjects(clickTargets,false);
+  if(hits.length){ const idx=hits[0].object.userData.frameIndex; if(!(mode==='focused'&&focusedIdx===idx)) focusFrame(idx); }
+});
+canvas3d.addEventListener('pointermove',e=>{
+  if(mode==='focused'){canvas3d.style.cursor='grab';return;}
+  const rect=canvas3d.getBoundingClientRect();
+  ndc.x=((e.clientX-rect.left)/rect.width)*2-1;
+  ndc.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(ndc,camera);
+  const hits=raycaster.intersectObjects(clickTargets,false);
+  const nh=hits.length?hits[0].object.userData.frameIndex:-1;
+  if(nh!==hoveredIdx){
+    if(hoveredIdx>=0&&hoveredIdx!==focusedIdx) frameGroups[hoveredIdx].userData.glowTarget=0;
+    if(nh>=0&&nh!==focusedIdx) frameGroups[nh].userData.glowTarget=0.07;
+    hoveredIdx=nh;
+  }
+  canvas3d.style.cursor=nh>=0?'pointer':'grab';
+});
+
+window.addEventListener('keydown',e=>{
+  if(tfView.classList.contains('hidden')) return;
+  if(e.key==='1') focusFrame(0); if(e.key==='2') focusFrame(1); if(e.key==='3') focusFrame(2);
+  if(e.key==='Escape') returnOverview();
+  if(e.key==='ArrowLeft'&&mode==='focused'&&focusedIdx>0) focusFrame(focusedIdx-1);
+  if(e.key==='ArrowRight'&&mode==='focused'&&focusedIdx<FRAMES.length-1) focusFrame(focusedIdx+1);
+});
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// ── Render loop ──
+const clock=new THREE.Clock(); let time=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const delta=Math.min(clock.getDelta(),0.05); time+=delta;
+
+  if(camAnim.active){
+    camAnim.elapsed+=delta; const t=Math.min(camAnim.elapsed/camAnim.duration,1);
+    camera.position.lerpVectors(camAnim.fromPos,camAnim.toPos,outQuint(t));
+    controls.target.lerpVectors(camAnim.fromTgt,camAnim.toTgt,outQuint(t));
+    if(t>=1){camAnim.active=false;if(camAnim.onDone)camAnim.onDone();}
+  }
+  if(spinAnim.active){
+    spinAnim.elapsed+=delta; const t=Math.min(spinAnim.elapsed/spinAnim.duration,1);
+    const g=frameGroups[spinAnim.idx];
+    g.rotation.y=spinAnim.startRotY+Math.PI*2*1.5*outBack(t);
+    if(t>=1){g.rotation.y=g.userData.baseRotY;spinAnim.active=false;}
+  }
+  frameGroups.forEach((g,i)=>{
+    if(spinAnim.active&&spinAnim.idx===i) return;
+    if(mode==='focused'&&focusedIdx===i) return;
+    const ph=i*1.2;
+    g.position.y=g.userData.basePos.y+Math.sin(time*0.55+ph)*0.06;
+    g.rotation.z=Math.sin(time*0.38+ph)*0.012;
+    if(mode==='overview') g.rotation.y=g.userData.baseRotY+Math.sin(time*0.25+ph)*0.025;
+    const gd=g.userData;
+    gd.glowCurrent+=(gd.glowTarget-gd.glowCurrent)*0.08;
+    gd.glowMat.opacity=gd.glowCurrent;
+  });
+  frameGroups.forEach((_,i)=>{
+    const tgt=(i===focusedIdx&&mode==='focused')?2.2:0;
+    spotLights[i].intensity+=(tgt-spotLights[i].intensity)*0.05;
+  });
+  const pp=pGeo.attributes.position.array;
+  for(let i=0;i<PARTS;i++){
+    pp[i*3+1]-=delta*(0.04+Math.sin(i)*0.02);
+    if(pp[i*3+1]<-4) pp[i*3+1]=8+Math.random()*2;
+    pp[i*3]+=Math.sin(time*0.2+i*0.7)*0.0015;
+  }
+  pGeo.attributes.position.needsUpdate=true;
+  controls.update();
+  renderer.render(scene,camera);
+}
+animate();
+
+
+/* ══════════════════════════════════════
+   VIEW SWITCHER
+══════════════════════════════════════ */
+const fullViewer = document.getElementById('fullsize-viewer');
+const btnFull    = document.getElementById('btn-fullsize');
+const btnTab     = document.getElementById('btn-tablets');
+
+function setView(v){
+  const isFullsize = v === 'fullsize';
+  btnFull.classList.toggle('active', isFullsize);
+  btnFull.setAttribute('aria-pressed', isFullsize);
+  btnTab.classList.toggle('active', !isFullsize);
+  btnTab.setAttribute('aria-pressed', !isFullsize);
+
+  if(isFullsize){
+    fullViewer.classList.remove('hidden');
+    tfView.classList.add('hidden');
+    renderer.setAnimationLoop(null); // pause 3D render
+    window._panzoom?.setActive(true);
+    document.getElementById('zoom-level').classList.remove('hidden');
+  } else {
+    fullViewer.classList.add('hidden');
+    tfView.classList.remove('hidden');
+    document.getElementById('zoom-level').classList.add('hidden');
+    document.getElementById('reset-btn').classList.remove('visible');
+    renderer.setAnimationLoop(null); // already in rAF loop, no-op
+    updateTFUI();
+  }
+}
+
+btnFull.addEventListener('click', ()=>setView('fullsize'));
+btnTab.addEventListener('click',  ()=>setView('tablets'));
+window.addEventListener('keydown', e=>{
+  if(e.key==='Tab'){ e.preventDefault(); setView(btnFull.classList.contains('active')?'tablets':'fullsize'); }
+});
+
+/* ══════════════════════════════════════
+   INIT — wait for image + textures
+══════════════════════════════════════ */
+function finishLoading(){
+  loadingBar.style.width='100%';
+  setTimeout(()=>{ loadingEl.classList.add('fade'); setTimeout(()=>loadingEl.remove(),700); },250);
+  const initView = new URLSearchParams(location.search).get('view')||'fullsize';
+  setView(initView==='tablets'?'tablets':'fullsize');
+}
+
+if(window._panzoomReady) finishLoading();
+else window.addEventListener('panzoom-ready', finishLoading, {once:true});
 </script>
 </body>
 </html>

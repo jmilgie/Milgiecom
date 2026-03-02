@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Metaphysics No. 1: Flying Saucers (1956)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold:      #c9a96e;
+      --gold-dim:  rgba(201,169,110,0.32);
+      --gold-glow: rgba(201,169,110,0.09);
+      --bg-dark:   #06070d;
+      --bg-warm:   #f5f0e8;
+      --bg-paper:  #ede7d8;
+      --ink:       #1a1510;
+      --ink-dim:   rgba(26,21,16,0.62);
+      --sepia:     #6b4e2a;
+      --line-dark: rgba(201,169,110,0.18);
+      --line-warm: rgba(107,78,42,0.18);
+      --fg-light:  #f0ece0;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { font-family: "Playfair Display", Georgia, serif; overflow-x: hidden; }
+
+    /* ── FIXED NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+      padding: 0.9rem 1.8rem;
+      display: flex; align-items: center; justify-content: space-between;
+      pointer-events: none;
+      transition: background 0.4s;
+    }
+    nav.scrolled {
+      background: rgba(6,7,13,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line-dark);
+    }
+    .nav-logo {
+      font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.8;
+    }
+    .nav-links { display: flex; gap: 0.5rem; pointer-events: auto; flex-wrap: wrap; }
+    .nav-pill {
+      background: rgba(10,8,4,0.65); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.75rem;
+      letter-spacing: 0.09em; padding: 0.36rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .nav-pill:hover { border-color: var(--gold); background: rgba(201,169,110,0.14); color: #f0e0c0; }
+    .nav-pill.cta { background: rgba(201,169,110,0.18); border-color: var(--gold); color: var(--fg-light); }
+    .nav-pill.cta:hover { background: rgba(201,169,110,0.3); }
+
+    /* ════════════════════════════════════════
+       PART 1: DARK CINEMATIC HERO
+    ════════════════════════════════════════ */
+    #hero {
+      position: relative; min-height: 100vh;
+      background: var(--bg-dark);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden; padding: 7rem 1.5rem 5rem;
+    }
+    #hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    #hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% 60%, rgba(201,169,110,0.08) 0%, transparent 65%),
+        linear-gradient(to bottom, transparent 60%, var(--bg-dark) 100%);
+      pointer-events: none;
+    }
+
+    .stamp {
+      position: absolute; top: 7rem; right: 2rem; z-index: 2;
+      font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.55;
+      border: 1px solid var(--gold-dim); padding: 0.28rem 0.6rem;
+      border-radius: 3px; transform: rotate(3.5deg);
+    }
+
+    .hero-inner { position: relative; z-index: 2; text-align: center; max-width: 800px; }
+    .hero-eyebrow {
+      font-size: 0.68rem; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.75; margin-bottom: 1.2rem;
+    }
+    .hero-title {
+      font-size: clamp(3rem, 6vw + 1.2rem, 6.5rem);
+      font-weight: 400; line-height: 1.0;
+      color: var(--fg-light);
+      text-shadow: 0 0 120px rgba(201,169,110,0.2);
+      margin-bottom: 0.3rem;
+    }
+    .hero-title em { font-style: italic; color: var(--gold); }
+    .hero-no {
+      font-size: clamp(0.85rem, 1.2vw + 0.5rem, 1.15rem);
+      color: rgba(240,236,224,0.45); letter-spacing: 0.1em;
+      margin-bottom: 0.6rem;
+    }
+    .hero-byline {
+      font-size: clamp(0.9rem, 1.4vw + 0.5rem, 1.25rem);
+      color: rgba(240,236,224,0.55); letter-spacing: 0.06em;
+      margin-bottom: 2.8rem; font-style: italic;
+    }
+    .hero-ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+
+    .btn-hero-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(201,169,110,0.16); border: 1px solid var(--gold);
+      color: var(--fg-light); font-family: inherit; font-size: 0.88rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.8rem 1.8rem; border-radius: 999px;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.25s, box-shadow 0.25s, transform 0.2s;
+      box-shadow: 0 0 35px rgba(201,169,110,0.12);
+    }
+    .btn-hero-primary:hover {
+      background: rgba(201,169,110,0.28);
+      box-shadow: 0 0 60px rgba(201,169,110,0.24);
+      transform: translateY(-2px);
+    }
+    .btn-hero-ghost {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(240,236,224,0.15);
+      color: rgba(240,236,224,0.6); font-family: inherit; font-size: 0.88rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.8rem 1.8rem; border-radius: 999px;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.25s, border-color 0.2s, color 0.2s, transform 0.2s;
+    }
+    .btn-hero-ghost:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(240,236,224,0.3); color: var(--fg-light);
+      transform: translateY(-2px);
+    }
+
+    .scroll-cue {
+      position: absolute; bottom: 2.2rem; left: 50%; transform: translateX(-50%);
+      z-index: 2; color: var(--gold-dim); font-size: 1.2rem;
+      animation: bob 2.4s ease-in-out infinite; pointer-events: none;
+    }
+    @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(9px)} }
+
+    /* ════════════════════════════════════════
+       PART 2: WARM PAPER ARTIFACT SECTION
+    ════════════════════════════════════════ */
+    #artifact {
+      background: var(--bg-warm);
+      color: var(--ink);
+      position: relative;
+      overflow: hidden;
+    }
+    /* Subtle ruled-paper texture */
+    #artifact::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 31px,
+        rgba(107,78,42,0.06) 31px,
+        rgba(107,78,42,0.06) 32px
+      );
+      pointer-events: none;
+    }
+
+    .artifact-inner {
+      max-width: 1160px; margin: 0 auto;
+      padding: 6rem 2rem;
+      position: relative; z-index: 1;
+    }
+
+    .section-rule {
+      display: flex; align-items: center; gap: 1rem;
+      margin-bottom: 3.5rem;
+    }
+    .section-rule-line { flex: 1; height: 1px; background: var(--line-warm); }
+    .section-rule-text {
+      font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--sepia); opacity: 0.7;
+    }
+
+    /* Big poster + copy layout */
+    .artifact-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 4rem;
+      align-items: start;
+    }
+    @media (min-width: 860px) {
+      .artifact-layout { grid-template-columns: 1.1fr 1fr; align-items: center; }
+    }
+
+    /* Poster with shadow + frame */
+    .poster-exhibit {
+      position: relative;
+      cursor: pointer;
+    }
+    .poster-exhibit::before {
+      /* Drop shadow under frame */
+      content: '';
+      position: absolute; inset: -6px;
+      box-shadow: 12px 20px 60px rgba(26,21,16,0.28), 0 0 0 1px rgba(107,78,42,0.12);
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    .poster-mat {
+      background: #f8f3eb;
+      padding: 16px;
+      border: 1px solid rgba(107,78,42,0.2);
+      position: relative;
+    }
+    .poster-mat img { width: 100%; display: block; }
+    .poster-mat-label {
+      position: absolute; bottom: -2px; left: 50%;
+      transform: translateX(-50%) translateY(100%);
+      padding-top: 0.6rem;
+      font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--sepia); opacity: 0.6; white-space: nowrap;
+      text-align: center;
+    }
+    .poster-hover-ring {
+      position: absolute; inset: 0;
+      border: 2px solid transparent;
+      border-radius: 3px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      pointer-events: none;
+    }
+    .poster-exhibit:hover .poster-hover-ring {
+      border-color: var(--gold);
+      box-shadow: 0 0 40px rgba(201,169,110,0.15);
+    }
+    .poster-exhibit:hover .poster-mat { opacity: 0.94; }
+    .poster-cta-hint {
+      position: absolute; bottom: 14px; right: 14px;
+      background: rgba(6,7,13,0.75); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-size: 0.68rem; letter-spacing: 0.12em;
+      text-transform: uppercase; padding: 0.28rem 0.6rem; border-radius: 999px;
+      backdrop-filter: blur(6px);
+      opacity: 0; transition: opacity 0.25s;
+      pointer-events: none;
+    }
+    .poster-exhibit:hover .poster-cta-hint { opacity: 1; }
+
+    /* Copy column */
+    .artifact-copy { color: var(--ink); }
+    .catalog-ref {
+      display: inline-block; font-size: 0.65rem; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--sepia);
+      border: 1px solid rgba(107,78,42,0.3); padding: 0.22rem 0.55rem;
+      border-radius: 2px; margin-bottom: 1.4rem;
+    }
+    .artifact-copy h2 {
+      font-size: clamp(1.6rem, 2.5vw + 0.9rem, 2.6rem);
+      font-weight: 600; line-height: 1.15;
+      color: var(--ink); margin-bottom: 1.4rem;
+    }
+    .artifact-copy p {
+      font-size: 0.96rem; color: var(--ink-dim);
+      line-height: 1.85; margin-bottom: 1rem;
+    }
+
+    /* Stats strip */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      border: 1px solid rgba(107,78,42,0.2);
+      border-radius: 6px; overflow: hidden;
+      margin-top: 2.2rem;
+    }
+    .stat-cell {
+      padding: 1.1rem 0.6rem; text-align: center;
+      border-right: 1px solid rgba(107,78,42,0.15);
+      background: rgba(255,255,255,0.5);
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-num { font-size: 1.8rem; color: var(--sepia); line-height: 1; margin-bottom: 0.25rem; }
+    .stat-lbl { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+
+    .artifact-cta-row { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 2rem; }
+    .btn-warm-primary {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: var(--sepia); color: #f5f0e8;
+      font-family: inherit; font-size: 0.82rem; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 0.72rem 1.5rem;
+      border-radius: 999px; cursor: pointer; text-decoration: none; border: none;
+      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 18px rgba(107,78,42,0.25);
+    }
+    .btn-warm-primary:hover { background: #5a3d1e; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(107,78,42,0.35); }
+    .btn-warm-ghost {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: transparent; border: 1px solid rgba(107,78,42,0.4);
+      color: var(--sepia); font-family: inherit; font-size: 0.82rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.72rem 1.5rem; border-radius: 999px; cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+    .btn-warm-ghost:hover { background: rgba(107,78,42,0.07); border-color: var(--sepia); transform: translateY(-2px); }
+
+    /* ════════════════════════════════════════
+       PART 3: CHART ELEMENTS (dark)
+    ════════════════════════════════════════ */
+    #elements {
+      background: #0b0c17;
+      color: var(--fg-light);
+      padding: 6rem 1.5rem;
+    }
+    .elements-inner { max-width: 1160px; margin: 0 auto; }
+
+    .section-label-dark {
+      font-size: 0.67rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.65; margin-bottom: 2.5rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .section-label-dark::after { content: ''; flex: 1; height: 1px; background: var(--line-dark); }
+
+    .gallery-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      border: 1px solid var(--line-dark);
+      border-radius: 8px; overflow: hidden;
+      margin-bottom: 1px;
+    }
+    @media (min-width: 600px) { .gallery-4 { grid-template-columns: repeat(4, 1fr); } }
+
+    .gal-cell {
+      position: relative; aspect-ratio: 4/3;
+      background: #08090e; overflow: hidden; cursor: pointer;
+    }
+    .gal-cell img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block; opacity: 0.75;
+      transition: transform 0.55s, opacity 0.35s;
+    }
+    .gal-cell:hover img { transform: scale(1.08); opacity: 1; }
+    .gal-label {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 0.55rem 0.7rem;
+      background: linear-gradient(to top, rgba(6,7,13,0.88) 0%, transparent 100%);
+      font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold); opacity: 0; transition: opacity 0.3s;
+    }
+    .gal-cell:hover .gal-label { opacity: 1; }
+
+    .contents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1px; background: var(--line-dark);
+      border: 1px solid var(--line-dark);
+      border-radius: 8px; overflow: hidden;
+      margin-top: 1px;
+    }
+    .contents-cell {
+      background: #0b0c17; padding: 1.1rem 1.3rem;
+      display: flex; align-items: flex-start; gap: 0.75rem;
+    }
+    .contents-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); flex-shrink: 0; margin-top: 0.55rem; }
+    .contents-cell span { font-size: 0.85rem; color: rgba(240,236,224,0.55); line-height: 1.5; }
+
+    /* ════════════════════════════════════════
+       PART 4: TIMELINE (warm)
+    ════════════════════════════════════════ */
+    #timeline-section {
+      background: var(--bg-paper);
+      color: var(--ink);
+      padding: 6rem 1.5rem;
+      position: relative;
+    }
+    #timeline-section::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        to bottom, transparent 0, transparent 39px,
+        rgba(107,78,42,0.05) 39px, rgba(107,78,42,0.05) 40px
+      );
+      pointer-events: none;
+    }
+
+    .timeline-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+
+    .section-label-warm {
+      font-size: 0.67rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--sepia); opacity: 0.7; margin-bottom: 2.5rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .section-label-warm::after { content: ''; flex: 1; height: 1px; background: var(--line-warm); }
+
+    .timeline { position: relative; }
+    .timeline::before {
+      content: ''; position: absolute;
+      left: 0.7rem; top: 0; bottom: 0; width: 1px;
+      background: linear-gradient(to bottom, transparent, rgba(107,78,42,0.3) 10%, rgba(107,78,42,0.3) 90%, transparent);
+    }
+    @media (min-width: 700px) { .timeline::before { left: 50%; } }
+
+    .tl-item {
+      position: relative; padding: 0 0 2.5rem 3rem;
+      opacity: 0; transform: translateY(18px);
+      transition: opacity 0.6s, transform 0.6s;
+    }
+    .tl-item.visible { opacity: 1; transform: translateY(0); }
+    @media (min-width: 700px) {
+      .tl-item { width: 50%; padding: 0 3rem 2.5rem 0; text-align: right; }
+      .tl-item:nth-child(even) { margin-left: 50%; padding: 0 0 2.5rem 3rem; text-align: left; }
+    }
+
+    .tl-dot {
+      position: absolute; left: 0.32rem; top: 0.32rem;
+      width: 0.78rem; height: 0.78rem; border-radius: 50%;
+      background: var(--bg-paper); border: 2px solid rgba(107,78,42,0.5);
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .tl-item.visible .tl-dot { background: var(--sepia); border-color: var(--sepia); }
+    @media (min-width: 700px) {
+      .tl-dot { left: auto; right: -0.42rem; }
+      .tl-item:nth-child(even) .tl-dot { right: auto; left: -0.38rem; }
+    }
+
+    .tl-date { font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sepia); margin-bottom: 0.45rem; }
+    .tl-card {
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(107,78,42,0.15);
+      border-radius: 5px; padding: 0.9rem 1.1rem;
+      backdrop-filter: blur(4px);
+    }
+    .tl-card p { font-size: 0.86rem; color: var(--ink-dim); line-height: 1.65; }
+
+    /* ════════════════════════════════════════
+       PART 5: ABOUT (dark)
+    ════════════════════════════════════════ */
+    #about {
+      background: linear-gradient(135deg, #0b0c17 0%, #0e0f1c 100%);
+      color: var(--fg-light);
+      padding: 6rem 1.5rem;
+      border-top: 1px solid var(--line-dark);
+    }
+    .about-inner { max-width: 1160px; margin: 0 auto; }
+    .about-cols {
+      display: grid; grid-template-columns: 1fr; gap: 3rem; margin-top: 2.5rem;
+    }
+    @media (min-width: 700px) { .about-cols { grid-template-columns: repeat(3, 1fr); } }
+
+    .about-card {
+      background: rgba(255,255,255,0.025); border: 1px solid var(--line-dark);
+      border-radius: 8px; padding: 1.6rem;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .about-card:hover { border-color: var(--gold-dim); background: var(--gold-glow); }
+    .about-icon { font-size: 1.5rem; margin-bottom: 0.9rem; }
+    .about-card h3 { font-size: 0.95rem; color: var(--fg-light); margin-bottom: 0.65rem; }
+    .about-card p { font-size: 0.84rem; color: rgba(240,236,224,0.52); line-height: 1.75; }
+
+    /* ════════════════════════════════════════
+       PART 6: CTA BANNER (warm → dark blend)
+    ════════════════════════════════════════ */
+    #cta-banner {
+      text-align: center;
+      padding: 7rem 1.5rem;
+      background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201,169,110,0.09) 0%, transparent 70%),
+                  var(--bg-dark);
+      position: relative;
+    }
+    #cta-banner::before {
+      content: ''; position: absolute; inset: 0;
+      border-top: 1px solid var(--line-dark); border-bottom: 1px solid var(--line-dark);
+    }
+    #cta-banner h2 {
+      font-size: clamp(1.8rem, 3vw + 1rem, 3.2rem);
+      font-weight: 400; color: var(--fg-light); margin-bottom: 0.9rem;
+    }
+    #cta-banner h2 em { font-style: italic; color: var(--gold); }
+    #cta-banner p {
+      color: rgba(240,236,224,0.48); max-width: 540px;
+      margin: 0 auto 2.5rem; font-size: 0.95rem; line-height: 1.8;
+    }
+    .cta-row { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+
+    /* ════════════════════════════════════════
+       FOOTER
+    ════════════════════════════════════════ */
+    footer {
+      background: #04050a; border-top: 1px solid var(--line-dark);
+      padding: 2.5rem 2rem; text-align: center;
+    }
+    .foot-links {
+      display: flex; flex-wrap: wrap; gap: 1.5rem;
+      justify-content: center; margin-bottom: 1.3rem;
+    }
+    .foot-links a {
+      color: var(--gold); text-decoration: none; font-size: 0.78rem;
+      letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .foot-links a:hover { opacity: 1; }
+    footer p { font-size: 0.72rem; color: rgba(240,236,224,0.2); letter-spacing: 0.04em; }
+
+    /* ── Shared reveal ── */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.65s ease, transform 0.65s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-d1 { transition-delay: 0.1s; }
+    .reveal-d2 { transition-delay: 0.2s; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ── NAV ── -->
+  <nav id="main-nav">
+    <div class="nav-logo">Project Keziah</div>
+    <div class="nav-links">
+      <a href="../../index.html" class="nav-pill">← Collection</a>
+      <a href="explore.html?view=tablets" class="nav-pill">Tri-Framed Poster</a>
+      <a href="explore.html" class="nav-pill cta">Explore Chart ↗</a>
+    </div>
+  </nav>
+
+  <!-- ════════ HERO ════════ -->
+  <section id="hero">
+    <canvas id="hero-canvas"></canvas>
+    <div class="stamp">2 July 1956</div>
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Fred Keziah &nbsp;·&nbsp; Arlington, Virginia &nbsp;·&nbsp; Catalog A242635</div>
+      <h1 class="hero-title">Visual<br><em>Metaphysics</em></h1>
+      <p class="hero-no">No. 1</p>
+      <p class="hero-byline">Flying Saucers &nbsp;— &nbsp;by Fred Keziah</p>
+      <div class="hero-ctas">
+        <a href="explore.html" class="btn-hero-primary">Explore the Full Chart ↗</a>
+        <a href="explore.html?view=tablets" class="btn-hero-ghost">Tri-Framed Poster</a>
+      </div>
+    </div>
+    <div class="scroll-cue" aria-hidden="true">↓</div>
+  </section>
+
+  <!-- ════════ ARTIFACT ════════ -->
+  <section id="artifact">
+    <div class="artifact-inner">
+      <div class="section-rule">
+        <div class="section-rule-line"></div>
+        <div class="section-rule-text">The Artifact</div>
+        <div class="section-rule-line"></div>
+      </div>
+      <div class="artifact-layout">
+        <div class="poster-exhibit reveal" onclick="window.location.href='explore.html'">
+          <div class="poster-mat">
+            <img src="img/landing.png" alt="Visual Metaphysics No. 1: Flying Saucers" />
+            <div class="poster-mat-label">Visual Metaphysics No. 1 — Fred Keziah, 1956</div>
+            <div class="poster-cta-hint">↗ Explore</div>
+          </div>
+          <div class="poster-hover-ring"></div>
+        </div>
+        <div class="artifact-copy reveal reveal-d1">
+          <div class="catalog-ref">Catalog Reference: A242635</div>
+          <h2>The Flying Saucers Chart</h2>
+          <p>Originally produced July 2, 1956, this chart was created by Fred Keziah (1920–2010) — a Navy-trained illustrator who specialized in technical information visualization.</p>
+          <p>A comprehensive single-sheet reference compiling 228 illustrated UFO shapes, flight formations, caricatures of "space people," and tables of observed colors, sounds, speeds, and sizes.</p>
+          <p>Self-published in Arlington, Virginia in 1957 with a revised edition in 1958, sold by mail order for $1.00 per copy — an early landmark of data visualization applied to the unexplained.</p>
+          <div class="stats-strip">
+            <div class="stat-cell"><div class="stat-num">228</div><div class="stat-lbl">Shapes</div></div>
+            <div class="stat-cell"><div class="stat-num">1956</div><div class="stat-lbl">Created</div></div>
+            <div class="stat-cell"><div class="stat-num">$1</div><div class="stat-lbl">Price</div></div>
+            <div class="stat-cell"><div class="stat-num">2023</div><div class="stat-lbl">Digitized</div></div>
+          </div>
+          <div class="artifact-cta-row">
+            <a href="explore.html" class="btn-warm-primary">Explore Full Poster ↗</a>
+            <a href="explore.html?view=tablets" class="btn-warm-ghost">Tri-Framed Poster</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ CHART ELEMENTS ════════ -->
+  <section id="elements">
+    <div class="elements-inner">
+      <div class="section-label-dark">Chart Elements</div>
+      <div class="gallery-4 reveal">
+        <div class="gal-cell" onclick="window.location.href='explore.html'">
+          <img src="img/ufoshapes.png" alt="UFO Shapes" />
+          <div class="gal-label">UFO Shapes</div>
+        </div>
+        <div class="gal-cell" onclick="window.location.href='explore.html'">
+          <img src="img/spacepeople.png" alt="Space People" />
+          <div class="gal-label">Space People</div>
+        </div>
+        <div class="gal-cell" onclick="window.location.href='explore.html'">
+          <img src="img/flightformations.png" alt="Flight Formations" />
+          <div class="gal-label">Flight Formations</div>
+        </div>
+        <div class="gal-cell" onclick="window.location.href='explore.html'">
+          <img src="img/datatables.png" alt="Data Tables" />
+          <div class="gal-label">Data Tables</div>
+        </div>
+      </div>
+      <div class="contents-grid reveal">
+        <div class="contents-cell"><div class="contents-dot"></div><span>228 illustrations of UFO shapes and configurations</span></div>
+        <div class="contents-cell"><div class="contents-dot"></div><span>Caricatures of reported "space people" (alien beings)</span></div>
+        <div class="contents-cell"><div class="contents-dot"></div><span>Flight patterns and formation diagrams</span></div>
+        <div class="contents-cell"><div class="contents-dot"></div><span>Tables of reported UFO colors, sounds, and speeds</span></div>
+        <div class="contents-cell"><div class="contents-dot"></div><span>Size comparisons and proportional representations</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ TIMELINE ════════ -->
+  <section id="timeline-section">
+    <div class="timeline-inner">
+      <div class="section-label-warm">The Journey of Rediscovery</div>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">July 2, 1956</div><div class="tl-card"><p>Original chart "Visual Metaphysics No. 1: Flying Saucers" created by Fred Keziah and internally labeled A242635.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">1957</div><div class="tl-card"><p>Chart self-published in Arlington, Virginia and offered for sale via mail order for $1.00 per copy.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">1958</div><div class="tl-card"><p>Revised edition published, incorporating additional UFO sighting data from the major UFO wave of 1957.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">1990s</div><div class="tl-card"><p>Researcher Greg Bishop obtained several original copies directly from Fred Keziah himself.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">January 2023</div><div class="tl-card"><p>Digital Recreation completed by Johnathan Milgie using high-res photos of the original 2nd Edition poster. Reference images by Richard Geldreich Jr. and Adam Gorightly.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">2025</div><div class="tl-card"><p>Interactive site launched — explore the full poster or the Tri-Framed Poster experience.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ ABOUT ════════ -->
+  <section id="about">
+    <div class="about-inner">
+      <div class="section-label-dark">The Concept of Visual Metaphysics</div>
+      <div class="about-cols">
+        <div class="about-card reveal">
+          <div class="about-icon">📡</div>
+          <h3>Data Visualization Pioneer</h3>
+          <p>Keziah's work was essentially an early form of data visualization applied to UFO reports — a methodical, almost scientific approach treating it much like a military recognition chart.</p>
+        </div>
+        <div class="about-card reveal reveal-d1">
+          <div class="about-icon">🛸</div>
+          <h3>Post-War UFO Culture</h3>
+          <p>In the post-war era of the 1950s, public fascination with space-age mysteries and esoteric spirituality converged. Keziah applied rigorous data design to these usually sensationalized topics.</p>
+        </div>
+        <div class="about-card reveal reveal-d2">
+          <div class="about-icon">🔭</div>
+          <h3>Eclectic Inquiry</h3>
+          <p>UFOs for No. 1, Reincarnation for No. 2 — Keziah's series reflects an era when the boundary between scientific inquiry and metaphysics remained delightfully blurred.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ CTA ════════ -->
+  <section id="cta-banner">
+    <h2>Explore the <em>Complete</em> Chart</h2>
+    <p>Zoom into every engraved detail on the full poster, or experience the chart split across interactive illuminated frames.</p>
+    <div class="cta-row">
+      <a href="explore.html" class="btn-hero-primary">Full Poster ↗</a>
+      <a href="explore.html?view=tablets" class="btn-hero-ghost">Tri-Framed Poster</a>
+    </div>
+  </section>
+
+  <!-- ════════ FOOTER ════════ -->
+  <footer>
+    <div class="foot-links">
+      <a href="https://github.com/jmilgie/ProjectKeziah/blob/main/Visual-Metaphysics-No1-FlyingSaucers/visio/VisualMetaphysics-no1.pdf" target="_blank" rel="noopener">View on GitHub</a>
+      <a href="mailto:ProjectKeziah@protonmail.com">Contact</a>
+      <a href="https://x.com/ProjectKeziah" target="_blank" rel="noopener">@ProjectKeziah</a>
+    </div>
+    <p>&copy; 2025 Visual Metaphysics Digital Recreation Project &nbsp;·&nbsp; Original works 1956–1958 by Fred Keziah</p>
+  </footer>
+
+  <script>
+    /* ── Hero starfield ── */
+    (function(){
+      const c = document.getElementById('hero-canvas');
+      const ctx = c.getContext('2d');
+      let stars=[], dust=[];
+      function init(){
+        c.width=innerWidth; c.height=innerHeight;
+        stars = Array.from({length:200},()=>({
+          x:Math.random()*c.width, y:Math.random()*c.height,
+          r:Math.random()*1.1+0.15, a:Math.random()*0.65+0.1,
+          tw:Math.random()*Math.PI*2, spd:Math.random()*0.007+0.002
+        }));
+        dust = Array.from({length:28},()=>({
+          x:Math.random()*c.width, y:Math.random()*c.height,
+          vy:-(Math.random()*0.15+0.04), vx:(Math.random()-0.5)*0.18,
+          r:Math.random()*1.6+0.4, a:Math.random()*0.28+0.04
+        }));
+      }
+      window.addEventListener('resize',init); init();
+      let t=0;
+      (function draw(){
+        ctx.clearRect(0,0,c.width,c.height); t+=0.015;
+        stars.forEach(s=>{
+          const a=s.a*(0.5+0.5*Math.sin(t*s.spd*55+s.tw));
+          ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+          ctx.fillStyle=`rgba(240,236,224,${a})`; ctx.fill();
+        });
+        dust.forEach(p=>{
+          p.x+=p.vx+Math.sin(t*0.35+p.y*0.008)*0.07; p.y+=p.vy;
+          if(p.y<-4){p.y=c.height+4;p.x=Math.random()*c.width;}
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          ctx.fillStyle=`rgba(201,169,110,${p.a})`; ctx.fill();
+        });
+        requestAnimationFrame(draw);
+      })();
+    })();
+
+    /* ── Nav scroll class ── */
+    const nav = document.getElementById('main-nav');
+    window.addEventListener('scroll', ()=>{
+      nav.classList.toggle('scrolled', window.scrollY > 80);
+    });
+
+    /* ── Intersection reveals ── */
+    const io = new IntersectionObserver(entries=>{
+      entries.forEach(e=>{
+        if(!e.isIntersecting) return;
+        const idx = e.target.classList.contains('tl-item')
+          ? [...e.target.parentElement.children].indexOf(e.target)*110 : 0;
+        setTimeout(()=>e.target.classList.add('visible'), idx);
+        io.unobserve(e.target);
+      });
+    },{threshold:0.12});
+    document.querySelectorAll('.reveal, .tl-item').forEach(el=>io.observe(el));
+  </script>
+</body>
+</html>

@@ -1,314 +1,718 @@
-<!doctype html>
-<html lang="en" data-theme="synthwave">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Milgie.com</title>
-  <meta name="description" content="Milgie.com — a portal to collectibles, games, and our corner of the internet." />
-  <link rel="stylesheet" href="./themes.css">
-  <link rel="stylesheet" href="./styles.css">
-  <script>
-    // Apply saved theme before first paint to avoid flash
-    (function(){
-      var t = localStorage.getItem("milgie-theme") || "synthwave";
-      document.documentElement.setAttribute("data-theme", t);
-    })();
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milgie.com — A Portal to Imagination</title>
+  <meta name="description" content="Milgie.com — games, collectibles, and Project Keziah. A digital hub built with care." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold:      #c9a96e;
+      --gold-dim:  rgba(201,169,110,0.32);
+      --gold-glow: rgba(201,169,110,0.09);
+      --bg-dark:   #06070d;
+      --bg-mid:    #0c0e18;
+      --bg-warm:   #f5f0e8;
+      --bg-paper:  #ede7d8;
+      --ink:       #1a1510;
+      --ink-dim:   rgba(26,21,16,0.62);
+      --sepia:     #6b4e2a;
+      --line-dark: rgba(201,169,110,0.18);
+      --line-warm: rgba(107,78,42,0.18);
+      --fg-light:  #f0ece0;
+      --fg-dim:    rgba(240,236,224,0.55);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "Playfair Display", Georgia, serif;
+      overflow-x: hidden;
+      background: var(--bg-dark);
+    }
+
+    /* ── FIXED NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+      padding: 0.9rem 1.8rem;
+      display: flex; align-items: center; justify-content: space-between;
+      pointer-events: none;
+      transition: background 0.4s;
+    }
+    nav.scrolled {
+      background: rgba(6,7,13,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line-dark);
+    }
+    .nav-logo {
+      font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.8; pointer-events: auto;
+      text-decoration: none;
+    }
+    .nav-links { display: flex; gap: 0.5rem; pointer-events: auto; flex-wrap: wrap; }
+    .nav-pill {
+      background: rgba(10,8,4,0.65); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.75rem;
+      letter-spacing: 0.09em; padding: 0.36rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .nav-pill:hover { border-color: var(--gold); background: rgba(201,169,110,0.14); color: #f0e0c0; }
+
+    /* ════════════════════════════════════
+       DARK HERO
+    ════════════════════════════════════ */
+    #hero {
+      position: relative; min-height: 100vh;
+      background: var(--bg-dark);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden; padding: 7rem 1.5rem 5rem;
+    }
+    #hero-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    #hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% 60%, rgba(201,169,110,0.07) 0%, transparent 65%),
+        linear-gradient(to bottom, transparent 60%, var(--bg-dark) 100%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative; z-index: 2; text-align: center; max-width: 820px;
+    }
+    .hero-eyebrow {
+      font-size: 0.68rem; letter-spacing: 0.32em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.75; margin-bottom: 1.4rem;
+    }
+    .hero-title {
+      font-size: clamp(3.5rem, 7vw + 1rem, 7.5rem);
+      font-weight: 400; line-height: 1.0;
+      color: var(--fg-light);
+      text-shadow: 0 0 140px rgba(201,169,110,0.2);
+      margin-bottom: 0.5rem;
+    }
+    .hero-title em { font-style: italic; color: var(--gold); }
+    .hero-tagline {
+      font-size: clamp(1rem, 1.6vw + 0.5rem, 1.35rem);
+      color: var(--fg-dim); letter-spacing: 0.06em;
+      margin-bottom: 3rem; font-style: italic;
+    }
+    .hero-ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(201,169,110,0.16); border: 1px solid var(--gold);
+      color: var(--fg-light); font-family: inherit; font-size: 0.88rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.8rem 1.8rem; border-radius: 999px;
+      text-decoration: none;
+      transition: background 0.25s, box-shadow 0.25s, transform 0.2s;
+      box-shadow: 0 0 35px rgba(201,169,110,0.12);
+    }
+    .btn-primary:hover {
+      background: rgba(201,169,110,0.28);
+      box-shadow: 0 0 55px rgba(201,169,110,0.22);
+      transform: translateY(-2px);
+    }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: transparent; border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.88rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.8rem 1.8rem; border-radius: 999px;
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .btn-ghost:hover { border-color: var(--gold); background: rgba(201,169,110,0.1); color: #f0e0c0; }
+
+    .hero-scroll {
+      position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      color: var(--gold); opacity: 0.4; font-size: 0.6rem; letter-spacing: 0.2em;
+      text-transform: uppercase; animation: scrollBob 2.5s ease-in-out infinite;
+    }
+    @keyframes scrollBob {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%       { transform: translateX(-50%) translateY(6px); }
+    }
+    .hero-scroll svg { opacity: 0.7; }
+
+    /* ════════════════════════════════════
+       WARM PAPER: DESTINATIONS
+    ════════════════════════════════════ */
+    #destinations {
+      background: var(--bg-warm);
+      padding: 6rem 1.5rem;
+      position: relative;
+    }
+    #destinations::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0.5;
+    }
+    .section-label {
+      text-align: center;
+      font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--sepia); opacity: 0.65; margin-bottom: 0.8rem;
+    }
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.8rem, 3vw + 1rem, 3rem);
+      font-weight: 400; color: var(--ink);
+      margin-bottom: 0.6rem; line-height: 1.15;
+    }
+    .section-title em { font-style: italic; color: var(--sepia); }
+    .section-sub {
+      text-align: center;
+      font-size: 1rem; color: var(--ink-dim); font-style: italic;
+      margin-bottom: 3.5rem; max-width: 520px; margin-left: auto; margin-right: auto;
+    }
+
+    .dest-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem; max-width: 1080px; margin: 0 auto;
+    }
+    .dest-card {
+      background: #fff; border: 1px solid var(--line-warm);
+      border-radius: 4px; overflow: hidden;
+      text-decoration: none; color: inherit;
+      transition: transform 0.3s, box-shadow 0.3s;
+      display: flex; flex-direction: column;
+    }
+    .dest-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 18px 50px rgba(107,78,42,0.14);
+    }
+    .dest-card-top {
+      padding: 2.2rem 1.8rem 1.4rem;
+      border-bottom: 1px solid var(--line-warm);
+      flex: 1;
+    }
+    .dest-icon {
+      width: 48px; height: 48px; margin-bottom: 1.2rem;
+      color: var(--sepia); opacity: 0.7;
+    }
+    .dest-card-top h3 {
+      font-size: 1.45rem; font-weight: 400; color: var(--ink);
+      margin-bottom: 0.6rem;
+    }
+    .dest-card-top p {
+      font-size: 0.9rem; color: var(--ink-dim); line-height: 1.65;
+      font-style: italic;
+    }
+    .dest-card-chips {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 1rem;
+    }
+    .chip {
+      font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--sepia); border: 1px solid var(--line-warm);
+      padding: 0.2rem 0.55rem; border-radius: 999px;
+    }
+    .dest-card-bottom {
+      padding: 1rem 1.8rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dest-arrow {
+      font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--sepia); font-family: inherit;
+      transition: letter-spacing 0.2s;
+    }
+    .dest-card:hover .dest-arrow { letter-spacing: 0.2em; }
+    .dest-badge {
+      font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: #888; background: var(--bg-paper); border: 1px solid var(--line-warm);
+      padding: 0.18rem 0.5rem; border-radius: 999px;
+    }
+    .dest-badge.active { color: #5a7a3a; border-color: rgba(90,122,58,0.4); background: rgba(90,122,58,0.08); }
+
+    /* ════════════════════════════════════
+       DARK: FEATURE SPOTLIGHT — Project Keziah
+    ════════════════════════════════════ */
+    #spotlight {
+      background: var(--bg-mid);
+      padding: 7rem 1.5rem;
+      position: relative; overflow: hidden;
+    }
+    #spotlight::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 65% 50%, rgba(201,169,110,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .spotlight-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4rem; align-items: center;
+    }
+    @media (max-width: 700px) {
+      .spotlight-inner { grid-template-columns: 1fr; }
+      .spotlight-visual { order: -1; }
+    }
+    .spotlight-copy .eyebrow {
+      font-size: 0.65rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.7; margin-bottom: 1rem;
+    }
+    .spotlight-copy h2 {
+      font-size: clamp(2rem, 3vw + 1rem, 3.2rem);
+      font-weight: 400; color: var(--fg-light); line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+    .spotlight-copy h2 em { font-style: italic; color: var(--gold); }
+    .spotlight-copy p {
+      font-size: 1rem; color: var(--fg-dim); line-height: 1.8;
+      font-style: italic; margin-bottom: 1.4rem;
+    }
+    .spotlight-ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    .spotlight-visual {
+      position: relative; display: flex; justify-content: center; align-items: center;
+    }
+    .poster-frame {
+      position: relative; max-width: 340px; width: 100%;
+    }
+    .poster-mat {
+      background: #1a1610; border: 1px solid var(--gold-dim);
+      padding: 1.2rem;
+      box-shadow:
+        0 0 0 1px rgba(201,169,110,0.1),
+        0 25px 80px rgba(0,0,0,0.7),
+        0 0 60px rgba(201,169,110,0.07);
+    }
+    .poster-mat img {
+      display: block; width: 100%; height: auto;
+      opacity: 0.9;
+      transition: opacity 0.3s;
+    }
+    .poster-mat:hover img { opacity: 1; }
+    .poster-caption {
+      text-align: center; margin-top: 0.7rem;
+      font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.45;
+    }
+    .poster-glow {
+      position: absolute; inset: -15px;
+      background: radial-gradient(ellipse at center, rgba(201,169,110,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: -1;
+      opacity: 0; transition: opacity 0.4s;
+    }
+    .poster-frame:hover .poster-glow { opacity: 1; }
+
+    /* ════════════════════════════════════
+       WARM PAPER: ABOUT / STATS
+    ════════════════════════════════════ */
+    #about {
+      background: var(--bg-paper);
+      padding: 6rem 1.5rem;
+      position: relative;
+    }
+    #about::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, var(--sepia), transparent);
+      opacity: 0.3;
+    }
+    .about-inner {
+      max-width: 1000px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start;
+    }
+    @media (max-width: 650px) { .about-inner { grid-template-columns: 1fr; gap: 2.5rem; } }
+
+    .about-copy .eyebrow {
+      font-size: 0.65rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--sepia); opacity: 0.65; margin-bottom: 1rem;
+    }
+    .about-copy h2 {
+      font-size: clamp(1.8rem, 2.5vw + 1rem, 2.6rem);
+      font-weight: 400; color: var(--ink); line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+    .about-copy h2 em { font-style: italic; color: var(--sepia); }
+    .about-copy p {
+      font-size: 0.97rem; color: var(--ink-dim); line-height: 1.85;
+      font-style: italic; margin-bottom: 1rem;
+    }
+
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
+    .stat-box {
+      border: 1px solid var(--line-warm); padding: 1.4rem;
+      background: rgba(255,255,255,0.5);
+    }
+    .stat-num {
+      font-size: 2.2rem; font-weight: 700; color: var(--sepia);
+      line-height: 1; margin-bottom: 0.3rem;
+    }
+    .stat-label {
+      font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--ink-dim);
+    }
+
+    /* ════════════════════════════════════
+       DARK: CTA BANNER
+    ════════════════════════════════════ */
+    #cta-banner {
+      background: var(--bg-dark);
+      padding: 6rem 1.5rem;
+      text-align: center;
+      border-top: 1px solid var(--line-dark);
+    }
+    .cta-eyebrow {
+      font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.6; margin-bottom: 1.2rem;
+    }
+    .cta-title {
+      font-size: clamp(2rem, 3.5vw + 1rem, 3.5rem);
+      font-weight: 400; color: var(--fg-light); line-height: 1.15;
+      margin-bottom: 0.8rem;
+    }
+    .cta-title em { font-style: italic; color: var(--gold); }
+    .cta-sub {
+      font-size: 1rem; color: var(--fg-dim); font-style: italic;
+      margin-bottom: 2.5rem;
+    }
+    .cta-btns { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+
+    /* ════════════════════════════════════
+       FOOTER
+    ════════════════════════════════════ */
+    footer {
+      background: var(--bg-dark);
+      border-top: 1px solid var(--line-dark);
+      padding: 2rem 1.8rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.75rem;
+    }
+    .foot-brand {
+      font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.5;
+    }
+    .foot-links {
+      display: flex; gap: 1.2rem;
+    }
+    .foot-links a {
+      font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--fg-dim); opacity: 0.45; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .foot-links a:hover { opacity: 0.75; }
+
+    /* ════════════════════════════════════
+       REVEAL ANIMATIONS
+    ════════════════════════════════════ */
+    .reveal {
+      opacity: 0; transform: translateY(28px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+  </style>
 </head>
-
 <body>
-  <!-- Ambient layers (both themes; CSS controls which is visible) -->
-  <div class="stars"         aria-hidden="true"></div>
-  <div class="sun"           aria-hidden="true"></div>
-  <div class="grid"          aria-hidden="true"><div class="plane"></div></div>
-  <div class="hex-grid"      aria-hidden="true"></div>
-  <div class="scan-beam"     aria-hidden="true"></div>
-  <div class="noise-vignette" aria-hidden="true"></div>
-  <div class="scanlines"     aria-hidden="true"></div>
 
-  <!-- Industrial-only system status ticker -->
-  <div class="status-bar-header" aria-hidden="true">
-    <div class="wrap">
-      <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
-      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 1 ACTIVE</span>
-      <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
-      <span class="sbh-spacer"></span>
-      <span class="sbh-time" id="sys-time">--:--:--</span>
+<!-- ── NAV ── -->
+<nav id="main-nav">
+  <a class="nav-logo" href="#hero">Milgie.com</a>
+  <div class="nav-links">
+    <a class="nav-pill" href="./games/">Games</a>
+    <a class="nav-pill" href="./collectibles/">Collectibles</a>
+    <a class="nav-pill" href="./projectkeziah/">Project Keziah</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+
+  <div class="hero-inner">
+    <p class="hero-eyebrow">Welcome to</p>
+    <h1 class="hero-title">Milgie<em>.com</em></h1>
+    <p class="hero-tagline">A digital hub for games, collectibles, and whatever's lighting up the timeline.</p>
+    <div class="hero-ctas">
+      <a class="btn-primary" href="#destinations">Enter Portal</a>
+      <a class="btn-ghost" href="./projectkeziah/Visual-Metaphysics-No1-FlyingSaucers/site/">Visual Metaphysics</a>
     </div>
   </div>
 
-  <header>
-    <div class="wrap">
-      <nav class="nav" aria-label="Primary">
-        <a class="brand" href="#top" title="Milgie.com Home">
-          <span class="logo" aria-hidden="true"></span>
-          <span>
-            <span class="title">Milgie<span class="glow">.com</span></span>
-          </span>
-        </a>
+  <div class="hero-scroll" aria-hidden="true">
+    <svg width="16" height="22" viewBox="0 0 16 22" fill="none">
+      <rect x="1" y="1" width="14" height="20" rx="7" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="8" cy="7" r="2" fill="currentColor" opacity="0.7">
+        <animate attributeName="cy" from="7" to="13" dur="1.5s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" from="0.7" to="0" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+    Scroll
+  </div>
+</section>
 
-        <div class="navlinks">
-          <a class="pill" href="#portal">Portal</a>
-          <a class="pill" href="./games/">Games</a>
-          <a class="pill" href="./collectibles/">Collectibles</a>
-          <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Switch theme">
-            <span class="t-icon" aria-hidden="true" id="themeIcon">✦</span>
-            <span id="themeLabel">Industrial</span>
-          </button>
-        </div>
-      </nav>
-    </div>
-  </header>
+<!-- ── DESTINATIONS ── -->
+<section id="destinations">
+  <p class="section-label reveal">Select Destination</p>
+  <h2 class="section-title reveal reveal-delay-1">Choose Your <em>Sector</em></h2>
+  <p class="section-sub reveal reveal-delay-2">All systems accessible. Built with care. Explored with curiosity.</p>
 
-  <main id="top">
-    <div class="wrap">
+  <div class="dest-grid">
 
-      <!-- ====================================================
-           HERO
-           ==================================================== -->
-      <div class="hero">
-
-        <!-- Left: headline + CTA -->
-        <section class="card hero-left" aria-label="Welcome">
-          <div class="kicker">
-            <span class="dot" aria-hidden="true"></span>
-            <span id="kicker-text">System Initialized</span>
-          </div>
-
-          <h1>
-            <span class="glow">MILGIE</span><span class="glow">.COM</span><br>
-            Gateway to<br>Imagination
-          </h1>
-
-          <p class="lead">
-            A digital hub for games, collectibles, and whatever's lighting up
-            the timeline. Built with care. Explored with curiosity.
-          </p>
-
-          <div class="ctaRow">
-            <a class="btn primary" href="#portal" aria-label="Jump to portal links">
-              Access Portal
-              <span aria-hidden="true">▶</span>
-            </a>
-            <a class="btn ghost" href="./games/" aria-label="Go to Games">
-              Play Games
-            </a>
-          </div>
-        </section>
-
-        <!-- Right: system readout panels -->
-        <div class="card hero-right" aria-label="System status">
-
-          <div class="mini">
-            <div class="mini-label">System Status</div>
-            <div class="stat">
-              <span class="stat-key">Network</span>
-              <span class="badge online">● Online</span>
-            </div>
-            <div class="stat">
-              <span class="stat-key">Games</span>
-              <span class="stat-val">1 Active</span>
-            </div>
-            <div class="stat">
-              <span class="stat-key">Collections</span>
-              <span class="stat-val">3 Items</span>
-            </div>
-            <div class="stat">
-              <span class="stat-key">Version</span>
-              <span class="badge">v2.0</span>
-            </div>
-          </div>
-
-          <div class="mini">
-            <div class="mini-label">Recent Activity</div>
-            <div class="stat">
-              <span class="stat-key">Criminal Empire</span>
-              <span class="badge online">Active</span>
-            </div>
-            <div class="stat">
-              <span class="stat-key">Canvas Series</span>
-              <span class="badge">Gallery</span>
-            </div>
-            <div class="stat">
-              <span class="stat-key">Milgie Gaming Sys</span>
-              <span class="badge warn">Collecting</span>
-            </div>
-          </div>
-
-          <div class="mini">
-            <div class="mini-label">Quick Links</div>
-            <div class="stat">
-              <span class="stat-key">Games Hub</span>
-              <a class="tile-arrow" href="./games/" style="margin:0">Launch ▶</a>
-            </div>
-            <div class="stat">
-              <span class="stat-key">Collectibles</span>
-              <a class="tile-arrow" href="./collectibles/" style="margin:0">Enter ▶</a>
-            </div>
-            <div class="stat">
-              <span class="stat-key">Project Keziah</span>
-              <a class="tile-arrow" href="./projectkeziah/" style="margin:0">Explore ▶</a>
-            </div>
-          </div>
-
+    <a class="dest-card reveal reveal-delay-1" href="./games/">
+      <div class="dest-card-top">
+        <svg class="dest-icon" viewBox="0 0 48 48" fill="none">
+          <rect x="4" y="12" width="40" height="24" rx="4" stroke="currentColor" stroke-width="2.2"/>
+          <circle cx="16" cy="24" r="4" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M30 20v8M26 24h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <h3>Games</h3>
+        <p>Browser-based games and interactive experiences. Click, build, and conquer.</p>
+        <div class="dest-card-chips">
+          <span class="chip">Play</span>
+          <span class="chip">Idle</span>
+          <span class="chip">Fun</span>
         </div>
       </div>
+      <div class="dest-card-bottom">
+        <span class="dest-badge active">1 Active</span>
+        <span class="dest-arrow">Launch →</span>
+      </div>
+    </a>
 
-      <!-- ====================================================
-           PORTAL
-           ==================================================== -->
-      <section class="card portal" id="portal" aria-label="Portal links">
-
-        <div class="section-header">
-          <div>
-            <h2>Select Destination</h2>
-            <p class="section-subtitle">Choose your sector. All systems accessible.</p>
-          </div>
-          <span class="section-badge" id="sectorBadge">2 Sectors Online</span>
-        </div>
-
-        <div class="gridLinks" id="linkGrid">
-          <!-- Tiles inserted by JS -->
-        </div>
-
-      </section>
-
-    </div>
-  </main>
-
-  <footer>
-    <div class="wrap">
-      <div class="foot">
-        <div>© <span id="year"></span> <strong>Milgie.com</strong></div>
-        <div class="foot-right">
-          <span class="mono" id="footer-theme-label" style="opacity:.5;font-size:11px">THEME: SYNTHWAVE</span>
+    <a class="dest-card reveal reveal-delay-2" href="./collectibles/">
+      <div class="dest-card-top">
+        <svg class="dest-icon" viewBox="0 0 48 48" fill="none">
+          <rect x="14" y="14" width="20" height="20" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M18 6h12M18 42h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M6 18v12M42 18v12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <h3>Collectibles</h3>
+        <p>The vault — art, finds, oddities, and legendary loot from the archive.</p>
+        <div class="dest-card-chips">
+          <span class="chip">Gallery</span>
+          <span class="chip">Drops</span>
+          <span class="chip">Vault</span>
         </div>
       </div>
+      <div class="dest-card-bottom">
+        <span class="dest-badge">3 Items</span>
+        <span class="dest-arrow">Enter →</span>
+      </div>
+    </a>
+
+    <a class="dest-card reveal reveal-delay-3" href="./projectkeziah/">
+      <div class="dest-card-top">
+        <svg class="dest-icon" viewBox="0 0 48 48" fill="none">
+          <rect x="8" y="6" width="32" height="36" rx="3" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M16 14h16M16 22h16M16 30h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="33" cy="33" r="3" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <h3>Project Keziah</h3>
+        <p>An archive of Visual Metaphysics work — interactive tablets designed for research and exploration.</p>
+        <div class="dest-card-chips">
+          <span class="chip">Archive</span>
+          <span class="chip">Interactive</span>
+          <span class="chip">Research</span>
+        </div>
+      </div>
+      <div class="dest-card-bottom">
+        <span class="dest-badge active">No. 1 Live</span>
+        <span class="dest-arrow">Explore →</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- ── SPOTLIGHT: PROJECT KEZIAH ── -->
+<section id="spotlight">
+  <div class="spotlight-inner">
+
+    <div class="spotlight-copy">
+      <p class="eyebrow reveal">Featured · Project Keziah</p>
+      <h2 class="reveal reveal-delay-1">Visual Metaphysics<br><em>No. 1: Flying Saucers</em></h2>
+      <p class="reveal reveal-delay-2">
+        A digitally recreated research poster from 1956, presenting early documentation of
+        unidentified aerial phenomena — flight formations, saucer shapes, space people —
+        reimagined as an interactive artifact.
+      </p>
+      <p class="reveal reveal-delay-2">
+        Explore the Tri-Framed Poster in an immersive 3D environment, or pan and zoom the
+        full composite image at full resolution.
+      </p>
+      <div class="spotlight-ctas reveal reveal-delay-3">
+        <a class="btn-primary" href="./projectkeziah/Visual-Metaphysics-No1-FlyingSaucers/site/">View Project</a>
+        <a class="btn-ghost" href="./projectkeziah/Visual-Metaphysics-No1-FlyingSaucers/site/explore.html?view=tablets">Tri-Framed Poster ↗</a>
+      </div>
     </div>
-  </footer>
 
-  <script>
-    /* ======================================================
-       Theme System
-       ====================================================== */
-    const THEMES = ["synthwave", "industrial"];
-    const THEME_LABELS = {
-      synthwave: { icon: "✦", next: "Industrial", footLabel: "THEME: SYNTHWAVE" },
-      industrial: { icon: "⬡", next: "Synthwave",  footLabel: "THEME: INDUSTRIAL" }
-    };
-
-    function applyTheme(theme) {
-      document.documentElement.setAttribute("data-theme", theme);
-      localStorage.setItem("milgie-theme", theme);
-      const meta = THEME_LABELS[theme];
-      document.getElementById("themeIcon").textContent  = meta.icon;
-      document.getElementById("themeLabel").textContent = meta.next;
-      document.getElementById("footer-theme-label").textContent = meta.footLabel;
-      document.getElementById("kicker-text").textContent =
-        theme === "industrial" ? "System Initialized" : "Welcome";
-    }
-
-    document.getElementById("themeToggle").addEventListener("click", function() {
-      const cur = document.documentElement.getAttribute("data-theme") || "synthwave";
-      const next = cur === "synthwave" ? "industrial" : "synthwave";
-      applyTheme(next);
-    });
-
-    // Init from localStorage
-    const savedTheme = localStorage.getItem("milgie-theme") || "synthwave";
-    applyTheme(savedTheme);
-
-    /* ======================================================
-       Clock (industrial status bar)
-       ====================================================== */
-    function updateClock() {
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
-      const el = document.getElementById("sys-time");
-      if (el) el.textContent = `${hh}:${mm}:${ss}`;
-    }
-    updateClock();
-    setInterval(updateClock, 1000);
-
-    /* ======================================================
-       Portal Tiles
-       ====================================================== */
-    document.getElementById("year").textContent = new Date().getFullYear();
-
-    const PAGES = [
-      {
-        title: "Games",
-        href: "./games/",
-        desc: "Browser-based games and interactive experiences. Click, build, conquer.",
-        chips: ["Play", "Idle", "Fun"],
-        icon: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/>
-          <circle cx="8" cy="12" r="2" stroke="currentColor" stroke-width="1.8"/>
-          <path d="M15 10v4M13 12h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>`,
-        label: "Launch →"
-      },
-      {
-        title: "Collectibles",
-        href: "./collectibles/",
-        desc: "The vault — art, finds, oddities, and legendary loot from the archive.",
-        chips: ["Gallery", "Drops", "Vault"],
-        icon: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <rect x="7" y="7" width="10" height="10" stroke="currentColor" stroke-width="1.8"/>
-          <path d="M9 3h6M9 21h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          <path d="M3 9v6M21 9v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>`,
-        label: "Enter →"
-      },
-      {
-        title: "Project Keziah",
-        href: "./projectkeziah/",
-        desc: "An archive of Visual Metaphysics work with interactive tablets designed for research and exploration.",
-        chips: ["Archive", "Interactive", "Research"],
-        icon: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
-          <path d="M8 7h8M8 11h8M8 15h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          <circle cx="16.5" cy="16.5" r="1.5" stroke="currentColor" stroke-width="1.6"/>
-        </svg>`,
-        label: "Explore →"
-      }
-    ];
-
-    document.getElementById("sectorBadge").textContent = `${PAGES.length} Sectors Online`;
-
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function tileTemplate(item) {
-      const chips = (item.chips || []).map(c =>
-        `<span class="chip">${escapeHtml(c)}</span>`
-      ).join("");
-      return `
-        <a class="tile" href="${item.href}" aria-label="Go to ${escapeHtml(item.title)}">
-          <div class="tile-top">
-            <div>
-              <h3>${escapeHtml(item.title)}</h3>
-              <p>${escapeHtml(item.desc)}</p>
-            </div>
-            <div class="tile-icon" aria-hidden="true">${item.icon}</div>
-          </div>
-          <div class="tile-bottom">
-            <div class="chipRow">${chips}</div>
-            <span class="tile-arrow">${escapeHtml(item.label)}</span>
-          </div>
+    <div class="spotlight-visual reveal reveal-delay-2">
+      <div class="poster-frame">
+        <div class="poster-glow"></div>
+        <a href="./projectkeziah/Visual-Metaphysics-No1-FlyingSaucers/site/explore.html" class="poster-mat">
+          <img
+            src="./projectkeziah/Visual-Metaphysics-No1-FlyingSaucers/site/img/fullSize.png"
+            alt="Visual Metaphysics No. 1 — Flying Saucers (1956) full poster"
+            loading="lazy"
+          />
         </a>
-      `;
+        <p class="poster-caption">Visual Metaphysics No. 1 · 1956</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── ABOUT / STATS ── -->
+<section id="about">
+  <div class="about-inner">
+
+    <div class="about-copy">
+      <p class="eyebrow reveal">About</p>
+      <h2 class="reveal reveal-delay-1">Built with <em>care.</em><br>Explored with curiosity.</h2>
+      <p class="reveal reveal-delay-2">
+        Milgie.com is a personal digital hub — a place for games that spark
+        imagination, collectibles that deserve a proper showcase, and research
+        projects too interesting to leave in a folder.
+      </p>
+      <p class="reveal reveal-delay-2">
+        Everything here is built from scratch, with attention to detail and a
+        genuine love for the weird, the rare, and the overlooked.
+      </p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box reveal reveal-delay-1">
+        <div class="stat-num">1</div>
+        <div class="stat-label">Active Game</div>
+      </div>
+      <div class="stat-box reveal reveal-delay-2">
+        <div class="stat-num">3</div>
+        <div class="stat-label">Collectibles</div>
+      </div>
+      <div class="stat-box reveal reveal-delay-3">
+        <div class="stat-num">2</div>
+        <div class="stat-label">Research Projects</div>
+      </div>
+      <div class="stat-box reveal reveal-delay-4">
+        <div class="stat-num">∞</div>
+        <div class="stat-label">Curiosity</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── CTA BANNER ── -->
+<section id="cta-banner">
+  <p class="cta-eyebrow reveal">Ready to explore?</p>
+  <h2 class="cta-title reveal reveal-delay-1">Step Through the <em>Portal</em></h2>
+  <p class="cta-sub reveal reveal-delay-2">Start with the Visual Metaphysics archive — it's unlike anything else here.</p>
+  <div class="cta-btns reveal reveal-delay-3">
+    <a class="btn-primary" href="./projectkeziah/Visual-Metaphysics-No1-FlyingSaucers/site/">Open Visual Metaphysics No. 1</a>
+    <a class="btn-ghost" href="./games/">Play a Game</a>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <span class="foot-brand">© <span id="foot-year"></span> Milgie.com</span>
+  <div class="foot-links">
+    <a href="./games/">Games</a>
+    <a href="./collectibles/">Collectibles</a>
+    <a href="./projectkeziah/">Project Keziah</a>
+  </div>
+</footer>
+
+<script>
+  /* ── Year ── */
+  document.getElementById('foot-year').textContent = new Date().getFullYear();
+
+  /* ── Nav scroll state ── */
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+
+  /* ── Scroll reveal ── */
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  /* ── Hero canvas: stars + golden motes ── */
+  (function() {
+    const canvas = document.getElementById('hero-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let W, H, stars, motes;
+
+    function resize() {
+      W = canvas.width  = canvas.offsetWidth;
+      H = canvas.height = canvas.offsetHeight;
+      initParticles();
     }
 
-    document.getElementById("linkGrid").innerHTML = PAGES.map(tileTemplate).join("");
-  </script>
+    function initParticles() {
+      stars = Array.from({ length: 280 }, () => ({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.1 + 0.2,
+        a: Math.random(),
+        speed: Math.random() * 0.004 + 0.001,
+        phase: Math.random() * Math.PI * 2,
+      }));
+      motes = Array.from({ length: 60 }, () => ({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.8 + 0.5,
+        vy: -(Math.random() * 0.25 + 0.05),
+        vx: (Math.random() - 0.5) * 0.12,
+        a: Math.random() * 0.5 + 0.1,
+      }));
+    }
+
+    let t = 0;
+    function frame() {
+      ctx.clearRect(0, 0, W, H);
+      t += 0.016;
+
+      // Stars
+      stars.forEach(s => {
+        const a = s.a * (0.5 + 0.5 * Math.sin(t * s.speed * 100 + s.phase));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(240,236,224,${a})`;
+        ctx.fill();
+      });
+
+      // Golden motes
+      motes.forEach(m => {
+        m.y += m.vy;
+        m.x += m.vx;
+        if (m.y < -5) { m.y = H + 5; m.x = Math.random() * W; }
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(201,169,110,${m.a})`;
+        ctx.fill();
+      });
+
+      requestAnimationFrame(frame);
+    }
+
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
+    frame();
+  })();
+</script>
 </body>
 </html>
