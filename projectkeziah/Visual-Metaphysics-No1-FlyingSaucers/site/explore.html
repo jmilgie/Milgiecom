@@ -391,6 +391,14 @@ const FRAMES = [
   { src: 'img/tablet-right.png',  name: 'Frame III', sub: 'Cosmic Taxonomy'   },
 ];
 
+// Register panzoom-ready listener BEFORE the texture await so the event
+// can't fire and be missed while the module is suspended at await.
+let _panzoomFired = false;
+let _texturesDone = false;
+function _tryFinish(){ if(_panzoomFired && _texturesDone) finishLoading(); }
+if(window._panzoomReady){ _panzoomFired=true; }
+else { window.addEventListener('panzoom-ready',()=>{ _panzoomFired=true; _tryFinish(); },{once:true}); }
+
 const canvas3d   = document.getElementById('triframe-canvas');
 const tfView     = document.getElementById('triframe-view');
 const tfLabel    = document.getElementById('tf-label');
@@ -459,9 +467,10 @@ const W=2.0, H=3.6, D=0.22, SPREAD=3.6;
 const frameGroups=[], clickTargets=[], spotLights=[];
 
 const texLoader = new THREE.TextureLoader();
-const textures  = await Promise.all(FRAMES.map(f => new Promise((res,rej)=>texLoader.load(f.src,t=>{
+const textures  = await Promise.all(FRAMES.map(f => new Promise((res)=>texLoader.load(f.src,t=>{
   t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); res(t);
-},undefined,rej))));
+},undefined,()=>res(new THREE.Texture())))));
+_texturesDone = true;
 
 FRAMES.forEach((meta,idx)=>{
   const tex = textures[idx];
@@ -726,8 +735,8 @@ function finishLoading(){
   setView(initView==='tablets'?'tablets':'fullsize');
 }
 
-if(window._panzoomReady) finishLoading();
-else window.addEventListener('panzoom-ready', finishLoading, {once:true});
+// Signal that textures are done and attempt finish (panzoom may already be ready)
+_tryFinish();
 </script>
 </body>
 </html>

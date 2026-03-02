@@ -122,20 +122,6 @@
       box-shadow: 0 0 60px rgba(201,169,110,0.24);
       transform: translateY(-2px);
     }
-    .btn-hero-ghost {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(240,236,224,0.15);
-      color: rgba(240,236,224,0.6); font-family: inherit; font-size: 0.88rem;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      padding: 0.8rem 1.8rem; border-radius: 999px;
-      cursor: pointer; text-decoration: none;
-      transition: background 0.25s, border-color 0.2s, color 0.2s, transform 0.2s;
-    }
-    .btn-hero-ghost:hover {
-      background: rgba(255,255,255,0.08);
-      border-color: rgba(240,236,224,0.3); color: var(--fg-light);
-      transform: translateY(-2px);
-    }
 
     .scroll-cue {
       position: absolute; bottom: 2.2rem; left: 50%; transform: translateX(-50%);
@@ -200,7 +186,6 @@
       cursor: pointer;
     }
     .poster-exhibit::before {
-      /* Drop shadow under frame */
       content: '';
       position: absolute; inset: -6px;
       box-shadow: 12px 20px 60px rgba(26,21,16,0.28), 0 0 0 1px rgba(107,78,42,0.12);
@@ -515,9 +500,9 @@
   <nav id="main-nav">
     <div class="nav-logo">Project Keziah</div>
     <div class="nav-links">
-      <a href="../../index.html" class="nav-pill">← Collection</a>
-      <a href="explore.html?view=tablets" class="nav-pill">Tri-Framed Poster</a>
-      <a href="explore.html" class="nav-pill cta">Explore Chart ↗</a>
+      <a href="../index.html" class="nav-pill">← Collection</a>
+      <a href="site/explore.html?view=tablets" class="nav-pill">Tri-Framed Poster</a>
+      <a href="site/explore.html" class="nav-pill cta">Explore Chart ↗</a>
     </div>
   </nav>
 
@@ -531,8 +516,7 @@
       <p class="hero-no">No. 1</p>
       <p class="hero-byline">Flying Saucers &nbsp;— &nbsp;by Fred Keziah</p>
       <div class="hero-ctas">
-        <a href="explore.html" class="btn-hero-primary">Explore the Full Chart ↗</a>
-        <a href="explore.html?view=tablets" class="btn-hero-ghost">Tri-Framed Poster</a>
+        <a href="#artifact" class="btn-hero-primary">Explore the Poster ↓</a>
       </div>
     </div>
     <div class="scroll-cue" aria-hidden="true">↓</div>
@@ -547,9 +531,9 @@
         <div class="section-rule-line"></div>
       </div>
       <div class="artifact-layout">
-        <div class="poster-exhibit reveal" onclick="window.location.href='explore.html'">
+        <div class="poster-exhibit reveal" onclick="window.location.href='site/explore.html'">
           <div class="poster-mat">
-            <img src="img/landing.png" alt="Visual Metaphysics No. 1: Flying Saucers" />
+            <img src="site/img/landing.png" alt="Visual Metaphysics No. 1: Flying Saucers" />
             <div class="poster-mat-label">Visual Metaphysics No. 1 — Fred Keziah, 1956</div>
             <div class="poster-cta-hint">↗ Explore</div>
           </div>
@@ -568,8 +552,8 @@
             <div class="stat-cell"><div class="stat-num">2023</div><div class="stat-lbl">Digitized</div></div>
           </div>
           <div class="artifact-cta-row">
-            <a href="explore.html" class="btn-warm-primary">Explore Full Poster ↗</a>
-            <a href="explore.html?view=tablets" class="btn-warm-ghost">Tri-Framed Poster</a>
+            <a href="site/explore.html" class="btn-warm-primary">Explore Full Poster ↗</a>
+            <a href="site/explore.html?view=tablets" class="btn-warm-ghost">Tri-Framed Poster</a>
           </div>
         </div>
       </div>
@@ -581,20 +565,20 @@
     <div class="elements-inner">
       <div class="section-label-dark">Chart Elements</div>
       <div class="gallery-4 reveal">
-        <div class="gal-cell" onclick="window.location.href='explore.html'">
-          <img src="img/ufoshapes.png" alt="UFO Shapes" />
+        <div class="gal-cell" onclick="window.location.href='site/explore.html'">
+          <img src="site/img/ufoshapes.png" alt="UFO Shapes" />
           <div class="gal-label">UFO Shapes</div>
         </div>
-        <div class="gal-cell" onclick="window.location.href='explore.html'">
-          <img src="img/spacepeople.png" alt="Space People" />
+        <div class="gal-cell" onclick="window.location.href='site/explore.html'">
+          <img src="site/img/spacepeople.png" alt="Space People" />
           <div class="gal-label">Space People</div>
         </div>
-        <div class="gal-cell" onclick="window.location.href='explore.html'">
-          <img src="img/flightformations.png" alt="Flight Formations" />
+        <div class="gal-cell" onclick="window.location.href='site/explore.html'">
+          <img src="site/img/flightformations.png" alt="Flight Formations" />
           <div class="gal-label">Flight Formations</div>
         </div>
-        <div class="gal-cell" onclick="window.location.href='explore.html'">
-          <img src="img/datatables.png" alt="Data Tables" />
+        <div class="gal-cell" onclick="window.location.href='site/explore.html'">
+          <img src="site/img/datatables.png" alt="Data Tables" />
           <div class="gal-label">Data Tables</div>
         </div>
       </div>
@@ -652,8 +636,8 @@
     <h2>Explore the <em>Complete</em> Chart</h2>
     <p>Zoom into every engraved detail on the full poster, or experience the chart split across interactive illuminated frames.</p>
     <div class="cta-row">
-      <a href="explore.html" class="btn-hero-primary">Full Poster ↗</a>
-      <a href="explore.html?view=tablets" class="btn-hero-ghost">Tri-Framed Poster</a>
+      <a href="site/explore.html" class="btn-hero-primary">Full Poster ↗</a>
+      <a href="site/explore.html?view=tablets" class="btn-hero-ghost">Tri-Framed Poster</a>
     </div>
   </section>
 
