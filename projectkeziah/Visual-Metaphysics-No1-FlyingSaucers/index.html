@@ -648,7 +648,7 @@
       <a href="mailto:ProjectKeziah@protonmail.com">Contact</a>
       <a href="https://x.com/ProjectKeziah" target="_blank" rel="noopener">@ProjectKeziah</a>
     </div>
-    <p>&copy; 2025 Visual Metaphysics Digital Recreation Project &nbsp;·&nbsp; Original works 1956–1958 by Fred Keziah</p>
+    <p>&copy; <span id="foot-year"></span> Visual Metaphysics Digital Recreation Project &nbsp;·&nbsp; Original works 1956–1958 by Fred Keziah</p>
   </footer>
 
   <script>
@@ -688,6 +688,9 @@
         requestAnimationFrame(draw);
       })();
     })();
+
+    /* ── Footer year ── */
+    document.getElementById('foot-year').textContent = new Date().getFullYear();
 
     /* ── Nav scroll class ── */
     const nav = document.getElementById('main-nav');

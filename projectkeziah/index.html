@@ -339,8 +339,7 @@
       <p class="hero-sub">The Interactive Archive &amp; Digital Recreation Project</p>
       <p class="hero-desc">A meticulous digital preservation of Fred Keziah's visionary information charts — where post-war data design meets the outer edge of mid-century inquiry.</p>
       <div class="hero-ctas">
-        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/explore.html" class="btn-primary">Explore the Chart ↗</a>
-        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/explore.html?view=tablets" class="btn-ghost">Tri-Framed Poster</a>
+        <a href="#projects" class="btn-primary">Explore the Collection ↓</a>
       </div>
     </div>
 
@@ -443,7 +442,7 @@
       <a href="mailto:ProjectKeziah@protonmail.com">Contact</a>
       <a href="https://x.com/ProjectKeziah" target="_blank" rel="noopener">@ProjectKeziah</a>
     </div>
-    <p>&copy; 2025 Visual Metaphysics Digital Recreation Project &nbsp;·&nbsp; Original works 1956–1958 by Fred Keziah</p>
+    <p>&copy; <span id="foot-year"></span> Visual Metaphysics Digital Recreation Project &nbsp;·&nbsp; Original works 1956–1958 by Fred Keziah</p>
   </footer>
 
   <script>
@@ -513,6 +512,9 @@
       }
       draw();
     })();
+
+    /* ── Footer year ── */
+    document.getElementById('foot-year').textContent = new Date().getFullYear();
 
     /* ── Scroll reveals ── */
     const revealEls = document.querySelectorAll('.reveal');

@@ -441,8 +441,8 @@ const key = new THREE.DirectionalLight(0xfff3e0, 2.8);
 key.position.set(3,7,6); key.castShadow=true;
 key.shadow.mapSize.set(2048,2048); key.shadow.bias=-0.002;
 scene.add(key);
-scene.add(Object.assign(new THREE.DirectionalLight(0x8090c0,0.7), {position: new THREE.Vector3(-5,3,4)}));
-scene.add(Object.assign(new THREE.DirectionalLight(0xc9a96e,0.5), {position: new THREE.Vector3(0,2,-8)}));
+const fill = new THREE.DirectionalLight(0x8090c0,0.7); fill.position.set(-5,3,4); scene.add(fill);
+const back = new THREE.DirectionalLight(0xc9a96e,0.5); back.position.set(0,2,-8); scene.add(back);
 
 // Floor
 const floor = new THREE.Mesh(
