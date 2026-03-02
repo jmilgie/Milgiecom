@@ -69,16 +69,18 @@
     }
     #back-btn:hover { border-color: var(--gold); background: rgba(201,169,110,0.12); color: #f0e0c0; }
 
-    /* ── Fullsize viewer ── */
-    #fullsize-viewer {
-      position: fixed; inset: 0;
+    /* ── Shared 3D canvas ── */
+    #main-canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+
+    /* ── 2D pan/zoom overlay (detail mode) ── */
+    #panzoom-overlay {
+      position: fixed; inset: 0; z-index: 10;
       overflow: hidden;
       background: radial-gradient(ellipse at 50% 40%, #0e0c14 0%, #06070d 70%);
-      cursor: grab;
+      cursor: grab; display: none;
     }
-    #fullsize-viewer:active { cursor: grabbing; }
-    #fullsize-viewer.hidden { display: none; }
-
+    #panzoom-overlay.active { display: block; }
+    #panzoom-overlay:active { cursor: grabbing; }
     #poster-img {
       position: absolute; top: 0; left: 0; display: block;
       transform-origin: 0 0;
@@ -89,14 +91,61 @@
       user-select: none; -webkit-user-drag: none;
     }
 
-    /* ── 3D Tri-Framed Poster view ── */
-    #triframe-view {
-      position: fixed; inset: 0;
+    /* ── UI overlays ── */
+    /* Label shown when focused */
+    #fp-label {
+      position: fixed; bottom: 4.5rem; left: 50%; transform: translateX(-50%);
+      text-align: center; pointer-events: none; z-index: 20;
+      opacity: 0; transition: opacity 0.5s;
     }
-    #triframe-view.hidden { display: none; }
-    #triframe-canvas { display: block; width: 100%; height: 100%; }
+    #fp-label.visible { opacity: 1; }
+    #fp-label .name {
+      font-size: clamp(0.9rem, 1.8vw + 0.4rem, 1.4rem);
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold); text-shadow: 0 0 40px rgba(201,169,110,0.5);
+    }
+    #fp-label .sub { font-size: 0.74rem; color: rgba(240,236,224,0.45); letter-spacing: 0.1em; margin-top: 0.2rem; }
 
-    /* Tri-frame UI overlay */
+    /* Full-poster close button */
+    #fp-close {
+      position: fixed; top: 4.5rem; right: 1.4rem; z-index: 20;
+      background: rgba(10,8,4,0.6); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.78rem;
+      letter-spacing: 0.08em; padding: 0.38rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s, background 0.2s;
+    }
+    #fp-close.visible { opacity: 1; pointer-events: auto; }
+    #fp-close:hover { background: rgba(201,169,110,0.12); }
+
+    /* "Pan & Zoom" detail button shown when poster is focused */
+    #fp-detail-btn {
+      position: fixed; top: 4.5rem; left: 1.4rem; z-index: 20;
+      background: rgba(10,8,4,0.6); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.78rem;
+      letter-spacing: 0.08em; padding: 0.38rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s, background 0.2s;
+    }
+    #fp-detail-btn.visible { opacity: 1; pointer-events: auto; }
+    #fp-detail-btn:hover { background: rgba(201,169,110,0.12); }
+
+    /* Exit pan mode button */
+    #pz-exit-btn {
+      position: fixed; top: 4.5rem; left: 1.4rem; z-index: 25;
+      background: rgba(10,8,4,0.65); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.78rem;
+      letter-spacing: 0.08em; padding: 0.38rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      display: none;
+      transition: background 0.2s;
+    }
+    #pz-exit-btn.active { display: block; }
+    #pz-exit-btn:hover { background: rgba(201,169,110,0.12); }
+
+    /* Tri-frame UI */
     #tf-label {
       position: fixed; bottom: 4.5rem; left: 50%; transform: translateX(-50%);
       text-align: center; pointer-events: none; z-index: 20;
@@ -117,7 +166,7 @@
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; font-size: 1.1rem; backdrop-filter: blur(6px);
       transition: opacity 0.4s, border-color 0.2s, background 0.2s, transform 0.2s;
-      opacity: 0; pointer-events: none; border: 1px solid var(--gold-dim);
+      opacity: 0; pointer-events: none;
     }
     .tf-nav.visible { opacity: 1; pointer-events: auto; }
     .tf-nav:hover { border-color: var(--gold); background: rgba(201,169,110,0.15); transform: translateY(-50%) scale(1.1); }
@@ -153,9 +202,9 @@
       position: fixed; bottom: 3.8rem; right: 1.4rem; z-index: 30;
       font-size: 0.7rem; letter-spacing: 0.12em; color: rgba(201,169,110,0.5);
       pointer-events: none; font-variant-numeric: tabular-nums;
-      transition: opacity 0.5s;
+      transition: opacity 0.5s; opacity: 0;
     }
-    #zoom-level.hidden { opacity: 0; }
+    #zoom-level.visible { opacity: 1; }
 
     #reset-btn {
       position: fixed; bottom: 3.8rem; left: 50%; transform: translateX(-50%);
@@ -206,19 +255,20 @@
       <button class="toggle-btn active" id="btn-fullsize" aria-pressed="true">Full Poster</button>
       <button class="toggle-btn" id="btn-tablets" aria-pressed="false">Tri-Framed Poster</button>
     </div>
-    <a href="index.html" id="back-btn">← Back</a>
+    <a href="../" id="back-btn">← Back</a>
   </div>
 </div>
 
-<!-- Full-poster pan/zoom -->
-<div id="fullsize-viewer">
-  <img id="poster-img" src="img/fullSize.png" alt="Visual Metaphysics No. 1 — Full Poster" draggable="false" />
-</div>
+<!-- Shared 3D canvas -->
+<canvas id="main-canvas"></canvas>
 
-<!-- Tri-Framed Poster 3D view -->
-<div id="triframe-view" class="hidden">
-  <canvas id="triframe-canvas"></canvas>
+<!-- Full-poster UI -->
+<div id="fp-label">
+  <div class="name">Visual Metaphysics No. 1</div>
+  <div class="sub">Flying Saucers — Fred Keziah, 1956</div>
 </div>
+<button id="fp-close">✕ Overview</button>
+<button id="fp-detail-btn">⊕ Pan &amp; Zoom</button>
 
 <!-- Tri-frame UI -->
 <div id="tf-label">
@@ -234,186 +284,26 @@
 <button class="tf-nav" id="tf-next" aria-label="Next frame">&#8594;</button>
 <button id="tf-close">✕ Overview</button>
 
+<!-- 2D pan/zoom overlay (detail mode for full poster) -->
+<div id="panzoom-overlay">
+  <img id="poster-img" src="img/fullSize.png" alt="Visual Metaphysics No. 1 — Full Poster" draggable="false" />
+</div>
+<button id="pz-exit-btn">← Back to 3D</button>
+
 <!-- Shared HUD -->
-<div id="zoom-level" class="hidden">100%</div>
+<div id="zoom-level">100%</div>
 <button id="reset-btn">Reset view</button>
-<div id="hint">Drag to pan &nbsp;·&nbsp; Scroll or pinch to zoom &nbsp;·&nbsp; Double-click to zoom in</div>
+<div id="hint">Click the poster to inspect &nbsp;·&nbsp; Drag &amp; scroll to orbit</div>
 
 <script type="module">
 import * as THREE from 'https://esm.sh/three@0.160.0';
 import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
 /* ══════════════════════════════════════
-   PAN/ZOOM ENGINE (Full Poster view)
+   SHARED RENDERER / SCENE / CAMERA
 ══════════════════════════════════════ */
-(function () {
-  'use strict';
-  const viewer   = document.getElementById('fullsize-viewer');
-  const img      = document.getElementById('poster-img');
-  const btnFull  = document.getElementById('btn-fullsize');
-  const hintEl   = document.getElementById('hint');
-  const zoomEl   = document.getElementById('zoom-level');
-  const resetBtn = document.getElementById('reset-btn');
-  const loadingBar = document.getElementById('loading-bar');
-
-  const MIN_SCALE = 0.1, MAX_SCALE = 10;
-  let scale = 1, ox = 0, oy = 0;
-  let hintTimer = null, zoomTimer = null, dragging = false;
-  let dragX = 0, dragY = 0, dragOx = 0, dragOy = 0;
-  let touches = [], pinchStartDist = 0, pinchStartScale = 1;
-  let pinchStartOx = 0, pinchStartOy = 0, pinchMidX = 0, pinchMidY = 0;
-  let touchStartOx = 0, touchStartOy = 0, touchOriginX = 0, touchOriginY = 0;
-
-  window._panzoom = { setActive };
-
-  function commit(animated) {
-    img.style.transition = animated ? 'transform 0.38s cubic-bezier(0.22,1,0.36,1)' : 'none';
-    img.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`;
-  }
-  function fitToView(animated) {
-    if (!img.naturalWidth) return;
-    const fitScale = Math.min((innerWidth*0.94)/img.naturalWidth, (innerHeight*0.90)/img.naturalHeight);
-    scale = Math.max(MIN_SCALE, fitScale);
-    ox = (innerWidth  - img.naturalWidth  * scale) / 2;
-    oy = (innerHeight - img.naturalHeight * scale) / 2;
-    commit(animated); updateHUD(); resetBtn.classList.remove('visible');
-  }
-  function clamp() {
-    const iw = img.naturalWidth*scale, ih = img.naturalHeight*scale, pad = 80;
-    ox = Math.max(pad-iw, Math.min(innerWidth-pad, ox));
-    oy = Math.max(pad-ih, Math.min(innerHeight-pad, oy));
-  }
-  function zoomAt(cx, cy, ns) {
-    ns = Math.max(MIN_SCALE, Math.min(MAX_SCALE, ns));
-    const r = ns/scale; ox = cx-(cx-ox)*r; oy = cy-(cy-oy)*r; scale=ns;
-    clamp(); commit(false); updateHUD();
-  }
-  function updateHUD() {
-    zoomEl.textContent = Math.round(scale*100)+'%'; zoomEl.classList.remove('hidden');
-    clearTimeout(zoomTimer); zoomTimer = setTimeout(()=>zoomEl.classList.add('hidden'),1600);
-    const cx = (innerWidth-img.naturalWidth*scale)/2, cy = (innerHeight-img.naturalHeight*scale)/2;
-    resetBtn.classList.toggle('visible', scale>1.08 || Math.abs(ox-cx)>4 || Math.abs(oy-cy)>4);
-  }
-  function setActive(yes) {
-    if (yes) {
-      hintEl.textContent = 'Drag to pan · Scroll / pinch to zoom · Double-click to zoom · 0 to reset';
-      hintEl.classList.remove('hidden');
-      clearTimeout(hintTimer); hintTimer = setTimeout(()=>hintEl.classList.add('hidden'), 5500);
-    }
-  }
-
-  viewer.addEventListener('pointerdown', e => {
-    if (e.button!==0) return; dragging=true;
-    dragX=e.clientX; dragY=e.clientY; dragOx=ox; dragOy=oy;
-    viewer.setPointerCapture(e.pointerId); viewer.style.cursor='grabbing';
-  });
-  viewer.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    ox=dragOx+(e.clientX-dragX); oy=dragOy+(e.clientY-dragY);
-    clamp(); commit(false); updateHUD();
-  });
-  viewer.addEventListener('pointerup', ()=>{ dragging=false; viewer.style.cursor='grab'; });
-  viewer.addEventListener('wheel', e => {
-    e.preventDefault(); zoomAt(e.clientX,e.clientY, scale*(e.deltaY<0?1.12:1/1.12));
-  }, {passive:false});
-  viewer.addEventListener('dblclick', e => {
-    const cx=(innerWidth-img.naturalWidth*scale)/2, cy=(innerHeight-img.naturalHeight*scale)/2;
-    if (Math.abs(ox-cx)<5&&Math.abs(oy-cy)<5&&scale<1.1||scale>3) { fitToView(true); return; }
-    zoomAt(e.clientX,e.clientY,Math.min(scale*2.8,MAX_SCALE));
-    img.style.transition='transform 0.42s cubic-bezier(0.22,1,0.36,1)';
-    img.style.transform=`translate(${ox}px,${oy}px) scale(${scale})`;
-  });
-  viewer.addEventListener('touchstart', e => {
-    e.preventDefault(); touches=Array.from(e.touches);
-    if (touches.length===1) { dragging=true; touchOriginX=touches[0].clientX; touchOriginY=touches[0].clientY; touchStartOx=ox; touchStartOy=oy; }
-    else if (touches.length===2) {
-      dragging=false;
-      pinchStartDist=Math.hypot(touches[1].clientX-touches[0].clientX,touches[1].clientY-touches[0].clientY);
-      pinchStartScale=scale; pinchStartOx=ox; pinchStartOy=oy;
-      pinchMidX=(touches[0].clientX+touches[1].clientX)/2; pinchMidY=(touches[0].clientY+touches[1].clientY)/2;
-    }
-  },{passive:false});
-  viewer.addEventListener('touchmove', e => {
-    e.preventDefault(); const cur=Array.from(e.touches);
-    if (cur.length===1&&dragging) { ox=touchStartOx+(cur[0].clientX-touchOriginX); oy=touchStartOy+(cur[0].clientY-touchOriginY); clamp();commit(false);updateHUD(); }
-    else if (cur.length===2&&pinchStartDist>0) {
-      const d=Math.hypot(cur[1].clientX-cur[0].clientX,cur[1].clientY-cur[0].clientY);
-      const ns=Math.max(MIN_SCALE,Math.min(MAX_SCALE,pinchStartScale*(d/pinchStartDist)));
-      const r=ns/pinchStartScale; ox=pinchMidX-(pinchMidX-pinchStartOx)*r; oy=pinchMidY-(pinchMidY-pinchStartOy)*r; scale=ns;
-      clamp();commit(false);updateHUD(); touches=cur;
-    }
-  },{passive:false});
-  viewer.addEventListener('touchend', e => {
-    touches=Array.from(e.touches);
-    if (!touches.length) { dragging=false; pinchStartDist=0; }
-    else if (touches.length===1) { pinchStartDist=0; dragging=true; touchOriginX=touches[0].clientX; touchOriginY=touches[0].clientY; touchStartOx=ox; touchStartOy=oy; }
-  },{passive:true});
-  window.addEventListener('keydown', e => {
-    if (viewer.classList.contains('hidden')) return;
-    const s=80;
-    if (e.key==='ArrowLeft')  { ox+=s; clamp();commit(true);updateHUD(); }
-    if (e.key==='ArrowRight') { ox-=s; clamp();commit(true);updateHUD(); }
-    if (e.key==='ArrowUp')    { oy+=s; clamp();commit(true);updateHUD(); }
-    if (e.key==='ArrowDown')  { oy-=s; clamp();commit(true);updateHUD(); }
-    if (e.key==='+'||e.key==='=') zoomAt(innerWidth/2,innerHeight/2,scale*1.25);
-    if (e.key==='-') zoomAt(innerWidth/2,innerHeight/2,scale/1.25);
-    if (e.key==='0') fitToView(true);
-  });
-  window.addEventListener('resize', ()=>fitToView(false));
-  resetBtn.addEventListener('click', ()=>fitToView(true));
-
-  window._fitToView = fitToView;
-  window._panzoomReady = false;
-
-  function onImgReady() {
-    img.style.width  = img.naturalWidth  + 'px';
-    img.style.height = img.naturalHeight + 'px';
-    fitToView(false);
-    window._panzoomReady = true;
-    loadingBar.style.width = '60%'; // partial — 3D will finish it
-    window.dispatchEvent(new Event('panzoom-ready'));
-  }
-  if (img.complete && img.naturalWidth>0) onImgReady();
-  else { img.addEventListener('load', onImgReady); img.addEventListener('error', ()=>{ window.dispatchEvent(new Event('panzoom-ready')); }); }
-
-  let lp=0;
-  const lt=setInterval(()=>{ lp=Math.min(lp+Math.random()*0.08,0.58); loadingBar.style.width=(lp*100)+'%'; if(img.complete)clearInterval(lt); },120);
-})();
-
-
-/* ══════════════════════════════════════
-   TRI-FRAMED POSTER — Three.js scene
-══════════════════════════════════════ */
-
-const FRAMES = [
-  { src: 'img/tablet-left.png',   name: 'Frame I',   sub: 'Flight Formations' },
-  { src: 'img/tablet-center.png', name: 'Frame II',  sub: 'Data Records'      },
-  { src: 'img/tablet-right.png',  name: 'Frame III', sub: 'Cosmic Taxonomy'   },
-];
-
-// Register panzoom-ready listener BEFORE the texture await so the event
-// can't fire and be missed while the module is suspended at await.
-let _panzoomFired = false;
-let _texturesDone = false;
-function _tryFinish(){ if(_panzoomFired && _texturesDone) finishLoading(); }
-if(window._panzoomReady){ _panzoomFired=true; }
-else { window.addEventListener('panzoom-ready',()=>{ _panzoomFired=true; _tryFinish(); },{once:true}); }
-
-const canvas3d   = document.getElementById('triframe-canvas');
-const tfView     = document.getElementById('triframe-view');
-const tfLabel    = document.getElementById('tf-label');
-const tfName     = document.getElementById('tf-name');
-const tfSub      = document.getElementById('tf-sub');
-const tfDots     = document.getElementById('tf-dots');
-const dotEls     = document.querySelectorAll('.tf-dot');
-const tfClose    = document.getElementById('tf-close');
-const tfPrev     = document.getElementById('tf-prev');
-const tfNext     = document.getElementById('tf-next');
-const hintEl     = document.getElementById('hint');
-const loadingBar = document.getElementById('loading-bar');
-const loadingEl  = document.getElementById('loading');
-
-const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: false });
+const canvas = document.getElementById('main-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -424,83 +314,251 @@ renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x06070d);
-scene.fog = new THREE.FogExp2(0x06070d, 0.042);
+scene.fog = new THREE.FogExp2(0x06070d, 0.032);
 
 const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.05, 200);
 camera.position.set(0, 0.8, 11);
 
-const controls = new OrbitControls(camera, canvas3d);
+const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.07;
-controls.minDistance = 0.4; controls.maxDistance = 20;
+controls.minDistance = 0.4; controls.maxDistance = 22;
 controls.zoomSpeed = 0.9; controls.rotateSpeed = 0.6; controls.panSpeed = 0.6;
 controls.target.set(0, 0, 0); controls.enabled = false;
 
-// Lights
+// ── Lights (shared) ──
 scene.add(new THREE.AmbientLight(0x1a1a2e, 2));
-const key = new THREE.DirectionalLight(0xfff3e0, 2.8);
-key.position.set(3,7,6); key.castShadow=true;
-key.shadow.mapSize.set(2048,2048); key.shadow.bias=-0.002;
-scene.add(key);
-const fill = new THREE.DirectionalLight(0x8090c0,0.7); fill.position.set(-5,3,4); scene.add(fill);
-const back = new THREE.DirectionalLight(0xc9a96e,0.5); back.position.set(0,2,-8); scene.add(back);
+const keyLight = new THREE.DirectionalLight(0xfff3e0, 2.8);
+keyLight.position.set(3,7,6); keyLight.castShadow=true;
+keyLight.shadow.mapSize.set(2048,2048); keyLight.shadow.bias=-0.002;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0x8090c0,0.7); fillLight.position.set(-5,3,4); scene.add(fillLight);
+const backLight = new THREE.DirectionalLight(0xc9a96e,0.5); backLight.position.set(0,2,-8); scene.add(backLight);
 
-// Floor
-const floor = new THREE.Mesh(
+// ── Floor (shared) ──
+const floorMesh = new THREE.Mesh(
   new THREE.PlaneGeometry(60,60),
   new THREE.MeshStandardMaterial({color:0x06070c,roughness:0.98})
 );
-floor.rotation.x=-Math.PI/2; floor.position.y=-2.6; floor.receiveShadow=true;
-scene.add(floor);
+floorMesh.rotation.x=-Math.PI/2; floorMesh.position.y=-2.6; floorMesh.receiveShadow=true;
+scene.add(floorMesh);
 
-// Particles
+// ── Particles (shared) ──
 const PARTS = 400;
 const pPos = new Float32Array(PARTS*3);
 for(let i=0;i<PARTS;i++){
-  pPos[i*3]=(Math.random()-.5)*20; pPos[i*3+1]=(Math.random()-.5)*10+2; pPos[i*3+2]=(Math.random()-.5)*12;
+  pPos[i*3]=(Math.random()-.5)*24; pPos[i*3+1]=(Math.random()-.5)*10+2; pPos[i*3+2]=(Math.random()-.5)*14;
 }
 const pGeo = new THREE.BufferGeometry();
 pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
-scene.add(new THREE.Points(pGeo, new THREE.PointsMaterial({color:0xc9a96e,size:0.018,sizeAttenuation:true,transparent:true,opacity:0.22,depthWrite:false})));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({color:0xc9a96e,size:0.018,sizeAttenuation:true,transparent:true,opacity:0.22,depthWrite:false}));
+scene.add(particles);
 
-// Build frames
+// ── Easing ──
+function outQuint(t){ return 1-Math.pow(1-t,5); }
+function outBack(t){ const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+
+// ── Camera animation ──
+const camAnim = {
+  active:false, elapsed:0, duration:1.1,
+  fromPos:new THREE.Vector3(), toPos:new THREE.Vector3(),
+  fromTgt:new THREE.Vector3(), toTgt:new THREE.Vector3(),
+  onDone:null
+};
+function startCam(toPos,toTgt,dur,onDone){
+  camAnim.active=true; camAnim.elapsed=0; camAnim.duration=dur||1.1;
+  camAnim.fromPos.copy(camera.position); camAnim.fromTgt.copy(controls.target);
+  camAnim.toPos.copy(toPos); camAnim.toTgt.copy(toTgt); camAnim.onDone=onDone||null;
+}
+
+/* ══════════════════════════════════════
+   TEXTURE LOADING
+══════════════════════════════════════ */
+// Register panzoom-ready listener BEFORE the texture await.
+let _panzoomFired = false;
+let _texturesDone = false;
+function _tryFinish(){ if(_panzoomFired && _texturesDone) finishLoading(); }
+if(window._panzoomReady){ _panzoomFired=true; }
+else { window.addEventListener('panzoom-ready',()=>{ _panzoomFired=true; _tryFinish(); },{once:true}); }
+
+const texLoader = new THREE.TextureLoader();
+function loadTex(src){
+  return new Promise(res=>texLoader.load(src,t=>{
+    t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); res(t);
+  },undefined,()=>res(new THREE.Texture())));
+}
+
+const FRAME_SRCS = ['img/tablet-left.png','img/tablet-center.png','img/tablet-right.png'];
+const [fpTex, ...frameTex] = await Promise.all([
+  loadTex('img/fullSize.png'),
+  ...FRAME_SRCS.map(loadTex)
+]);
+_texturesDone = true;
+
+/* ══════════════════════════════════════
+   FULL POSTER — single wide stone slab
+══════════════════════════════════════ */
+const FP = { W:7.2, H:4.0, D:0.22 };
+
+const fpGroup = new THREE.Group();
+fpGroup.position.set(0, 0, 0);
+fpGroup.userData = { basePos:new THREE.Vector3(0,0,0), baseRotY:0, glowTarget:0, glowCurrent:0, glowMat:null };
+
+// Stone body
+const fpBody = new THREE.Mesh(
+  new THREE.BoxGeometry(FP.W, FP.H, FP.D),
+  new THREE.MeshStandardMaterial({color:0x1a1612,roughness:0.88,metalness:0.06})
+);
+fpBody.castShadow=true; fpBody.receiveShadow=true; fpGroup.add(fpBody);
+
+// Chamfer edges
+const fpCMat = new THREE.MeshStandardMaterial({color:0x0e0c09,roughness:0.6,metalness:0.15});
+const cs = 0.07;
+const fpEdges = [
+  new THREE.Mesh(new THREE.BoxGeometry(FP.W+cs*2,cs,FP.D+cs*2),fpCMat),
+  new THREE.Mesh(new THREE.BoxGeometry(FP.W+cs*2,cs,FP.D+cs*2),fpCMat),
+  new THREE.Mesh(new THREE.BoxGeometry(cs,FP.H,FP.D+cs*2),fpCMat),
+  new THREE.Mesh(new THREE.BoxGeometry(cs,FP.H,FP.D+cs*2),fpCMat),
+];
+fpEdges[0].position.y= FP.H/2+cs/2; fpEdges[1].position.y=-FP.H/2-cs/2;
+fpEdges[2].position.x=-FP.W/2-cs/2; fpEdges[3].position.x= FP.W/2+cs/2;
+fpEdges.forEach(m=>{m.castShadow=true; fpGroup.add(m);});
+
+// Engraving face (the poster image)
+const fpFace = new THREE.Mesh(
+  new THREE.PlaneGeometry(FP.W*0.93, FP.H*0.92, 96, 54),
+  new THREE.MeshPhysicalMaterial({
+    map:fpTex, roughness:0.20, metalness:0.16,
+    clearcoat:0.45, clearcoatRoughness:0.18,
+    emissive:new THREE.Color(0x1a1008), emissiveIntensity:0.06
+  })
+);
+fpFace.position.z = FP.D/2+0.001; fpGroup.add(fpFace);
+
+// Glow outline
+const fpGlowMat = new THREE.MeshBasicMaterial({color:0xc9a96e,transparent:true,opacity:0,depthWrite:false});
+const fpGlow = new THREE.Mesh(new THREE.PlaneGeometry(FP.W+0.18,FP.H+0.18),fpGlowMat);
+fpGlow.position.z = FP.D/2-0.01; fpGroup.add(fpGlow);
+fpGroup.userData.glowMat = fpGlowMat;
+
+// Poster spotlight
+const fpSpot = new THREE.PointLight(0xc9a96e,0,8);
+fpSpot.position.set(0,0,4); scene.add(fpSpot);
+
+scene.add(fpGroup);
+
+// ── Full-poster state ──
+let fpMode = 'overview'; // 'overview' | 'spinning' | 'focused'
+const fpSpinAnim = { active:false, elapsed:0, duration:0.9, startRotY:0 };
+
+function fpOverviewCam(){ return { pos:new THREE.Vector3(0,0.6,12), tgt:new THREE.Vector3(0,0,0) }; }
+function fpFocusCam(){    return { pos:new THREE.Vector3(0,0,4.5),   tgt:new THREE.Vector3(0,0,0) }; }
+
+function fpFocus(){
+  if(fpMode==='spinning'||fpMode==='focused') return;
+  fpMode='spinning'; controls.enabled=false;
+  fpGroup.userData.glowTarget=0.16;
+  fpSpinAnim.active=true; fpSpinAnim.elapsed=0; fpSpinAnim.startRotY=fpGroup.rotation.y;
+  const fc=fpFocusCam();
+  startCam(fc.pos,fc.tgt,1.05,()=>{
+    fpMode='focused'; controls.enabled=true;
+    controls.target.copy(fc.tgt); controls.minDistance=0.5; controls.maxDistance=8;
+    updateFPUI();
+  });
+  fpSpot.intensity=2.8;
+  updateFPUI();
+}
+
+function fpReturnOverview(){
+  if(fpMode==='spinning') return;
+  fpMode='overview'; controls.enabled=false;
+  fpGroup.userData.glowTarget=0; fpSpot.intensity=0;
+  const ov=fpOverviewCam();
+  startCam(ov.pos,ov.tgt,0.9,()=>{ controls.target.copy(ov.tgt); controls.minDistance=4; controls.maxDistance=22; updateFPUI(); });
+  updateFPUI();
+}
+
+let fpHintTimer=null;
+function updateFPUI(){
+  const focused = fpMode==='focused'||fpMode==='spinning';
+  document.getElementById('fp-label').classList.toggle('visible', focused);
+  document.getElementById('fp-close').classList.toggle('visible', fpMode==='focused');
+  document.getElementById('fp-detail-btn').classList.toggle('visible', fpMode==='focused');
+  if(focused){
+    hintEl.textContent='Drag & scroll to inspect · ⊕ Pan & Zoom for full detail';
+    hintEl.classList.remove('hidden');
+    clearTimeout(fpHintTimer); fpHintTimer=setTimeout(()=>hintEl.classList.add('hidden'),5000);
+  } else {
+    hintEl.textContent='Click the poster to inspect · Drag & scroll to orbit';
+    hintEl.classList.remove('hidden');
+    clearTimeout(fpHintTimer); fpHintTimer=setTimeout(()=>hintEl.classList.add('hidden'),6000);
+  }
+}
+
+document.getElementById('fp-close').addEventListener('click', fpReturnOverview);
+document.getElementById('fp-detail-btn').addEventListener('click', ()=>{ enterPanZoom(); });
+
+// Raycaster for full-poster click
+const fpRaycaster=new THREE.Raycaster(), fpNdc=new THREE.Vector2();
+const fpDown={x:0,y:0,t:0};
+canvas.addEventListener('pointerdown',e=>{ fpDown.x=e.clientX; fpDown.y=e.clientY; fpDown.t=performance.now(); });
+canvas.addEventListener('pointerup',e=>{
+  if(currentView!=='fullsize') return;
+  if(e.button!==0) return;
+  if(Math.hypot(e.clientX-fpDown.x,e.clientY-fpDown.y)>9||performance.now()-fpDown.t>400) return;
+  const rect=canvas.getBoundingClientRect();
+  fpNdc.x=((e.clientX-rect.left)/rect.width)*2-1;
+  fpNdc.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  fpRaycaster.setFromCamera(fpNdc,camera);
+  if(fpRaycaster.intersectObject(fpFace,false).length){ fpFocus(); }
+});
+canvas.addEventListener('pointermove',e=>{
+  if(currentView!=='fullsize') return;
+  if(fpMode==='focused'){ canvas.style.cursor='grab'; return; }
+  const rect=canvas.getBoundingClientRect();
+  fpNdc.x=((e.clientX-rect.left)/rect.width)*2-1;
+  fpNdc.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  fpRaycaster.setFromCamera(fpNdc,camera);
+  canvas.style.cursor=fpRaycaster.intersectObject(fpFace,false).length?'pointer':'grab';
+});
+
+/* ══════════════════════════════════════
+   TRI-FRAMED POSTER — three stone slabs
+══════════════════════════════════════ */
+const FRAMES = [
+  { src: 'img/tablet-left.png',   name: 'Frame I',   sub: 'Flight Formations' },
+  { src: 'img/tablet-center.png', name: 'Frame II',  sub: 'Data Records'      },
+  { src: 'img/tablet-right.png',  name: 'Frame III', sub: 'Cosmic Taxonomy'   },
+];
+
 const W=2.0, H=3.6, D=0.22, SPREAD=3.6;
 const frameGroups=[], clickTargets=[], spotLights=[];
 
-const texLoader = new THREE.TextureLoader();
-const textures  = await Promise.all(FRAMES.map(f => new Promise((res)=>texLoader.load(f.src,t=>{
-  t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); res(t);
-},undefined,()=>res(new THREE.Texture())))));
-_texturesDone = true;
-
 FRAMES.forEach((meta,idx)=>{
-  const tex = textures[idx];
+  const tex = frameTex[idx];
   const g = new THREE.Group();
   const arc = (idx-1)*0.18;
   g.position.set((idx-1)*SPREAD, 0, -Math.abs(idx-1)*0.35);
   g.rotation.y = -arc;
   g.userData = { index:idx, basePos:g.position.clone(), baseRotY:-arc, glowTarget:0, glowCurrent:0, glowMat:null };
 
-  // Stone body
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(W,H,D),
     new THREE.MeshStandardMaterial({color:0x1a1612,roughness:0.88,metalness:0.06})
   );
   body.castShadow=true; body.receiveShadow=true; g.add(body);
 
-  // Chamfer edges
   const cMat = new THREE.MeshStandardMaterial({color:0x0e0c09,roughness:0.6,metalness:0.15});
-  const cs = 0.06;
+  const cs2 = 0.06;
   const tops = [
-    new THREE.Mesh(new THREE.BoxGeometry(W+cs*2,cs,D+cs*2),cMat),
-    new THREE.Mesh(new THREE.BoxGeometry(W+cs*2,cs,D+cs*2),cMat),
-    new THREE.Mesh(new THREE.BoxGeometry(cs,H,D+cs*2),cMat),
-    new THREE.Mesh(new THREE.BoxGeometry(cs,H,D+cs*2),cMat),
+    new THREE.Mesh(new THREE.BoxGeometry(W+cs2*2,cs2,D+cs2*2),cMat),
+    new THREE.Mesh(new THREE.BoxGeometry(W+cs2*2,cs2,D+cs2*2),cMat),
+    new THREE.Mesh(new THREE.BoxGeometry(cs2,H,D+cs2*2),cMat),
+    new THREE.Mesh(new THREE.BoxGeometry(cs2,H,D+cs2*2),cMat),
   ];
-  tops[0].position.y= H/2+cs/2; tops[1].position.y=-H/2-cs/2;
-  tops[2].position.x=-W/2-cs/2; tops[3].position.x= W/2+cs/2;
+  tops[0].position.y= H/2+cs2/2; tops[1].position.y=-H/2-cs2/2;
+  tops[2].position.x=-W/2-cs2/2; tops[3].position.x= W/2+cs2/2;
   tops.forEach(m=>{m.castShadow=true;g.add(m);});
 
-  // Engraving face
   const face = new THREE.Mesh(
     new THREE.PlaneGeometry(W*0.9, H*0.92, 64, 115),
     new THREE.MeshPhysicalMaterial({
@@ -512,170 +570,397 @@ FRAMES.forEach((meta,idx)=>{
   face.position.z = D/2+0.001; g.add(face);
   face.userData.frameIndex = idx; clickTargets.push(face);
 
-  // Glow outline
   const glowMat = new THREE.MeshBasicMaterial({color:0xc9a96e,transparent:true,opacity:0,depthWrite:false});
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(W+0.14,H+0.14),glowMat);
   glow.position.z = D/2-0.01; g.add(glow);
   g.userData.glowMat = glowMat;
 
-  // Spotlight
   const spot = new THREE.PointLight(0xc9a96e,0,4);
   spot.position.set((idx-1)*SPREAD,0,3); scene.add(spot); spotLights.push(spot);
 
   scene.add(g); frameGroups.push(g);
 });
 
-// ── State ──
-let mode = 'overview'; // 'overview' | 'spinning' | 'focused'
+// ── Tri-frame state ──
+let tfMode = 'overview';
 let focusedIdx = -1, hoveredIdx = -1;
+const tfSpinAnim = { active:false, idx:-1, elapsed:0, duration:0.85, startRotY:0 };
 
-const camAnim = {
-  active:false, elapsed:0, duration:1.1,
-  fromPos:new THREE.Vector3(), toPos:new THREE.Vector3(),
-  fromTgt:new THREE.Vector3(), toTgt:new THREE.Vector3(),
-  onDone:null
-};
-const spinAnim = { active:false, idx:-1, elapsed:0, duration:0.85, startRotY:0 };
-
-function outQuint(t){ return 1-Math.pow(1-t,5); }
-function outBack(t){ const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
-
-function startCam(toPos,toTgt,dur,onDone){
-  camAnim.active=true; camAnim.elapsed=0; camAnim.duration=dur;
-  camAnim.fromPos.copy(camera.position); camAnim.fromTgt.copy(controls.target);
-  camAnim.toPos.copy(toPos); camAnim.toTgt.copy(toTgt); camAnim.onDone=onDone||null;
-}
-
-function overviewCam(){ return {pos:new THREE.Vector3(0,0.8,11),tgt:new THREE.Vector3(0,0,0)}; }
-function focusCam(idx){ const g=frameGroups[idx]; return {pos:new THREE.Vector3(g.userData.basePos.x,0.2,3.8),tgt:new THREE.Vector3(g.userData.basePos.x,0,0)}; }
+function tfOverviewCam(){ return {pos:new THREE.Vector3(0,0.8,11),tgt:new THREE.Vector3(0,0,0)}; }
+function tfFocusCam(idx){ const g=frameGroups[idx]; return {pos:new THREE.Vector3(g.userData.basePos.x,0.2,3.8),tgt:new THREE.Vector3(g.userData.basePos.x,0,0)}; }
 
 function focusFrame(idx){
-  if(mode==='spinning') return;
-  if(idx===focusedIdx&&mode==='focused') return;
-  const g = frameGroups[idx];
-  mode='spinning'; controls.enabled=false;
+  if(tfMode==='spinning') return;
+  if(idx===focusedIdx&&tfMode==='focused') return;
+  const g=frameGroups[idx];
+  tfMode='spinning'; controls.enabled=false;
   g.userData.glowTarget=0.18;
-  if(focusedIdx>=0&&focusedIdx!==idx) { frameGroups[focusedIdx].userData.glowTarget=0; spotLights[focusedIdx].intensity=0; }
-  spinAnim.active=true; spinAnim.idx=idx; spinAnim.elapsed=0; spinAnim.startRotY=g.rotation.y;
-  const fc=focusCam(idx);
-  startCam(fc.pos,fc.tgt,camAnim.duration,()=>{
-    mode='focused'; focusedIdx=idx; controls.enabled=true;
+  if(focusedIdx>=0&&focusedIdx!==idx){ frameGroups[focusedIdx].userData.glowTarget=0; spotLights[focusedIdx].intensity=0; }
+  tfSpinAnim.active=true; tfSpinAnim.idx=idx; tfSpinAnim.elapsed=0; tfSpinAnim.startRotY=g.rotation.y;
+  const fc=tfFocusCam(idx);
+  startCam(fc.pos,fc.tgt,1.1,()=>{
+    tfMode='focused'; focusedIdx=idx; controls.enabled=true;
     controls.target.copy(fc.tgt); controls.minDistance=0.4; controls.maxDistance=5.5;
     updateTFUI();
   });
   spotLights[idx].intensity=2.2; focusedIdx=idx; updateTFUI();
 }
 
-function returnOverview(){
-  if(mode==='spinning') return;
-  mode='overview'; controls.enabled=false;
+function tfReturnOverview(){
+  if(tfMode==='spinning') return;
+  tfMode='overview'; controls.enabled=false;
   if(focusedIdx>=0){ frameGroups[focusedIdx].userData.glowTarget=0; spotLights[focusedIdx].intensity=0; }
   focusedIdx=-1;
-  const ov=overviewCam();
-  startCam(ov.pos,ov.tgt,0.9,()=>{ controls.target.copy(ov.tgt); controls.minDistance=4; controls.maxDistance=20; updateTFUI(); });
+  const ov=tfOverviewCam();
+  startCam(ov.pos,ov.tgt,0.9,()=>{ controls.target.copy(ov.tgt); controls.minDistance=4; controls.maxDistance=22; updateTFUI(); });
   updateTFUI();
 }
 
 let tfHintTimer=null;
 function updateTFUI(){
-  const focused=(mode==='focused'||mode==='spinning')&&focusedIdx>=0;
-  tfName.textContent = focused ? FRAMES[focusedIdx].name : '';
-  tfSub.textContent  = focused ? FRAMES[focusedIdx].sub  : '';
-  tfLabel.classList.toggle('visible', focused);
-  tfDots.classList.toggle('visible', focused);
-  dotEls.forEach((d,i)=>d.classList.toggle('active',i===focusedIdx));
-  tfClose.classList.toggle('visible', mode==='focused');
-  tfPrev.classList.toggle('visible', mode==='focused'&&focusedIdx>0);
-  tfNext.classList.toggle('visible', mode==='focused'&&focusedIdx<FRAMES.length-1);
-  if (focused){
+  const focused=(tfMode==='focused'||tfMode==='spinning')&&focusedIdx>=0;
+  document.getElementById('tf-name').textContent = focused ? FRAMES[focusedIdx].name : '';
+  document.getElementById('tf-sub').textContent  = focused ? FRAMES[focusedIdx].sub  : '';
+  document.getElementById('tf-label').classList.toggle('visible', focused);
+  document.getElementById('tf-dots').classList.toggle('visible', focused);
+  document.querySelectorAll('.tf-dot').forEach((d,i)=>d.classList.toggle('active',i===focusedIdx));
+  document.getElementById('tf-close').classList.toggle('visible', tfMode==='focused');
+  document.getElementById('tf-prev').classList.toggle('visible', tfMode==='focused'&&focusedIdx>0);
+  document.getElementById('tf-next').classList.toggle('visible', tfMode==='focused'&&focusedIdx<FRAMES.length-1);
+  if(focused){
     hintEl.textContent='Drag · Scroll to zoom · ← → navigate'; hintEl.classList.remove('hidden');
     clearTimeout(tfHintTimer); tfHintTimer=setTimeout(()=>hintEl.classList.add('hidden'),4000);
   } else {
-    hintEl.textContent='Click a frame to inspect  ·  Drag & scroll  ·  Keys 1–3'; hintEl.classList.remove('hidden');
+    hintEl.textContent='Click a frame to inspect · Drag & scroll · Keys 1–3'; hintEl.classList.remove('hidden');
     clearTimeout(tfHintTimer); tfHintTimer=setTimeout(()=>hintEl.classList.add('hidden'),6000);
   }
 }
 
-tfClose.addEventListener('click', returnOverview);
-tfPrev.addEventListener('click', ()=>focusedIdx>0&&focusFrame(focusedIdx-1));
-tfNext.addEventListener('click', ()=>focusedIdx<FRAMES.length-1&&focusFrame(focusedIdx+1));
-
-// Raycaster
-const raycaster=new THREE.Raycaster(), ndc=new THREE.Vector2();
-const pDown={x:0,y:0,t:0};
-
-canvas3d.addEventListener('pointerdown',e=>{pDown.x=e.clientX;pDown.y=e.clientY;pDown.t=performance.now();});
-canvas3d.addEventListener('pointerup',e=>{
+// Tri-frame raycaster
+const tfRaycaster=new THREE.Raycaster(), tfNdc=new THREE.Vector2();
+const tfDown={x:0,y:0,t:0};
+canvas.addEventListener('pointerdown',e=>{ tfDown.x=e.clientX; tfDown.y=e.clientY; tfDown.t=performance.now(); });
+canvas.addEventListener('pointerup',e=>{
+  if(currentView!=='tablets') return;
   if(e.button!==0) return;
-  if(Math.hypot(e.clientX-pDown.x,e.clientY-pDown.y)>9||performance.now()-pDown.t>400) return;
-  const rect=canvas3d.getBoundingClientRect();
-  ndc.x=((e.clientX-rect.left)/rect.width)*2-1;
-  ndc.y=-((e.clientY-rect.top)/rect.height)*2+1;
-  raycaster.setFromCamera(ndc,camera);
-  const hits=raycaster.intersectObjects(clickTargets,false);
-  if(hits.length){ const idx=hits[0].object.userData.frameIndex; if(!(mode==='focused'&&focusedIdx===idx)) focusFrame(idx); }
+  if(Math.hypot(e.clientX-tfDown.x,e.clientY-tfDown.y)>9||performance.now()-tfDown.t>400) return;
+  const rect=canvas.getBoundingClientRect();
+  tfNdc.x=((e.clientX-rect.left)/rect.width)*2-1;
+  tfNdc.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  tfRaycaster.setFromCamera(tfNdc,camera);
+  const hits=tfRaycaster.intersectObjects(clickTargets,false);
+  if(hits.length){ const idx=hits[0].object.userData.frameIndex; if(!(tfMode==='focused'&&focusedIdx===idx)) focusFrame(idx); }
 });
-canvas3d.addEventListener('pointermove',e=>{
-  if(mode==='focused'){canvas3d.style.cursor='grab';return;}
-  const rect=canvas3d.getBoundingClientRect();
-  ndc.x=((e.clientX-rect.left)/rect.width)*2-1;
-  ndc.y=-((e.clientY-rect.top)/rect.height)*2+1;
-  raycaster.setFromCamera(ndc,camera);
-  const hits=raycaster.intersectObjects(clickTargets,false);
+canvas.addEventListener('pointermove',e=>{
+  if(currentView!=='tablets') return;
+  if(tfMode==='focused'){ canvas.style.cursor='grab'; return; }
+  const rect=canvas.getBoundingClientRect();
+  tfNdc.x=((e.clientX-rect.left)/rect.width)*2-1;
+  tfNdc.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  tfRaycaster.setFromCamera(tfNdc,camera);
+  const hits=tfRaycaster.intersectObjects(clickTargets,false);
   const nh=hits.length?hits[0].object.userData.frameIndex:-1;
   if(nh!==hoveredIdx){
     if(hoveredIdx>=0&&hoveredIdx!==focusedIdx) frameGroups[hoveredIdx].userData.glowTarget=0;
     if(nh>=0&&nh!==focusedIdx) frameGroups[nh].userData.glowTarget=0.07;
     hoveredIdx=nh;
   }
-  canvas3d.style.cursor=nh>=0?'pointer':'grab';
+  canvas.style.cursor=nh>=0?'pointer':'grab';
 });
 
-window.addEventListener('keydown',e=>{
-  if(tfView.classList.contains('hidden')) return;
-  if(e.key==='1') focusFrame(0); if(e.key==='2') focusFrame(1); if(e.key==='3') focusFrame(2);
-  if(e.key==='Escape') returnOverview();
-  if(e.key==='ArrowLeft'&&mode==='focused'&&focusedIdx>0) focusFrame(focusedIdx-1);
-  if(e.key==='ArrowRight'&&mode==='focused'&&focusedIdx<FRAMES.length-1) focusFrame(focusedIdx+1);
+document.getElementById('tf-close').addEventListener('click', tfReturnOverview);
+document.getElementById('tf-prev').addEventListener('click', ()=>focusedIdx>0&&focusFrame(focusedIdx-1));
+document.getElementById('tf-next').addEventListener('click', ()=>focusedIdx<FRAMES.length-1&&focusFrame(focusedIdx+1));
+
+/* ══════════════════════════════════════
+   2D PAN/ZOOM ENGINE (detail mode)
+══════════════════════════════════════ */
+const pzOverlay  = document.getElementById('panzoom-overlay');
+const img        = document.getElementById('poster-img');
+const zoomEl     = document.getElementById('zoom-level');
+const resetBtn   = document.getElementById('reset-btn');
+const pzExitBtn  = document.getElementById('pz-exit-btn');
+const hintEl     = document.getElementById('hint');
+
+const MIN_SCALE=0.08, MAX_SCALE=10;
+let pzScale=1, pzOx=0, pzOy=0;
+let pzDragging=false, pzDragX=0, pzDragY=0, pzDragOx=0, pzDragOy=0;
+let pzTouches=[], pzPinchStartDist=0, pzPinchStartScale=1;
+let pzPinchStartOx=0, pzPinchStartOy=0, pzPinchMidX=0, pzPinchMidY=0;
+let pzTouchStartOx=0, pzTouchStartOy=0, pzTouchOriginX=0, pzTouchOriginY=0;
+let pzZoomTimer=null, pzHintTimer=null;
+
+window._panzoomReady = false;
+
+function pzCommit(animated){
+  img.style.transition=animated?'transform 0.38s cubic-bezier(0.22,1,0.36,1)':'none';
+  img.style.transform=`translate(${pzOx}px,${pzOy}px) scale(${pzScale})`;
+}
+function pzFitToView(animated){
+  if(!img.naturalWidth) return;
+  const fitScale=Math.min((innerWidth*0.96)/img.naturalWidth,(innerHeight*0.94)/img.naturalHeight);
+  pzScale=Math.max(MIN_SCALE,fitScale);
+  pzOx=(innerWidth-img.naturalWidth*pzScale)/2;
+  pzOy=(innerHeight-img.naturalHeight*pzScale)/2;
+  pzCommit(animated); pzUpdateHUD(); resetBtn.classList.remove('visible');
+}
+function pzClamp(){
+  const iw=img.naturalWidth*pzScale,ih=img.naturalHeight*pzScale,pad=80;
+  pzOx=Math.max(pad-iw,Math.min(innerWidth-pad,pzOx));
+  pzOy=Math.max(pad-ih,Math.min(innerHeight-pad,pzOy));
+}
+function pzZoomAt(cx,cy,ns){
+  ns=Math.max(MIN_SCALE,Math.min(MAX_SCALE,ns));
+  const r=ns/pzScale; pzOx=cx-(cx-pzOx)*r; pzOy=cy-(cy-pzOy)*r; pzScale=ns;
+  pzClamp(); pzCommit(false); pzUpdateHUD();
+}
+function pzUpdateHUD(){
+  zoomEl.textContent=Math.round(pzScale*100)+'%'; zoomEl.classList.add('visible');
+  clearTimeout(pzZoomTimer); pzZoomTimer=setTimeout(()=>zoomEl.classList.remove('visible'),1600);
+  const cx=(innerWidth-img.naturalWidth*pzScale)/2,cy=(innerHeight-img.naturalHeight*pzScale)/2;
+  resetBtn.classList.toggle('visible',pzScale>1.08||Math.abs(pzOx-cx)>4||Math.abs(pzOy-cy)>4);
+}
+
+pzOverlay.addEventListener('pointerdown',e=>{
+  if(e.button!==0) return; pzDragging=true;
+  pzDragX=e.clientX; pzDragY=e.clientY; pzDragOx=pzOx; pzDragOy=pzOy;
+  pzOverlay.setPointerCapture(e.pointerId); pzOverlay.style.cursor='grabbing';
 });
+pzOverlay.addEventListener('pointermove',e=>{
+  if(!pzDragging) return;
+  pzOx=pzDragOx+(e.clientX-pzDragX); pzOy=pzDragOy+(e.clientY-pzDragY);
+  pzClamp(); pzCommit(false); pzUpdateHUD();
+});
+pzOverlay.addEventListener('pointerup',()=>{ pzDragging=false; pzOverlay.style.cursor='grab'; });
+pzOverlay.addEventListener('wheel',e=>{ e.preventDefault(); pzZoomAt(e.clientX,e.clientY,pzScale*(e.deltaY<0?1.12:1/1.12)); },{passive:false});
+pzOverlay.addEventListener('dblclick',e=>{
+  const cx=(innerWidth-img.naturalWidth*pzScale)/2,cy=(innerHeight-img.naturalHeight*pzScale)/2;
+  if(Math.abs(pzOx-cx)<5&&Math.abs(pzOy-cy)<5&&pzScale<1.1||pzScale>3){ pzFitToView(true); return; }
+  pzZoomAt(e.clientX,e.clientY,Math.min(pzScale*2.8,MAX_SCALE));
+  img.style.transition='transform 0.42s cubic-bezier(0.22,1,0.36,1)';
+  img.style.transform=`translate(${pzOx}px,${pzOy}px) scale(${pzScale})`;
+});
+pzOverlay.addEventListener('touchstart',e=>{
+  e.preventDefault(); pzTouches=Array.from(e.touches);
+  if(pzTouches.length===1){ pzDragging=true; pzTouchOriginX=pzTouches[0].clientX; pzTouchOriginY=pzTouches[0].clientY; pzTouchStartOx=pzOx; pzTouchStartOy=pzOy; }
+  else if(pzTouches.length===2){
+    pzDragging=false;
+    pzPinchStartDist=Math.hypot(pzTouches[1].clientX-pzTouches[0].clientX,pzTouches[1].clientY-pzTouches[0].clientY);
+    pzPinchStartScale=pzScale; pzPinchStartOx=pzOx; pzPinchStartOy=pzOy;
+    pzPinchMidX=(pzTouches[0].clientX+pzTouches[1].clientX)/2; pzPinchMidY=(pzTouches[0].clientY+pzTouches[1].clientY)/2;
+  }
+},{passive:false});
+pzOverlay.addEventListener('touchmove',e=>{
+  e.preventDefault(); const cur=Array.from(e.touches);
+  if(cur.length===1&&pzDragging){ pzOx=pzTouchStartOx+(cur[0].clientX-pzTouchOriginX); pzOy=pzTouchStartOy+(cur[0].clientY-pzTouchOriginY); pzClamp();pzCommit(false);pzUpdateHUD(); }
+  else if(cur.length===2&&pzPinchStartDist>0){
+    const d=Math.hypot(cur[1].clientX-cur[0].clientX,cur[1].clientY-cur[0].clientY);
+    const ns=Math.max(MIN_SCALE,Math.min(MAX_SCALE,pzPinchStartScale*(d/pzPinchStartDist)));
+    const r=ns/pzPinchStartScale; pzOx=pzPinchMidX-(pzPinchMidX-pzPinchStartOx)*r; pzOy=pzPinchMidY-(pzPinchMidY-pzPinchStartOy)*r; pzScale=ns;
+    pzClamp();pzCommit(false);pzUpdateHUD(); pzTouches=cur;
+  }
+},{passive:false});
+pzOverlay.addEventListener('touchend',e=>{
+  pzTouches=Array.from(e.touches);
+  if(!pzTouches.length){ pzDragging=false; pzPinchStartDist=0; }
+  else if(pzTouches.length===1){ pzPinchStartDist=0; pzDragging=true; pzTouchOriginX=pzTouches[0].clientX; pzTouchOriginY=pzTouches[0].clientY; pzTouchStartOx=pzOx; pzTouchStartOy=pzOy; }
+},{passive:true});
+
+window.addEventListener('keydown',e=>{
+  if(!pzOverlay.classList.contains('active')) return;
+  const s=80;
+  if(e.key==='ArrowLeft'){ pzOx+=s; pzClamp();pzCommit(true);pzUpdateHUD(); }
+  if(e.key==='ArrowRight'){ pzOx-=s; pzClamp();pzCommit(true);pzUpdateHUD(); }
+  if(e.key==='ArrowUp'){ pzOy+=s; pzClamp();pzCommit(true);pzUpdateHUD(); }
+  if(e.key==='ArrowDown'){ pzOy-=s; pzClamp();pzCommit(true);pzUpdateHUD(); }
+  if(e.key==='+'||e.key==='=') pzZoomAt(innerWidth/2,innerHeight/2,pzScale*1.25);
+  if(e.key==='-') pzZoomAt(innerWidth/2,innerHeight/2,pzScale/1.25);
+  if(e.key==='0') pzFitToView(true);
+  if(e.key==='Escape') exitPanZoom();
+});
+window.addEventListener('resize',()=>{ if(pzOverlay.classList.contains('active')) pzFitToView(false); });
+resetBtn.addEventListener('click',()=>pzFitToView(true));
+
+// Image ready
+function onImgReady(){
+  img.style.width=img.naturalWidth+'px';
+  img.style.height=img.naturalHeight+'px';
+  pzFitToView(false);
+  window._panzoomReady=true;
+  document.getElementById('loading-bar').style.width='60%';
+  window.dispatchEvent(new Event('panzoom-ready'));
+}
+if(img.complete&&img.naturalWidth>0) onImgReady();
+else{ img.addEventListener('load',onImgReady); img.addEventListener('error',()=>window.dispatchEvent(new Event('panzoom-ready'))); }
+
+// Faux progress while image loads
+let lp=0;
+const lt=setInterval(()=>{ lp=Math.min(lp+Math.random()*0.08,0.55); document.getElementById('loading-bar').style.width=(lp*100)+'%'; if(img.complete)clearInterval(lt); },120);
+
+function enterPanZoom(){
+  pzOverlay.classList.add('active');
+  pzExitBtn.classList.add('active');
+  document.getElementById('fp-detail-btn').classList.remove('visible');
+  document.getElementById('fp-close').classList.remove('visible');
+  document.getElementById('fp-label').classList.remove('visible');
+  resetBtn.classList.remove('visible');
+  zoomEl.classList.remove('visible');
+  pzFitToView(false);
+  hintEl.textContent='Drag to pan · Scroll/pinch to zoom · Double-click · 0 to reset · Esc to return';
+  hintEl.classList.remove('hidden');
+  clearTimeout(pzHintTimer); pzHintTimer=setTimeout(()=>hintEl.classList.add('hidden'),6000);
+}
+function exitPanZoom(){
+  pzOverlay.classList.remove('active');
+  pzExitBtn.classList.remove('active');
+  resetBtn.classList.remove('visible');
+  zoomEl.classList.remove('visible');
+  updateFPUI();
+}
+pzExitBtn.addEventListener('click', exitPanZoom);
+
+/* ══════════════════════════════════════
+   VIEW SWITCHER
+══════════════════════════════════════ */
+let currentView = 'fullsize';
+
+const btnFull = document.getElementById('btn-fullsize');
+const btnTab  = document.getElementById('btn-tablets');
+
+function setView(v){
+  currentView = v;
+  const isFull = v==='fullsize';
+  btnFull.classList.toggle('active', isFull);
+  btnFull.setAttribute('aria-pressed', isFull);
+  btnTab.classList.toggle('active', !isFull);
+  btnTab.setAttribute('aria-pressed', !isFull);
+
+  // Hide all scene objects first, then show relevant ones
+  fpGroup.visible    = isFull;
+  fpSpot.visible     = isFull;
+  frameGroups.forEach(g=>g.visible=!isFull);
+  spotLights.forEach(s=>s.visible=!isFull);
+
+  // Hide all UI
+  ['fp-label','fp-close','fp-detail-btn','tf-label','tf-dots','tf-prev','tf-next','tf-close'].forEach(id=>{
+    document.getElementById(id)?.classList.remove('visible');
+  });
+  resetBtn.classList.remove('visible');
+  zoomEl.classList.remove('visible');
+  if(pzOverlay.classList.contains('active')) exitPanZoom();
+
+  if(isFull){
+    // Reset full poster to overview
+    fpMode='overview'; controls.enabled=false;
+    fpGroup.userData.glowTarget=0; fpSpot.intensity=0;
+    fpGroup.rotation.y=0;
+    const ov=fpOverviewCam();
+    camera.position.copy(ov.pos); controls.target.copy(ov.tgt);
+    controls.minDistance=4; controls.maxDistance=22;
+    updateFPUI();
+  } else {
+    // Reset tri-frame to overview
+    tfMode='overview'; controls.enabled=false;
+    focusedIdx=-1; hoveredIdx=-1;
+    frameGroups.forEach(g=>{ g.userData.glowTarget=0; });
+    spotLights.forEach(s=>{ s.intensity=0; });
+    const ov=tfOverviewCam();
+    camera.position.copy(ov.pos); controls.target.copy(ov.tgt);
+    controls.minDistance=4; controls.maxDistance=22;
+    updateTFUI();
+  }
+}
+
+btnFull.addEventListener('click',()=>setView('fullsize'));
+btnTab.addEventListener('click', ()=>setView('tablets'));
+
+window.addEventListener('keydown',e=>{
+  if(pzOverlay.classList.contains('active')) return;
+  if(e.key==='Tab'){ e.preventDefault(); setView(currentView==='fullsize'?'tablets':'fullsize'); }
+  if(currentView==='tablets'){
+    if(e.key==='1') focusFrame(0);
+    if(e.key==='2') focusFrame(1);
+    if(e.key==='3') focusFrame(2);
+    if(e.key==='Escape') tfReturnOverview();
+    if(e.key==='ArrowLeft'&&tfMode==='focused'&&focusedIdx>0) focusFrame(focusedIdx-1);
+    if(e.key==='ArrowRight'&&tfMode==='focused'&&focusedIdx<FRAMES.length-1) focusFrame(focusedIdx+1);
+  }
+  if(currentView==='fullsize'){
+    if(e.key==='Escape') fpReturnOverview();
+    if(e.key==='Enter'||e.key===' ') fpFocus();
+  }
+});
+
 window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 });
 
-// ── Render loop ──
+/* ══════════════════════════════════════
+   RENDER LOOP
+══════════════════════════════════════ */
 const clock=new THREE.Clock(); let time=0;
 function animate(){
   requestAnimationFrame(animate);
   const delta=Math.min(clock.getDelta(),0.05); time+=delta;
 
+  // Camera animation
   if(camAnim.active){
     camAnim.elapsed+=delta; const t=Math.min(camAnim.elapsed/camAnim.duration,1);
     camera.position.lerpVectors(camAnim.fromPos,camAnim.toPos,outQuint(t));
     controls.target.lerpVectors(camAnim.fromTgt,camAnim.toTgt,outQuint(t));
-    if(t>=1){camAnim.active=false;if(camAnim.onDone)camAnim.onDone();}
+    if(t>=1){ camAnim.active=false; if(camAnim.onDone) camAnim.onDone(); }
   }
-  if(spinAnim.active){
-    spinAnim.elapsed+=delta; const t=Math.min(spinAnim.elapsed/spinAnim.duration,1);
-    const g=frameGroups[spinAnim.idx];
-    g.rotation.y=spinAnim.startRotY+Math.PI*2*1.5*outBack(t);
-    if(t>=1){g.rotation.y=g.userData.baseRotY;spinAnim.active=false;}
-  }
-  frameGroups.forEach((g,i)=>{
-    if(spinAnim.active&&spinAnim.idx===i) return;
-    if(mode==='focused'&&focusedIdx===i) return;
-    const ph=i*1.2;
-    g.position.y=g.userData.basePos.y+Math.sin(time*0.55+ph)*0.06;
-    g.rotation.z=Math.sin(time*0.38+ph)*0.012;
-    if(mode==='overview') g.rotation.y=g.userData.baseRotY+Math.sin(time*0.25+ph)*0.025;
-    const gd=g.userData;
+
+  // Full-poster animations
+  if(fpGroup.visible){
+    // Intro spin
+    if(fpSpinAnim.active){
+      fpSpinAnim.elapsed+=delta; const t=Math.min(fpSpinAnim.elapsed/fpSpinAnim.duration,1);
+      fpGroup.rotation.y=fpSpinAnim.startRotY+Math.PI*2*1.5*outBack(t);
+      if(t>=1){ fpGroup.rotation.y=fpGroup.userData.baseRotY; fpSpinAnim.active=false; }
+    }
+    // Idle float (only in overview)
+    if(fpMode==='overview'&&!fpSpinAnim.active){
+      fpGroup.position.y=fpGroup.userData.basePos.y+Math.sin(time*0.5)*0.07;
+      fpGroup.rotation.z=Math.sin(time*0.35)*0.008;
+      fpGroup.rotation.y=fpGroup.userData.baseRotY+Math.sin(time*0.22)*0.018;
+    }
+    // Glow
+    const gd=fpGroup.userData;
     gd.glowCurrent+=(gd.glowTarget-gd.glowCurrent)*0.08;
     gd.glowMat.opacity=gd.glowCurrent;
-  });
-  frameGroups.forEach((_,i)=>{
-    const tgt=(i===focusedIdx&&mode==='focused')?2.2:0;
-    spotLights[i].intensity+=(tgt-spotLights[i].intensity)*0.05;
-  });
+    // Spotlight
+    const fpSpotTgt=(fpMode==='focused')?2.8:0;
+    fpSpot.intensity+=(fpSpotTgt-fpSpot.intensity)*0.05;
+  }
+
+  // Tri-frame animations
+  if(frameGroups.length&&frameGroups[0].visible){
+    if(tfSpinAnim.active){
+      tfSpinAnim.elapsed+=delta; const t=Math.min(tfSpinAnim.elapsed/tfSpinAnim.duration,1);
+      const g=frameGroups[tfSpinAnim.idx];
+      g.rotation.y=tfSpinAnim.startRotY+Math.PI*2*1.5*outBack(t);
+      if(t>=1){ g.rotation.y=g.userData.baseRotY; tfSpinAnim.active=false; }
+    }
+    frameGroups.forEach((g,i)=>{
+      if(tfSpinAnim.active&&tfSpinAnim.idx===i) return;
+      if(tfMode==='focused'&&focusedIdx===i) return;
+      const ph=i*1.2;
+      g.position.y=g.userData.basePos.y+Math.sin(time*0.55+ph)*0.06;
+      g.rotation.z=Math.sin(time*0.38+ph)*0.012;
+      if(tfMode==='overview') g.rotation.y=g.userData.baseRotY+Math.sin(time*0.25+ph)*0.025;
+      const gd=g.userData;
+      gd.glowCurrent+=(gd.glowTarget-gd.glowCurrent)*0.08;
+      gd.glowMat.opacity=gd.glowCurrent;
+    });
+    frameGroups.forEach((_,i)=>{
+      const tgt=(i===focusedIdx&&tfMode==='focused')?2.2:0;
+      spotLights[i].intensity+=(tgt-spotLights[i].intensity)*0.05;
+    });
+  }
+
+  // Shared particles
   const pp=pGeo.attributes.position.array;
   for(let i=0;i<PARTS;i++){
     pp[i*3+1]-=delta*(0.04+Math.sin(i)*0.02);
@@ -683,59 +968,23 @@ function animate(){
     pp[i*3]+=Math.sin(time*0.2+i*0.7)*0.0015;
   }
   pGeo.attributes.position.needsUpdate=true;
+
   controls.update();
   renderer.render(scene,camera);
 }
 animate();
 
-
 /* ══════════════════════════════════════
-   VIEW SWITCHER
-══════════════════════════════════════ */
-const fullViewer = document.getElementById('fullsize-viewer');
-const btnFull    = document.getElementById('btn-fullsize');
-const btnTab     = document.getElementById('btn-tablets');
-
-function setView(v){
-  const isFullsize = v === 'fullsize';
-  btnFull.classList.toggle('active', isFullsize);
-  btnFull.setAttribute('aria-pressed', isFullsize);
-  btnTab.classList.toggle('active', !isFullsize);
-  btnTab.setAttribute('aria-pressed', !isFullsize);
-
-  if(isFullsize){
-    fullViewer.classList.remove('hidden');
-    tfView.classList.add('hidden');
-    renderer.setAnimationLoop(null); // pause 3D render
-    window._panzoom?.setActive(true);
-    document.getElementById('zoom-level').classList.remove('hidden');
-  } else {
-    fullViewer.classList.add('hidden');
-    tfView.classList.remove('hidden');
-    document.getElementById('zoom-level').classList.add('hidden');
-    document.getElementById('reset-btn').classList.remove('visible');
-    renderer.setAnimationLoop(null); // already in rAF loop, no-op
-    updateTFUI();
-  }
-}
-
-btnFull.addEventListener('click', ()=>setView('fullsize'));
-btnTab.addEventListener('click',  ()=>setView('tablets'));
-window.addEventListener('keydown', e=>{
-  if(e.key==='Tab'){ e.preventDefault(); setView(btnFull.classList.contains('active')?'tablets':'fullsize'); }
-});
-
-/* ══════════════════════════════════════
-   INIT — wait for image + textures
+   INIT
 ══════════════════════════════════════ */
 function finishLoading(){
-  loadingBar.style.width='100%';
+  document.getElementById('loading-bar').style.width='100%';
+  const loadingEl=document.getElementById('loading');
   setTimeout(()=>{ loadingEl.classList.add('fade'); setTimeout(()=>loadingEl.remove(),700); },250);
-  const initView = new URLSearchParams(location.search).get('view')||'fullsize';
+  const initView=new URLSearchParams(location.search).get('view')||'fullsize';
   setView(initView==='tablets'?'tablets':'fullsize');
 }
 
-// Signal that textures are done and attempt finish (panzoom may already be ready)
 _tryFinish();
 </script>
 </body>
