@@ -41,15 +41,39 @@
       color: #e8dfc9;
     }
 
+    /* ── View toggle ── */
+    #view-toggle {
+      pointer-events: auto;
+      display: flex; align-items: center;
+      background: rgba(10,8,4,0.72);
+      border: 1px solid rgba(201,169,110,0.3);
+      border-radius: 999px; padding: 3px;
+      backdrop-filter: blur(10px);
+    }
+    .toggle-btn {
+      background: none; border: none; color: rgba(240,236,224,0.5);
+      font-family: inherit; font-size: 0.75rem; letter-spacing: 0.08em;
+      padding: 0.32rem 0.8rem; border-radius: 999px;
+      cursor: pointer; transition: background 0.25s, color 0.25s;
+      white-space: nowrap;
+    }
+    .toggle-btn.active {
+      background: rgba(201,169,110,0.2); color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(201,169,110,0.35);
+    }
+    .toggle-btn:hover:not(.active) { color: #f0ece0; }
+
+    #topbar-right { display: flex; align-items: center; gap: 0.6rem; pointer-events: auto; }
+
     #back-btn {
       pointer-events: auto;
       background: rgba(10,8,4,0.65);
       border: 1px solid rgba(201,169,110,0.4);
       color: var(--accent);
       font-family: inherit;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       letter-spacing: 0.08em;
-      padding: 0.42rem 0.9rem;
+      padding: 0.38rem 0.85rem;
       border-radius: 999px;
       cursor: pointer;
       backdrop-filter: blur(8px);
@@ -61,6 +85,9 @@
       background: rgba(201,169,110,0.12);
       color: #f0e0c0;
     }
+    /* Hide nav chrome when embedded in explore.html iframe */
+    body.embedded #topbar { display: none; }
+    body.embedded #hint { bottom: 0.6rem; }
 
     /* ── Tablet label ── */
     #tablet-label {
@@ -253,7 +280,13 @@
   <!-- UI -->
   <div id="topbar">
     <h1>Visual Metaphysics No. 1 &mdash; Engraved Tablets</h1>
-    <a href="landing-page.html" id="back-btn">← Back</a>
+    <div id="topbar-right">
+      <div id="view-toggle" role="group" aria-label="View mode">
+        <button class="toggle-btn active" id="btn-tablets" onclick="window.location.href='explore.html?view=tablets'">3D Tablets</button>
+        <button class="toggle-btn" id="btn-fullsize" onclick="window.location.href='explore.html'">Full Poster</button>
+      </div>
+      <a href="landing-page.html" id="back-btn">← Back</a>
+    </div>
   </div>
 
   <button id="close-btn">✕ Overview</button>
@@ -287,6 +320,11 @@
   <script type="module">
     import * as THREE from 'https://esm.sh/three@0.160.0';
     import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    /* ─────────── Embedded mode (inside explore.html iframe) ─────────── */
+    if (new URLSearchParams(location.search).get('embed') === '1') {
+      document.body.classList.add('embedded');
+    }
 
     /* ─────────── WebGL check ─────────── */
     const hasGL = (() => {

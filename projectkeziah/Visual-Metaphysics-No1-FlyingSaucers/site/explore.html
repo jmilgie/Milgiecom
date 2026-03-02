@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Metaphysics No. 1 — Explore</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #c9a96e;
+      --gold-dim: rgba(201,169,110,0.35);
+      --bg: #06070d;
+      --fg: #f0ece0;
+    }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: "Playfair Display", Georgia, serif; color: var(--fg); }
+
+    /* ── Top bar ── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+      padding: 0.85rem 1.4rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    #topbar h1 {
+      font-size: clamp(0.8rem, 1.2vw + 0.5rem, 1.1rem);
+      font-weight: 400; letter-spacing: 0.07em;
+      color: #e8dfc9; text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 0.6rem; pointer-events: auto; }
+
+    /* ── Pill toggle ── */
+    #view-toggle {
+      display: flex; align-items: center;
+      background: rgba(10,8,4,0.72);
+      border: 1px solid var(--gold-dim);
+      border-radius: 999px;
+      padding: 3px;
+      backdrop-filter: blur(10px);
+      pointer-events: auto;
+    }
+    .toggle-btn {
+      background: none; border: none; color: rgba(240,236,224,0.5);
+      font-family: inherit; font-size: 0.78rem; letter-spacing: 0.08em;
+      padding: 0.35rem 0.85rem; border-radius: 999px;
+      cursor: pointer; transition: background 0.25s, color 0.25s;
+      white-space: nowrap;
+    }
+    .toggle-btn.active {
+      background: rgba(201,169,110,0.2); color: var(--gold);
+      box-shadow: inset 0 0 0 1px var(--gold-dim);
+    }
+    .toggle-btn:hover:not(.active) { color: var(--fg); }
+
+    #back-btn {
+      pointer-events: auto;
+      background: rgba(10,8,4,0.65); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.78rem;
+      letter-spacing: 0.08em; padding: 0.38rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      text-decoration: none; transition: border-color 0.2s, background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    #back-btn:hover { border-color: var(--gold); background: rgba(201,169,110,0.12); color: #f0e0c0; }
+
+    /* ── Hint ── */
+    #hint {
+      position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.72rem; letter-spacing: 0.07em; color: rgba(240,236,224,0.35);
+      pointer-events: none; z-index: 30; white-space: nowrap;
+      transition: opacity 0.8s;
+    }
+    #hint.hidden { opacity: 0; }
+
+    /* ── Loading ── */
+    #loading {
+      position: fixed; inset: 0; background: var(--bg); z-index: 100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem;
+      transition: opacity 0.7s;
+    }
+    #loading.fade { opacity: 0; pointer-events: none; }
+    #loading-title { font-size: 1rem; letter-spacing: 0.15em; color: var(--gold); text-transform: uppercase; }
+    #loading-bar-wrap { width: 200px; height: 2px; background: rgba(201,169,110,0.15); border-radius: 999px; overflow: hidden; }
+    #loading-bar { height: 100%; width: 0%; background: linear-gradient(to right, #c9a96e, #f0d090); border-radius: 999px; transition: width 0.3s; }
+
+    /* ── Fullsize viewer ── */
+    #fullsize-viewer {
+      position: fixed; inset: 0; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 40%, #0e0c14 0%, #06070d 70%);
+      cursor: grab;
+      user-select: none;
+    }
+    #fullsize-viewer:active { cursor: grabbing; }
+    #fullsize-viewer.hidden { display: none; }
+
+    #poster-wrap {
+      position: relative;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    #poster-img {
+      display: block;
+      max-width: none;
+      /* Size set by JS */
+      border: 1px solid rgba(201,169,110,0.12);
+      box-shadow: 0 0 80px rgba(0,0,0,0.7), 0 0 200px rgba(201,169,110,0.05);
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+
+    /* zoom hint overlay */
+    #zoom-level {
+      position: fixed; bottom: 3.5rem; right: 1.4rem; z-index: 30;
+      font-size: 0.72rem; letter-spacing: 0.1em; color: rgba(201,169,110,0.45);
+      pointer-events: none; font-variant-numeric: tabular-nums;
+      transition: opacity 0.5s;
+    }
+    #zoom-level.hidden { opacity: 0; }
+
+    /* reset btn */
+    #reset-btn {
+      position: fixed; bottom: 3.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 30; background: rgba(10,8,4,0.6); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.72rem;
+      letter-spacing: 0.1em; padding: 0.35rem 0.8rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      opacity: 0; pointer-events: none; transition: opacity 0.4s, background 0.2s;
+    }
+    #reset-btn.visible { opacity: 1; pointer-events: auto; }
+    #reset-btn:hover { background: rgba(201,169,110,0.12); }
+
+    /* ── Tablets view (iframe bridge) ── */
+    #tablets-view {
+      position: fixed; inset: 0;
+    }
+    #tablets-view.hidden { display: none; }
+    #tablets-frame {
+      width: 100%; height: 100%; border: none;
+      /* hide the topbar from nested tablets.html via postMessage */
+    }
+
+    /* fallback */
+    body.no-fullsize #fullsize-viewer { display: flex; align-items: center; justify-content: center; }
+    .err-msg { color: rgba(240,236,224,0.4); font-size: 0.9rem; letter-spacing: 0.07em; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<div id="loading">
+  <div id="loading-title">Preparing the chart…</div>
+  <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
+</div>
+
+<div id="topbar">
+  <h1>Visual Metaphysics No. 1 &mdash; Flying Saucers</h1>
+  <div class="topbar-right">
+    <div id="view-toggle" role="group" aria-label="View mode">
+      <button class="toggle-btn" id="btn-fullsize" aria-pressed="false">Full Poster</button>
+      <button class="toggle-btn" id="btn-tablets" aria-pressed="false">3D Tablets</button>
+    </div>
+    <a href="landing-page.html" id="back-btn">← Back</a>
+  </div>
+</div>
+
+<!-- Fullsize pan/zoom viewer -->
+<div id="fullsize-viewer">
+  <div id="poster-wrap">
+    <img id="poster-img" src="img/fullSize.png" alt="Visual Metaphysics No. 1 — Full Poster" draggable="false" />
+  </div>
+</div>
+
+<!-- Tablets embedded view -->
+<div id="tablets-view" class="hidden">
+  <!-- loaded lazily -->
+</div>
+
+<div id="zoom-level" class="hidden">100%</div>
+<button id="reset-btn">Reset view</button>
+<div id="hint">Drag to pan &nbsp;·&nbsp; Scroll or pinch to zoom &nbsp;·&nbsp; Double-click to zoom in</div>
+
+<script>
+(function () {
+  /* ── State ── */
+  let currentView = 'fullsize'; // 'fullsize' | 'tablets'
+  let tabletsLoaded = false;
+
+  /* ── Elements ── */
+  const fullsizeViewer = document.getElementById('fullsize-viewer');
+  const tabletsView    = document.getElementById('tablets-view');
+  const btnFullsize    = document.getElementById('btn-fullsize');
+  const btnTablets     = document.getElementById('btn-tablets');
+  const hintEl         = document.getElementById('hint');
+  const zoomEl         = document.getElementById('zoom-level');
+  const resetBtn       = document.getElementById('reset-btn');
+  const loadingEl      = document.getElementById('loading');
+  const loadingBar     = document.getElementById('loading-bar');
+  const img            = document.getElementById('poster-img');
+  const wrap           = document.getElementById('poster-wrap');
+
+  /* ── View switching ── */
+  function setView(v) {
+    currentView = v;
+    btnFullsize.classList.toggle('active', v === 'fullsize');
+    btnFullsize.setAttribute('aria-pressed', v === 'fullsize');
+    btnTablets.classList.toggle('active', v === 'tablets');
+    btnTablets.setAttribute('aria-pressed', v === 'tablets');
+
+    if (v === 'fullsize') {
+      fullsizeViewer.classList.remove('hidden');
+      tabletsView.classList.add('hidden');
+      hintEl.textContent = 'Drag to pan  ·  Scroll or pinch to zoom  ·  Double-click to zoom in';
+      hintEl.classList.remove('hidden');
+      clearTimeout(hintTimer); hintTimer = setTimeout(() => hintEl.classList.add('hidden'), 5000);
+    } else {
+      fullsizeViewer.classList.add('hidden');
+      tabletsView.classList.remove('hidden');
+      hintEl.classList.add('hidden');
+      if (!tabletsLoaded) {
+        tabletsLoaded = true;
+        const iframe = document.createElement('iframe');
+        iframe.id = 'tablets-frame';
+        iframe.src = 'tablets.html?embed=1';
+        iframe.title = '3D Tablets view';
+        tabletsView.appendChild(iframe);
+      }
+    }
+  }
+
+  btnFullsize.addEventListener('click', () => setView('fullsize'));
+  btnTablets.addEventListener('click',  () => setView('tablets'));
+
+  // Read URL param: ?view=tablets opens tablets by default
+  const initView = new URLSearchParams(location.search).get('view') || 'fullsize';
+
+  /* ── Pan/Zoom engine ── */
+  const MIN_SCALE = 0.15;
+  const MAX_SCALE = 8;
+  let scale = 1;
+  let tx = 0, ty = 0;
+  let hintTimer = null;
+  let zoomTimer = null;
+  let isDragging = false;
+  let dragStart = { x: 0, y: 0, tx: 0, ty: 0 };
+
+  function clampPan(nx, ny, s) {
+    // Allow panning beyond edges by at most half a screen
+    const imgW = img.naturalWidth * s;
+    const imgH = img.naturalHeight * s;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 80;
+    const minX = Math.min(0, vw - imgW - margin);
+    const maxX = Math.max(0, margin);
+    const minY = Math.min(0, vh - imgH - margin);
+    const maxY = Math.max(0, margin);
+    return {
+      x: Math.max(minX, Math.min(maxX, nx)),
+      y: Math.max(minY, Math.min(maxY, ny)),
+    };
+  }
+
+  function applyTransform(animated) {
+    wrap.style.transition = animated ? 'transform 0.35s cubic-bezier(0.22,1,0.36,1)' : 'none';
+    wrap.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
+
+  function showZoom() {
+    zoomEl.textContent = Math.round(scale * 100) + '%';
+    zoomEl.classList.remove('hidden');
+    clearTimeout(zoomTimer);
+    zoomTimer = setTimeout(() => zoomEl.classList.add('hidden'), 1500);
+    resetBtn.classList.toggle('visible', scale > 1.05 || Math.abs(tx) > 10 || Math.abs(ty) > 10);
+  }
+
+  function zoomAround(cx, cy, newScale) {
+    newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+    const ratio = newScale / scale;
+    let nx = cx - (cx - tx) * ratio;
+    let ny = cy - (cy - ty) * ratio;
+    const clamped = clampPan(nx, ny, newScale);
+    tx = clamped.x; ty = clamped.y; scale = newScale;
+    applyTransform(false);
+    showZoom();
+  }
+
+  function resetView(animated) {
+    // Fit image to viewport
+    if (!img.naturalWidth) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const fitScale = Math.min((vw * 0.92) / img.naturalWidth, (vh * 0.88) / img.naturalHeight);
+    scale = fitScale;
+    tx = (vw - img.naturalWidth * scale) / 2;
+    ty = (vh - img.naturalHeight * scale) / 2;
+    applyTransform(animated);
+    showZoom();
+    resetBtn.classList.remove('visible');
+  }
+
+  // Wheel zoom
+  fullsizeViewer.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = fullsizeViewer.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const delta = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    zoomAround(cx, cy, scale * delta);
+  }, { passive: false });
+
+  // Mouse drag
+  fullsizeViewer.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    isDragging = true;
+    dragStart = { x: e.clientX, y: e.clientY, tx, ty };
+    fullsizeViewer.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const nx = dragStart.tx + (e.clientX - dragStart.x);
+    const ny = dragStart.ty + (e.clientY - dragStart.y);
+    const c = clampPan(nx, ny, scale);
+    tx = c.x; ty = c.y;
+    applyTransform(false);
+    resetBtn.classList.toggle('visible', scale > 1.05 || Math.abs(tx) > 10 || Math.abs(ty) > 10);
+  });
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    fullsizeViewer.style.cursor = 'grab';
+  });
+
+  // Double-click zoom
+  fullsizeViewer.addEventListener('dblclick', e => {
+    const rect = fullsizeViewer.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const targetScale = scale < 2 ? Math.min(scale * 2.5, MAX_SCALE) : 1;
+    if (targetScale === 1) { resetView(true); return; }
+    zoomAround(cx, cy, targetScale);
+    wrap.style.transition = 'transform 0.4s cubic-bezier(0.22,1,0.36,1)';
+    wrap.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  });
+
+  // Touch support
+  let lastTouches = null;
+  let touchStartScale = 1;
+  let touchStartTx = 0, touchStartTy = 0;
+  let touchStartMid = { x: 0, y: 0 };
+
+  fullsizeViewer.addEventListener('touchstart', e => {
+    e.preventDefault();
+    lastTouches = e.touches;
+    if (e.touches.length === 1) {
+      isDragging = true;
+      dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, tx, ty };
+    } else if (e.touches.length === 2) {
+      isDragging = false;
+      touchStartScale = scale;
+      touchStartTx = tx; touchStartTy = ty;
+      const t0 = e.touches[0], t1 = e.touches[1];
+      touchStartMid = { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 };
+      e._startDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    }
+  }, { passive: false });
+
+  fullsizeViewer.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) {
+      const nx = dragStart.tx + (e.touches[0].clientX - dragStart.x);
+      const ny = dragStart.ty + (e.touches[0].clientY - dragStart.y);
+      const c = clampPan(nx, ny, scale);
+      tx = c.x; ty = c.y;
+      applyTransform(false);
+    } else if (e.touches.length === 2 && lastTouches && lastTouches.length === 2) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const startDist = Math.hypot(
+        lastTouches[1].clientX - lastTouches[0].clientX,
+        lastTouches[1].clientY - lastTouches[0].clientY
+      );
+      if (startDist === 0) return;
+      const mid = { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 };
+      zoomAround(mid.x, mid.y, scale * (dist / startDist));
+      lastTouches = e.touches;
+    }
+  }, { passive: false });
+
+  fullsizeViewer.addEventListener('touchend', () => {
+    isDragging = false;
+    lastTouches = null;
+  }, { passive: true });
+
+  // Keyboard
+  window.addEventListener('keydown', e => {
+    if (currentView !== 'fullsize') return;
+    const step = 60;
+    if (e.key === 'ArrowLeft')  { tx += step; applyTransform(true); }
+    if (e.key === 'ArrowRight') { tx -= step; applyTransform(true); }
+    if (e.key === 'ArrowUp')    { ty += step; applyTransform(true); }
+    if (e.key === 'ArrowDown')  { ty -= step; applyTransform(true); }
+    if (e.key === '+' || e.key === '=') zoomAround(innerWidth/2, innerHeight/2, scale * 1.25);
+    if (e.key === '-') zoomAround(innerWidth/2, innerHeight/2, scale / 1.25);
+    if (e.key === '0') resetView(true);
+    if (e.key === 'Tab') { e.preventDefault(); setView(currentView === 'fullsize' ? 'tablets' : 'fullsize'); }
+  });
+
+  resetBtn.addEventListener('click', () => resetView(true));
+
+  /* ── Image load & init ── */
+  function onImageReady() {
+    loadingBar.style.width = '100%';
+    setTimeout(() => {
+      loadingEl.classList.add('fade');
+      setTimeout(() => loadingEl.remove(), 750);
+    }, 250);
+    resetView(false);
+    // size the img element to its natural dimensions (pan/zoom handles display)
+    img.style.width  = img.naturalWidth + 'px';
+    img.style.height = img.naturalHeight + 'px';
+    setView(initView);
+    // Kick hint timer
+    hintTimer = setTimeout(() => hintEl.classList.add('hidden'), 5000);
+  }
+
+  if (img.complete && img.naturalWidth) {
+    onImageReady();
+  } else {
+    img.addEventListener('load', onImageReady);
+    img.addEventListener('error', () => {
+      loadingEl.classList.add('fade');
+      setTimeout(() => loadingEl.remove(), 750);
+      document.querySelector('.err-msg')?.remove();
+      fullsizeViewer.innerHTML = '<p class="err-msg">Could not load fullSize.png</p>';
+    });
+    // simulate progress
+    let prog = 0;
+    const progInterval = setInterval(() => {
+      prog = Math.min(prog + Math.random() * 0.12, 0.88);
+      loadingBar.style.width = (prog * 100) + '%';
+      if (img.complete) clearInterval(progInterval);
+    }, 80);
+  }
+
+  window.addEventListener('resize', () => resetView(false));
+})();
+</script>
+</body>
+</html>
