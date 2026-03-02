@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visual Metaphysics No. 1: Flying Saucers (1956)</title>
+  <title>Visual Metaphysics No. 2: Reincarnation (1957)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -51,11 +51,9 @@
       transition: border-color 0.2s, background 0.2s, color 0.2s;
     }
     .nav-pill:hover { border-color: var(--gold); background: rgba(201,169,110,0.14); color: #f0e0c0; }
-    .nav-pill.cta { background: rgba(201,169,110,0.18); border-color: var(--gold); color: var(--fg-light); }
-    .nav-pill.cta:hover { background: rgba(201,169,110,0.3); }
 
     /* ════════════════════════════════════════
-       PART 1: DARK CINEMATIC HERO
+       HERO — dark cinematic
     ════════════════════════════════════════ */
     #hero {
       position: relative; min-height: 100vh;
@@ -69,7 +67,7 @@
       content: '';
       position: absolute; inset: 0;
       background:
-        radial-gradient(ellipse 90% 55% at 50% 60%, rgba(201,169,110,0.08) 0%, transparent 65%),
+        radial-gradient(ellipse 90% 55% at 50% 60%, rgba(201,169,110,0.07) 0%, transparent 65%),
         linear-gradient(to bottom, transparent 60%, var(--bg-dark) 100%);
       pointer-events: none;
     }
@@ -131,7 +129,7 @@
     @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(9px)} }
 
     /* ════════════════════════════════════════
-       PART 2: WARM PAPER ARTIFACT SECTION
+       ARTIFACT — warm paper
     ════════════════════════════════════════ */
     #artifact {
       background: var(--bg-warm);
@@ -139,7 +137,6 @@
       position: relative;
       overflow: hidden;
     }
-    /* Subtle ruled-paper texture */
     #artifact::before {
       content: '';
       position: absolute; inset: 0;
@@ -169,7 +166,6 @@
       color: var(--sepia); opacity: 0.7;
     }
 
-    /* Big poster + copy layout */
     .artifact-layout {
       display: grid;
       grid-template-columns: 1fr;
@@ -180,10 +176,9 @@
       .artifact-layout { grid-template-columns: 1.1fr 1fr; align-items: center; }
     }
 
-    /* Poster with shadow + frame */
     .poster-exhibit {
       position: relative;
-      cursor: pointer;
+      cursor: default;
     }
     .poster-exhibit::before {
       content: '';
@@ -207,30 +202,7 @@
       color: var(--sepia); opacity: 0.6; white-space: nowrap;
       text-align: center;
     }
-    .poster-hover-ring {
-      position: absolute; inset: 0;
-      border: 2px solid transparent;
-      border-radius: 3px;
-      transition: border-color 0.3s, box-shadow 0.3s;
-      pointer-events: none;
-    }
-    .poster-exhibit:hover .poster-hover-ring {
-      border-color: var(--gold);
-      box-shadow: 0 0 40px rgba(201,169,110,0.15);
-    }
-    .poster-exhibit:hover .poster-mat { opacity: 0.94; }
-    .poster-cta-hint {
-      position: absolute; bottom: 14px; right: 14px;
-      background: rgba(6,7,13,0.75); border: 1px solid var(--gold-dim);
-      color: var(--gold); font-size: 0.68rem; letter-spacing: 0.12em;
-      text-transform: uppercase; padding: 0.28rem 0.6rem; border-radius: 999px;
-      backdrop-filter: blur(6px);
-      opacity: 0; transition: opacity 0.25s;
-      pointer-events: none;
-    }
-    .poster-exhibit:hover .poster-cta-hint { opacity: 1; }
 
-    /* Copy column */
     .artifact-copy { color: var(--ink); }
     .catalog-ref {
       display: inline-block; font-size: 0.65rem; letter-spacing: 0.18em;
@@ -248,7 +220,6 @@
       line-height: 1.85; margin-bottom: 1rem;
     }
 
-    /* Stats strip */
     .stats-strip {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -289,7 +260,7 @@
     .btn-warm-ghost:hover { background: rgba(107,78,42,0.07); border-color: var(--sepia); transform: translateY(-2px); }
 
     /* ════════════════════════════════════════
-       PART 3: CHART ELEMENTS (dark)
+       DESIGN ELEMENTS — dark
     ════════════════════════════════════════ */
     #elements {
       background: #0b0c17;
@@ -317,7 +288,7 @@
 
     .gal-cell {
       position: relative; aspect-ratio: 4/3;
-      background: #08090e; overflow: hidden; cursor: pointer;
+      background: #08090e; overflow: hidden;
     }
     .gal-cell img {
       width: 100%; height: 100%; object-fit: cover;
@@ -334,23 +305,20 @@
     }
     .gal-cell:hover .gal-label { opacity: 1; }
 
-    .contents-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 1px; background: var(--line-dark);
-      border: 1px solid var(--line-dark);
-      border-radius: 8px; overflow: hidden;
-      margin-top: 1px;
+    .wip-notice {
+      margin-top: 2.5rem;
+      background: rgba(201,169,110,0.06);
+      border: 1px solid var(--gold-dim);
+      border-radius: 8px;
+      padding: 1.4rem 1.8rem;
+      display: flex; align-items: flex-start; gap: 1rem;
     }
-    .contents-cell {
-      background: #0b0c17; padding: 1.1rem 1.3rem;
-      display: flex; align-items: flex-start; gap: 0.75rem;
-    }
-    .contents-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); flex-shrink: 0; margin-top: 0.55rem; }
-    .contents-cell span { font-size: 0.85rem; color: rgba(240,236,224,0.55); line-height: 1.5; }
+    .wip-notice-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .wip-notice p { font-size: 0.86rem; color: rgba(240,236,224,0.55); line-height: 1.7; }
+    .wip-notice strong { color: var(--gold); font-weight: 400; }
 
     /* ════════════════════════════════════════
-       PART 4: TIMELINE (warm)
+       TIMELINE — warm paper
     ════════════════════════════════════════ */
     #timeline-section {
       background: var(--bg-paper);
@@ -417,7 +385,7 @@
     .tl-card p { font-size: 0.86rem; color: var(--ink-dim); line-height: 1.65; }
 
     /* ════════════════════════════════════════
-       PART 5: ABOUT (dark)
+       ABOUT — dark
     ════════════════════════════════════════ */
     #about {
       background: linear-gradient(135deg, #0b0c17 0%, #0e0f1c 100%);
@@ -440,31 +408,6 @@
     .about-icon { font-size: 1.5rem; margin-bottom: 0.9rem; }
     .about-card h3 { font-size: 0.95rem; color: var(--fg-light); margin-bottom: 0.65rem; }
     .about-card p { font-size: 0.84rem; color: rgba(240,236,224,0.52); line-height: 1.75; }
-
-    /* ════════════════════════════════════════
-       PART 6: CTA BANNER (warm → dark blend)
-    ════════════════════════════════════════ */
-    #cta-banner {
-      text-align: center;
-      padding: 7rem 1.5rem;
-      background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201,169,110,0.09) 0%, transparent 70%),
-                  var(--bg-dark);
-      position: relative;
-    }
-    #cta-banner::before {
-      content: ''; position: absolute; inset: 0;
-      border-top: 1px solid var(--line-dark); border-bottom: 1px solid var(--line-dark);
-    }
-    #cta-banner h2 {
-      font-size: clamp(1.8rem, 3vw + 1rem, 3.2rem);
-      font-weight: 400; color: var(--fg-light); margin-bottom: 0.9rem;
-    }
-    #cta-banner h2 em { font-style: italic; color: var(--gold); }
-    #cta-banner p {
-      color: rgba(240,236,224,0.48); max-width: 540px;
-      margin: 0 auto 2.5rem; font-size: 0.95rem; line-height: 1.8;
-    }
-    .cta-row { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
 
     /* ════════════════════════════════════════
        FOOTER
@@ -490,6 +433,7 @@
     .reveal.visible { opacity: 1; transform: translateY(0); }
     .reveal-d1 { transition-delay: 0.1s; }
     .reveal-d2 { transition-delay: 0.2s; }
+    .reveal-d3 { transition-delay: 0.3s; }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
@@ -501,22 +445,20 @@
     <div class="nav-logo">Project Keziah</div>
     <div class="nav-links">
       <a href="../" class="nav-pill">← Collection</a>
-      <a href="site/?view=tablets" class="nav-pill">Tri-Framed Poster</a>
-      <a href="site/" class="nav-pill cta">Explore Chart ↗</a>
     </div>
   </nav>
 
   <!-- ════════ HERO ════════ -->
   <section id="hero">
     <canvas id="hero-canvas"></canvas>
-    <div class="stamp">2 July 1956</div>
+    <div class="stamp">28 May 1957</div>
     <div class="hero-inner">
-      <div class="hero-eyebrow">Fred Keziah &nbsp;·&nbsp; Arlington, Virginia &nbsp;·&nbsp; Catalog A242635</div>
+      <div class="hero-eyebrow">Fred Keziah &nbsp;·&nbsp; Arlington, Virginia &nbsp;·&nbsp; Catalog A286122</div>
       <h1 class="hero-title">Visual<br><em>Metaphysics</em></h1>
-      <p class="hero-no">No. 1</p>
-      <p class="hero-byline">Flying Saucers &nbsp;— &nbsp;by Fred Keziah</p>
+      <p class="hero-no">No. 2</p>
+      <p class="hero-byline">Reincarnation &nbsp;— &nbsp;by Fred Keziah</p>
       <div class="hero-ctas">
-        <a href="#artifact" class="btn-hero-primary">Explore the Poster ↓</a>
+        <a href="#artifact" class="btn-hero-primary">Explore the Chart ↓</a>
       </div>
     </div>
     <div class="scroll-cue" aria-hidden="true">↓</div>
@@ -531,63 +473,58 @@
         <div class="section-rule-line"></div>
       </div>
       <div class="artifact-layout">
-        <div class="poster-exhibit reveal" onclick="window.location.href='site/'">
+        <div class="poster-exhibit reveal">
           <div class="poster-mat">
-            <img src="site/img/landing.png" alt="Visual Metaphysics No. 1: Flying Saucers" />
-            <div class="poster-mat-label">Visual Metaphysics No. 1 — Fred Keziah, 1956</div>
-            <div class="poster-cta-hint">↗ Explore</div>
+            <img src="site/img/VisualMetaphysics-no2-workinprogress-header.png" alt="Visual Metaphysics No. 2: Reincarnation — Work in Progress" />
+            <div class="poster-mat-label">Visual Metaphysics No. 2 — Fred Keziah, 1957 &nbsp;·&nbsp; Work in Progress</div>
           </div>
-          <div class="poster-hover-ring"></div>
         </div>
         <div class="artifact-copy reveal reveal-d1">
-          <div class="catalog-ref">Catalog Reference: A242635</div>
-          <h2>The Flying Saucers Chart</h2>
-          <p>Originally produced July 2, 1956, this chart was created by Fred Keziah (1920–2010) — a Navy-trained illustrator who specialized in technical information visualization.</p>
-          <p>A comprehensive single-sheet reference compiling 228 illustrated UFO shapes, flight formations, caricatures of "space people," and tables of observed colors, sounds, speeds, and sizes.</p>
-          <p>Self-published in Arlington, Virginia in 1957 with a revised edition in 1958, sold by mail order for $1.00 per copy — an early landmark of data visualization applied to the unexplained.</p>
+          <div class="catalog-ref">Catalog Reference: A286122</div>
+          <h2>The Reincarnation Chart</h2>
+          <p>Originally produced May 28, 1957, this chart was created by Fred Keziah (1920–2010) — a Navy-trained illustrator who specialized in technical information visualization.</p>
+          <p>The second in Keziah's Visual Metaphysics series, this chart applied the same rigorous data-design approach as No. 1 — but to the cyclical journey of the soul. Geometric shapes, symbolic color theory, and spatial relationships communicate the eternal cycle of death and rebirth.</p>
+          <p>Self-published in Arlington, Virginia and registered with the U.S. Copyright Office in 1957. The chart disappeared from public view for decades until archival research uncovered references to its existence, inspiring this ongoing digital recreation project.</p>
           <div class="stats-strip">
-            <div class="stat-cell"><div class="stat-num">228</div><div class="stat-lbl">Shapes</div></div>
-            <div class="stat-cell"><div class="stat-num">1956</div><div class="stat-lbl">Created</div></div>
-            <div class="stat-cell"><div class="stat-num">$1</div><div class="stat-lbl">Price</div></div>
-            <div class="stat-cell"><div class="stat-num">2023</div><div class="stat-lbl">Digitized</div></div>
+            <div class="stat-cell"><div class="stat-num">1957</div><div class="stat-lbl">Created</div></div>
+            <div class="stat-cell"><div class="stat-num">No.&nbsp;2</div><div class="stat-lbl">In Series</div></div>
+            <div class="stat-cell"><div class="stat-num">2021</div><div class="stat-lbl">Rediscovered</div></div>
+            <div class="stat-cell"><div class="stat-num">WIP</div><div class="stat-lbl">Status</div></div>
           </div>
           <div class="artifact-cta-row">
-            <a href="site/" class="btn-warm-primary">Explore Full Poster ↗</a>
-            <a href="site/?view=tablets" class="btn-warm-ghost">Tri-Framed Poster</a>
+            <a href="https://github.com/jmilgie/ProjectKeziah" target="_blank" rel="noopener" class="btn-warm-primary">Contribute on GitHub ↗</a>
+            <a href="mailto:ProjectKeziah@protonmail.com" class="btn-warm-ghost">Contact</a>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ════════ CHART ELEMENTS ════════ -->
+  <!-- ════════ DESIGN ELEMENTS ════════ -->
   <section id="elements">
     <div class="elements-inner">
-      <div class="section-label-dark">Chart Elements</div>
+      <div class="section-label-dark">Design Elements</div>
       <div class="gallery-4 reveal">
-        <div class="gal-cell" onclick="window.location.href='site/'">
-          <img src="site/img/ufoshapes.png" alt="UFO Shapes" />
-          <div class="gal-label">UFO Shapes</div>
+        <div class="gal-cell">
+          <img src="site/img/geometricpatterns.png" alt="Geometric Patterns" />
+          <div class="gal-label">Geometric Patterns</div>
         </div>
-        <div class="gal-cell" onclick="window.location.href='site/'">
-          <img src="site/img/spacepeople.png" alt="Space People" />
-          <div class="gal-label">Space People</div>
+        <div class="gal-cell">
+          <img src="site/img/colorstudy.png" alt="Color Study" />
+          <div class="gal-label">Color Study</div>
         </div>
-        <div class="gal-cell" onclick="window.location.href='site/'">
-          <img src="site/img/flightformations.png" alt="Flight Formations" />
-          <div class="gal-label">Flight Formations</div>
+        <div class="gal-cell">
+          <img src="site/img/symbolicimagery.png" alt="Symbolic Imagery" />
+          <div class="gal-label">Symbolic Imagery</div>
         </div>
-        <div class="gal-cell" onclick="window.location.href='site/'">
-          <img src="site/img/datatables.png" alt="Data Tables" />
-          <div class="gal-label">Data Tables</div>
+        <div class="gal-cell">
+          <img src="site/img/typography.png" alt="Typography" />
+          <div class="gal-label">Typography</div>
         </div>
       </div>
-      <div class="contents-grid reveal">
-        <div class="contents-cell"><div class="contents-dot"></div><span>228 illustrations of UFO shapes and configurations</span></div>
-        <div class="contents-cell"><div class="contents-dot"></div><span>Caricatures of reported "space people" (alien beings)</span></div>
-        <div class="contents-cell"><div class="contents-dot"></div><span>Flight patterns and formation diagrams</span></div>
-        <div class="contents-cell"><div class="contents-dot"></div><span>Tables of reported UFO colors, sounds, and speeds</span></div>
-        <div class="contents-cell"><div class="contents-dot"></div><span>Size comparisons and proportional representations</span></div>
+      <div class="wip-notice reveal reveal-d1">
+        <div class="wip-notice-icon">🔭</div>
+        <p><strong>This is an active recreation project.</strong> Do you have a copy of the original poster or higher-quality reference images? Your contribution could make a significant difference. <a href="https://github.com/jmilgie/ProjectKeziah" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none">Contribute on GitHub ↗</a> or <a href="mailto:ProjectKeziah@protonmail.com" style="color:var(--gold);text-decoration:none">reach out directly</a>.</p>
       </div>
     </div>
   </section>
@@ -597,12 +534,10 @@
     <div class="timeline-inner">
       <div class="section-label-warm">The Journey of Rediscovery</div>
       <div class="timeline">
-        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">July 2, 1956</div><div class="tl-card"><p>Original chart "Visual Metaphysics No. 1: Flying Saucers" created by Fred Keziah and internally labeled A242635.</p></div></div>
-        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">1957</div><div class="tl-card"><p>Chart self-published in Arlington, Virginia and offered for sale via mail order for $1.00 per copy.</p></div></div>
-        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">1958</div><div class="tl-card"><p>Revised edition published, incorporating additional UFO sighting data from the major UFO wave of 1957.</p></div></div>
-        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">1990s</div><div class="tl-card"><p>Researcher Greg Bishop obtained several original copies directly from Fred Keziah himself.</p></div></div>
-        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">January 2023</div><div class="tl-card"><p>Digital Recreation completed by Johnathan Milgie using high-res photos of the original 2nd Edition poster. Reference images by Richard Geldreich Jr. and Adam Gorightly.</p></div></div>
-        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">2025</div><div class="tl-card"><p>Interactive site launched — explore the full poster or the Tri-Framed Poster experience.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">May 28, 1957</div><div class="tl-card"><p>Original chart "Visual Metaphysics No. 2: Reincarnation" created by Fred Keziah and registered with the U.S. Copyright Office.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">2021</div><div class="tl-card"><p>Archival research uncovers descriptions and a partial photograph of the original via eBay search.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">2022</div><div class="tl-card"><p>Digital Recreation project begins, aiming to faithfully reproduce the visuals of the original work.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-date">2025</div><div class="tl-card"><p>Recreation site launched to document the ongoing journey and attract contributors with reference materials.</p></div></div>
       </div>
     </div>
   </section>
@@ -613,19 +548,19 @@
       <div class="section-label-dark">The Concept of Visual Metaphysics</div>
       <div class="about-cols">
         <div class="about-card reveal">
-          <div class="about-icon">📡</div>
-          <h3>Data Visualization Pioneer</h3>
-          <p>Keziah's work was essentially an early form of data visualization applied to UFO reports — a methodical, almost scientific approach treating it much like a military recognition chart.</p>
+          <div class="about-icon">♾️</div>
+          <h3>Cycles of Existence</h3>
+          <p>Keziah applied the same rigorous data-visualization approach he used for UFOs to the spiritual concept of reincarnation — mapping the cyclical journey of the soul through geometric precision and symbolic color theory.</p>
         </div>
         <div class="about-card reveal reveal-d1">
-          <div class="about-icon">🛸</div>
-          <h3>Post-War UFO Culture</h3>
-          <p>In the post-war era of the 1950s, public fascination with space-age mysteries and esoteric spirituality converged. Keziah applied rigorous data design to these usually sensationalized topics.</p>
+          <div class="about-icon">🌀</div>
+          <h3>Eastern Meets Western</h3>
+          <p>The chart draws from Eastern philosophical traditions while employing the clean modernist aesthetic of 1950s American design — an era when the boundary between science and metaphysics remained delightfully blurred.</p>
         </div>
         <div class="about-card reveal reveal-d2">
-          <div class="about-icon">🔭</div>
+          <div class="about-icon">📡</div>
           <h3>Eclectic Inquiry</h3>
-          <p>UFOs for No. 1, Reincarnation for No. 2 — Keziah's series reflects an era when the boundary between scientific inquiry and metaphysics remained delightfully blurred.</p>
+          <p>UFOs for No. 1, Reincarnation for No. 2 — Keziah's series reflects the milieu of the 1950s, when public fascination with both space-age mysteries and esoteric spirituality converged in popular culture.</p>
         </div>
       </div>
     </div>
@@ -634,7 +569,7 @@
   <!-- ════════ FOOTER ════════ -->
   <footer>
     <div class="foot-links">
-      <a href="https://github.com/jmilgie/ProjectKeziah/blob/main/Visual-Metaphysics-No1-FlyingSaucers/visio/VisualMetaphysics-no1.pdf" target="_blank" rel="noopener">View on GitHub</a>
+      <a href="https://github.com/jmilgie/ProjectKeziah" target="_blank" rel="noopener">Contribute on GitHub</a>
       <a href="mailto:ProjectKeziah@protonmail.com">Contact</a>
       <a href="https://x.com/ProjectKeziah" target="_blank" rel="noopener">@ProjectKeziah</a>
     </div>
@@ -647,30 +582,30 @@
       const c = document.getElementById('hero-canvas');
       const ctx = c.getContext('2d');
       let stars=[], dust=[];
+      function resize(){ c.width=c.offsetWidth; c.height=c.offsetHeight; init(); }
       function init(){
-        c.width=innerWidth; c.height=innerHeight;
-        stars = Array.from({length:200},()=>({
+        stars=Array.from({length:90},()=>({
           x:Math.random()*c.width, y:Math.random()*c.height,
-          r:Math.random()*1.1+0.15, a:Math.random()*0.65+0.1,
-          tw:Math.random()*Math.PI*2, spd:Math.random()*0.007+0.002
+          r:Math.random()*1.1+0.2, a:Math.random()*0.55+0.1,
+          s:Math.random()*0.12+0.04
         }));
-        dust = Array.from({length:28},()=>({
+        dust=Array.from({length:28},()=>({
           x:Math.random()*c.width, y:Math.random()*c.height,
-          vy:-(Math.random()*0.15+0.04), vx:(Math.random()-0.5)*0.18,
-          r:Math.random()*1.6+0.4, a:Math.random()*0.28+0.04
+          r:Math.random()*1.8+0.8, a:Math.random()*0.18+0.04,
+          s:Math.random()*0.06+0.02
         }));
       }
-      window.addEventListener('resize',init); init();
-      let t=0;
+      window.addEventListener('resize',resize); resize();
       (function draw(){
-        ctx.clearRect(0,0,c.width,c.height); t+=0.015;
-        stars.forEach(s=>{
-          const a=s.a*(0.5+0.5*Math.sin(t*s.spd*55+s.tw));
-          ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-          ctx.fillStyle=`rgba(240,236,224,${a})`; ctx.fill();
+        ctx.clearRect(0,0,c.width,c.height);
+        stars.forEach(p=>{
+          p.y-=p.s;
+          if(p.y<-4){p.y=c.height+4;p.x=Math.random()*c.width;}
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          ctx.fillStyle=`rgba(240,236,224,${p.a})`; ctx.fill();
         });
         dust.forEach(p=>{
-          p.x+=p.vx+Math.sin(t*0.35+p.y*0.008)*0.07; p.y+=p.vy;
+          p.y-=p.s;
           if(p.y<-4){p.y=c.height+4;p.x=Math.random()*c.width;}
           ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
           ctx.fillStyle=`rgba(201,169,110,${p.a})`; ctx.fill();
@@ -690,14 +625,8 @@
 
     /* ── Intersection reveals ── */
     const io = new IntersectionObserver(entries=>{
-      entries.forEach(e=>{
-        if(!e.isIntersecting) return;
-        const idx = e.target.classList.contains('tl-item')
-          ? [...e.target.parentElement.children].indexOf(e.target)*110 : 0;
-        setTimeout(()=>e.target.classList.add('visible'), idx);
-        io.unobserve(e.target);
-      });
-    },{threshold:0.12});
+      entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.12 });
     document.querySelectorAll('.reveal, .tl-item').forEach(el=>io.observe(el));
   </script>
 </body>
