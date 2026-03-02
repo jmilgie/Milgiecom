@@ -1,437 +1,527 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Metaphysics Project Collection</title>
-    <style>
-        /* Global Styles - 1957 Mid-Century Modern Aesthetic */
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto+Mono&display=swap');
-        
-        :root {
-            --color-primary: #d4af37; /* Rich Gold */
-            --color-secondary: #b8860b; /* Dark Goldenrod */
-            --color-accent: #f4cf67; /* Bright Gold Hover */
-            --color-light: #0e0e0e; /* Near Black */
-            --color-dark: #f5e7b4; /* Warm Pale Gold Text */
-            --color-card: #171717; /* Card Surface */
-            --font-heading: 'Playfair Display', serif;
-            --font-body: 'Roboto Mono', monospace;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: var(--font-body);
-            background-color: var(--color-light);
-            color: var(--color-dark);
-            line-height: 1.6;
-            overflow-x: hidden;
-            width: 100%;
-        }
-        
-        /* Header */
-        header {
-            padding: 3rem 1rem;
-            text-align: center;
-            background: linear-gradient(160deg, #1b1b1b 0%, #080808 100%);
-            color: var(--color-dark);
-            position: relative;
-            border-bottom: 3px solid var(--color-primary);
-        }
-        
-        .period-stamp {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            font-size: 1.2rem;
-            padding: 0.5rem;
-            border: 2px solid var(--color-primary);
-            transform: rotate(5deg);
-            color: var(--color-primary);
-        }
-        
-        h1 {
-            font-family: var(--font-heading);
-            font-size: 2.2rem;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        h2 {
-            font-family: var(--font-heading);
-            font-size: 1.4rem;
-            margin-bottom: 1.5rem;
-            font-weight: 400;
-        }
-        
-        /* Main Content */
-        main {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-        }
-        
-        .intro-section {
-            margin-bottom: 3rem;
-            text-align: center;
-            width: 100%;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            padding: 0 1rem;
-        }
-        
-        .intro-section p {
-            font-size: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        /* Project Cards */
-        .projects-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2rem;
-            margin: 2rem 0;
-            width: 100%;
-        }
-        
-        .project-card {
-            width: 100%;
-            max-width: 350px;
-            background-color: var(--color-card);
-            border: 2px solid var(--color-primary);
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .project-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 24px rgba(212, 175, 55, 0.2);
-            border-color: var(--color-accent);
-        }
-        
-        .project-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-        }
-        
-        .project-content {
-            padding: 1.5rem;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .project-title {
-            font-family: var(--font-heading);
-            font-size: 1.4rem;
-            color: var(--color-primary);
-            margin-bottom: 1rem;
-        }
-        
-        .project-description {
-            margin-bottom: 1.5rem;
-            flex-grow: 1;
-        }
-        
-        .project-link {
-            display: inline-block;
-            padding: 0.8rem 1.5rem;
-            background-color: var(--color-secondary);
-            color: #111;
-            text-decoration: none;
-            font-family: var(--font-heading);
-            text-align: center;
-            transition: background-color 0.3s ease;
-            align-self: flex-start;
-            margin-top: auto;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Keziah — Visual Metaphysics Archive</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold:      #c9a96e;
+      --gold-dim:  rgba(201,169,110,0.28);
+      --gold-glow: rgba(201,169,110,0.07);
+      --bg:        #06070d;
+      --bg2:       #0a0b14;
+      --bg3:       #0e0f1c;
+      --fg:        #f0ece0;
+      --fg-dim:    rgba(240,236,224,0.52);
+      --line:      rgba(201,169,110,0.15);
+    }
 
-        .project-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            margin-top: auto;
-            width: 100%;
-        }
-        
-        .project-link:hover {
-            background-color: var(--color-accent);
-        }
-        
-        /* About Section */
-        .about-section {
-            background-color: var(--color-secondary);
-            color: #111;
-            padding: 2rem 1.5rem;
-            margin: 2rem 0;
-            border-radius: 5px;
-            width: 100%;
-        }
-        
-        .about-section h3 {
-            color: var(--color-light);
-            margin-bottom: 1.5rem;
-            font-family: var(--font-heading);
-            font-size: 1.6rem;
-        }
-        
-        /* Footer */
-        footer {
-            background-color: #050505;
-            color: var(--color-dark);
-            text-align: center;
-            padding: 1.5rem 1rem;
-            font-size: 0.9rem;
-            width: 100%;
-            border-top: 2px solid var(--color-primary);
-        }
-        
-        .footer-links {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-        
-        .footer-links a {
-            color: var(--color-primary);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
+    html { scroll-behavior: smooth; }
 
-        .footer-links a:hover {
-            color: var(--color-accent);
-            text-decoration: underline;
-        }
-        
-        /* Animation */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .fade-in {
-            animation: fadeIn 1.5s ease-in;
-        }
-        
-        /* 1950s Design Elements */
-        .atomic-shape {
-            position: absolute;
-            opacity: 0.1;
-            z-index: -1;
-            display: none; /* Hide on mobile by default */
-        }
-        
-        /* Special Button Style */
-        .special-button {
-            display: inline-block;
-            padding: 0.8rem 1.5rem;
-            background-color: var(--color-accent);
-            color: #111;
-            text-decoration: none;
-            font-family: var(--font-heading);
-            font-size: 1.1rem;
-            border: none;
-            cursor: pointer;
-            margin-top: 1.5rem;
-            transition: background-color 0.3s ease, transform 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .special-button:hover {
-            background-color: var(--color-accent);
-            transform: translateY(-3px);
-        }
-        
-        /* Support section */
-        .support-section {
-            text-align: center; 
-            margin: 3rem 0;
-            padding: 0 1rem;
-        }
-        
-        .support-section h3 {
-            margin-bottom: 1.5rem;
-            font-family: var(--font-heading);
-        }
-        
-        .support-section p {
-            max-width: 600px; 
-            margin: 0 auto 2rem;
-        }
-        
-        /* Media Queries for Responsive Design */
-        @media (min-width: 768px) {
-            /* Tablet and larger */
-            h1 {
-                font-size: 2.5rem;
-                letter-spacing: 3px;
-            }
-            
-            h2 {
-                font-size: 1.6rem;
-            }
-            
-            .period-stamp {
-                font-size: 1.4rem;
-                padding: 0.8rem;
-                top: 2rem;
-                right: 2rem;
-            }
-            
-            .projects-container {
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            
-            .project-card {
-                flex: 0 0 calc(50% - 2rem);
-            }
-            
-            .footer-links {
-                flex-direction: row;
-                justify-content: center;
-            }
-            
-            /* Show atomic shapes on larger screens */
-            .atomic-shape {
-                display: block;
-            }
-            
-            .circle1 {
-                width: 150px;
-                height: 150px;
-                border-radius: 50%;
-                background-color: var(--color-accent);
-                top: 20%;
-                left: 10%;
-            }
-            
-            .circle2 {
-                width: 100px;
-                height: 100px;
-                border-radius: 50%;
-                background-color: var(--color-secondary);
-                bottom: 30%;
-                right: 15%;
-            }
-            
-            .boomerang {
-                width: 200px;
-                height: 80px;
-                background-color: var(--color-primary);
-                border-radius: 100px 0 0 100px;
-                transform: rotate(45deg);
-                top: 40%;
-                right: 5%;
-            }
-        }
-        
-        @media (min-width: 992px) {
-            /* Desktop */
-            header {
-                padding: 3rem 2rem;
-            }
-            
-            main {
-                padding: 3rem 2rem;
-            }
-            
-            .project-card {
-                flex: 0 0 300px;
-            }
-            
-            .intro-section p {
-                font-size: 1.1rem;
-            }
-        }
-    </style>
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "Playfair Display", Georgia, serif;
+      overflow-x: hidden;
+      line-height: 1.7;
+    }
+
+    /* ── Fixed nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(to bottom, rgba(6,7,13,0.95), transparent);
+      pointer-events: none;
+    }
+    .nav-logo {
+      font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.7;
+    }
+    .nav-links { display: flex; gap: 0.5rem; pointer-events: auto; }
+    .nav-pill {
+      background: rgba(10,8,4,0.7); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-family: inherit; font-size: 0.75rem;
+      letter-spacing: 0.09em; padding: 0.36rem 0.85rem;
+      border-radius: 999px; cursor: pointer; backdrop-filter: blur(8px);
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .nav-pill:hover { border-color: var(--gold); background: rgba(201,169,110,0.12); color: #f0e0c0; }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+      padding: 6rem 1.5rem 4rem;
+    }
+    #hero-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 0;
+    }
+    #hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 55%, rgba(201,169,110,0.065) 0%, transparent 70%);
+      pointer-events: none; z-index: 1;
+    }
+
+    .hero-inner {
+      position: relative; z-index: 2;
+      text-align: center; max-width: 820px;
+    }
+    .hero-eyebrow {
+      font-size: 0.7rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.75; margin-bottom: 1.4rem;
+    }
+    .hero-title {
+      font-size: clamp(2.6rem, 6vw + 1rem, 6rem);
+      font-weight: 400; line-height: 1.0;
+      color: var(--fg);
+      text-shadow: 0 0 100px rgba(201,169,110,0.15);
+      margin-bottom: 0.4rem;
+    }
+    .hero-title em { font-style: italic; color: var(--gold); }
+    .hero-sub {
+      font-size: clamp(0.9rem, 1.4vw + 0.5rem, 1.2rem);
+      color: var(--fg-dim); letter-spacing: 0.05em;
+      margin-bottom: 1rem; font-weight: 400;
+    }
+    .hero-desc {
+      font-size: 0.9rem; color: rgba(240,236,224,0.4);
+      max-width: 520px; margin: 0 auto 2.8rem;
+      line-height: 1.8; letter-spacing: 0.02em;
+    }
+    .hero-ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      background: rgba(201,169,110,0.14); border: 1px solid var(--gold);
+      color: var(--fg); font-family: inherit; font-size: 0.85rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.72rem 1.55rem; border-radius: 999px;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.25s, box-shadow 0.25s, transform 0.2s;
+      box-shadow: 0 0 30px rgba(201,169,110,0.08);
+    }
+    .btn-primary:hover {
+      background: rgba(201,169,110,0.24);
+      box-shadow: 0 0 55px rgba(201,169,110,0.2);
+      transform: translateY(-2px);
+    }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(240,236,224,0.14);
+      color: var(--fg-dim); font-family: inherit; font-size: 0.85rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.72rem 1.55rem; border-radius: 999px;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.25s, border-color 0.25s, color 0.2s, transform 0.2s;
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(240,236,224,0.28); color: var(--fg);
+      transform: translateY(-2px);
+    }
+
+    .scroll-cue {
+      position: absolute; bottom: 2rem; left: 50%;
+      transform: translateX(-50%); z-index: 2;
+      color: var(--gold-dim); font-size: 1.3rem;
+      animation: bob 2.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes bob { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(9px); } }
+
+    /* ── Section shell ── */
+    .section { padding: 5.5rem 1.5rem; }
+    .inner   { max-width: 1120px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 0.68rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.65; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+    /* ── PROJECTS ── */
+    #projects { background: linear-gradient(to bottom, var(--bg) 0%, var(--bg2) 100%); }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-top: 2.5rem;
+    }
+    @media (min-width: 700px) {
+      .projects-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* Project card */
+    .project-card {
+      position: relative;
+      background: var(--bg3);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: border-color 0.35s, box-shadow 0.35s, transform 0.35s;
+      cursor: pointer;
+    }
+    .project-card:hover {
+      border-color: var(--gold-dim);
+      box-shadow: 0 20px 70px rgba(0,0,0,0.5), 0 0 50px rgba(201,169,110,0.08);
+      transform: translateY(-5px);
+    }
+    .project-card.wip { opacity: 0.65; cursor: default; }
+    .project-card.wip:hover { transform: none; border-color: var(--line); box-shadow: none; }
+
+    .project-img-wrap {
+      position: relative; overflow: hidden;
+      aspect-ratio: 16/8;
+      background: #08090e;
+    }
+    .project-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block; opacity: 0.82;
+      transition: transform 0.6s, opacity 0.4s;
+    }
+    .project-card:hover .project-img-wrap img {
+      transform: scale(1.04); opacity: 1;
+    }
+    .project-img-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(14,15,28,0.85) 0%, rgba(14,15,28,0.1) 60%, transparent 100%);
+    }
+    .wip-badge {
+      position: absolute; top: 1rem; right: 1rem;
+      background: rgba(10,8,4,0.75); border: 1px solid var(--gold-dim);
+      color: var(--gold); font-size: 0.65rem; letter-spacing: 0.15em;
+      text-transform: uppercase; padding: 0.25rem 0.6rem; border-radius: 999px;
+      backdrop-filter: blur(6px);
+    }
+
+    .project-body { padding: 1.6rem; flex: 1; display: flex; flex-direction: column; gap: 0.9rem; }
+    .project-number {
+      font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); opacity: 0.6;
+    }
+    .project-title {
+      font-size: clamp(1.2rem, 1.8vw + 0.7rem, 1.6rem);
+      font-weight: 400; color: var(--fg); line-height: 1.2;
+    }
+    .project-desc { font-size: 0.85rem; color: var(--fg-dim); line-height: 1.75; }
+
+    .project-actions {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: auto; padding-top: 0.5rem;
+    }
+    .card-btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      font-family: inherit; font-size: 0.75rem; letter-spacing: 0.09em;
+      text-transform: uppercase; text-decoration: none;
+      padding: 0.38rem 0.85rem; border-radius: 999px; cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      border: 1px solid;
+    }
+    .card-btn-primary {
+      background: rgba(201,169,110,0.13); border-color: var(--gold);
+      color: var(--gold);
+    }
+    .card-btn-primary:hover { background: rgba(201,169,110,0.22); color: #f0e0c0; }
+    .card-btn-ghost {
+      background: rgba(255,255,255,0.03); border-color: rgba(240,236,224,0.15);
+      color: var(--fg-dim);
+    }
+    .card-btn-ghost:hover {
+      background: rgba(255,255,255,0.07); border-color: rgba(240,236,224,0.3);
+      color: var(--fg);
+    }
+    .card-btn[disabled], .card-btn.disabled {
+      opacity: 0.35; pointer-events: none;
+    }
+
+    /* ── ABOUT ── */
+    #about { background: var(--bg2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
+    .about-layout {
+      display: grid; grid-template-columns: 1fr; gap: 3rem; margin-top: 2.5rem;
+      align-items: start;
+    }
+    @media (min-width: 800px) { .about-layout { grid-template-columns: 1fr 1fr; } }
+
+    .about-text h2 {
+      font-size: clamp(1.4rem, 2.5vw + 0.7rem, 2.2rem);
+      font-weight: 400; margin-bottom: 1.4rem; line-height: 1.2;
+    }
+    .about-text p { font-size: 0.9rem; color: var(--fg-dim); line-height: 1.85; margin-bottom: 1rem; }
+
+    .about-cards { display: flex; flex-direction: column; gap: 1rem; }
+    .about-card {
+      background: rgba(255,255,255,0.025); border: 1px solid var(--line);
+      border-radius: 8px; padding: 1.4rem;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .about-card:hover { border-color: var(--gold-dim); background: var(--gold-glow); }
+    .about-card-icon { font-size: 1.4rem; margin-bottom: 0.7rem; }
+    .about-card h3 { font-size: 0.95rem; color: var(--fg); margin-bottom: 0.5rem; }
+    .about-card p  { font-size: 0.82rem; color: var(--fg-dim); line-height: 1.7; }
+
+    /* ── SUPPORT ── */
+    #support {
+      text-align: center; padding: 6rem 1.5rem;
+      background: radial-gradient(ellipse 80% 55% at 50% 50%, rgba(201,169,110,0.065) 0%, transparent 70%);
+      position: relative;
+    }
+    #support::before {
+      content: ''; position: absolute; inset: 0;
+      border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      pointer-events: none;
+    }
+    #support h2 {
+      font-size: clamp(1.6rem, 2.5vw + 0.9rem, 2.6rem);
+      font-weight: 400; margin-bottom: 0.9rem;
+    }
+    #support p { color: var(--fg-dim); max-width: 520px; margin: 0 auto 2.2rem; font-size: 0.92rem; line-height: 1.8; }
+    .support-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg2); border-top: 1px solid var(--line);
+      padding: 2.5rem 2rem; text-align: center;
+    }
+    .footer-links {
+      display: flex; flex-wrap: wrap; gap: 1.5rem;
+      justify-content: center; margin-bottom: 1.4rem;
+    }
+    .footer-links a {
+      color: var(--gold); text-decoration: none; font-size: 0.8rem;
+      letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.65;
+      transition: opacity 0.2s;
+    }
+    .footer-links a:hover { opacity: 1; }
+    footer p { font-size: 0.72rem; color: rgba(240,236,224,0.22); letter-spacing: 0.04em; }
+
+    /* ── Reveal animation ── */
+    .reveal {
+      opacity: 0; transform: translateY(26px);
+      transition: opacity 0.65s ease, transform 0.65s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
 </head>
 <body>
-    <!-- Atomic shapes for 50s vibe -->
-    <div class="atomic-shape circle1"></div>
-    <div class="atomic-shape circle2"></div>
-    <div class="atomic-shape boomerang"></div>
-    
-    <header class="fade-in">
-        <div class="period-stamp">1956-2025</div>
-        <h1>Visual Metaphysics</h1>
-        <h2>Flagship Interactive Archive & Digital Recreation Project</h2>
-    </header>
-    
-    <main>
-        <section class="intro-section fade-in">
-            <h3>Experience the Flagship Interactive Exhibit</h3>
-            <p>Welcome to the Visual Metaphysics Digital Recreation Project, dedicated to preserving and studying the innovative information charts created by Fred Keziah in the 1950s. These remarkable works combine philosophical exploration with the distinctive aesthetic sensibilities of mid-century modern design.</p>
-            <p>Each project in this collection represents a meticulous digital recreation based on archival research, bringing these lost treasures back into public view after decades of obscurity.</p>
-        </section>
-        
-        <section class="projects-container">
-            <div class="project-card">
-                <img src="Visual-Metaphysics-No1-FlyingSaucers/site/img/landing.png" alt="UFO Chart" class="project-image">
-                <div class="project-content">
-                    <h4 class="project-title">No. 1: Flying Saucers (1956)</h4>
-                    <p class="project-description">A graphic colored chart picturing 228 drawings of saucer shapes, formations, maneuvers and spacepeople. Numerous listings of colors, sounds, speeds, sizes, etc. Originally published on July 2, 1956. Our recreation is based on the 2nd edition from 1958.</p>
-                    <div class="project-actions">
-                        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/landing-page.html" class="project-link">Read Background</a>
-                        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/tablets.html" class="project-link">Open Interactive Tablets</a>
-                    </div>
-                </div>
+
+  <!-- ── NAV ── -->
+  <nav>
+    <div class="nav-logo">Project Keziah</div>
+    <div class="nav-links">
+      <a href="Visual-Metaphysics-No1-FlyingSaucers/site/landing-page.html" class="nav-pill">No. 1: Flying Saucers</a>
+      <a href="Visual-Metaphysics-No1-FlyingSaucers/site/explore.html" class="nav-pill">Explore ↗</a>
+    </div>
+  </nav>
+
+  <!-- ── HERO ── -->
+  <section id="hero">
+    <canvas id="hero-canvas" aria-hidden="true"></canvas>
+
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Fred Keziah &nbsp;·&nbsp; 1956–1958 &nbsp;·&nbsp; Arlington, Virginia</div>
+      <h1 class="hero-title">Visual<br><em>Metaphysics</em></h1>
+      <p class="hero-sub">The Interactive Archive &amp; Digital Recreation Project</p>
+      <p class="hero-desc">A meticulous digital preservation of Fred Keziah's visionary information charts — where post-war data design meets the outer edge of mid-century inquiry.</p>
+      <div class="hero-ctas">
+        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/explore.html" class="btn-primary">Explore the Chart ↗</a>
+        <a href="Visual-Metaphysics-No1-FlyingSaucers/site/explore.html?view=tablets" class="btn-ghost">View 3D Tablets</a>
+      </div>
+    </div>
+
+    <div class="scroll-cue" aria-hidden="true">↓</div>
+  </section>
+
+  <!-- ── PROJECTS ── -->
+  <section class="section" id="projects">
+    <div class="inner">
+      <div class="section-label">The Collection</div>
+
+      <div class="projects-grid">
+
+        <!-- No. 1 -->
+        <div class="project-card reveal" onclick="window.location.href='Visual-Metaphysics-No1-FlyingSaucers/site/landing-page.html'">
+          <div class="project-img-wrap">
+            <img src="Visual-Metaphysics-No1-FlyingSaucers/site/img/landing.png" alt="Visual Metaphysics No. 1 — Flying Saucers" />
+            <div class="project-img-overlay"></div>
+          </div>
+          <div class="project-body">
+            <div class="project-number">No. 1 &nbsp;·&nbsp; July 2, 1956</div>
+            <h2 class="project-title">Flying Saucers</h2>
+            <p class="project-desc">228 illustrated UFO shapes, flight formations, caricatures of "space people," and data tables of observed colors, sounds, speeds, and sizes. The original $1.00 mail-order chart that started it all.</p>
+            <div class="project-actions">
+              <a href="Visual-Metaphysics-No1-FlyingSaucers/site/explore.html" class="card-btn card-btn-primary" onclick="event.stopPropagation()">Explore Chart ↗</a>
+              <a href="Visual-Metaphysics-No1-FlyingSaucers/site/explore.html?view=tablets" class="card-btn card-btn-ghost" onclick="event.stopPropagation()">3D Tablets</a>
+              <a href="Visual-Metaphysics-No1-FlyingSaucers/site/landing-page.html" class="card-btn card-btn-ghost" onclick="event.stopPropagation()">Background</a>
             </div>
-            
-            <div class="project-card">
-                <img src="Visual-Metaphysics-No2-Reincarnation/site/img/landing.png" alt="Reincarnation Chart" class="project-image">
-                <div class="project-content">
-                    <h4 class="project-title">No. 2: Reincarnation (1957)</h4>
-                    <p class="project-description">Fred Keziah's groundbreaking exploration of spiritual rebirth through avant-garde visual language, originally produced in May 1957.</p>
-                    <a href="Visual-Metaphysics-No2-Reincarnation/site/landing-page.html" class="project-link">Explore</a>
-                </div>
+          </div>
+        </div>
+
+        <!-- No. 2 -->
+        <div class="project-card wip reveal reveal-delay-1" onclick="window.location.href='Visual-Metaphysics-No2-Reincarnation/site/landing-page.html'">
+          <div class="project-img-wrap">
+            <img src="Visual-Metaphysics-No2-Reincarnation/site/img/landing.png" alt="Visual Metaphysics No. 2 — Reincarnation" />
+            <div class="project-img-overlay"></div>
+            <div class="wip-badge">In Progress</div>
+          </div>
+          <div class="project-body">
+            <div class="project-number">No. 2 &nbsp;·&nbsp; May 1957</div>
+            <h2 class="project-title">Reincarnation</h2>
+            <p class="project-desc">Keziah's groundbreaking exploration of spiritual rebirth through avant-garde visual language — applying the same data-driven precision to metaphysical phenomena.</p>
+            <div class="project-actions">
+              <a href="Visual-Metaphysics-No2-Reincarnation/site/landing-page.html" class="card-btn card-btn-ghost" onclick="event.stopPropagation()">Preview</a>
+              <span class="card-btn card-btn-ghost disabled">Interactive — Coming Soon</span>
             </div>
-        </section>
-        
-        <section class="about-section fade-in">
-            <h3>About the Visual Metaphysics Series</h3>
-            <p>Fred S. Keziah (1920-2010) was a Navy-trained illustrator and animator who specialized in educational graphics and informational art. After his military service, he self-published a series of "information sheets" from his home in Arlington, Virginia.</p>
-            <p>The Visual Metaphysics series represents Keziah's ambitious attempt to encapsulate complex phenomena in single-page visual charts. Drawing on both scientific concepts and metaphysical traditions, these works occupy a unique intersection of mid-century design, information visualization, and spiritual exploration.</p>
-            <p>The series reflects the cultural tensions of the 1950s—a decade characterized by both rigid conformity and burgeoning counterculture movements. Keziah's work bridges these worlds, employing the precision and optimism of modernist design to explore unconventional subjects like UFOs and reincarnation that challenged mainstream scientific narratives.</p>
-        </section>
-        
-        <div class="support-section">
-            <h3>Join Our Effort</h3>
-            <p>Help us continue to discover, document, and restore these unique cultural artifacts from the golden age of information design.</p>
-            <a href="mailto:ProjectKeziah@protonmail.com" class="special-button">Support the Project</a>
+          </div>
         </div>
-    </main>
-    
-    <footer>
-        <div class="footer-links">
-            <a href="https://github.com/jmilgie/ProjectKeziah">Contribute on github</a>
-            <a href="mailto:ProjectKeziah@protonmail.com">Contact</a>
-            <a href="https://x.com/ProjectKeziah">@ProjectKeziah</a>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ABOUT ── -->
+  <section class="section" id="about">
+    <div class="inner">
+      <div class="section-label">About the Project</div>
+      <div class="about-layout">
+        <div class="about-text reveal">
+          <h2>Fred S. Keziah &amp; the Visual Metaphysics Series</h2>
+          <p>Fred S. Keziah (1920–2010) was a Navy-trained illustrator and animator who specialized in educational graphics and informational art. After his military service, he self-published a series of "information sheets" from his home in Arlington, Virginia.</p>
+          <p>These works occupy a unique intersection of mid-century design, information visualization, and spiritual exploration — bridging the precision of modernist design with the audacious subject matter of the 1950s counterculture fringe.</p>
+          <p>The Visual Metaphysics Digital Recreation Project was initiated by Johnathan Milgie in 2023, using high-resolution photographs of original poster editions. Reference images were provided by Richard Geldreich Jr. and Adam Gorightly.</p>
         </div>
-        <p>2025 Visual Metaphysics Digital Recreation Project. Original works created 1956-1958 by Fred Keziah.</p>
-    </footer>
-    
-    <script>
-        // Simple script to add some interactivity
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add scroll animations for any future elements
+        <div class="about-cards">
+          <div class="about-card reveal reveal-delay-1">
+            <div class="about-card-icon">📡</div>
+            <h3>Data Visualization Pioneer</h3>
+            <p>Keziah treated UFO reports like a military recognition chart — a methodical, almost scientific classification system decades ahead of its time.</p>
+          </div>
+          <div class="about-card reveal reveal-delay-2">
+            <div class="about-card-icon">🛸</div>
+            <h3>Post-War UFO Culture</h3>
+            <p>Published in the peak years of American UFO fascination, these charts document a cultural moment when the line between science and the unknown was delightfully blurred.</p>
+          </div>
+          <div class="about-card reveal reveal-delay-3">
+            <div class="about-card-icon">🔭</div>
+            <h3>Preserved for the Public</h3>
+            <p>After decades of obscurity, this meticulous digital recreation makes these rare artifacts accessible to researchers, enthusiasts, and the curious.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SUPPORT ── -->
+  <section id="support">
+    <h2 class="reveal">Join the Effort</h2>
+    <p class="reveal reveal-delay-1">Help us continue to discover, document, and restore unique cultural artifacts from the golden age of information design.</p>
+    <div class="support-btns reveal reveal-delay-2">
+      <a href="mailto:ProjectKeziah@protonmail.com" class="btn-primary">Support the Project</a>
+      <a href="https://github.com/jmilgie/ProjectKeziah" target="_blank" rel="noopener" class="btn-ghost">GitHub ↗</a>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <div class="footer-links">
+      <a href="https://github.com/jmilgie/ProjectKeziah" target="_blank" rel="noopener">GitHub</a>
+      <a href="mailto:ProjectKeziah@protonmail.com">Contact</a>
+      <a href="https://x.com/ProjectKeziah" target="_blank" rel="noopener">@ProjectKeziah</a>
+    </div>
+    <p>&copy; 2025 Visual Metaphysics Digital Recreation Project &nbsp;·&nbsp; Original works 1956–1958 by Fred Keziah</p>
+  </footer>
+
+  <script>
+    /* ── Starfield / particle canvas ── */
+    (function () {
+      const canvas = document.getElementById('hero-canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Two layers: distant tiny stars + slow drifting particles
+      let stars = [], particles = [];
+
+      function init() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        stars = Array.from({ length: 220 }, () => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.1 + 0.15,
+          a: Math.random() * 0.7 + 0.1,
+          twinkle: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.008 + 0.002,
+        }));
+
+        particles = Array.from({ length: 30 }, () => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: -(Math.random() * 0.18 + 0.04),
+          r: Math.random() * 1.8 + 0.5,
+          a: Math.random() * 0.35 + 0.05,
+        }));
+      }
+
+      window.addEventListener('resize', init);
+      init();
+
+      let t = 0;
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        t += 0.016;
+
+        // Stars
+        stars.forEach(s => {
+          const alpha = s.a * (0.55 + 0.45 * Math.sin(t * s.speed * 50 + s.twinkle));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(240,236,224,${alpha})`;
+          ctx.fill();
         });
-    </script>
+
+        // Drifting golden dust
+        particles.forEach(p => {
+          p.x += p.vx + Math.sin(t * 0.4 + p.y * 0.01) * 0.08;
+          p.y += p.vy;
+          if (p.y < -5) {
+            p.y = canvas.height + 5;
+            p.x = Math.random() * canvas.width;
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(201,169,110,${p.a})`;
+          ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    /* ── Scroll reveals ── */
+    const revealEls = document.querySelectorAll('.reveal');
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => obs.observe(el));
+  </script>
 </body>
 </html>
