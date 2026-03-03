@@ -1,0 +1,1710 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nexus Protocol — Milgie.com</title>
+  <meta name="description" content="Route encrypted signals through a corrupted neural network. 12 handcrafted levels of futuristic puzzle gameplay." />
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       NEXUS PROTOCOL v2 — Futuristic Signal-Routing Puzzle
+       ═══════════════════════════════════════════════════════════════ */
+    :root {
+      --bg0:#020510; --bg1:#060d1e; --bg2:#0a1528;
+      --cyan:#00f5ff; --cyan2:#00b8c8; --cyan3:#004d5c;
+      --mag:#ff00e5;  --green:#00ff88; --gold:#ffd700;
+      --orange:#ff8c00; --purple:#cc44ff; --red:#ff3355; --white:#e8f4ff;
+      --ink:#c8e4ff; --muted:#3a5a80; --stroke:rgba(0,245,255,0.12);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;background:var(--bg0);color:var(--ink);
+      font-family:'Courier New',monospace;overflow:hidden;user-select:none}
+
+    /* SCANLINES */
+    body::after{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px)}
+
+    /* BACKGROUND */
+    #bg{position:fixed;inset:0;z-index:0;overflow:hidden}
+    #bg-grid{position:absolute;inset:0;
+      background-image:linear-gradient(rgba(0,245,255,0.035) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,245,255,0.035) 1px,transparent 1px);
+      background-size:48px 48px;animation:bgPulse 10s ease-in-out infinite}
+    @keyframes bgPulse{0%,100%{opacity:.5}50%{opacity:1}}
+    #bg-glow{position:absolute;inset:0;
+      background:radial-gradient(ellipse 60% 40% at 50% 50%,rgba(0,245,255,0.04),transparent)}
+    #particles{position:absolute;inset:0;pointer-events:none}
+    .pt{position:absolute;border-radius:50%;animation:ptUp linear infinite}
+    @keyframes ptUp{
+      from{transform:translateY(100vh);opacity:0}
+      5%{opacity:1} 95%{opacity:.8}
+      to{transform:translateY(-60px);opacity:0}
+    }
+
+    /* APP SHELL */
+    #app{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column}
+
+    /* ── TOP BAR ── */
+    #topbar{
+      display:flex;align-items:center;gap:10px;
+      padding:8px 16px;flex-shrink:0;
+      background:rgba(2,5,16,0.95);backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--stroke);
+    }
+    .tb-logo{font-size:12px;font-weight:900;letter-spacing:3px;color:var(--cyan);
+      text-shadow:0 0 12px var(--cyan);text-transform:uppercase;text-decoration:none;
+      white-space:nowrap}
+    .tb-sep{color:var(--muted);flex-shrink:0}
+    .tb-info{flex:1;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .tb-stat{display:flex;align-items:center;gap:5px}
+    .tb-stat-label{font-size:9px;font-weight:700;letter-spacing:1.5px;
+      text-transform:uppercase;color:var(--muted)}
+    .tb-stat-val{font-size:11px;font-weight:700;color:var(--cyan)}
+    .tb-actions{display:flex;gap:6px;flex-shrink:0}
+    .tb-btn{padding:4px 10px;border:1px solid var(--stroke);
+      background:rgba(0,245,255,0.04);color:var(--cyan);
+      font-family:inherit;font-size:9px;font-weight:700;letter-spacing:1px;
+      text-transform:uppercase;cursor:pointer;border-radius:2px;
+      transition:background .15s,border-color .15s;white-space:nowrap}
+    .tb-btn:hover{background:rgba(0,245,255,0.14);border-color:var(--cyan)}
+    .tb-btn.warn{color:var(--orange);border-color:rgba(255,140,0,0.25)}
+    .tb-btn.warn:hover{background:rgba(255,140,0,0.12);border-color:var(--orange)}
+    .tb-btn.danger{color:var(--red);border-color:rgba(255,51,85,0.25)}
+    .tb-btn.danger:hover{background:rgba(255,51,85,0.12);border-color:var(--red)}
+    /* Timer */
+    #tb-timer{font-size:12px;font-weight:700;color:var(--muted);
+      font-variant-numeric:tabular-nums;letter-spacing:1px}
+
+    /* ── GAME AREA ── */
+    #game-area{flex:1;display:flex;overflow:hidden}
+
+    /* ── PANELS ── */
+    .panel{flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto;
+      background:rgba(2,6,18,0.82);backdrop-filter:blur(8px)}
+    #left-panel{width:210px;border-right:1px solid var(--stroke)}
+    #right-panel{width:210px;border-left:1px solid var(--stroke)}
+    .psec{padding:12px 14px;border-bottom:1px solid var(--stroke)}
+    .ptitle{font-size:8px;font-weight:700;letter-spacing:2.5px;
+      text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+
+    /* LEVEL LIST */
+    .lvl-item{display:flex;align-items:center;gap:7px;
+      padding:5px 7px;margin-bottom:2px;border-radius:2px;
+      border:1px solid transparent;cursor:pointer;transition:all .12s}
+    .lvl-item:hover:not(.locked){background:rgba(0,245,255,0.05);border-color:var(--stroke)}
+    .lvl-item.active{background:rgba(0,245,255,0.1);border-color:rgba(0,245,255,0.35)}
+    .lvl-item.locked{opacity:.3;cursor:not-allowed}
+    .lvl-num{font-size:9px;font-weight:700;color:var(--muted);width:16px;text-align:right;flex-shrink:0}
+    .lvl-item.active .lvl-num{color:var(--cyan)}
+    .lvl-name{font-size:10px;color:var(--ink);flex:1;letter-spacing:.3px}
+    .lvl-stars{font-size:9px;flex-shrink:0;letter-spacing:0}
+
+    /* TOOL PALETTE */
+    .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+    .tool-btn{display:flex;flex-direction:column;align-items:center;gap:3px;
+      padding:9px 4px;border:1px solid var(--stroke);
+      background:rgba(0,245,255,0.03);border-radius:3px;
+      cursor:pointer;transition:all .12s;position:relative}
+    .tool-btn:hover:not(.depleted){background:rgba(0,245,255,0.08);border-color:rgba(0,245,255,0.35)}
+    .tool-btn.selected{background:rgba(0,245,255,0.16);border-color:var(--cyan);
+      box-shadow:0 0 10px rgba(0,245,255,0.25)}
+    .tool-btn.depleted{opacity:.3;cursor:not-allowed}
+    .tool-icon{font-size:18px;line-height:1}
+    .tool-label{font-size:8px;color:var(--muted);letter-spacing:.5px;text-align:center}
+    .tool-count{position:absolute;top:3px;right:4px;font-size:8px;font-weight:700;
+      color:var(--gold);background:rgba(255,215,0,0.12);border-radius:2px;padding:1px 3px}
+
+    /* STATS */
+    .srow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+    .slabel{font-size:9px;color:var(--muted);letter-spacing:.5px}
+    .sval{font-size:10px;font-weight:700;color:var(--cyan)}
+    .sval.g{color:var(--green)} .sval.w{color:var(--orange)} .sval.b{color:var(--red)}
+    .pbar{height:3px;background:rgba(0,245,255,0.08);border-radius:2px;overflow:hidden;margin-top:4px}
+    .pfill{height:100%;background:linear-gradient(90deg,var(--cyan2),var(--cyan));
+      border-radius:2px;box-shadow:0 0 6px var(--cyan);transition:width .4s ease}
+
+    /* SIGNAL LEGEND */
+    .sig-legend{display:flex;flex-direction:column;gap:4px}
+    .sig-row{display:flex;align-items:center;gap:7px}
+    .sig-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .sig-label{font-size:9px;color:var(--muted)}
+
+    /* ── CENTER ── */
+    #center{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+    #level-hdr{padding:10px 16px 6px;text-align:center;flex-shrink:0}
+    .lh-num{font-size:9px;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+    .lh-name{font-size:16px;font-weight:700;letter-spacing:2px;color:var(--cyan);
+      text-shadow:0 0 16px rgba(0,245,255,0.5);text-transform:uppercase;margin:3px 0}
+    .lh-sub{font-size:10px;color:var(--muted);letter-spacing:.5px}
+    /* Coverage bar under title */
+    #lh-coverage{height:2px;margin:6px 16px 0;background:rgba(0,245,255,0.07);border-radius:1px;overflow:hidden}
+    #lh-cov-fill{height:100%;background:var(--cyan);border-radius:1px;
+      transition:width .3s ease;box-shadow:0 0 8px var(--cyan)}
+    #grid-wrap{flex:1;display:flex;align-items:center;justify-content:center;
+      overflow:hidden;padding:12px;position:relative}
+    #game-canvas{display:block;cursor:crosshair;
+      border:1px solid rgba(0,245,255,0.18);border-radius:1px;
+      box-shadow:0 0 60px rgba(0,245,255,0.08),0 0 20px rgba(0,0,0,0.5)}
+    /* Hover cell overlay — canvas cursor hint */
+    #canvas-tooltip{position:absolute;background:rgba(0,245,255,0.9);
+      color:#020510;font-size:9px;font-weight:700;letter-spacing:1px;
+      padding:3px 7px;border-radius:2px;pointer-events:none;display:none;
+      text-transform:uppercase}
+
+    /* ── RIGHT PANEL ── */
+    .hint-box{padding:12px 14px;border-bottom:1px solid var(--stroke)}
+    .hint-text{font-size:10px;line-height:1.65;color:var(--ink);opacity:.85;min-height:64px}
+    .hint-meta{font-size:8px;color:var(--muted);margin-top:7px;letter-spacing:.3px}
+    .hint-btn{width:100%;margin-top:7px;padding:7px;
+      border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.05);
+      color:var(--gold);font-family:inherit;font-size:9px;font-weight:700;
+      letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:2px;
+      transition:all .15s}
+    .hint-btn:hover:not(:disabled){background:rgba(255,215,0,0.13);border-color:var(--gold)}
+    .hint-btn:disabled{opacity:.3;cursor:not-allowed}
+    /* LOG */
+    #log{flex:1;padding:10px 14px;overflow-y:auto}
+    .log-e{font-size:9px;line-height:1.55;margin-bottom:5px;
+      padding-left:8px;border-left:2px solid var(--stroke);
+      color:var(--muted);animation:ein .25s ease}
+    @keyframes ein{from{opacity:0;transform:translateX(-3px)}to{opacity:1;transform:none}}
+    .log-e.i{border-color:var(--cyan2);color:var(--ink)}
+    .log-e.s{border-color:var(--green);color:var(--green)}
+    .log-e.w{border-color:var(--orange);color:var(--orange)}
+    .log-e.e{border-color:var(--red);color:var(--red)}
+
+    /* ── OVERLAYS ── */
+    .overlay{position:fixed;inset:0;z-index:200;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(1,3,12,0.88);backdrop-filter:blur(10px)}
+    .overlay.hidden{display:none}
+    .modal{max-width:500px;width:92%;border:1px solid var(--stroke);
+      background:linear-gradient(160deg,var(--bg1),var(--bg0));
+      border-radius:6px;padding:36px 32px;text-align:center;
+      box-shadow:0 0 80px rgba(0,245,255,0.12);
+      animation:mIn .35s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes mIn{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}
+    .modal-icon{font-size:44px;margin-bottom:14px;
+      animation:iconPop .4s cubic-bezier(.34,1.56,.64,1) .1s both}
+    @keyframes iconPop{from{transform:scale(0) rotate(-20deg)}to{transform:none}}
+    .modal-title{font-size:20px;font-weight:700;letter-spacing:3px;
+      text-transform:uppercase;margin-bottom:7px;color:var(--cyan);
+      text-shadow:0 0 20px rgba(0,245,255,.5)}
+    .lc-modal .modal-title{color:var(--green);text-shadow:0 0 20px rgba(0,255,136,.5)}
+    .gc-modal .modal-title{color:var(--gold);text-shadow:0 0 30px rgba(255,215,0,.6)}
+    .modal-sub{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:22px}
+    .modal-stats{display:flex;justify-content:center;gap:28px;
+      padding:14px;margin-bottom:22px;
+      border:1px solid var(--stroke);border-radius:4px;
+      background:rgba(0,245,255,0.03)}
+    .ms-val{font-size:22px;font-weight:700;color:var(--cyan)}
+    .ms-lbl{font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:2px}
+    .modal-btns{display:flex;gap:10px;justify-content:center}
+    .mbtn{padding:11px 26px;border-radius:3px;cursor:pointer;
+      font-family:inherit;font-size:10px;font-weight:700;
+      letter-spacing:1.5px;text-transform:uppercase;transition:all .15s}
+    .mbtn.primary{background:var(--cyan);color:var(--bg0);border:none;
+      box-shadow:0 0 20px rgba(0,245,255,.35)}
+    .mbtn.primary:hover{box-shadow:0 0 32px rgba(0,245,255,.55);transform:translateY(-1px)}
+    .mbtn.ghost{background:transparent;color:var(--cyan);border:1px solid rgba(0,245,255,.28)}
+    .mbtn.ghost:hover{background:rgba(0,245,255,.08)}
+
+    /* TOAST */
+    #toasts{position:fixed;bottom:18px;right:16px;z-index:500;
+      display:flex;flex-direction:column-reverse;gap:7px;pointer-events:none}
+    .toast{padding:9px 14px;background:var(--bg1);
+      border:1px solid var(--stroke);border-radius:3px;
+      font-size:10px;color:var(--ink);max-width:260px;
+      animation:tIn .25s ease,tOut .25s ease 2.75s forwards}
+    .toast.i{border-color:var(--cyan);color:var(--cyan)}
+    .toast.s{border-color:var(--green);color:var(--green)}
+    .toast.w{border-color:var(--orange);color:var(--orange)}
+    .toast.e{border-color:var(--red);color:var(--red)}
+    @keyframes tIn{from{transform:translateX(16px);opacity:0}to{opacity:1;transform:none}}
+    @keyframes tOut{to{transform:translateX(16px);opacity:0}}
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar{width:3px}
+    ::-webkit-scrollbar-track{background:var(--bg0)}
+    ::-webkit-scrollbar-thumb{background:var(--muted);border-radius:2px}
+
+    /* RESPONSIVE */
+    @media(max-width:860px){#left-panel,#right-panel{width:170px}}
+    @media(max-width:660px){#left-panel{display:none}#right-panel{width:160px}}
+    @media(max-width:480px){#right-panel{display:none}}
+
+    /* ═══════════════════════════════════
+       INTRO SCREEN
+       ═══════════════════════════════════ */
+    #intro{position:fixed;inset:0;z-index:800;
+      background:var(--bg0);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;padding:32px;overflow-y:auto}
+    /* Intro animated bg */
+    #intro::before{content:'';position:absolute;inset:0;
+      background-image:linear-gradient(rgba(0,245,255,0.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,245,255,0.03) 1px,transparent 1px);
+      background-size:56px 56px;pointer-events:none;
+      animation:bgPulse 8s ease-in-out infinite}
+    .intro-inner{position:relative;z-index:1;max-width:580px;width:100%;text-align:center}
+    .intro-eyebrow{font-size:9px;font-weight:700;letter-spacing:4px;color:var(--muted);
+      text-transform:uppercase;margin-bottom:14px;
+      animation:iIn .6s ease .1s both}
+    @keyframes iIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+    .intro-logo{
+      font-size:clamp(36px,7vw,64px);font-weight:900;letter-spacing:6px;
+      text-transform:uppercase;line-height:1;margin-bottom:6px;
+      background:linear-gradient(135deg,var(--cyan) 0%,var(--mag) 60%,var(--cyan) 100%);
+      background-size:200% 100%;
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      animation:iIn .6s ease .2s both,logoShift 4s ease-in-out infinite .8s}
+    @keyframes logoShift{0%,100%{background-position:0%}50%{background-position:100%}}
+    .intro-tagline{font-size:11px;letter-spacing:3px;color:var(--muted);
+      text-transform:uppercase;margin-bottom:36px;animation:iIn .6s ease .3s both}
+    .intro-divider{width:60px;height:1px;background:var(--cyan);
+      margin:0 auto 28px;box-shadow:0 0 8px var(--cyan);
+      animation:iIn .6s ease .35s both}
+    .intro-lore{text-align:left;font-size:12px;line-height:1.8;
+      color:rgba(200,228,255,0.7);margin-bottom:32px;
+      border-left:2px solid var(--cyan2);padding-left:14px;
+      animation:iIn .6s ease .4s both}
+    .intro-lore strong{color:var(--cyan)}
+    .intro-feats{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;
+      margin-bottom:36px;animation:iIn .6s ease .5s both}
+    .ifeat{display:flex;flex-direction:column;align-items:center;gap:5px}
+    .ifeat-icon{font-size:22px}
+    .ifeat-label{font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+    /* Mechanics preview */
+    .intro-mechanics{display:grid;grid-template-columns:1fr 1fr;gap:10px;
+      margin-bottom:32px;animation:iIn .6s ease .55s both}
+    .imech{padding:10px 12px;border:1px solid var(--stroke);border-radius:3px;
+      background:rgba(0,245,255,0.03);text-align:left}
+    .imech-title{font-size:9px;font-weight:700;letter-spacing:1px;
+      text-transform:uppercase;color:var(--cyan);margin-bottom:4px}
+    .imech-desc{font-size:9px;color:var(--muted);line-height:1.5}
+    .intro-start{padding:14px 48px;background:var(--cyan);color:var(--bg0);
+      border:none;border-radius:3px;font-family:inherit;font-size:12px;
+      font-weight:700;letter-spacing:3px;text-transform:uppercase;cursor:pointer;
+      box-shadow:0 0 32px rgba(0,245,255,.4);transition:all .2s;
+      animation:iIn .6s ease .6s both}
+    .intro-start:hover{transform:translateY(-2px);box-shadow:0 0 52px rgba(0,245,255,.6)}
+    .intro-save-note{font-size:9px;color:var(--muted);margin-top:10px;
+      animation:iIn .6s ease .7s both;letter-spacing:.3px}
+    /* Controls row */
+    .intro-controls{display:flex;gap:16px;justify-content:center;
+      margin-top:20px;flex-wrap:wrap;animation:iIn .6s ease .65s both}
+    .ikey{display:flex;align-items:center;gap:5px}
+    .ikey-badge{background:rgba(0,245,255,0.1);border:1px solid var(--stroke);
+      padding:2px 6px;border-radius:2px;font-size:9px;color:var(--cyan)}
+    .ikey-desc{font-size:9px;color:var(--muted)}
+
+    /* FLASH / VICTORY EFFECTS */
+    #vfx-overlay{position:fixed;inset:0;z-index:600;pointer-events:none}
+    .vfx-flash{position:absolute;inset:0;animation:vFlash .5s ease-out forwards}
+    @keyframes vFlash{from{opacity:.6}to{opacity:0}}
+
+    /* UNDO btn pulse after mistake */
+    @keyframes undoPulse{0%,100%{box-shadow:0 0 0 rgba(255,140,0,0)}
+      50%{box-shadow:0 0 12px rgba(255,140,0,.5)}}
+  </style>
+</head>
+<body>
+
+<!-- BACKGROUND -->
+<div id="bg">
+  <div id="bg-grid"></div>
+  <div id="bg-glow"></div>
+  <div id="particles"></div>
+</div>
+
+<!-- VFX OVERLAY -->
+<div id="vfx-overlay"></div>
+
+<!-- ════════════════════════════════
+     INTRO SCREEN
+     ════════════════════════════════ -->
+<div id="intro">
+  <div class="intro-inner">
+    <div class="intro-eyebrow">Milgie.com · Futuristic Puzzle</div>
+    <div class="intro-logo">Nexus Protocol</div>
+    <div class="intro-tagline">Signal Routing · Neural Hacking · 12 Nodes</div>
+    <div class="intro-divider"></div>
+    <div class="intro-lore">
+      The <strong>Axiom Neural Network</strong> has been corrupted by a rogue AI designated <strong>VOID</strong>.
+      Critical data packets are stranded — entire node clusters cut off from the central core.
+      <br><br>
+      You are <strong>CIPHER</strong>, an elite signal architect with one directive: reconnect the network.
+      Route every encrypted signal from its source to its target. Fill every corridor.
+      Leave no bandwidth wasted. Purge VOID before all human memory is gone.
+    </div>
+    <div class="intro-mechanics">
+      <div class="imech">
+        <div class="imech-title">⚡ Route Signals</div>
+        <div class="imech-desc">Click+drag from SOURCE (filled) to TARGET (ring) of the same color. Paths must not cross.</div>
+      </div>
+      <div class="imech">
+        <div class="imech-title">🌉 Bridges</div>
+        <div class="imech-desc">Select Bridge tool to cross one signal over another. Limited supply — use wisely.</div>
+      </div>
+      <div class="imech">
+        <div class="imech-title">📐 Fill It All</div>
+        <div class="imech-desc">From Level 4 onward, every non-wall cell must be covered. No gaps allowed.</div>
+      </div>
+      <div class="imech">
+        <div class="imech-title">💡 Stuck?</div>
+        <div class="imech-desc">Use the Hint system for guided intel. 3 hints per level. Each costs score.</div>
+      </div>
+    </div>
+    <div class="intro-feats">
+      <div class="ifeat"><div class="ifeat-icon">🧩</div><div class="ifeat-label">12 Levels</div></div>
+      <div class="ifeat"><div class="ifeat-icon">⏱️</div><div class="ifeat-label">30–50 min</div></div>
+      <div class="ifeat"><div class="ifeat-icon">↺</div><div class="ifeat-label">Undo</div></div>
+      <div class="ifeat"><div class="ifeat-icon">💾</div><div class="ifeat-label">Auto-Save</div></div>
+      <div class="ifeat"><div class="ifeat-icon">🏆</div><div class="ifeat-label">Star Scores</div></div>
+    </div>
+    <button class="intro-start" id="intro-start">INITIALIZE SYSTEM</button>
+    <div class="intro-save-note" id="intro-save-note"></div>
+    <div class="intro-controls">
+      <div class="ikey"><span class="ikey-badge">Drag</span><span class="ikey-desc">Draw path</span></div>
+      <div class="ikey"><span class="ikey-badge">Z</span><span class="ikey-desc">Undo</span></div>
+      <div class="ikey"><span class="ikey-badge">R</span><span class="ikey-desc">Reset level</span></div>
+      <div class="ikey"><span class="ikey-badge">H</span><span class="ikey-desc">Hint</span></div>
+      <div class="ikey"><span class="ikey-badge">1-4</span><span class="ikey-desc">Select tool</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     MAIN APP
+     ════════════════════════════════ -->
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <a class="tb-logo" href="../" title="Games Hub">← Games</a>
+    <span class="tb-sep">/</span>
+    <span class="tb-logo" style="opacity:.5;font-size:11px">Nexus Protocol</span>
+    <div class="tb-info">
+      <div class="tb-stat">
+        <span class="tb-stat-label">Node</span>
+        <span class="tb-stat-val" id="tb-level">1/12</span>
+      </div>
+      <div class="tb-stat">
+        <span class="tb-stat-label">Score</span>
+        <span class="tb-stat-val" id="tb-score">0</span>
+      </div>
+      <div class="tb-stat">
+        <span class="tb-stat-label">Moves</span>
+        <span class="tb-stat-val" id="tb-moves">0</span>
+      </div>
+      <span id="tb-timer">00:00</span>
+    </div>
+    <div class="tb-actions">
+      <button class="tb-btn" id="btn-hint-top">💡 Hint</button>
+      <button class="tb-btn warn" id="btn-undo">↺ Undo <kbd style="font-size:8px;opacity:.6">[Z]</kbd></button>
+      <button class="tb-btn warn" id="btn-reset">Reset <kbd style="font-size:8px;opacity:.6">[R]</kbd></button>
+      <button class="tb-btn danger" id="btn-menu">← Hub</button>
+    </div>
+  </div>
+
+  <!-- GAME AREA -->
+  <div id="game-area">
+
+    <!-- LEFT PANEL -->
+    <div class="panel" id="left-panel">
+      <div class="psec">
+        <div class="ptitle">Mission Nodes</div>
+        <div id="level-list"></div>
+      </div>
+      <div class="psec">
+        <div class="ptitle">Network Status</div>
+        <div class="srow"><span class="slabel">Nodes Online</span><span class="sval g" id="s-solved">0/12</span></div>
+        <div class="pbar"><div class="pfill" id="s-prog" style="width:0%"></div></div>
+        <div class="srow" style="margin-top:10px"><span class="slabel">Total Score</span><span class="sval" id="s-total">0</span></div>
+        <div class="srow"><span class="slabel">Hints Used</span><span class="sval w" id="s-hints">0</span></div>
+      </div>
+      <div class="psec">
+        <div class="ptitle">Signal Tools</div>
+        <div class="tool-grid" id="tool-grid"></div>
+      </div>
+      <div class="psec">
+        <div class="ptitle">Signal Types</div>
+        <div class="sig-legend" id="sig-legend"></div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div id="center">
+      <div id="level-hdr">
+        <div class="lh-num" id="lh-num">NODE-01</div>
+        <div class="lh-name" id="lh-name">BOOT SEQUENCE</div>
+        <div class="lh-sub" id="lh-sub">Connect sources to matching targets</div>
+      </div>
+      <div id="lh-coverage"><div id="lh-cov-fill" style="width:0%"></div></div>
+      <div id="grid-wrap">
+        <canvas id="game-canvas"></canvas>
+        <div id="canvas-tooltip"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="panel" id="right-panel">
+      <div class="hint-box">
+        <div class="ptitle">CIPHER INTEL</div>
+        <div class="hint-text" id="hint-text">
+          Drag from a SOURCE node (filled circle) to its matching TARGET node (pulsing ring). Paths must stay on empty cells — they can't cross other signals.
+        </div>
+        <div class="hint-meta">Hints: <span id="hints-left">3</span> remaining</div>
+        <button class="hint-btn" id="btn-hint">Request Intel [H]</button>
+      </div>
+      <div class="psec">
+        <div class="ptitle">Node Analysis</div>
+        <div class="srow"><span class="slabel">Connections</span><span class="sval" id="s-conn">0/0</span></div>
+        <div class="srow"><span class="slabel">Coverage</span><span class="sval" id="s-cov">0%</span></div>
+        <div class="srow"><span class="slabel">Par Moves</span><span class="sval" id="s-par">—</span></div>
+        <div class="srow"><span class="slabel">Efficiency</span><span class="sval" id="s-eff">—</span></div>
+      </div>
+      <div class="ptitle" style="padding:10px 14px 0">System Log</div>
+      <div id="log"></div>
+    </div>
+
+  </div><!-- /game-area -->
+</div><!-- /app -->
+
+<!-- TOAST AREA -->
+<div id="toasts"></div>
+
+<!-- LEVEL COMPLETE MODAL -->
+<div class="overlay hidden" id="modal-lc">
+  <div class="modal lc-modal">
+    <div class="modal-icon" id="lc-icon">✅</div>
+    <div class="modal-title" id="lc-title">Node Restored</div>
+    <div class="modal-sub" id="lc-sub">Signal routing complete. The network grows stronger.</div>
+    <div class="modal-stats">
+      <div><div class="ms-val" id="lc-moves">—</div><div class="ms-lbl">Moves</div></div>
+      <div><div class="ms-val" id="lc-time">—</div><div class="ms-lbl">Time</div></div>
+      <div><div class="ms-val" id="lc-score">—</div><div class="ms-lbl">Score</div></div>
+      <div><div class="ms-val" id="lc-stars">★★★</div><div class="ms-lbl">Rating</div></div>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn ghost" id="btn-lc-retry">↺ Retry</button>
+      <button class="mbtn primary" id="btn-lc-next">Next Node →</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME COMPLETE MODAL -->
+<div class="overlay hidden" id="modal-gc">
+  <div class="modal gc-modal">
+    <div class="modal-icon">🏆</div>
+    <div class="modal-title">Network Restored</div>
+    <div class="modal-sub">VOID has been purged from the Axiom Neural Network. Humanity's digital memory is safe. You did it, CIPHER.</div>
+    <div class="modal-stats">
+      <div><div class="ms-val" id="gc-score">—</div><div class="ms-lbl">Total Score</div></div>
+      <div><div class="ms-val" id="gc-hints">—</div><div class="ms-lbl">Hints Used</div></div>
+      <div><div class="ms-val" id="gc-rank">—</div><div class="ms-lbl">Rank</div></div>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn ghost" id="btn-gc-hub">← Games Hub</button>
+      <button class="mbtn primary" id="btn-gc-replay">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════
+// NEXUS PROTOCOL v2 — Full Game Engine
+// ═══════════════════════════════════════════════════════
+
+// ─── SIGNALS ───────────────────────────────────────────
+const SIG = {
+  cyan:    {c:'#00f5ff',g:'rgba(0,245,255,.65)',   n:'ALPHA',   l:'Alpha'},
+  magenta: {c:'#ff00e5',g:'rgba(255,0,229,.65)',   n:'BETA',    l:'Beta'},
+  green:   {c:'#00ff88',g:'rgba(0,255,136,.65)',   n:'GAMMA',   l:'Gamma'},
+  gold:    {c:'#ffd700',g:'rgba(255,215,0,.65)',   n:'DELTA',   l:'Delta'},
+  orange:  {c:'#ff8c00',g:'rgba(255,140,0,.65)',   n:'EPSILON', l:'Epsilon'},
+  purple:  {c:'#cc44ff',g:'rgba(204,68,255,.65)',  n:'ZETA',    l:'Zeta'},
+  red:     {c:'#ff3355',g:'rgba(255,51,85,.65)',   n:'ETA',     l:'Eta'},
+  white:   {c:'#e8f4ff',g:'rgba(232,244,255,.55)', n:'THETA',   l:'Theta'},
+};
+
+const TOOLS = {
+  wire:   {icon:'〰',  label:'Wire',   desc:'Draw signal paths', key:'1'},
+  bridge: {icon:'⊕',  label:'Bridge', desc:'Cross another path', key:'2'},
+  eraser: {icon:'✕',  label:'Erase',  desc:'Clear a path',      key:'3'},
+};
+
+// ─── LEVEL DATA ─────────────────────────────────────────
+// Solutions verified by hand. "fill" = all non-wall cells must be covered.
+const LEVELS = [
+
+// 1 — TUTORIAL: pure routing, no fill needed
+{name:'BOOT SEQUENCE',sub:'Connect each SOURCE to its matching TARGET — drag to draw',
+ size:5, fill:false, parMoves:16,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:4},
+   {t:'S',color:'magenta',r:0,c:4},{t:'T',color:'magenta',r:4,c:0},
+ ],walls:[],tools:{wire:999,eraser:999},
+ hints:[
+   'Sources are filled circles with "S". Targets are pulsing rings with "T". Click and drag from a source to draw a wire.',
+   'Both paths must connect without touching each other. Cyan goes corner-to-corner diagonally — find a path that doesn\'t block Magenta.',
+   'Solution: Cyan goes RIGHT×4 then DOWN×4. Magenta goes DOWN×4 then RIGHT×4 (they meet corners perfectly!)',
+ ],
+ flavor:'CIPHER online. Boot sequence complete. First node detected — basic routing required.'},
+
+// 2 — THREE SIGNALS, no fill
+{name:'SIGNAL INTERFERENCE',sub:'Three signals share the grid — find non-colliding paths',
+ size:5, fill:false, parMoves:20,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:4},
+   {t:'S',color:'magenta',r:2,c:0},{t:'T',color:'magenta',r:2,c:4},
+   {t:'S',color:'green',  r:0,c:4},{t:'T',color:'green',  r:4,c:0},
+ ],walls:[],tools:{wire:999,eraser:999},
+ hints:[
+   'Three signals must each find their own clear path. Route one completely, then plan the others around it.',
+   'Magenta wants to go straight across row 2 — let it. Then Cyan and Green must detour above and below.',
+   'Magenta: straight across row 2. Cyan: D,D,R,R,R,R,U,U (down to row 2, across, back up). Green: U-shaped path along bottom.',
+ ],
+ flavor:'Interference artifacts detected. Multiple signals competing for bandwidth.'},
+
+// 3 — WALLS
+{name:'MEMORY FRAGMENT',sub:'Corrupted cells block the way — navigate around them',
+ size:6, fill:false, parMoves:22,
+ nodes:[
+   {t:'S',color:'cyan',r:0,c:0},{t:'T',color:'cyan',r:5,c:5},
+   {t:'S',color:'gold',r:0,c:5},{t:'T',color:'gold',r:5,c:0},
+ ],
+ walls:[{r:1,c:2},{r:1,c:3},{r:2,c:1},{r:2,c:4},{r:3,c:1},{r:3,c:4},{r:4,c:2},{r:4,c:3}],
+ tools:{wire:999,eraser:999},
+ hints:[
+   'Corrupted cells (dark hatched blocks) cannot be entered. The walls form a ring with gaps at top and bottom.',
+   'There are four open corridor cells at the top-center and bottom-center of the wall ring. Both signals must thread through these.',
+   'Cyan: right to c:1, down 5 rows, right to c:5. Gold: left to c:4, down through gap at r:4,c:4... then find the path south.',
+ ],
+ flavor:'VOID memory corruption confirmed. Fragment walls detected around node core.'},
+
+// 4 — INTRO TO FILL (small grid)
+{name:'BANDWIDTH SATURATION',sub:'ALL cells must be covered — no empty space allowed',
+ size:5, fill:true, parMoves:25,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:0},
+   {t:'S',color:'magenta',r:0,c:4},{t:'T',color:'magenta',r:4,c:4},
+   {t:'S',color:'green',  r:2,c:2},{t:'T',color:'green',  r:0,c:2},
+ ],walls:[],tools:{wire:999,eraser:999},
+ hints:[
+   'NEW RULE: Every cell must be filled! The coverage bar at the top must reach 100% AND all signals connected.',
+   'With 3 signals on a 5×5 grid (25 cells), paths must snake through every cell with no gaps.',
+   'Green goes straight: (2,2)→(1,2)→(0,2). Cyan snakes: col 0 down, then row 4 across, then col 4 up. Magenta fills remaining cells.',
+ ],
+ flavor:'Bandwidth saturation protocol active. Every byte of this node must be reallocated.'},
+
+// 5 — WALLS + FILL (6×6, 2 pairs)
+{name:'CORRUPTED MAZE',sub:'Navigate walls AND fill every corridor',
+ size:6, fill:true, parMoves:34,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:5,c:5},
+   {t:'S',color:'magenta',r:0,c:5},{t:'T',color:'magenta',r:5,c:0},
+ ],
+ walls:[{r:2,c:2},{r:2,c:3},{r:3,c:2},{r:3,c:3}],
+ tools:{wire:999,eraser:999},
+ hints:[
+   'A 6×6 grid with a 2×2 wall block in the center (4 walls). 32 non-wall cells must all be filled by 2 signals.',
+   'Each signal gets approximately 16 cells. Route them so they snake around the center block from opposite sides.',
+   'Think of it as two interlocking spirals. Cyan clockwise from top-left, Magenta counter-clockwise from top-right, each filling half the board.',
+ ],
+ flavor:'Maze topology detected. VOID uses wall clusters to isolate memory sectors.'},
+
+// 6 — BRIDGE INTRO (no fill)
+{name:'BRIDGE PROTOCOL',sub:'NEW: Bridge tool lets one signal cross over another',
+ size:6, fill:false, parMoves:24,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:5,c:5},
+   {t:'S',color:'magenta',r:0,c:5},{t:'T',color:'magenta',r:5,c:0},
+   {t:'S',color:'green',  r:2,c:0},{t:'T',color:'green',  r:2,c:5},
+ ],
+ walls:[{r:0,c:2},{r:0,c:3},{r:5,c:2},{r:5,c:3}],
+ tools:{wire:999,bridge:4,eraser:999},
+ hints:[
+   'Select the BRIDGE tool (⊕), then route your signal through a cell already occupied by another color. Bridges let signals cross!',
+   'Green must go straight across row 2. Cyan and Magenta, traveling diagonally, will need to bridge over Green at that intersection.',
+   'Green: straight across row 2. Cyan: down to row 2, BRIDGE the green wire, continue to bottom-right. Magenta: same on its side.',
+ ],
+ flavor:'Bridge technology acquired. Cross-frequency signal layering now possible.'},
+
+// 7 — FOUR SIGNALS + WALLS (7×7, no fill)
+{name:'QUAD ARRAY',sub:'Four signals, scattered walls — careful planning required',
+ size:7, fill:false, parMoves:36,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:6,c:6},
+   {t:'S',color:'magenta',r:0,c:6},{t:'T',color:'magenta',r:6,c:0},
+   {t:'S',color:'green',  r:0,c:3},{t:'T',color:'green',  r:6,c:3},
+   {t:'S',color:'gold',   r:3,c:0},{t:'T',color:'gold',   r:3,c:6},
+ ],
+ walls:[{r:2,c:2},{r:2,c:4},{r:4,c:2},{r:4,c:4},{r:3,c:3}],
+ tools:{wire:999,bridge:4,eraser:999},
+ hints:[
+   'Five walls form a diamond pattern with center blocked. Signals must route around them.',
+   'Gold needs to cross row 3, but (3,3) is blocked. Gold must detour up or down through the open lanes (r:1 or r:5).',
+   'Green can go straight down col 3 — row 3,col 3 is blocked so it must detour too. Route Green left or right around center then back.',
+ ],
+ flavor:'Quad-channel array. VOID\'s diamond corruption pattern forces signal rerouting.'},
+
+// 8 — FIVE SIGNALS + BRIDGES (7×7, fill)
+{name:'PENTAGRAM ARRAY',sub:'Five signals + bridges — fill every cell',
+ size:7, fill:true, parMoves:49,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:6,c:0},
+   {t:'S',color:'magenta',r:0,c:6},{t:'T',color:'magenta',r:6,c:6},
+   {t:'S',color:'green',  r:0,c:3},{t:'T',color:'green',  r:6,c:3},
+   {t:'S',color:'gold',   r:3,c:0},{t:'T',color:'gold',   r:3,c:6},
+   {t:'S',color:'orange', r:3,c:3},{t:'T',color:'orange', r:1,c:5},
+ ],
+ walls:[{r:1,c:1},{r:5,c:5},{r:1,c:5},{r:5,c:1}],
+ tools:{wire:999,bridge:6,eraser:999},
+ hints:[
+   'Five signals on a 7×7 grid = 49 cells, minus 4 walls = 45 cells to fill. Each path must snake carefully.',
+   'Start with the simplest paths first: Cyan straight down col 0, Magenta straight down col 6. Then Green down col 3. Now Gold across row 3. Finally weave Orange.',
+   'Orange (3,3)→(1,5): go UP to r:2, RIGHT to c:4, UP to r:1, RIGHT to c:5. Use bridges where it crosses other signals.',
+ ],
+ flavor:'Five-channel encryption. VOID hidden sub-routines detected across pentagram topology.'},
+
+// 9 — SIX SIGNALS + 8×8 (no fill)
+{name:'HEX MATRIX',sub:'Six signal types on a larger grid — plan before you draw',
+ size:8, fill:false, parMoves:48,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:7,c:7},
+   {t:'S',color:'magenta',r:0,c:7},{t:'T',color:'magenta',r:7,c:0},
+   {t:'S',color:'green',  r:0,c:3},{t:'T',color:'green',  r:7,c:4},
+   {t:'S',color:'gold',   r:3,c:0},{t:'T',color:'gold',   r:4,c:7},
+   {t:'S',color:'orange', r:0,c:5},{t:'T',color:'orange', r:7,c:2},
+   {t:'S',color:'purple', r:5,c:0},{t:'T',color:'purple', r:2,c:7},
+ ],
+ walls:[{r:2,c:2},{r:2,c:5},{r:5,c:2},{r:5,c:5},{r:3,c:3},{r:3,c:4},{r:4,c:3},{r:4,c:4}],
+ tools:{wire:999,bridge:6,eraser:999},
+ hints:[
+   'Six signals! The center 2×2 and four corner walls create four quadrant zones. Route signals to stay within their zone as much as possible.',
+   'Cyan and Magenta cross corner to corner — they will need to navigate the outer perimeter. Route them along the edge rows/cols first.',
+   'The center block is impenetrable. Gold (3,0)→(4,7) and Purple (5,0)→(2,7) must go around. Use rows 0-1 and 6-7 as the main cross-grid highways.',
+ ],
+ flavor:'Hex-Matrix: six-dimensional signal topology. VOID sub-core detected at center cluster.'},
+
+// 10 — VOID LABYRINTH (8×8 + walls + fill)
+{name:'VOID LABYRINTH',sub:'A true maze — fill every corridor, no signal wasted',
+ size:8, fill:true, parMoves:60,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:7,c:7},
+   {t:'S',color:'magenta',r:0,c:7},{t:'T',color:'magenta',r:7,c:0},
+   {t:'S',color:'green',  r:3,c:0},{t:'T',color:'green',  r:4,c:7},
+   {t:'S',color:'gold',   r:0,c:4},{t:'T',color:'gold',   r:7,c:3},
+ ],
+ walls:[
+   {r:1,c:2},{r:1,c:5},
+   {r:2,c:2},{r:2,c:5},
+   {r:3,c:4},{r:3,c:5},
+   {r:4,c:2},{r:4,c:3},
+   {r:5,c:2},{r:5,c:5},
+   {r:6,c:2},{r:6,c:5},
+ ],
+ tools:{wire:999,bridge:8,eraser:999},
+ hints:[
+   'VOID Labyrinth: walls form two vertical corridors. Signals must snake through the three open lanes (cols 0-1, 3, 6-7).',
+   'Identify the three open vertical channels: left (c:0-1), center (c:3), right (c:6-7). Each signal should "own" a channel for its main run.',
+   'Cyan: use right channel (c:6,7). Magenta: left channel (c:0,1). Gold: center (c:3,4 above/below walls). Green: navigate through available gaps.',
+ ],
+ flavor:'VOID LABYRINTH engaged. The rogue AI builds maze topology to slow signal restoration.'},
+
+// 11 — AXIOM CORE (9×9, six signals + bridges, no fill)
+{name:'AXIOM CORE',sub:'The heart of the network — six signals, tight quarters',
+ size:9, fill:false, parMoves:60,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:8,c:8},
+   {t:'S',color:'magenta',r:0,c:8},{t:'T',color:'magenta',r:8,c:0},
+   {t:'S',color:'green',  r:0,c:4},{t:'T',color:'green',  r:8,c:4},
+   {t:'S',color:'gold',   r:4,c:0},{t:'T',color:'gold',   r:4,c:8},
+   {t:'S',color:'orange', r:2,c:2},{t:'T',color:'orange', r:6,c:6},
+   {t:'S',color:'purple', r:2,c:6},{t:'T',color:'purple', r:6,c:2},
+ ],
+ walls:[
+   {r:1,c:3},{r:1,c:5},
+   {r:3,c:1},{r:3,c:7},
+   {r:5,c:1},{r:5,c:7},
+   {r:7,c:3},{r:7,c:5},
+   {r:4,c:4},
+ ],
+ tools:{wire:999,bridge:8,eraser:999},
+ hints:[
+   'Nine walls form a symmetric "shield" pattern around the center. Center (4,4) is blocked. Signals must detour around the shield points.',
+   'The shield walls block direct paths through rows 1,3,5,7 at certain columns. Find the open columns between shield points.',
+   'Gold must cross row 4 but (4,4) is blocked. It must either go (4,3)→(4,5) bridging, or detour through row 3 or 5. Plan Green to go straight down col 4, detouring at r:4.',
+ ],
+ flavor:'AXIOM CORE breached. VOID\'s primary encryption shield detected — symmetric ward pattern.'},
+
+// 12 — VOID PURGE FINAL (9×9, 8 signals, fill)
+{name:'VOID PURGE',sub:'FINAL NODE — 8 signals, fill every cell, purge VOID forever',
+ size:9, fill:true, parMoves:81,
+ nodes:[
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:8,c:8},
+   {t:'S',color:'magenta',r:0,c:8},{t:'T',color:'magenta',r:8,c:0},
+   {t:'S',color:'green',  r:0,c:4},{t:'T',color:'green',  r:8,c:4},
+   {t:'S',color:'gold',   r:4,c:0},{t:'T',color:'gold',   r:4,c:8},
+   {t:'S',color:'orange', r:1,c:1},{t:'T',color:'orange', r:7,c:7},
+   {t:'S',color:'purple', r:1,c:7},{t:'T',color:'purple', r:7,c:1},
+   {t:'S',color:'red',    r:4,c:2},{t:'T',color:'red',    r:4,c:6},
+   {t:'S',color:'white',  r:2,c:4},{t:'T',color:'white',  r:6,c:4},
+ ],
+ walls:[{r:4,c:4}],
+ tools:{wire:999,bridge:12,eraser:999},
+ hints:[
+   'Final node: 8 signals, 9×9=81 cells minus 1 wall = 80 cells to fill. Only (4,4) is blocked. This is the ultimate routing challenge.',
+   'Start with the axis signals: Green (col 4, detour around r:4), Gold (row 4, detour around c:4), then Red (row 4 between Gold pieces). Now outer signals: Cyan, Magenta diagonals.',
+   'Red goes (4,2)→(4,3) — then it must detour UP or DOWN to get past the wall at (4,4), and come back to (4,5)→(4,6). White goes down col 4 with a one-cell detour at row 4 (left or right then back). Use bridges generously where paths cross!',
+ ],
+ flavor:'VOID CORE breached. Final purge sequence executing. Every signal counts. Every cell matters. This is it, CIPHER.'},
+
+]; // END LEVELS
+
+// ─── STATE ─────────────────────────────────────────────
+const S = {
+  level: 0,
+  solved: Array(12).fill(null),  // null|{stars,score,moves}
+  totalScore: 0,
+  totalHints: 0,
+  // runtime
+  grid: null,
+  paths: {},           // color → [{r,c}]
+  connected: [],       // colors fully connected
+  moves: 0,
+  hintsUsed: 0,
+  hintIdx: 0,
+  drawing: false,
+  drawColor: null,
+  drawPath: [],
+  tool: 'wire',
+  toolCounts: {},
+  cs: 56,              // cell size px
+  phase: 0,            // animation phase
+  raf: 0,
+  history: [],         // undo stack: snapshots of {paths, connected, moves}
+  timerStart: 0,
+  timerInterval: 0,
+  hovCell: null,
+  canvas: null,
+  ctx: null,
+};
+
+const SAVE = 'nexus-v2';
+
+// ─── SAVE / LOAD ───────────────────────────────────────
+function save() {
+  localStorage.setItem(SAVE, JSON.stringify({
+    level: S.level,
+    solved: S.solved,
+    totalScore: S.totalScore,
+    totalHints: S.totalHints,
+  }));
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE)||'null');
+    if (!d) return false;
+    S.level = d.level||0;
+    S.solved = d.solved||Array(12).fill(null);
+    S.totalScore = d.totalScore||0;
+    S.totalHints = d.totalHints||0;
+    return true;
+  } catch { return false; }
+}
+
+// ─── AUDIO (Web Audio API) ──────────────────────────────
+const AC = (()=>{try{return new(window.AudioContext||window.webkitAudioContext)()}catch{return null}})();
+function beep(freq,dur,vol,type='sine',detune=0) {
+  if (!AC) return;
+  try {
+    const osc = AC.createOscillator(), gain = AC.createGain();
+    osc.type = type; osc.frequency.value = freq; osc.detune.value = detune;
+    gain.gain.setValueAtTime(vol, AC.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+dur);
+    osc.connect(gain); gain.connect(AC.destination);
+    osc.start(); osc.stop(AC.currentTime+dur);
+  } catch {}
+}
+function sfxPlace()     { beep(520,.06,.07,'square'); }
+function sfxConnect()   { beep(660,.06,.12,'sine'); setTimeout(()=>beep(880,.12,.1,'sine'),60); }
+function sfxToolSelect(){ beep(600,.05,.06,'sine'); }
+function sfxComplete()  {
+  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.15,.12,'sine'),i*60));
+}
+function sfxVictory()   {
+  [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>beep(f,.2,.1,'triangle'),i*80));
+}
+function sfxError()     { beep(220,.12,.1,'sawtooth'); }
+function sfxHint()      { beep(330,.1,.08,'sine'); beep(440,.12,.08,'sine'); }
+function sfxUndo()      { beep(300,.1,.08,'square',-200); }
+function sfxReset()     { beep(200,.15,.1,'sawtooth'); }
+
+// ─── PARTICLES ──────────────────────────────────────────
+function mkParticles() {
+  const c = document.getElementById('particles');
+  const cs = ['#00f5ff','#ff00e5','#00ff88','#ffd700','#cc44ff'];
+  for (let i=0;i<25;i++) {
+    const p = document.createElement('div'); p.className='pt';
+    p.style.cssText = `left:${Math.random()*100}vw;width:${1+Math.random()*2}px;
+      height:${1+Math.random()*2}px;
+      background:${cs[i%cs.length]};
+      box-shadow:0 0 4px ${cs[i%cs.length]};
+      animation-duration:${7+Math.random()*10}s;
+      animation-delay:${-Math.random()*17}s`;
+    c.appendChild(p);
+  }
+}
+
+// ─── TIMER ──────────────────────────────────────────────
+function startTimer() {
+  S.timerStart = Date.now();
+  clearInterval(S.timerInterval);
+  S.timerInterval = setInterval(tickTimer, 500);
+}
+function tickTimer() {
+  const el = document.getElementById('tb-timer');
+  if (!el) return;
+  const s = Math.floor((Date.now()-S.timerStart)/1000);
+  el.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+function getElapsed() { return Math.floor((Date.now()-S.timerStart)/1000); }
+
+// ─── CANVAS SETUP ───────────────────────────────────────
+function setupCanvas(def) {
+  const canvas = document.getElementById('game-canvas');
+  S.canvas = canvas; S.ctx = canvas.getContext('2d');
+  const wrap = document.getElementById('grid-wrap');
+  const aw = wrap.clientWidth-24, ah = wrap.clientHeight-24;
+  const maxC = Math.min(Math.floor(aw/def.size), Math.floor(ah/def.size), 80);
+  S.cs = Math.max(maxC, 38);
+  const px = S.cs * def.size;
+  canvas.width = px; canvas.height = px;
+  canvas.style.width = px+'px'; canvas.style.height = px+'px';
+}
+
+// ─── GRID INIT ───────────────────────────────────────────
+function initLevel(idx) {
+  const def = LEVELS[idx];
+  S.level = idx;
+  S.paths = {};
+  S.connected = [];
+  S.moves = 0;
+  S.hintsUsed = 0;
+  S.hintIdx = 0;
+  S.drawing = false;
+  S.drawColor = null;
+  S.drawPath = [];
+  S.tool = 'wire';
+  S.history = [];
+  S.hovCell = null;
+
+  // tools
+  S.toolCounts = {};
+  for (const [k,v] of Object.entries(def.tools)) S.toolCounts[k] = v;
+
+  // grid
+  const g = [];
+  for (let r=0;r<def.size;r++){
+    g[r]=[];
+    for (let c=0;c<def.size;c++) g[r][c]={type:'empty',color:null,bridged:false};
+  }
+  for (const w of def.walls) g[w.r][w.c]={type:'wall',color:null};
+  for (const n of def.nodes) {
+    g[n.r][n.c]={type:n.t==='S'?'source':'target',color:n.color,bridged:false};
+    if (!S.paths[n.color]) S.paths[n.color]=[];
+  }
+  S.grid = g;
+
+  setupCanvas(def);
+  renderTools(def);
+  renderSigLegend(def);
+  updateUI();
+  updateLevelList();
+  updateLevelHdr(def,idx);
+  updateTopBar();
+  startTimer();
+  // Initial hint text
+  setHintText('Drag from a SOURCE (filled, "S") to its matching TARGET (ring, "T"). Paths cannot share cells. Use Eraser to remove a path. Press Z to undo.');
+  document.getElementById('btn-hint').disabled = false;
+  document.getElementById('hints-left').textContent = def.hints.length;
+  log('i',`[NODE-${String(idx+1).padStart(2,'0')}] ${def.flavor}`);
+  if (idx===3) showToast('NEW RULE: Fill every cell!','w');
+  if (idx===5) showToast('NEW TOOL: Bridges available!','i');
+}
+
+// ─── CANVAS RENDER ───────────────────────────────────────
+function render() {
+  const ctx = S.ctx, cs = S.cs;
+  const def = LEVELS[S.level];
+  const n = def.size, W = cs*n;
+
+  ctx.clearRect(0,0,W,W);
+  // BG
+  ctx.fillStyle='#020510'; ctx.fillRect(0,0,W,W);
+  // Subtle cell shading (checkerboard for depth)
+  for (let r=0;r<n;r++) for (let c=0;c<n;c++) {
+    if ((r+c)%2===0){
+      ctx.fillStyle='rgba(0,245,255,0.012)';
+      ctx.fillRect(c*cs,r*cs,cs,cs);
+    }
+  }
+  // Grid lines
+  ctx.strokeStyle='rgba(0,245,255,0.06)'; ctx.lineWidth=1;
+  for (let i=0;i<=n;i++){
+    ctx.beginPath();ctx.moveTo(i*cs,0);ctx.lineTo(i*cs,W);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,i*cs);ctx.lineTo(W,i*cs);ctx.stroke();
+  }
+
+  // Hover highlight
+  if (S.hovCell && !S.drawing) {
+    const {r,c} = S.hovCell;
+    ctx.fillStyle='rgba(0,245,255,0.05)';
+    ctx.fillRect(c*cs+1,r*cs+1,cs-2,cs-2);
+  }
+
+  // === DRAW COMMITTED PATHS ===
+  for (const [color,path] of Object.entries(S.paths)) {
+    if (path.length < 1) continue;
+    const sig = SIG[color];
+    const done = S.connected.includes(color);
+
+    // Glow halo for completed paths
+    if (done) {
+      ctx.save();
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.lineWidth = cs*0.52;
+      ctx.strokeStyle = sig.g;
+      ctx.globalAlpha = 0.18;
+      ctx.beginPath();
+      ctx.moveTo(path[0].c*cs+cs/2, path[0].r*cs+cs/2);
+      for (let i=1;i<path.length;i++) ctx.lineTo(path[i].c*cs+cs/2, path[i].r*cs+cs/2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Main line
+    ctx.save();
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.lineWidth = cs*0.34;
+    ctx.strokeStyle = sig.c;
+    ctx.globalAlpha = done ? 1 : 0.72;
+    if (done) { ctx.shadowColor=sig.g; ctx.shadowBlur=10; }
+    ctx.beginPath();
+    ctx.moveTo(path[0].c*cs+cs/2, path[0].r*cs+cs/2);
+    for (let i=1;i<path.length;i++) ctx.lineTo(path[i].c*cs+cs/2, path[i].r*cs+cs/2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Animated energy pulse for completed paths
+    if (done && path.length>1) {
+      const t = ((S.phase*0.025) % 1);
+      const fi = Math.floor(t*(path.length-1));
+      const frac = t*(path.length-1) - fi;
+      const a = path[fi], b = path[Math.min(fi+1,path.length-1)];
+      const px2 = a.c*cs+cs/2 + (b.c-a.c)*cs*frac;
+      const py2 = a.r*cs+cs/2 + (b.r-a.r)*cs*frac;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px2,py2,cs*0.1,0,Math.PI*2);
+      ctx.fillStyle='#ffffff';
+      ctx.shadowColor=sig.g; ctx.shadowBlur=18;
+      ctx.globalAlpha=0.95;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // === DRAW LIVE PATH ===
+  if (S.drawing && S.drawPath.length>1) {
+    const sig = SIG[S.drawColor];
+    ctx.save();
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    // Glow under-stroke
+    ctx.lineWidth = cs*0.38;
+    ctx.strokeStyle = sig.g;
+    ctx.globalAlpha = 0.22;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(S.drawPath[0].c*cs+cs/2, S.drawPath[0].r*cs+cs/2);
+    for (let i=1;i<S.drawPath.length;i++) ctx.lineTo(S.drawPath[i].c*cs+cs/2, S.drawPath[i].r*cs+cs/2);
+    ctx.stroke();
+    // Dashed main stroke
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = cs*0.27;
+    ctx.strokeStyle = sig.c;
+    ctx.shadowColor = sig.g; ctx.shadowBlur = 8;
+    ctx.setLineDash([cs*0.18, cs*0.09]);
+    ctx.stroke();
+    ctx.setLineDash([]); // reset dash
+    ctx.restore();
+  }
+
+  // === DRAW CELLS (nodes, walls, etc.) ===
+  for (let r=0;r<n;r++) for (let c=0;c<n;c++) {
+    const cell = S.grid[r][c];
+    const x=c*cs+cs/2, y=r*cs+cs/2;
+    if (cell.type==='wall')   drawWall(ctx,c*cs,r*cs,cs);
+    else if (cell.type==='source') drawSource(ctx,x,y,cs,cell.color);
+    else if (cell.type==='target') drawTarget(ctx,x,y,cs,cell.color);
+    else if (cell.type==='bridge') drawBridgeCell(ctx,x,y,cs,cell.color);
+  }
+
+  S.phase++;
+  S.raf = requestAnimationFrame(render);
+}
+
+// ── CELL DRAWERS ────────────────────────────────────────
+function drawWall(ctx,x,y,cs) {
+  // Dark corrupted block
+  const g = ctx.createLinearGradient(x,y,x+cs,y+cs);
+  g.addColorStop(0,'#151c30'); g.addColorStop(1,'#0a1020');
+  ctx.fillStyle=g; ctx.fillRect(x+1,y+1,cs-2,cs-2);
+  // Red corruption hatch — properly clipped
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x+1,y+1,cs-2,cs-2);
+  ctx.clip();
+  ctx.strokeStyle='rgba(255,51,85,0.15)'; ctx.lineWidth=1;
+  for (let i=-cs;i<cs*2;i+=10){
+    ctx.beginPath();ctx.moveTo(x+i,y);ctx.lineTo(x+i+cs,y+cs);ctx.stroke();
+  }
+  ctx.restore();
+  // Border outline
+  ctx.strokeStyle='rgba(255,51,85,0.22)'; ctx.lineWidth=1;
+  ctx.strokeRect(x+2,y+2,cs-4,cs-4);
+}
+
+function drawSource(ctx,x,y,cs,color) {
+  const sig=SIG[color], r=cs*0.33;
+  ctx.save();
+  // Radial glow
+  const gd=ctx.createRadialGradient(x,y,r*.4,x,y,r*1.6);
+  gd.addColorStop(0,sig.g); gd.addColorStop(1,'transparent');
+  ctx.fillStyle=gd; ctx.globalAlpha=.7;
+  ctx.beginPath(); ctx.arc(x,y,r*1.6,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  // Main body
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fillStyle=sig.c; ctx.shadowColor=sig.g; ctx.shadowBlur=16; ctx.fill();
+  // Shine
+  ctx.beginPath(); ctx.arc(x-r*.22,y-r*.22,r*.32,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,.45)'; ctx.shadowBlur=0; ctx.fill();
+  // Label
+  ctx.fillStyle='#020510';
+  ctx.font=`bold ${Math.floor(r*.95)}px monospace`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('S',x,y+1);
+  ctx.restore();
+}
+
+function drawTarget(ctx,x,y,cs,color) {
+  const sig=SIG[color], done=S.connected.includes(color);
+  const r=cs*0.34;
+  ctx.save();
+  if (done) {
+    // Filled, glowing, with inner cutout
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=sig.c; ctx.shadowColor=sig.g; ctx.shadowBlur=22; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,r*.45,0,Math.PI*2);
+    ctx.fillStyle='#020510'; ctx.shadowBlur=0; ctx.fill();
+    // Checkmark
+    ctx.strokeStyle=sig.c; ctx.lineWidth=cs*0.055; ctx.lineCap='round';
+    ctx.shadowColor=sig.g; ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.moveTo(x-r*.28,y+r*.02);
+    ctx.lineTo(x-r*.05,y+r*.28);
+    ctx.lineTo(x+r*.32,y-r*.22);
+    ctx.stroke();
+  } else {
+    // Pulsing double ring
+    const pulse=0.85+0.15*Math.sin(S.phase*.065);
+    ctx.strokeStyle=sig.c; ctx.lineWidth=cs*0.065;
+    ctx.shadowColor=sig.g; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.arc(x,y,r*pulse,0,Math.PI*2); ctx.stroke();
+    ctx.lineWidth=cs*0.03; ctx.globalAlpha=.45;
+    ctx.beginPath(); ctx.arc(x,y,r*.55*pulse,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha=1;
+    // Label
+    ctx.fillStyle=sig.c; ctx.shadowBlur=0;
+    ctx.font=`bold ${Math.floor(r*.85)}px monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('T',x,y+1);
+  }
+  ctx.restore();
+}
+
+function drawBridgeCell(ctx,x,y,cs,color) {
+  const sig=SIG[color];
+  ctx.save();
+  ctx.strokeStyle=sig.c; ctx.lineWidth=1; ctx.globalAlpha=.6;
+  ctx.strokeRect(x-cs*.36,y-cs*.36,cs*.72,cs*.72);
+  ctx.font=`${Math.floor(cs*.28)}px monospace`;
+  ctx.fillStyle=sig.c; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('⊕',x,y);
+  ctx.restore();
+}
+
+// ─── INPUT HANDLING ──────────────────────────────────────
+function cellFromXY(ex,ey) {
+  const r = document.getElementById('game-canvas').getBoundingClientRect();
+  const sx=S.canvas.width/r.width, sy=S.canvas.height/r.height;
+  const px=(ex-r.left)*sx, py=(ey-r.top)*sy;
+  const c=Math.floor(px/S.cs), rr=Math.floor(py/S.cs);
+  const n=LEVELS[S.level].size;
+  return (rr>=0&&rr<n&&c>=0&&c<n)?{r:rr,c}:null;
+}
+
+function onDown(e) {
+  e.preventDefault();
+  if (AC && AC.state==='suspended') AC.resume();
+  const cell=cellFromXY(e.clientX,e.clientY);
+  if (cell) startDraw(cell);
+}
+function onMove(e) {
+  if (e.buttons===0 && !S.drawing) {
+    // hover
+    S.hovCell = cellFromXY(e.clientX,e.clientY);
+    return;
+  }
+  if (!S.drawing) return;
+  const cell=cellFromXY(e.clientX,e.clientY);
+  if (cell) continueDraw(cell);
+}
+function onUp(e) { endDraw(); }
+function onLeave(e) { S.hovCell=null; if (S.drawing) endDraw(); }
+
+function onTDown(e) {
+  e.preventDefault();
+  if (AC && AC.state==='suspended') AC.resume();
+  const t=e.touches[0];
+  const cell=cellFromXY(t.clientX,t.clientY);
+  if (cell) startDraw(cell);
+}
+function onTMove(e) {
+  e.preventDefault();
+  if (!S.drawing) return;
+  const t=e.touches[0];
+  const cell=cellFromXY(t.clientX,t.clientY);
+  if (cell) continueDraw(cell);
+}
+function onTUp(e) { e.preventDefault(); endDraw(); }
+
+function adj(a,b) { return Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1; }
+function inPath(path,r,c) { return path.some(p=>p.r===r&&p.c===c); }
+
+// Find which color's committed path contains this cell (not source/target endpoints considered separately)
+function pathColorAt(r,c) {
+  for (const [col,path] of Object.entries(S.paths)) {
+    if (path.some(p=>p.r===r&&p.c===c)) return col;
+  }
+  return null;
+}
+
+function pushHistory() {
+  const snapshot = {
+    paths: JSON.parse(JSON.stringify(S.paths)),
+    connected: [...S.connected],
+    moves: S.moves,
+    grid: JSON.parse(JSON.stringify(S.grid)),
+  };
+  S.history.push(snapshot);
+  if (S.history.length>60) S.history.shift();
+}
+
+function startDraw(cell) {
+  const gc = S.grid[cell.r][cell.c];
+  if (!gc) return;
+
+  if (S.tool==='eraser') { erasePath(cell); return; }
+  if (gc.type==='wall') return;
+
+  pushHistory();
+
+  // Start from source or target (either endpoint can be used to re-route)
+  if (gc.type==='source'||gc.type==='target') {
+    clearColor(gc.color);
+    S.drawing=true; S.drawColor=gc.color;
+    S.drawPath=[{r:cell.r,c:cell.c}];
+    return;
+  }
+  // Resume from existing wire (tap to restart from that point)
+  const existingColor = pathColorAt(cell.r,cell.c);
+  if (existingColor) {
+    const path=S.paths[existingColor];
+    const idx=path.findIndex(p=>p.r===cell.r&&p.c===cell.c);
+    if (idx>0) {
+      // Truncate from this point forward
+      const removed=path.splice(idx+1);
+      for (const p of removed) {
+        const gc2=S.grid[p.r][p.c];
+        if (gc2&&gc2.type==='wire') S.grid[p.r][p.c]={type:'empty',color:null,bridged:false};
+        if (gc2&&gc2.type==='bridge') S.grid[p.r][p.c]={type:'empty',color:null,bridged:false};
+      }
+      S.connected=S.connected.filter(c=>c!==existingColor);
+      S.drawing=true; S.drawColor=existingColor;
+      S.drawPath=[...path];
+    }
+  }
+}
+
+function continueDraw(cell) {
+  if (!S.drawing) return;
+  const last=S.drawPath[S.drawPath.length-1];
+  if (last.r===cell.r&&last.c===cell.c) return;
+  if (!adj(last,cell)) return;
+
+  const gc=S.grid[cell.r][cell.c];
+  if (!gc||gc.type==='wall') return;
+
+  // Backtrack?
+  if (S.drawPath.length>=2) {
+    const prev=S.drawPath[S.drawPath.length-2];
+    if (prev.r===cell.r&&prev.c===cell.c) {
+      // Backtrack one step — remove last (don't count as a move)
+      const rem=S.drawPath.pop();
+      const gc2=S.grid[rem.r][rem.c];
+      if (gc2&&gc2.type==='wire'&&gc2.color===S.drawColor)
+        S.grid[rem.r][rem.c]={type:'empty',color:null,bridged:false};
+      if (gc2&&gc2.type==='bridge'&&gc2.color===S.drawColor)
+        S.grid[rem.r][rem.c]={type:'empty',color:null,bridged:false};
+      updateUI();
+      return;
+    }
+  }
+
+  // Already in our own draw path?
+  if (inPath(S.drawPath,cell.r,cell.c)) return;
+
+  // Different color source/target?
+  if ((gc.type==='source'||gc.type==='target')&&gc.color!==S.drawColor) return;
+
+  // Cell occupied by a different signal?
+  if ((gc.type==='wire'||gc.type==='bridge')&&gc.color!==S.drawColor) {
+    if (S.tool==='bridge'&&S.toolCounts.bridge>0) {
+      // Bridge over it!
+      S.drawPath.push({r:cell.r,c:cell.c});
+      S.grid[cell.r][cell.c]={type:'bridge',color:S.drawColor,bridged:true,under:gc.color};
+      S.toolCounts.bridge--;
+      S.moves++; sfxPlace(); updateUI(); return;
+    }
+    sfxError(); return;
+  }
+
+  // Arrived at our target?
+  if (gc.type==='target'&&gc.color===S.drawColor) {
+    S.drawPath.push({r:cell.r,c:cell.c});
+    commitDraw();
+    completeColor(S.drawColor);
+    S.drawing=false; S.drawPath=[]; S.drawColor=null;
+    S.moves++; sfxConnect(); updateUI();
+    checkLevelComplete(); return;
+  }
+
+  // Empty cell — extend the path
+  if (gc.type==='empty') {
+    S.drawPath.push({r:cell.r,c:cell.c});
+    S.grid[cell.r][cell.c]={type:'wire',color:S.drawColor,bridged:false};
+    S.moves++;
+    // Throttle SFX to avoid rapid-fire noise during fast drags
+    if (S.moves % 2 === 0) sfxPlace();
+    updateUI(); return;
+  }
+  // Our own committed wire from a previous partial path — treat as empty (re-routing)
+  if (gc.type==='wire'&&gc.color===S.drawColor) {
+    S.drawPath.push({r:cell.r,c:cell.c});
+    updateUI(); return;
+  }
+}
+
+function endDraw() {
+  if (!S.drawing) return;
+  if (S.drawPath.length>=2) {
+    commitDraw();
+  }
+  S.drawing=false; S.drawPath=[]; S.drawColor=null;
+}
+
+function commitDraw() {
+  // Write draw path to S.paths
+  S.paths[S.drawColor] = S.drawPath.map(p=>({r:p.r,c:p.c}));
+  // Write wire cells
+  const path=S.paths[S.drawColor];
+  for (let i=1;i<path.length-1;i++) {
+    const gc=S.grid[path[i].r][path[i].c];
+    if (gc.type==='empty') S.grid[path[i].r][path[i].c]={type:'wire',color:S.drawColor,bridged:false};
+  }
+}
+
+function clearColor(color) {
+  const path=S.paths[color]||[];
+  for (const p of path) {
+    const gc=S.grid[p.r][p.c];
+    if (gc&&(gc.type==='wire'||gc.type==='bridge')&&gc.color===color)
+      S.grid[p.r][p.c]={type:'empty',color:null,bridged:false};
+  }
+  S.paths[color]=[];
+  S.connected=S.connected.filter(c=>c!==color);
+}
+
+function completeColor(color) {
+  if (!S.connected.includes(color)) {
+    S.connected.push(color);
+    log('s',`[LINK] ${SIG[color].n} signal routed. Connection established.`);
+    showToast(`${SIG[color].l} connected!`,'s');
+  }
+}
+
+function erasePath(cell) {
+  const gc=S.grid[cell.r][cell.c];
+  if (!gc) return;
+  if (gc.type==='wire'||gc.type==='bridge') {
+    pushHistory();
+    clearColor(gc.color);
+    S.moves++; sfxUndo(); updateUI();
+    log('w',`[ERASE] ${SIG[gc.color]?.n||'?'} path cleared.`);
+  }
+}
+
+function undo() {
+  if (S.history.length===0) { showToast('Nothing to undo.','w'); return; }
+  const snap=S.history.pop();
+  S.paths=snap.paths;
+  S.connected=snap.connected;
+  S.moves=snap.moves;
+  S.grid=snap.grid;
+  S.drawing=false; S.drawPath=[]; S.drawColor=null;
+  sfxUndo(); updateUI();
+  log('w','[UNDO] Last action reversed.');
+}
+
+// ─── LEVEL COMPLETE CHECK ────────────────────────────────
+function checkLevelComplete() {
+  const def=LEVELS[S.level];
+  const colors=[...new Set(def.nodes.map(n=>n.color))];
+  if (!colors.every(c=>S.connected.includes(c))) return;
+
+  if (def.fill) {
+    let empty=0;
+    for (let r=0;r<def.size;r++) for (let c=0;c<def.size;c++) {
+      if (S.grid[r][c].type==='empty') empty++;
+    }
+    if (empty>0) {
+      showToast(`${empty} cells still empty!`,'w');
+      log('w',`[WARNING] ${empty} cells uncovered. Fill ALL cells.`);
+      return;
+    }
+  }
+
+  // Calculate score
+  clearInterval(S.timerInterval);
+  const elapsed=getElapsed();
+  const par=def.parMoves;
+  const efficiency=Math.max(0.1, par/Math.max(S.moves,1));
+  const timeBonus=Math.max(0, 300-elapsed);
+  const hintPenalty=S.hintsUsed*250;
+  const base=Math.round(1000*Math.min(efficiency,2));
+  const score=Math.max(50, base+timeBonus-hintPenalty);
+  const stars=S.moves<=par?3:S.moves<=par*1.5?2:1;
+
+  S.solved[S.level]={stars,score,moves:S.moves,time:elapsed};
+  S.totalScore+=score;
+  S.totalHints+=S.hintsUsed;
+  save();
+  updateGlobalStats();
+
+  sfxComplete();
+  // VFX flash
+  const vfx=document.getElementById('vfx-overlay');
+  const flash=document.createElement('div');
+  flash.className='vfx-flash';
+  flash.style.background=S.level===11?'rgba(255,215,0,.3)':'rgba(0,245,255,.25)';
+  vfx.appendChild(flash);
+  setTimeout(()=>flash.remove(),600);
+
+  // Show modal after delay
+  setTimeout(()=>{
+    const isLast=S.level>=LEVELS.length-1;
+    document.getElementById('lc-title').textContent=
+      isLast?'VOID PURGED':`Node ${S.level+1} Restored`;
+    document.getElementById('lc-icon').textContent=isLast?'🏆':'✅';
+    document.getElementById('lc-sub').textContent=def.flavor;
+    document.getElementById('lc-moves').textContent=S.moves;
+    document.getElementById('lc-time').textContent=`${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;
+    document.getElementById('lc-score').textContent=score;
+    document.getElementById('lc-stars').textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
+
+    const nextBtn=document.getElementById('btn-lc-next');
+    if (isLast) {
+      nextBtn.textContent='See Results';
+      nextBtn.onclick=()=>{ hideModal('modal-lc'); showGameComplete(); };
+    } else {
+      nextBtn.textContent='Next Node →';
+      nextBtn.onclick=()=>{ hideModal('modal-lc'); loadLevel(S.level+1); };
+    }
+    document.getElementById('btn-lc-retry').onclick=()=>{ hideModal('modal-lc'); loadLevel(S.level); };
+    showModal('modal-lc');
+    if (isLast) { sfxVictory(); }
+    log('s',`[COMPLETE] Node-${S.level+1} online. Score: ${score}. ${'★'.repeat(stars)}`);
+  }, 500);
+}
+
+function showGameComplete() {
+  const rank = S.totalHints===0?'GRANDMASTER':
+               S.totalHints<=5?'EXPERT':
+               S.totalHints<=15?'CIPHER':'RECRUIT';
+  document.getElementById('gc-score').textContent=S.totalScore;
+  document.getElementById('gc-hints').textContent=S.totalHints;
+  document.getElementById('gc-rank').textContent=rank;
+  showModal('modal-gc');
+}
+
+// ─── MODALS ──────────────────────────────────────────────
+function showModal(id){document.getElementById(id).classList.remove('hidden')}
+function hideModal(id){document.getElementById(id).classList.add('hidden')}
+
+// ─── LOAD LEVEL ──────────────────────────────────────────
+function loadLevel(idx) {
+  if (idx<0||idx>=LEVELS.length) return;
+  cancelAnimationFrame(S.raf);
+  if (S.canvas) addCanvasListeners(false);
+  initLevel(idx);
+  render();
+  addCanvasListeners(true);
+}
+
+function addCanvasListeners(add) {
+  const c=S.canvas;
+  const fn=add?'addEventListener':'removeEventListener';
+  c[fn]('mousedown', onDown, {passive:false});
+  c[fn]('mousemove', onMove, {passive:false});
+  c[fn]('mouseup',   onUp,   {passive:false});
+  c[fn]('mouseleave',onLeave,{passive:false});
+  c[fn]('touchstart',onTDown,{passive:false});
+  c[fn]('touchmove', onTMove,{passive:false});
+  c[fn]('touchend',  onTUp,  {passive:false});
+}
+
+// ─── UI ──────────────────────────────────────────────────
+function updateUI() {
+  const def=LEVELS[S.level];
+  const colors=[...new Set(def.nodes.map(n=>n.color))];
+  // Connections
+  document.getElementById('s-conn').textContent=`${S.connected.length}/${colors.length}`;
+  document.getElementById('tb-moves').textContent=S.moves;
+  document.getElementById('s-par').textContent=def.parMoves;
+  const eff=S.moves>0?Math.round(100*def.parMoves/S.moves)+'%':'—';
+  document.getElementById('s-eff').textContent=eff;
+  // Coverage
+  const n=def.size; let filled=0,nonwall=0;
+  for (let r=0;r<n;r++) for (let c=0;c<n;c++){
+    const gc=S.grid[r][c];
+    if (gc.type!=='wall') { nonwall++;
+      if (gc.type!=='empty') filled++;
+    }
+  }
+  const cov=nonwall?Math.floor(100*filled/nonwall):0;
+  document.getElementById('s-cov').textContent=cov+'%';
+  document.getElementById('lh-cov-fill').style.width=cov+'%';
+  // Hints
+  document.getElementById('hints-left').textContent=
+    Math.max(0,def.hints.length-S.hintsUsed);
+  // Tools
+  document.querySelectorAll('.tool-btn').forEach(b=>{
+    const t=b.dataset.tool;
+    const cnt=S.toolCounts[t];
+    const cntEl=b.querySelector('.tool-count');
+    if (cntEl&&cnt<999) cntEl.textContent=cnt;
+    b.classList.toggle('selected',t===S.tool);
+    b.classList.toggle('depleted',cnt<=0);
+  });
+  updateTopBar();
+}
+
+function updateTopBar() {
+  document.getElementById('tb-level').textContent=`${S.level+1}/12`;
+  document.getElementById('tb-score').textContent=S.totalScore;
+  document.getElementById('tb-moves').textContent=S.moves;
+}
+
+function updateLevelHdr(def,idx) {
+  document.getElementById('lh-num').textContent=`NODE-${String(idx+1).padStart(2,'0')}`;
+  document.getElementById('lh-name').textContent=def.name;
+  document.getElementById('lh-sub').textContent=def.sub;
+}
+
+function updateLevelList() {
+  const el=document.getElementById('level-list');
+  el.innerHTML='';
+  LEVELS.forEach((def,i)=>{
+    const sol=S.solved[i];
+    // Locked if: not solved, not current, not level 0, and previous level not solved
+    const locked=i>0&&!sol&&i!==S.level&&!S.solved[i-1];
+    const active=i===S.level;
+    const d=document.createElement('div');
+    d.className='lvl-item'+(active?' active':'')+(locked?' locked':'');
+    const stars=sol?'★'.repeat(sol.stars)+'☆'.repeat(3-sol.stars):'';
+    const starsColor=sol?.stars===3?'color:var(--gold)':sol?.stars===2?'color:var(--cyan)':'color:var(--muted)';
+    d.innerHTML=`<span class="lvl-num">${i+1}</span>
+      <span class="lvl-name">${def.name}</span>
+      <span class="lvl-stars" style="${starsColor}">${stars}</span>`;
+    if (!locked) d.addEventListener('click',()=>{ if(i!==S.level) loadLevel(i); });
+    el.appendChild(d);
+  });
+}
+
+function updateGlobalStats() {
+  const cnt=S.solved.filter(Boolean).length;
+  document.getElementById('s-solved').textContent=`${cnt}/12`;
+  document.getElementById('s-prog').style.width=`${Math.floor(cnt/12*100)}%`;
+  document.getElementById('s-total').textContent=S.totalScore;
+  document.getElementById('s-hints').textContent=S.totalHints;
+}
+
+function renderTools(def) {
+  const g=document.getElementById('tool-grid'); g.innerHTML='';
+  const show=['wire','eraser'];
+  if (def.tools.bridge) show.push('bridge');
+  for (const key of show) {
+    const t=TOOLS[key];
+    const cnt=S.toolCounts[key]||0;
+    const limited=cnt<999;
+    const btn=document.createElement('div');
+    btn.className='tool-btn'; btn.dataset.tool=key; btn.title=t.desc;
+    btn.innerHTML=`<div class="tool-icon">${t.icon}</div>
+      <div class="tool-label">${t.label}</div>
+      ${limited?`<div class="tool-count">${cnt}</div>`:''}`;
+    btn.addEventListener('click',()=>{
+      if (btn.classList.contains('depleted')) { sfxError(); return; }
+      S.tool=key; sfxToolSelect(); updateUI();
+    });
+    g.appendChild(btn);
+  }
+}
+
+function renderSigLegend(def) {
+  const el=document.getElementById('sig-legend'); el.innerHTML='';
+  const colors=[...new Set(def.nodes.map(n=>n.color))];
+  for (const col of colors) {
+    const sig=SIG[col];
+    const r=document.createElement('div'); r.className='sig-row';
+    r.innerHTML=`<div class="sig-dot" style="background:${sig.c};box-shadow:0 0 5px ${sig.g}"></div>
+      <span class="sig-label">${sig.n}</span>`;
+    el.appendChild(r);
+  }
+}
+
+// ─── HINT ────────────────────────────────────────────────
+function setHintText(txt) { document.getElementById('hint-text').textContent=txt; }
+
+function requestHint() {
+  const def=LEVELS[S.level];
+  if (S.hintsUsed>=def.hints.length) {
+    setHintText('All intel exhausted for this node. Trust your instincts, CIPHER.');
+    document.getElementById('btn-hint').disabled=true;
+    return;
+  }
+  sfxHint();
+  setHintText(def.hints[S.hintsUsed]);
+  S.hintsUsed++;
+  if (S.hintsUsed>=def.hints.length) document.getElementById('btn-hint').disabled=true;
+  document.getElementById('hints-left').textContent=
+    Math.max(0,def.hints.length-S.hintsUsed);
+  log('w',`[INTEL] Hint ${S.hintsUsed}/${def.hints.length} consumed.`);
+}
+
+// ─── LOG & TOAST ─────────────────────────────────────────
+function log(type,text) {
+  const el=document.getElementById('log');
+  const e=document.createElement('div');
+  e.className=`log-e ${type}`;
+  const t=new Date();
+  const ts=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+  e.textContent=`[${ts}] ${text}`;
+  el.insertBefore(e,el.firstChild);
+  while(el.children.length>24) el.removeChild(el.lastChild);
+}
+
+function showToast(msg,type='') {
+  const el=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`; t.textContent=msg;
+  el.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+
+// ─── KEYBOARD ────────────────────────────────────────────
+let _gameActive = false; // set true after intro dismissed
+document.addEventListener('keydown',e=>{
+  if (!_gameActive) return;
+  // Don't steal keys when a modal is open
+  if (!document.getElementById('modal-lc').classList.contains('hidden')) return;
+  if (!document.getElementById('modal-gc').classList.contains('hidden')) return;
+  if (e.key==='z'||e.key==='Z') { e.preventDefault(); undo(); }
+  else if (e.key==='r'||e.key==='R') { e.preventDefault(); loadLevel(S.level); sfxReset(); }
+  else if (e.key==='h'||e.key==='H') { e.preventDefault(); requestHint(); }
+  else if (e.key==='1') { S.tool='wire'; sfxToolSelect(); updateUI(); }
+  else if (e.key==='2') {
+    if (S.toolCounts.bridge>0) { S.tool='bridge'; sfxToolSelect(); updateUI(); }
+  }
+  else if (e.key==='3') { S.tool='eraser'; sfxToolSelect(); updateUI(); }
+});
+
+// ─── RESIZE ──────────────────────────────────────────────
+let resizeT;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeT);
+  resizeT=setTimeout(()=>{
+    cancelAnimationFrame(S.raf);
+    setupCanvas(LEVELS[S.level]);
+    render();
+  },220);
+});
+
+// ─── BUTTON WIRING ───────────────────────────────────────
+document.getElementById('btn-hint').addEventListener('click',requestHint);
+document.getElementById('btn-hint-top').addEventListener('click',requestHint);
+document.getElementById('btn-undo').addEventListener('click',undo);
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  sfxReset(); loadLevel(S.level);
+  log('i','[RESET] Node reinitialized.');
+});
+document.getElementById('btn-menu').addEventListener('click',()=>{ save(); window.location.href='../'; });
+document.getElementById('btn-gc-hub').addEventListener('click',()=>{ save(); window.location.href='../'; });
+document.getElementById('btn-gc-replay').addEventListener('click',()=>{
+  hideModal('modal-gc');
+  S.solved=Array(12).fill(null);
+  S.totalScore=0; S.totalHints=0;
+  save(); loadLevel(0);
+});
+
+// ─── INTRO SCREEN ────────────────────────────────────────
+(function setupIntro() {
+  mkParticles();
+  const hasSave=load();
+  const note=document.getElementById('intro-save-note');
+  if (hasSave && S.solved.filter(Boolean).length>0) {
+    note.textContent=`▸ Save detected: ${S.solved.filter(Boolean).length}/12 nodes restored — resuming from Node ${S.level+1}`;
+  }
+  document.getElementById('intro-start').addEventListener('click',()=>{
+    const intro=document.getElementById('intro');
+    intro.style.transition='opacity .5s';
+    intro.style.opacity='0';
+    setTimeout(()=>{
+      intro.style.display='none';
+      _gameActive = true;
+      // cyan flash
+      const vfx=document.getElementById('vfx-overlay');
+      const f=document.createElement('div');
+      f.className='vfx-flash'; f.style.background='rgba(0,245,255,.4)';
+      vfx.appendChild(f); setTimeout(()=>f.remove(),600);
+      loadLevel(S.level||0);
+      updateGlobalStats();
+    },520);
+  });
+})();
+</script>
+</body>
+</html>

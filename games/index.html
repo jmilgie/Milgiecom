@@ -13,6 +13,15 @@
       background-image: url('./criminalempire/assets/DF65241F-FA2D-4341-B363-5729E4822304.png');
     }
 
+    /* Nexus Protocol — animated grid + neon glow BG */
+    .gameTile.nexus-protocol::before {
+      background:
+        linear-gradient(rgba(0,245,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.05) 1px, transparent 1px),
+        linear-gradient(180deg, #020510, #050d1f);
+      background-size: 24px 24px, 24px 24px, 100% 100%;
+    }
+
     /* Classified tile dark noise BG */
     .gameTile.classified::before {
       background:
@@ -131,7 +140,7 @@
   <div class="status-bar-header" aria-hidden="true">
     <div class="wrap">
       <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
-      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 1 ACTIVE</span>
+      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 2 ACTIVE</span>
       <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
       <span class="sbh-spacer"></span>
       <span class="sbh-time" id="sys-time">--:--:--</span>
@@ -181,7 +190,7 @@
             Browser-based games &amp; interactive experiences.
           </p>
         </div>
-        <span class="section-badge">1 Active · 2 Incoming</span>
+        <span class="section-badge">2 Active · 1 Incoming</span>
       </div>
 
       <!-- Filter bar -->
@@ -190,6 +199,7 @@
         <button class="filter-btn">Idle</button>
         <button class="filter-btn">Strategy</button>
         <button class="filter-btn">Clicker</button>
+        <button class="filter-btn">Puzzle</button>
       </div>
 
       <!-- Games grid -->
@@ -230,6 +240,45 @@
               <div style="margin-top:16px">
                 <span class="playBtn">
                   Launch Mission ▶
+                </span>
+              </div>
+            </div>
+          </a>
+
+          <!-- Nexus Protocol -->
+          <a class="gameTile nexus-protocol" href="./nexusprotocol/" aria-label="Play Nexus Protocol">
+            <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Online</span>
+                <span class="status-sep" aria-hidden="true">·</span>
+                <span class="status-type">Puzzle / Hacking / Strategy</span>
+              </div>
+              <h3>Nexus Protocol</h3>
+              <p>The Axiom Neural Network is corrupted. Route encrypted signals through 12 increasingly complex nodes to purge VOID before all human memory is lost.</p>
+              <div class="game-stats">
+                <div class="game-stat">
+                  <span class="game-stat-label">Type</span>
+                  <span class="game-stat-val">Signal Puzzle</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Levels</span>
+                  <span class="game-stat-val">12 Nodes</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Status</span>
+                  <span class="game-stat-val" style="color:#00ff88">Active</span>
+                </div>
+              </div>
+              <div class="chipRow">
+                <span class="chip">Puzzle</span>
+                <span class="chip">Hacking</span>
+                <span class="chip">Sci-Fi</span>
+                <span class="chip">Free</span>
+              </div>
+              <div style="margin-top:16px">
+                <span class="playBtn">
+                  Initialize System ▶
                 </span>
               </div>
             </div>
