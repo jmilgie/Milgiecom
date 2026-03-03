@@ -38,8 +38,9 @@
     }
     .nav-logo {
       font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase;
-      color: var(--gold); opacity: 0.7;
+      color: var(--gold); opacity: 0.7; text-decoration: none; pointer-events: auto;
     }
+    .nav-logo:hover { opacity: 1; }
     .nav-links { display: flex; gap: 0.5rem; pointer-events: auto; }
     .nav-pill {
       background: rgba(10,8,4,0.7); border: 1px solid var(--gold-dim);
@@ -322,10 +323,10 @@
 
   <!-- ── NAV ── -->
   <nav>
-    <div class="nav-logo">Project Keziah</div>
+    <a href="../" class="nav-logo">Milgie.com</a>
     <div class="nav-links">
       <a href="Visual-Metaphysics-No1-FlyingSaucers/" class="nav-pill">No. 1: Flying Saucers</a>
-      <a href="Visual-Metaphysics-No1-FlyingSaucers/site/" class="nav-pill">Explore ↗</a>
+      <a href="Visual-Metaphysics-No1-FlyingSaucers/poster/" class="nav-pill">Explore ↗</a>
     </div>
   </nav>
 
@@ -364,8 +365,8 @@
             <h2 class="project-title">Flying Saucers</h2>
             <p class="project-desc">228 illustrated UFO shapes, flight formations, caricatures of "space people," and data tables of observed colors, sounds, speeds, and sizes. The original $1.00 mail-order chart that started it all.</p>
             <div class="project-actions">
-              <a href="Visual-Metaphysics-No1-FlyingSaucers/site/" class="card-btn card-btn-primary" onclick="event.stopPropagation()">Explore Chart ↗</a>
-              <a href="Visual-Metaphysics-No1-FlyingSaucers/site/?view=tablets" class="card-btn card-btn-ghost" onclick="event.stopPropagation()">Tri-Framed Poster</a>
+              <a href="Visual-Metaphysics-No1-FlyingSaucers/poster/" class="card-btn card-btn-primary" onclick="event.stopPropagation()">Explore Chart ↗</a>
+              <a href="Visual-Metaphysics-No1-FlyingSaucers/poster/?view=tablets" class="card-btn card-btn-ghost" onclick="event.stopPropagation()">Tri-Framed Poster</a>
               <a href="Visual-Metaphysics-No1-FlyingSaucers/" class="card-btn card-btn-ghost" onclick="event.stopPropagation()">Background</a>
             </div>
           </div>

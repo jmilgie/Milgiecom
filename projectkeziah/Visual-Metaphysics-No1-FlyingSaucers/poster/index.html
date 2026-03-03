@@ -286,7 +286,7 @@
 
 <!-- 2D pan/zoom overlay (detail mode for full poster) -->
 <div id="panzoom-overlay">
-  <img id="poster-img" src="img/fullSize.png" alt="Visual Metaphysics No. 1 — Full Poster" draggable="false" />
+  <img id="poster-img" src="../site/img/fullSize.png" alt="Visual Metaphysics No. 1 — Full Poster" draggable="false" />
 </div>
 <button id="pz-exit-btn">← Back to 3D</button>
 
@@ -387,9 +387,9 @@ function loadTex(src){
   },undefined,()=>res(new THREE.Texture())));
 }
 
-const FRAME_SRCS = ['img/tablet-left.png','img/tablet-center.png','img/tablet-right.png'];
+const FRAME_SRCS = ['../site/img/tablet-left.png','../site/img/tablet-center.png','../site/img/tablet-right.png'];
 const [fpTex, ...frameTex] = await Promise.all([
-  loadTex('img/fullSize.png'),
+  loadTex('../site/img/fullSize.png'),
   ...FRAME_SRCS.map(loadTex)
 ]);
 _texturesDone = true;
@@ -525,9 +525,9 @@ canvas.addEventListener('pointermove',e=>{
    TRI-FRAMED POSTER — three stone slabs
 ══════════════════════════════════════ */
 const FRAMES = [
-  { src: 'img/tablet-left.png',   name: 'Frame I',   sub: 'Flight Formations' },
-  { src: 'img/tablet-center.png', name: 'Frame II',  sub: 'Data Records'      },
-  { src: 'img/tablet-right.png',  name: 'Frame III', sub: 'Cosmic Taxonomy'   },
+  { src: '../site/img/tablet-left.png',   name: 'Frame I',   sub: 'Flight Formations' },
+  { src: '../site/img/tablet-center.png', name: 'Frame II',  sub: 'Data Records'      },
+  { src: '../site/img/tablet-right.png',  name: 'Frame III', sub: 'Cosmic Taxonomy'   },
 ];
 
 const W=2.0, H=3.6, D=0.22, SPREAD=3.6;
