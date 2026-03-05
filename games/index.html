@@ -117,6 +117,23 @@
     .gameTile.classified {
       min-height: 260px;
     }
+
+    /* Void Runner — dark grid + magenta/cyan neon bg */
+    .gameTile.void-runner::before {
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(255,0,229,0.04) 0px, rgba(255,0,229,0.04) 1px,
+          transparent 1px, transparent 24px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(0,245,255,0.04) 0px, rgba(0,245,255,0.04) 1px,
+          transparent 1px, transparent 24px
+        ),
+        linear-gradient(180deg, #020510, #050210);
+      background-size: 24px 24px, 24px 24px, 100% 100%;
+    }
   </style>
   <script>
     (function(){
@@ -140,7 +157,7 @@
   <div class="status-bar-header" aria-hidden="true">
     <div class="wrap">
       <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
-      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 2 ACTIVE</span>
+      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 3 ACTIVE</span>
       <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
       <span class="sbh-spacer"></span>
       <span class="sbh-time" id="sys-time">--:--:--</span>
@@ -190,7 +207,7 @@
             Browser-based games &amp; interactive experiences.
           </p>
         </div>
-        <span class="section-badge">2 Active · 1 Incoming</span>
+        <span class="section-badge">3 Active · 1 Incoming</span>
       </div>
 
       <!-- Filter bar -->
@@ -279,6 +296,45 @@
               <div style="margin-top:16px">
                 <span class="playBtn">
                   Initialize System ▶
+                </span>
+              </div>
+            </div>
+          </a>
+
+          <!-- Void Runner -->
+          <a class="gameTile void-runner" href="./voidrunner/" aria-label="Play Void Runner">
+            <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Online</span>
+                <span class="status-sep" aria-hidden="true">·</span>
+                <span class="status-type">Action RPG / Shooter</span>
+              </div>
+              <h3>Void Runner</h3>
+              <p>2187. You are a neural-augmented mercenary jacking into corrupted server-worlds. Fight through 5 missions, pick augmentations, and destroy OMEGA-7 — the rogue AI core — before the network falls.</p>
+              <div class="game-stats">
+                <div class="game-stat">
+                  <span class="game-stat-label">Type</span>
+                  <span class="game-stat-val">Action RPG</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Missions</span>
+                  <span class="game-stat-val">5 + Boss</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Status</span>
+                  <span class="game-stat-val" style="color:#00ff88">Active</span>
+                </div>
+              </div>
+              <div class="chipRow">
+                <span class="chip">Action</span>
+                <span class="chip">RPG</span>
+                <span class="chip">Sci-Fi</span>
+                <span class="chip">Free</span>
+              </div>
+              <div style="margin-top:16px">
+                <span class="playBtn">
+                  Jack In ▶
                 </span>
               </div>
             </div>
