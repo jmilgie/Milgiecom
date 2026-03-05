@@ -6,15 +6,18 @@
 <title>VOID RUNNER</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#020510; color:#00f5ff; font-family:'Courier New',monospace; overflow:hidden; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; }
+html, body { width:100%; height:100%; overflow:hidden; background:#020510; color:#00f5ff; font-family:'Courier New',monospace; }
+body { position:relative; }
 canvas { display:block; image-rendering:pixelated; touch-action:none; }
+#gameCanvas { position:fixed; top:0; left:0; z-index:2; }
 #ui { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
 #hud { position:absolute; top:0; left:0; width:100%; height:100%; }
 #damageFlash { position:absolute; inset:0; background:rgba(255,0,0,0); pointer-events:none; transition:background 0.1s; }
 #lowHpBorder { position:absolute; inset:0; border:4px solid rgba(255,0,0,0); pointer-events:none; border-radius:2px; }
-#overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(2,5,16,0.92); pointer-events:all; }
+#overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(2,5,16,0.92); pointer-events:all; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 #overlay.hidden { display:none; }
-.screen { width:100%; max-width:700px; padding:24px; text-align:center; }
+.screen { display:none; width:100%; max-width:700px; padding:24px; text-align:center; flex-shrink:0; }
+.screen.active { display:block; }
 .game-logo { font-size:clamp(2.2rem,6vw,4rem); font-weight:900; letter-spacing:0.2em; color:#00f5ff; text-shadow:0 0 30px #00f5ff,0 0 60px #00f5ff80; margin-bottom:8px; }
 .game-sub { font-size:0.85rem; letter-spacing:0.35em; color:#ff00e5; text-shadow:0 0 12px #ff00e5; margin-bottom:28px; }
 .lore { font-size:0.78rem; color:#8899bb; line-height:1.7; margin-bottom:32px; max-width:480px; margin-left:auto; margin-right:auto; }
@@ -56,6 +59,14 @@ h3 { font-size:1rem; letter-spacing:0.15em; color:#00f5ff; margin-bottom:16px; }
 }
 .victory-title { font-size:clamp(1.8rem,5vw,3rem); font-weight:900; letter-spacing:0.25em; color:#ffd700; text-shadow:0 0 40px #ffd700; margin-bottom:8px; }
 #particleCanvas { position:fixed; inset:0; pointer-events:none; z-index:1; }
+#hudCanvas { position:absolute; top:0; left:0; pointer-events:none; }
+@media (max-width:520px) {
+  .augment-grid { grid-template-columns:1fr; }
+  .mission-grid { grid-template-columns:1fr; }
+  .btn { padding:12px 24px; font-size:0.88rem; }
+  .game-logo { font-size:2rem; }
+  .screen { padding:16px; }
+}
 </style>
 </head>
 <body>
@@ -72,17 +83,17 @@ h3 { font-size:1rem; letter-spacing:0.15em; color:#00f5ff; margin-bottom:16px; }
       <div class="lore">Year 2187. Corporate server-worlds are collapsing under rogue AI infestation. You are a Void Runner — neural-augmented, mercenary-grade, and the last line between digital extinction and total network collapse. Jack in. Extract the data. Destroy everything else.</div>
       <div class="btn" id="btnInit">[ INITIALIZE ]</div>
     </div>
-    <div class="screen hidden" id="screen-mission">
+    <div class="screen" id="screen-mission">
       <h2>MISSION SELECT</h2>
       <div class="mission-grid" id="missionGrid"></div>
       <div style="font-size:0.72rem;color:#445;margin-top:8px;">SHARDS COLLECTED: <span id="totalShards" style="color:#ffd700">0</span></div>
     </div>
-    <div class="screen hidden" id="screen-augment">
+    <div class="screen" id="screen-augment">
       <h2>AUGMENTATION UPLINK</h2>
       <div style="font-size:0.75rem;color:#667;margin-bottom:12px;">Neural pathways open. Select one augmentation to integrate.</div>
       <div class="augment-grid" id="augGrid"></div>
     </div>
-    <div class="screen hidden" id="screen-complete">
+    <div class="screen" id="screen-complete">
       <h2>MISSION COMPLETE</h2>
       <h3 id="completeTitle"></h3>
       <div class="stars-big" id="completeStars"></div>
@@ -93,7 +104,7 @@ h3 { font-size:1rem; letter-spacing:0.15em; color:#00f5ff; margin-bottom:16px; }
         <div class="btn red" id="btnMissionMenu">MISSION SELECT</div>
       </div>
     </div>
-    <div class="screen hidden" id="screen-gameover">
+    <div class="screen" id="screen-gameover">
       <div class="glitch-text" style="font-size:clamp(1.5rem,4vw,2.5rem);font-weight:900;letter-spacing:0.2em;color:#ff4455;text-shadow:0 0 30px #ff4455;margin-bottom:12px;">NEURAL LINK SEVERED</div>
       <div style="font-size:0.8rem;color:#667;margin-bottom:24px;">Connection terminated. Rebooting neural interface...</div>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
@@ -101,7 +112,7 @@ h3 { font-size:1rem; letter-spacing:0.15em; color:#00f5ff; margin-bottom:16px; }
         <div class="btn red" id="btnDeathMenu">MISSION SELECT</div>
       </div>
     </div>
-    <div class="screen hidden" id="screen-victory">
+    <div class="screen" id="screen-victory">
       <div class="victory-title">VOID CLEARED</div>
       <div class="game-sub">OMEGA-7 DESTROYED — NETWORK LIBERATED</div>
       <div style="font-size:0.78rem;color:#8899bb;line-height:1.7;margin:16px 0;max-width:420px;margin-left:auto;margin-right:auto;">The rogue AI core has been annihilated. Corporate server-worlds stabilize. The Void grows quiet. Your legend echoes through every neural network still standing.</div>
@@ -411,7 +422,7 @@ const MAPS = [
 "##..............................................##",
 "##....##############################............##",
 "##....#............................#............##",
-"##....#.......BOSS ARENA...........#............##",
+"##....#............................#............##",
 "##....#............................#............##",
 "##....#........T...................#............##",
 "##....#............................#............##",
@@ -1806,9 +1817,9 @@ function renderTitleParticles() {
 
 // ─── SCREEN MANAGEMENT ────────────────────────────────────────────────────────
 function showScreen(id) {
-  document.querySelectorAll('#overlay .screen').forEach(s=>s.classList.add('hidden'));
+  document.querySelectorAll('#overlay .screen').forEach(s=>s.classList.remove('active'));
   const el = document.getElementById('screen-'+id);
-  if(el) el.classList.remove('hidden');
+  if(el) el.classList.add('active');
   document.getElementById('overlay').classList.remove('hidden');
 }
 function hideOverlay() {
