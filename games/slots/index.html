@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Lucky 7s Casino — Milgie.com</title>
   <style>
     /* ============================================================
@@ -39,12 +39,19 @@
 
     html, body {
       height: 100%;
+      /* Use dvh (dynamic viewport height) so iOS chrome is excluded */
+      height: 100dvh;
       background: #080808;
       font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
       overflow: hidden;
       overscroll-behavior: none;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
+      touch-action: manipulation; /* prevents double-tap zoom */
+    }
+
+    button, a {
+      touch-action: manipulation;
     }
 
     /* ============================================================
@@ -53,10 +60,11 @@
     #casinoBg {
       position: fixed;
       inset: 0;
-      background:
+      background: var(--m-bg,
         radial-gradient(ellipse 80% 60% at 50% 0%,   rgba(255,100,0,.18), transparent 60%),
         radial-gradient(ellipse 100% 80% at 50% 100%, rgba(0,0,0,.8), transparent 70%),
-        linear-gradient(180deg, #1a0800 0%, #0d0500 40%, #060200 100%);
+        linear-gradient(180deg, #1a0800 0%, #0d0500 40%, #060200 100%));
+      transition: background 0.6s ease;
       z-index: 0;
     }
 
@@ -67,12 +75,12 @@
       left: 0;
       right: 0;
       height: 4px;
-      background: linear-gradient(90deg,
-        var(--neon-r), var(--neon-y), var(--neon-g), var(--neon-b),
-        var(--neon-r), var(--neon-y), var(--neon-g), var(--neon-b));
+      background: linear-gradient(90deg, var(--m-neon-shift,
+        #ff2244, #ffd700, #00ff88, #00cfff,
+        #ff2244, #ffd700, #00ff88, #00cfff));
       background-size: 200% 100%;
       animation: neonShift 4s linear infinite;
-      box-shadow: 0 0 12px 4px rgba(255,200,0,.5), 0 0 30px 8px rgba(255,100,0,.3);
+      box-shadow: var(--m-neon-shadow, 0 0 12px 4px rgba(255,200,0,.5), 0 0 30px 8px rgba(255,100,0,.3));
       z-index: 1000;
     }
     @keyframes neonShift {
@@ -93,7 +101,7 @@
     }
 
     /* ============================================================
-       MAIN LAYOUT
+       MAIN LAYOUT — fixed full-height, NO scroll
     ============================================================ */
     #app {
       position: relative;
@@ -101,12 +109,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      height: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 12px 12px 20px;
-      gap: 10px;
-      -webkit-overflow-scrolling: touch;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      padding: 6px 10px 6px;
+      gap: 4px;
     }
 
     /* ============================================================
@@ -118,7 +125,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 4px;
+      padding: 2px 4px 0;
+      flex-shrink: 0;
     }
 
     .back-btn {
@@ -137,29 +145,123 @@
     .back-btn:hover { opacity: 1; }
 
     #casinoTitle {
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 900;
       letter-spacing: 3px;
       text-transform: uppercase;
-      background: linear-gradient(180deg, #fff8c0, var(--gold), var(--gold3));
+      background: var(--m-spin-text, linear-gradient(180deg, #fff8c0, var(--gold), var(--gold3)));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       text-shadow: none;
-      filter: drop-shadow(0 0 8px rgba(255,215,0,.6));
+      filter: drop-shadow(0 0 8px var(--m-glow, rgba(255,215,0,.6)));
+      transition: filter 0.5s ease;
     }
 
     #soundToggle {
       background: none;
       border: 1.5px solid rgba(255,215,0,.3);
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: 4px 8px;
       color: var(--gold);
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
       transition: border-color .15s, background .15s;
+      position: relative;
     }
     #soundToggle:hover { border-color: var(--gold); background: rgba(255,215,0,.08); }
+
+    /* ============================================================
+       SOUND SETTINGS PANEL
+    ============================================================ */
+    #soundPanel {
+      position: fixed;
+      top: 44px;
+      right: 10px;
+      width: 200px;
+      background: rgba(10,6,24,.97);
+      border: 1.5px solid var(--m-a, var(--gold));
+      border-radius: 12px;
+      padding: 14px 16px;
+      z-index: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,.7), 0 0 20px var(--m-glow, rgba(255,215,0,.2));
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color .3s, box-shadow .3s;
+    }
+    #soundPanel.open { display: flex; }
+
+    .sp-title {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--m-a, var(--gold));
+      margin-bottom: 2px;
+      opacity: 0.7;
+    }
+
+    .sp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .sp-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,.85);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .sp-label .sp-icon { font-size: 16px; }
+
+    /* Toggle switch */
+    .sp-toggle {
+      position: relative;
+      width: 38px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .sp-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .sp-slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 11px;
+      background: rgba(255,255,255,.15);
+      border: 1.5px solid rgba(255,255,255,.2);
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+    .sp-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.5);
+      top: 1px;
+      left: 1px;
+      transition: transform .2s, background .2s;
+    }
+    .sp-toggle input:checked + .sp-slider {
+      background: var(--m-a, var(--gold));
+      border-color: var(--m-a, var(--gold));
+    }
+    .sp-toggle input:checked + .sp-slider::before {
+      transform: translateX(16px);
+      background: #fff;
+    }
+
+    .sp-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,.08);
+      margin: 0;
+    }
 
     /* ============================================================
        BANKROLL DISPLAY
@@ -170,28 +272,29 @@
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
+      flex-shrink: 0;
     }
 
     .stat-block {
       background: linear-gradient(135deg, rgba(255,215,0,.08), rgba(255,100,0,.05));
       border: 1px solid rgba(255,215,0,.25);
-      border-radius: 10px;
-      padding: 8px 12px;
+      border-radius: 8px;
+      padding: 5px 10px;
       text-align: center;
     }
 
     .stat-label {
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 800;
       letter-spacing: 2px;
       text-transform: uppercase;
       color: rgba(255,215,0,.5);
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
 
     .stat-value {
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       background: linear-gradient(180deg, #fff8c0, var(--gold));
@@ -217,16 +320,16 @@
       font-weight: 800;
       letter-spacing: 3px;
       text-transform: uppercase;
-      color: var(--neon-r);
-      text-shadow: 0 0 8px var(--neon-r);
+      color: var(--m-c, var(--neon-r));
+      text-shadow: 0 0 8px var(--m-c, var(--neon-r));
       animation: jackpotPulse 1.5s ease-in-out infinite;
     }
     @keyframes jackpotPulse {
-      0%,100% { opacity: 1; text-shadow: 0 0 8px var(--neon-r); }
-      50%      { opacity: .7; text-shadow: 0 0 20px var(--neon-r), 0 0 40px rgba(255,34,68,.4); }
+      0%,100% { opacity: 1; }
+      50%      { opacity: .7; }
     }
     .jackpot-amount {
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 900;
       background: linear-gradient(180deg, #fff, var(--neon-y), var(--neon-r));
       -webkit-background-clip: text;
@@ -247,28 +350,31 @@
       width: 100%;
       max-width: 520px;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       overflow-x: auto;
-      padding: 4px 0 8px;
+      overflow-y: visible;
+      padding: 8px 2px 2px;   /* top padding lets badge overflow upward */
       scrollbar-width: none;
+      flex-shrink: 0;
     }
     #machineSelector::-webkit-scrollbar { display: none; }
 
     .machine-tab {
-      flex: 0 0 auto;
-      padding: 8px 16px;
+      flex: 1 1 0;
+      padding: 6px 8px;
       border-radius: 999px;
       border: 1.5px solid rgba(255,215,0,.25);
       background: rgba(0,0,0,.4);
       color: rgba(255,215,0,.5);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
-      letter-spacing: 1px;
+      letter-spacing: .5px;
       text-transform: uppercase;
       cursor: pointer;
       transition: all .2s;
       white-space: nowrap;
       position: relative;
+      text-align: center;
     }
     .machine-tab.active {
       border-color: var(--gold);
@@ -297,36 +403,47 @@
       width: 100%;
       max-width: 480px;
       position: relative;
+      flex: 1 1 0;       /* grow to fill remaining vertical space */
+      min-height: 0;     /* allow shrinking below content size */
+      display: flex;
+      flex-direction: column;
     }
 
     /* Cabinet outer shell */
     .cabinet-outer {
-      background:
-        linear-gradient(135deg, #8B4513 0%, #5C2A00 30%, #3d1a00 60%, #2a1200 100%);
-      border-radius: 24px 24px 18px 18px;
+      background: var(--m-cab-outer, linear-gradient(135deg, #8B4513 0%, #5C2A00 30%, #3d1a00 60%, #2a1200 100%));
+      border-radius: 20px 20px 16px 16px;
       padding: 3px;
       box-shadow:
         0 0 0 2px rgba(255,215,0,.3),
         0 0 30px rgba(255,100,0,.2),
         0 8px 40px rgba(0,0,0,.8),
         inset 0 1px 0 rgba(255,255,255,.1);
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     .cabinet-inner {
-      background:
-        linear-gradient(180deg, #1a0a04 0%, #0d0500 100%);
-      border-radius: 22px 22px 16px 16px;
+      background: var(--m-cab-inner, linear-gradient(180deg, #1a0a04 0%, #0d0500 100%));
+      border-radius: 18px 18px 14px 14px;
       overflow: hidden;
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Machine header marquee */
     .machine-header {
-      background: linear-gradient(180deg, #2a0800, #1a0400);
-      padding: 10px 16px 8px;
+      background: var(--m-header-bg, linear-gradient(180deg, #2a0800, #1a0400));
+      padding: 6px 16px 5px;
       text-align: center;
-      border-bottom: 2px solid rgba(255,215,0,.2);
+      border-bottom: 1px solid var(--m-a, rgba(255,215,0,.4));
       position: relative;
       overflow: hidden;
+      flex-shrink: 0;
     }
 
     .machine-header::before {
@@ -334,12 +451,12 @@
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(ellipse 80% 100% at 50% 0%, rgba(255,150,0,.15), transparent 60%);
+        radial-gradient(ellipse 80% 100% at 50% 0%, var(--m-header-glow, rgba(255,150,0,.15)), transparent 60%);
     }
 
     /* Neon sign style title */
     .machine-name {
-      font-size: 26px;
+      font-size: 20px;
       font-weight: 900;
       letter-spacing: 4px;
       text-transform: uppercase;
@@ -347,7 +464,7 @@
     }
 
     .machine-name.classic {
-      background: linear-gradient(180deg, #fff8c0, #ffd700, #ff8c00);
+      background: var(--m-name-grad, linear-gradient(180deg, #fff8c0, #ffd700, #ff8c00));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -366,22 +483,23 @@
       display: flex;
       justify-content: center;
       gap: 6px;
-      margin-top: 6px;
+      margin-top: 4px;
     }
 
     .bulb {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--gold);
-      box-shadow: 0 0 4px var(--gold), 0 0 8px rgba(255,215,0,.4);
+      background: var(--m-a, var(--gold));
+      box-shadow: 0 0 4px var(--m-a, var(--gold)), 0 0 8px var(--m-glow, rgba(255,215,0,.4));
       animation: bulbBlink 1.2s steps(1) infinite;
+      transition: background 0.5s ease, box-shadow 0.5s ease;
     }
     .bulb:nth-child(2n)   { animation-delay: .6s; }
     .bulb:nth-child(3n)   { animation-delay: .3s; }
     .bulb:nth-child(4n)   { animation-delay: .9s; }
     @keyframes bulbBlink {
-      0%,49%  { opacity: 1;   box-shadow: 0 0 4px var(--gold), 0 0 8px rgba(255,215,0,.4); }
+      0%,49%  { opacity: 1;  }
       50%,100% { opacity: .3; box-shadow: none; }
     }
 
@@ -389,15 +507,17 @@
     .paytable-strip {
       display: flex;
       justify-content: center;
-      gap: 14px;
-      padding: 6px 12px;
+      gap: 10px;
+      padding: 4px 12px;
       font-size: 9px;
       font-weight: 800;
       letter-spacing: 1px;
       color: rgba(255,215,0,.6);
       text-transform: uppercase;
       border-bottom: 1px solid rgba(255,215,0,.1);
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      overflow: hidden;
+      flex-shrink: 0;
     }
     .pay-item { display: flex; align-items: center; gap: 4px; }
     .pay-item .sym { font-size: 12px; }
@@ -408,13 +528,14 @@
     ============================================================ */
     #winDisplay {
       text-align: center;
-      padding: 8px 16px 4px;
-      min-height: 42px;
+      padding: 3px 16px 2px;
+      min-height: 28px;
       position: relative;
+      flex-shrink: 0;
     }
 
     .win-msg {
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 900;
       letter-spacing: 2px;
       text-transform: uppercase;
@@ -459,17 +580,24 @@
     }
 
     .win-amount-flash {
-      font-size: 14px;
-      font-weight: 800;
+      font-size: 22px;
+      font-weight: 900;
       color: var(--green2);
-      text-shadow: 0 0 10px var(--green2);
-      letter-spacing: 1px;
+      text-shadow: 0 0 16px var(--green2), 0 0 32px rgba(0,255,136,.4);
+      letter-spacing: 2px;
       display: none;
+      cursor: pointer;
     }
-    .win-amount-flash.show { display: block; animation: fadeSlideUp .5s ease-out forwards; }
-    @keyframes fadeSlideUp {
-      0%   { transform: translateY(0); opacity: 1; }
-      100% { transform: translateY(-20px); opacity: 0; }
+    .win-amount-flash.show {
+      display: block;
+      animation: winAmountAnim 4s ease-out forwards;
+    }
+    @keyframes winAmountAnim {
+      0%   { transform: scale(0.6) translateY(8px); opacity: 0; }
+      8%   { transform: scale(1.15) translateY(0);  opacity: 1; }
+      15%  { transform: scale(1)    translateY(0);  opacity: 1; }
+      80%  { transform: scale(1)    translateY(0);  opacity: 1; }
+      100% { transform: scale(0.9)  translateY(-10px); opacity: 0; }
     }
 
     /* ============================================================
@@ -483,18 +611,29 @@
     }
 
     /* ============================================================
-       REELS AREA
+       REELS AREA — grows to fill cabinet
     ============================================================ */
     #reelsContainer {
-      padding: 12px 12px 8px;
+      padding: 6px 10px 6px;
       position: relative;
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .reels-frame {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     .reels-frame {
       background:
         linear-gradient(180deg, #0a0a0a, #060606);
       border: 3px solid;
-      border-image: linear-gradient(180deg, rgba(255,215,0,.5), rgba(255,100,0,.3), rgba(255,215,0,.5)) 1;
+      border-image: var(--m-reel-border, linear-gradient(180deg, rgba(255,215,0,.5), rgba(255,100,0,.3), rgba(255,215,0,.5))) 1;
       border-radius: 12px;
       padding: 0;
       position: relative;
@@ -527,14 +666,10 @@
       top: 50%;
       transform: translateY(-50%);
       height: calc(100% / 3);
-      background: linear-gradient(90deg,
-        rgba(255,215,0,.08) 0%,
-        rgba(255,215,0,.15) 20%,
-        rgba(255,215,0,.18) 50%,
-        rgba(255,215,0,.15) 80%,
-        rgba(255,215,0,.08) 100%);
-      border-top: 1px solid rgba(255,215,0,.2);
-      border-bottom: 1px solid rgba(255,215,0,.2);
+      background: var(--m-payline-bg, linear-gradient(90deg,
+        rgba(255,215,0,.08) 0%, rgba(255,215,0,.18) 50%, rgba(255,215,0,.08) 100%));
+      border-top: 1px solid var(--m-payline-border, rgba(255,215,0,.2));
+      border-bottom: 1px solid var(--m-payline-border, rgba(255,215,0,.2));
       z-index: 16;
       pointer-events: none;
     }
@@ -551,7 +686,9 @@
     #reels {
       display: flex;
       gap: 0;
-      height: 240px;
+      /* height driven by flex parent (.reels-frame) */
+      flex: 1 1 0;
+      min-height: 0;
       position: relative;
     }
 
@@ -613,9 +750,10 @@
        CONTROLS AREA
     ============================================================ */
     #controlsArea {
-      padding: 10px 12px 14px;
-      background: linear-gradient(180deg, rgba(255,215,0,.03), rgba(0,0,0,.2));
-      border-top: 1px solid rgba(255,215,0,.1);
+      padding: 7px 10px 8px;
+      background: var(--m-controls-bg, linear-gradient(180deg, rgba(255,215,0,.03), rgba(0,0,0,.2)));
+      border-top: 1px solid var(--m-controls-border, rgba(255,215,0,.1));
+      flex-shrink: 0;
     }
 
     /* Bet controls */
@@ -623,12 +761,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
+      gap: 6px;
+      margin-bottom: 6px;
     }
 
     .bet-label {
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 800;
       letter-spacing: 2px;
       text-transform: uppercase;
@@ -636,23 +774,23 @@
     }
 
     .bet-amount {
-      font-size: 20px;
+      font-size: 17px;
       font-weight: 900;
       color: var(--gold);
-      min-width: 60px;
+      min-width: 50px;
       text-align: center;
       font-variant-numeric: tabular-nums;
       text-shadow: 0 0 10px rgba(255,215,0,.3);
     }
 
     .bet-btn {
-      width: 36px;
-      height: 36px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       border: 1.5px solid rgba(255,215,0,.3);
       background: rgba(255,215,0,.06);
       color: var(--gold);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 900;
       cursor: pointer;
       display: flex;
@@ -665,16 +803,16 @@
 
     .bet-presets {
       display: flex;
-      gap: 6px;
+      gap: 4px;
       align-items: center;
     }
     .bet-preset {
-      padding: 5px 10px;
+      padding: 4px 7px;
       border-radius: 6px;
       border: 1px solid rgba(255,215,0,.2);
       background: rgba(255,215,0,.04);
       color: rgba(255,215,0,.6);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 800;
       letter-spacing: .5px;
       cursor: pointer;
@@ -690,14 +828,14 @@
     .lines-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: 6px;
+      margin-bottom: 6px;
     }
 
     .lines-btn {
       flex: 1;
-      padding: 7px 0;
-      border-radius: 8px;
+      padding: 5px 0;
+      border-radius: 7px;
       border: 1px solid rgba(255,215,0,.15);
       background: rgba(255,215,0,.03);
       color: rgba(255,215,0,.5);
@@ -718,12 +856,12 @@
     /* Main SPIN button */
     #spinBtn {
       width: 100%;
-      padding: 18px;
-      border-radius: 14px;
+      padding: 13px;
+      border-radius: 12px;
       border: 3px solid transparent;
       background:
-        linear-gradient(#1a0a04, #1a0a04) padding-box,
-        linear-gradient(135deg, #ffd700, #ff8c00, #ffd700) border-box;
+        linear-gradient(var(--m-spin-bg, #1a0a04), var(--m-spin-bg, #1a0a04)) padding-box,
+        var(--m-spin-border, linear-gradient(135deg, #ffd700, #ff8c00, #ffd700)) border-box;
       cursor: pointer;
       position: relative;
       overflow: hidden;
@@ -751,11 +889,11 @@
     }
 
     .spin-btn-text {
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 900;
       letter-spacing: 5px;
       text-transform: uppercase;
-      background: linear-gradient(180deg, #fff8c0, #ffd700, #ff8c00);
+      background: var(--m-spin-text, linear-gradient(180deg, #fff8c0, #ffd700, #ff8c00));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -775,8 +913,8 @@
 
     /* MAX BET button */
     #maxBetBtn {
-      padding: 10px 20px;
-      border-radius: 10px;
+      padding: 7px 14px;
+      border-radius: 8px;
       border: 1.5px solid rgba(255,34,68,.4);
       background: rgba(255,34,68,.06);
       color: #ff6688;
@@ -792,15 +930,15 @@
 
     .bottom-btns {
       display: flex;
-      gap: 8px;
-      margin-top: 8px;
+      gap: 6px;
+      margin-top: 6px;
     }
 
     /* AUTO SPIN */
     #autoSpinBtn {
       flex: 1;
-      padding: 10px;
-      border-radius: 10px;
+      padding: 7px 6px;
+      border-radius: 8px;
       border: 1.5px solid rgba(255,215,0,.2);
       background: rgba(255,215,0,.04);
       color: rgba(255,215,0,.6);
@@ -823,8 +961,8 @@
     ============================================================ */
     #paytableBtn {
       flex: 1;
-      padding: 10px;
-      border-radius: 10px;
+      padding: 7px 6px;
+      border-radius: 8px;
       border: 1.5px solid rgba(0,207,255,.2);
       background: rgba(0,207,255,.04);
       color: rgba(0,207,255,.7);
@@ -856,8 +994,8 @@
     .overlay.show { opacity: 1; pointer-events: all; }
 
     .modal {
-      background: linear-gradient(180deg, #1a0a04, #0d0500);
-      border: 1px solid rgba(255,215,0,.3);
+      background: var(--m-cab-inner, linear-gradient(180deg, #1a0a04, #0d0500));
+      border: 1px solid var(--m-a, rgba(255,215,0,.3));
       border-radius: 18px;
       padding: 24px;
       width: 100%;
@@ -874,7 +1012,7 @@
       font-weight: 900;
       letter-spacing: 3px;
       text-transform: uppercase;
-      background: linear-gradient(180deg, #fff8c0, var(--gold));
+      background: var(--m-spin-text, linear-gradient(180deg, #fff8c0, var(--gold)));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -901,9 +1039,9 @@
       margin-top: 20px;
       padding: 12px;
       border-radius: 10px;
-      border: 1.5px solid rgba(255,215,0,.3);
-      background: rgba(255,215,0,.08);
-      color: var(--gold);
+      border: 1.5px solid var(--m-a, rgba(255,215,0,.3));
+      background: var(--m-glow, rgba(255,215,0,.08));
+      color: var(--m-a, var(--gold));
       font-size: 13px;
       font-weight: 800;
       letter-spacing: 2px;
@@ -1023,8 +1161,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      min-height: 24px;
+      gap: 5px;
+      min-height: 16px;
+      flex-shrink: 0;
     }
 
     .streak-dot {
@@ -1055,12 +1194,12 @@
     .multiplier-badge.show { display: block; }
 
     /* ============================================================
-       HISTORY TICKER
+       HISTORY TICKER — hidden on mobile, shown if space allows
     ============================================================ */
     #historyTicker {
       width: 100%;
       max-width: 520px;
-      display: flex;
+      display: none;   /* hidden by default — no space on mobile */
       gap: 4px;
       align-items: center;
       overflow: hidden;
@@ -1083,16 +1222,11 @@
     /* ============================================================
        RESPONSIVE
     ============================================================ */
-    @media (max-height: 700px) {
-      #reels { height: 200px; }
-      .reel-symbol { height: calc(200px / 3); }
-      .reel-symbol .sym-inner { width: 56px; height: 56px; }
-      .reel-symbol .sym-emoji { font-size: 30px; }
-    }
-
     @media (max-width: 380px) {
-      .machine-name { font-size: 20px; }
-      .spin-btn-text { font-size: 18px; }
+      .machine-name { font-size: 17px; }
+      .spin-btn-text { font-size: 16px; }
+      .bet-preset { display: none; }
+      .bet-preset:nth-child(-n+2) { display: block; }
     }
 
     /* ============================================================
@@ -1171,9 +1305,254 @@
       50%      { box-shadow: 0 0 16px rgba(255,215,0,.6); }
     }
 
+    /* ============================================================
+       MACHINE THEMES — applied via data-machine on <body>
+       All colour-bearing properties reference CSS vars so the
+       transition between machines is just a class swap + fade.
+    ============================================================ */
+
+    /* --- LUCKY 7s: classic Vegas warm gold/red ------------------------- */
+    body[data-machine="lucky7s"] {
+      --m-a:     #ffd700;   /* accent 1 */
+      --m-b:     #ff8c00;   /* accent 2 */
+      --m-c:     #ff2244;   /* accent 3 (hot) */
+      --m-glow:  rgba(255,215,0,.55);
+      --m-bg:
+        radial-gradient(ellipse 80% 60% at 50% 0%,   rgba(255,100,0,.22), transparent 60%),
+        radial-gradient(ellipse 100% 80% at 50% 100%, rgba(0,0,0,.8), transparent 70%),
+        linear-gradient(180deg, #1a0800 0%, #0d0500 40%, #060200 100%);
+      --m-cab-outer:
+        linear-gradient(135deg, #8B4513 0%, #5C2A00 30%, #3d1a00 60%, #2a1200 100%);
+      --m-cab-inner:
+        linear-gradient(180deg, #1a0a04 0%, #0d0500 100%);
+      --m-header-bg:
+        linear-gradient(180deg, #2a0800, #1a0400);
+      --m-header-glow: rgba(255,150,0,.18);
+      --m-reel-border:
+        linear-gradient(180deg, rgba(255,215,0,.5), rgba(255,100,0,.3), rgba(255,215,0,.5));
+      --m-payline-bg:
+        linear-gradient(90deg, rgba(255,215,0,.08) 0%, rgba(255,215,0,.18) 50%, rgba(255,215,0,.08) 100%);
+      --m-payline-border: rgba(255,215,0,.25);
+      --m-spin-border:
+        linear-gradient(135deg, #ffd700, #ff8c00, #ffd700);
+      --m-spin-bg:     #1a0a04;
+      --m-spin-text:
+        linear-gradient(180deg, #fff8c0, #ffd700, #ff8c00);
+      --m-neon-shift:
+        #ff2244, #ffd700, #00ff88, #00cfff,
+        #ff2244, #ffd700, #00ff88, #00cfff;
+      --m-neon-shadow: 0 0 12px 4px rgba(255,200,0,.5), 0 0 30px 8px rgba(255,100,0,.3);
+      --m-controls-bg: linear-gradient(180deg, rgba(255,215,0,.03), rgba(0,0,0,.2));
+      --m-controls-border: rgba(255,215,0,.1);
+      --m-name-grad:
+        linear-gradient(180deg, #fff8c0, #ffd700, #ff8c00);
+      --m-name-drop: 0 0 8px rgba(255,200,0,.8), 0 0 20px rgba(255,100,0,.4);
+    }
+
+    /* --- FRUIT FIESTA: tropical carnival lime/coral/pink --------------- */
+    body[data-machine="fruits"] {
+      --m-a:     #39ff14;   /* electric lime */
+      --m-b:     #ff6b35;   /* tangerine */
+      --m-c:     #ff2d78;   /* hot pink */
+      --m-glow:  rgba(57,255,20,.45);
+      --m-bg:
+        radial-gradient(ellipse 70% 50% at 50% 0%,   rgba(57,255,20,.14), transparent 55%),
+        radial-gradient(ellipse 90% 70% at 20% 80%,  rgba(255,107,53,.12), transparent 55%),
+        radial-gradient(ellipse 80% 60% at 80% 60%,  rgba(255,45,120,.10), transparent 50%),
+        linear-gradient(180deg, #041a00 0%, #061200 40%, #020800 100%);
+      --m-cab-outer:
+        linear-gradient(135deg, #0d3300 0%, #0a2800 30%, #061a00 60%, #030f00 100%);
+      --m-cab-inner:
+        linear-gradient(180deg, #051a00 0%, #030d00 100%);
+      --m-header-bg:
+        linear-gradient(180deg, #0a2e00, #061800);
+      --m-header-glow: rgba(57,255,20,.18);
+      --m-reel-border:
+        linear-gradient(180deg, rgba(57,255,20,.5), rgba(255,107,53,.35), rgba(57,255,20,.5));
+      --m-payline-bg:
+        linear-gradient(90deg, rgba(57,255,20,.06) 0%, rgba(57,255,20,.16) 50%, rgba(57,255,20,.06) 100%);
+      --m-payline-border: rgba(57,255,20,.22);
+      --m-spin-border:
+        linear-gradient(135deg, #39ff14, #ff6b35, #ff2d78, #39ff14);
+      --m-spin-bg:     #041000;
+      --m-spin-text:
+        linear-gradient(180deg, #ccffaa, #39ff14, #ff6b35);
+      --m-neon-shift:
+        #ff2d78, #39ff14, #ff6b35, #ffe600,
+        #ff2d78, #39ff14, #ff6b35, #ffe600;
+      --m-neon-shadow: 0 0 12px 4px rgba(57,255,20,.4), 0 0 30px 8px rgba(255,107,53,.3);
+      --m-controls-bg: linear-gradient(180deg, rgba(57,255,20,.03), rgba(0,0,0,.2));
+      --m-controls-border: rgba(57,255,20,.1);
+      --m-name-grad:
+        linear-gradient(180deg, #ccffaa, #39ff14, #ff6b35);
+      --m-name-drop: 0 0 8px rgba(57,255,20,.9), 0 0 20px rgba(255,107,53,.5);
+    }
+
+    /* --- DIAMOND MINE: icy dark luxury silver/blue/teal --------------- */
+    body[data-machine="diamonds"] {
+      --m-a:     #00d4ff;   /* ice blue */
+      --m-b:     #c8e8ff;   /* platinum */
+      --m-c:     #7b2fff;   /* deep violet */
+      --m-glow:  rgba(0,212,255,.45);
+      --m-bg:
+        radial-gradient(ellipse 70% 50% at 50% 0%,   rgba(0,180,255,.10), transparent 55%),
+        radial-gradient(ellipse 80% 60% at 80% 60%,  rgba(123,47,255,.08), transparent 50%),
+        linear-gradient(180deg, #010810 0%, #010610 40%, #000408 100%);
+      --m-cab-outer:
+        linear-gradient(135deg, #0a1a2e 0%, #060f1e 30%, #03080f 60%, #010408 100%);
+      --m-cab-inner:
+        linear-gradient(180deg, #020c1a 0%, #010508 100%);
+      --m-header-bg:
+        linear-gradient(180deg, #0a1e36, #051020);
+      --m-header-glow: rgba(0,180,255,.14);
+      --m-reel-border:
+        linear-gradient(180deg, rgba(0,212,255,.5), rgba(123,47,255,.35), rgba(0,212,255,.5));
+      --m-payline-bg:
+        linear-gradient(90deg, rgba(0,212,255,.05) 0%, rgba(0,212,255,.15) 50%, rgba(0,212,255,.05) 100%);
+      --m-payline-border: rgba(0,212,255,.22);
+      --m-spin-border:
+        linear-gradient(135deg, #00d4ff, #7b2fff, #c8e8ff, #00d4ff);
+      --m-spin-bg:     #010a16;
+      --m-spin-text:
+        linear-gradient(180deg, #e8f8ff, #00d4ff, #7b2fff);
+      --m-neon-shift:
+        #00d4ff, #7b2fff, #c8e8ff, #00ff99,
+        #00d4ff, #7b2fff, #c8e8ff, #00ff99;
+      --m-neon-shadow: 0 0 12px 4px rgba(0,212,255,.5), 0 0 30px 8px rgba(123,47,255,.3);
+      --m-controls-bg: linear-gradient(180deg, rgba(0,212,255,.02), rgba(0,0,0,.2));
+      --m-controls-border: rgba(0,212,255,.1);
+      --m-name-grad:
+        linear-gradient(180deg, #e8f8ff, #00d4ff, #7b2fff);
+      --m-name-drop: 0 0 8px rgba(0,212,255,.9), 0 0 20px rgba(123,47,255,.5);
+    }
+
+    /* --- STARBURST: synthwave cosmic purple/magenta/cyan --------------- */
+    body[data-machine="stars"] {
+      --m-a:     #ff3bf2;   /* neon magenta */
+      --m-b:     #35f7ff;   /* electric cyan */
+      --m-c:     #ffe566;   /* neon yellow */
+      --m-glow:  rgba(255,59,242,.50);
+      --m-bg:
+        radial-gradient(ellipse 80% 60% at 20% 0%,   rgba(255,59,242,.18), transparent 55%),
+        radial-gradient(ellipse 80% 60% at 80% 20%,  rgba(53,247,255,.14), transparent 55%),
+        radial-gradient(ellipse 70% 60% at 50% 100%, rgba(255,229,102,.08), transparent 55%),
+        linear-gradient(180deg, #07031a 0%, #0b0830 60%, #05021a 100%);
+      --m-cab-outer:
+        linear-gradient(135deg, #200835 0%, #160522 30%, #0d031a 60%, #07021a 100%);
+      --m-cab-inner:
+        linear-gradient(180deg, #0e041e 0%, #060215 100%);
+      --m-header-bg:
+        linear-gradient(180deg, #1a0630, #0e0422);
+      --m-header-glow: rgba(255,59,242,.18);
+      --m-reel-border:
+        linear-gradient(180deg, rgba(255,59,242,.5), rgba(53,247,255,.35), rgba(255,59,242,.5));
+      --m-payline-bg:
+        linear-gradient(90deg, rgba(255,59,242,.06) 0%, rgba(53,247,255,.15) 50%, rgba(255,59,242,.06) 100%);
+      --m-payline-border: rgba(53,247,255,.25);
+      --m-spin-border:
+        linear-gradient(135deg, #ff3bf2, #35f7ff, #ffe566, #ff3bf2);
+      --m-spin-bg:     #0a031e;
+      --m-spin-text:
+        linear-gradient(180deg, #fff0fe, #ff3bf2, #35f7ff);
+      --m-neon-shift:
+        #ff3bf2, #35f7ff, #ffe566, #ff3bf2,
+        #35f7ff, #ff3bf2, #ffe566, #35f7ff;
+      --m-neon-shadow: 0 0 12px 4px rgba(255,59,242,.5), 0 0 30px 8px rgba(53,247,255,.3);
+      --m-controls-bg: linear-gradient(180deg, rgba(255,59,242,.03), rgba(0,0,0,.2));
+      --m-controls-border: rgba(255,59,242,.1);
+      --m-name-grad:
+        linear-gradient(180deg, #fff0fe, #ff3bf2, #35f7ff);
+      --m-name-drop: 0 0 8px rgba(255,59,242,.9), 0 0 20px rgba(53,247,255,.5);
+    }
+
+
+    /* Machine theme transition — smooth fade on all themed elements */
+    body {
+      transition: background-color 0.5s ease;
+    }
+    .cabinet-outer, .cabinet-inner, .machine-header,
+    .machine-name, .reels-frame, #controlsArea,
+    #casinoBg {
+      transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease, filter 0.5s ease;
+    }
+    #neonBar {
+      transition: box-shadow 0.5s ease;
+    }
+
+    /* Theme-aware stat blocks and accent elements */
+    /* Fruit Fiesta accent overrides */
+    body[data-machine="fruits"] .stat-block { border-color: rgba(57,255,20,.22); background: linear-gradient(135deg, rgba(57,255,20,.07), rgba(255,107,53,.04)); }
+    body[data-machine="fruits"] .stat-value { background: linear-gradient(180deg, #ccffaa, #39ff14); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 6px rgba(57,255,20,.5)); }
+    body[data-machine="fruits"] .stat-label { color: rgba(57,255,20,.5); }
+    body[data-machine="fruits"] .jackpot-label { color: #ff2d78; text-shadow: 0 0 8px #ff2d78; }
+    body[data-machine="fruits"] .jackpot-amount { background: linear-gradient(180deg, #fff, #39ff14, #ff6b35); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    body[data-machine="fruits"] .back-btn { color: #39ff14; }
+    body[data-machine="fruits"] .bet-label { color: rgba(57,255,20,.45); }
+    body[data-machine="fruits"] .bet-amount { color: #39ff14; -webkit-text-fill-color: #39ff14; text-shadow: 0 0 10px rgba(57,255,20,.4); }
+    body[data-machine="fruits"] .bet-btn { border-color: rgba(57,255,20,.3); background: rgba(57,255,20,.05); color: #39ff14; }
+    body[data-machine="fruits"] .bet-preset { border-color: rgba(57,255,20,.2); background: rgba(57,255,20,.04); color: rgba(57,255,20,.6); }
+    body[data-machine="fruits"] .bet-preset.selected, body[data-machine="fruits"] .bet-preset:active { border-color: #39ff14; background: rgba(57,255,20,.12); color: #39ff14; }
+    body[data-machine="fruits"] .lines-btn { border-color: rgba(57,255,20,.15); color: rgba(57,255,20,.5); background: rgba(57,255,20,.02); }
+    body[data-machine="fruits"] .lines-btn.active { border-color: rgba(57,255,20,.5); background: rgba(57,255,20,.08); color: #39ff14; }
+    body[data-machine="fruits"] .machine-tab.active { border-color: #39ff14; background: rgba(57,255,20,.1); color: #39ff14; box-shadow: 0 0 12px rgba(57,255,20,.3); }
+    body[data-machine="fruits"] .streak-dot.filled { background: #39ff14; box-shadow: 0 0 6px rgba(57,255,20,.7); }
+    body[data-machine="fruits"] #spinCost { color: rgba(57,255,20,.55); -webkit-text-fill-color: rgba(57,255,20,.55); }
+
+    /* Diamond Mine accent overrides */
+    body[data-machine="diamonds"] .stat-block { border-color: rgba(0,212,255,.22); background: linear-gradient(135deg, rgba(0,212,255,.06), rgba(123,47,255,.04)); }
+    body[data-machine="diamonds"] .stat-value { background: linear-gradient(180deg, #e8f8ff, #00d4ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 6px rgba(0,212,255,.5)); }
+    body[data-machine="diamonds"] .stat-label { color: rgba(0,212,255,.5); }
+    body[data-machine="diamonds"] .jackpot-label { color: #00d4ff; text-shadow: 0 0 8px #00d4ff; }
+    body[data-machine="diamonds"] .jackpot-amount { background: linear-gradient(180deg, #fff, #00d4ff, #7b2fff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    body[data-machine="diamonds"] .back-btn { color: #00d4ff; }
+    body[data-machine="diamonds"] .bet-label { color: rgba(0,212,255,.45); }
+    body[data-machine="diamonds"] .bet-amount { color: #00d4ff; -webkit-text-fill-color: #00d4ff; text-shadow: 0 0 10px rgba(0,212,255,.4); }
+    body[data-machine="diamonds"] .bet-btn { border-color: rgba(0,212,255,.3); background: rgba(0,212,255,.05); color: #00d4ff; }
+    body[data-machine="diamonds"] .bet-preset { border-color: rgba(0,212,255,.2); background: rgba(0,212,255,.04); color: rgba(0,212,255,.6); }
+    body[data-machine="diamonds"] .bet-preset.selected, body[data-machine="diamonds"] .bet-preset:active { border-color: #00d4ff; background: rgba(0,212,255,.12); color: #00d4ff; }
+    body[data-machine="diamonds"] .lines-btn { border-color: rgba(0,212,255,.15); color: rgba(0,212,255,.5); background: rgba(0,212,255,.02); }
+    body[data-machine="diamonds"] .lines-btn.active { border-color: rgba(0,212,255,.5); background: rgba(0,212,255,.08); color: #00d4ff; }
+    body[data-machine="diamonds"] .machine-tab.active { border-color: #00d4ff; background: rgba(0,212,255,.1); color: #00d4ff; box-shadow: 0 0 12px rgba(0,212,255,.3); }
+    body[data-machine="diamonds"] .streak-dot.filled { background: #00d4ff; box-shadow: 0 0 6px rgba(0,212,255,.7); }
+    body[data-machine="diamonds"] #spinCost { color: rgba(0,212,255,.55); -webkit-text-fill-color: rgba(0,212,255,.55); }
+
+    /* Starburst accent overrides */
+    body[data-machine="stars"] .stat-block { border-color: rgba(255,59,242,.22); background: linear-gradient(135deg, rgba(255,59,242,.07), rgba(53,247,255,.04)); }
+    body[data-machine="stars"] .stat-value { background: linear-gradient(180deg, #fff0fe, #ff3bf2); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 6px rgba(255,59,242,.5)); }
+    body[data-machine="stars"] .stat-label { color: rgba(255,59,242,.5); }
+    body[data-machine="stars"] .jackpot-label { color: #ff3bf2; text-shadow: 0 0 8px #ff3bf2; }
+    body[data-machine="stars"] .jackpot-amount { background: linear-gradient(180deg, #fff, #ff3bf2, #35f7ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    body[data-machine="stars"] .back-btn { color: #35f7ff; }
+    body[data-machine="stars"] .bet-label { color: rgba(255,59,242,.45); }
+    body[data-machine="stars"] .bet-amount { color: #ff3bf2; -webkit-text-fill-color: #ff3bf2; text-shadow: 0 0 10px rgba(255,59,242,.4); }
+    body[data-machine="stars"] .bet-btn { border-color: rgba(255,59,242,.3); background: rgba(255,59,242,.05); color: #ff3bf2; }
+    body[data-machine="stars"] .bet-preset { border-color: rgba(255,59,242,.2); background: rgba(255,59,242,.04); color: rgba(255,59,242,.6); }
+    body[data-machine="stars"] .bet-preset.selected, body[data-machine="stars"] .bet-preset:active { border-color: #ff3bf2; background: rgba(255,59,242,.12); color: #ff3bf2; }
+    body[data-machine="stars"] .lines-btn { border-color: rgba(255,59,242,.15); color: rgba(255,59,242,.5); background: rgba(255,59,242,.02); }
+    body[data-machine="stars"] .lines-btn.active { border-color: rgba(255,59,242,.5); background: rgba(255,59,242,.08); color: #ff3bf2; }
+    body[data-machine="stars"] .machine-tab.active { border-color: #ff3bf2; background: rgba(255,59,242,.1); color: #ff3bf2; box-shadow: 0 0 12px rgba(255,59,242,.3); }
+    body[data-machine="stars"] .streak-dot.filled { background: #ff3bf2; box-shadow: 0 0 6px rgba(255,59,242,.7); }
+    body[data-machine="stars"] #spinCost { color: rgba(255,59,242,.55); -webkit-text-fill-color: rgba(255,59,242,.55); }
+
+    /* Reel divider lines */
+    body[data-machine="fruits"]   .reel   { border-right-color: rgba(57,255,20,.1); }
+    body[data-machine="diamonds"] .reel   { border-right-color: rgba(0,212,255,.1); }
+    body[data-machine="stars"]    .reel   { border-right-color: rgba(255,59,242,.1); }
+
+    /* Win message colour tinting per theme */
+    body[data-machine="fruits"]   .win-msg.small-win { color: #39ff14; text-shadow: 0 0 10px rgba(57,255,20,.7); }
+    body[data-machine="diamonds"] .win-msg.small-win { color: #00d4ff; text-shadow: 0 0 10px rgba(0,212,255,.7); }
+    body[data-machine="stars"]    .win-msg.small-win { color: #ff3bf2; text-shadow: 0 0 10px rgba(255,59,242,.7); }
+
+    /* Spinning blur tint */
+    body[data-machine="fruits"]   .reel.spinning .reel-symbol .sym-emoji { filter: blur(2px) drop-shadow(0 0 2px rgba(57,255,20,.4)); }
+    body[data-machine="diamonds"] .reel.spinning .reel-symbol .sym-emoji { filter: blur(2px) drop-shadow(0 0 2px rgba(0,212,255,.4)); }
+    body[data-machine="stars"]    .reel.spinning .reel-symbol .sym-emoji { filter: blur(2px) drop-shadow(0 0 2px rgba(255,59,242,.4)); }
+
+
   </style>
 </head>
-<body>
+<body data-machine="lucky7s">
 
 <div id="neonBar"></div>
 <div id="casinoBg"></div>
@@ -1211,7 +1590,27 @@
   <div id="topBar">
     <a class="back-btn" href="../">← Games</a>
     <span id="casinoTitle">Casino</span>
-    <button id="soundToggle" title="Toggle sound">🔊</button>
+    <button id="soundToggle" title="Sound settings">🔊</button>
+  </div>
+
+  <!-- SOUND SETTINGS PANEL -->
+  <div id="soundPanel">
+    <div class="sp-title">Sound Settings</div>
+    <div class="sp-row">
+      <label class="sp-label"><span class="sp-icon">🎵</span>Music</label>
+      <label class="sp-toggle">
+        <input type="checkbox" id="musicToggle" checked>
+        <span class="sp-slider"></span>
+      </label>
+    </div>
+    <hr class="sp-divider">
+    <div class="sp-row">
+      <label class="sp-label"><span class="sp-icon">🔔</span>Sound FX</label>
+      <label class="sp-toggle">
+        <input type="checkbox" id="sfxToggle" checked>
+        <span class="sp-slider"></span>
+      </label>
+    </div>
   </div>
 
   <!-- BANKROLL -->
@@ -1364,109 +1763,683 @@ const HAP_FREE_SPINS   = [
 ];
 
 // ================================================================
-//  AUDIO ENGINE
+//  AUDIO ENGINE — Tone.js
 // ================================================================
-let audioCtx = null;
-let soundOn = true;
+let musicOn = true;
+let sfxOn   = true;
+// Legacy alias — SFX checks soundOn; music checks musicOn
+Object.defineProperty(window, 'soundOn', { get: () => sfxOn, set: v => { sfxOn = v; } });
+let Tone = null;
+let toneReady = false;
 
-function getAudioCtx() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// Load Tone.js async — doesn't block page render
+import('https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js').then(mod => {
+  Tone = mod.default ?? mod.Tone ?? window.Tone;
+  if (!Tone && window.Tone) Tone = window.Tone;
+  toneReady = !!Tone;
+}).catch(() => { toneReady = false; });
+
+// Called on first user interaction to unlock AudioContext
+async function unlockAudio() {
+  if (!toneReady || !Tone) return;
+  try {
+    await Tone.start();
+    initSFX();
+    if (!_musicStarted) MUSIC.start(state.currentMachine);
+  } catch(e) {}
+}
+
+// ---- Shared FX chain ----
+let _limiter, _masterVol;
+function getFXChain() {
+  if (!toneReady || !Tone) return null;
+  if (!_limiter) {
+    _masterVol = new Tone.Volume(-6).toDestination();
+    _limiter = new Tone.Limiter(-3).connect(_masterVol);
   }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
+  return _limiter;
 }
 
-function playTone(freq, type, dur, vol = 0.3, delay = 0) {
-  if (!soundOn) return;
-  try {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-    gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-    gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
-    osc.start(ctx.currentTime + delay);
-    osc.stop(ctx.currentTime + delay + dur + 0.05);
-  } catch(e) {}
-}
+// ---- Per-machine music tracks ----
+let _musicParts = [];
+let _musicStarted = false;
+let _currentMusicId = null;
 
-function playNoise(dur, vol = 0.1, delay = 0) {
-  if (!soundOn) return;
+// Each track builder returns an array of disposables
+const TRACKS = {
+
+  // 🎰 Lucky 7s — jazzy Vegas shuffle, walking bass, chord stabs
+  lucky7s(fx) {
+    const reverb = new Tone.Reverb({ decay: 1.4, wet: 0.2 }).connect(fx);
+    const chorus = new Tone.Chorus(3, 1.5, 0.25).connect(reverb).start();
+
+    const bass = new Tone.MonoSynth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.02, decay: 0.1, sustain: 0.4, release: 0.3 },
+      filter: { frequency: 400, type: 'lowpass' },
+      volume: -9,
+    }).connect(chorus);
+
+    const chords = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.5 },
+      volume: -17,
+    }).connect(reverb);
+
+    const hihat = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.01 },
+      volume: -24,
+    }).connect(fx);
+
+    const kick = new Tone.MembraneSynth({
+      pitchDecay: 0.05, octaves: 6,
+      envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 },
+      volume: -13,
+    }).connect(fx);
+
+    const snare = new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.001, decay: 0.12, sustain: 0, release: 0.05 },
+      volume: -20,
+    }).connect(new Tone.Filter(2000, 'highpass').connect(fx));
+
+    Tone.Transport.bpm.value = 112;
+
+    const bassNotes = ['C2','Eb2','F2','G2','Bb2','C3','G2','F2','Eb2','F2','G2','Bb2','C3','Bb2','G2','F2'];
+    const bassPart = new Tone.Sequence((t, n) => bass.triggerAttackRelease(n, '8n', t), bassNotes, '8n');
+
+    const chordPart = new Tone.Part((t, v) => chords.triggerAttackRelease(v.n, '8n', t), [
+      { time:'0:0', n:['C3','Eb3','G3','Bb3'] }, { time:'0:2', n:['F3','Ab3','C4'] },
+      { time:'1:0', n:['G3','B3','D4','F4'] },   { time:'1:2', n:['C3','Eb3','G3'] },
+    ]);
+    chordPart.loop = true; chordPart.loopEnd = '2m';
+
+    const hatPart = new Tone.Sequence((t) => hihat.triggerAttackRelease('16n', t),
+      [1,0,1,0,1,1,0,1,1,0,1,0,1,1,0,1], '8n');
+    const kickPart = new Tone.Sequence((t) => kick.triggerAttackRelease('C1','8n',t),
+      [1,null,null,null,1,null,null,null], '8n');
+    const snarePart = new Tone.Sequence((t) => snare.triggerAttackRelease('8n',t),
+      [null,null,1,null,null,null,1,null], '8n');
+
+    [bassPart, hatPart, kickPart, snarePart, chordPart].forEach(p => p.start(0));
+    return [bass,chords,hihat,kick,snare,bassPart,chordPart,hatPart,kickPart,snarePart,reverb,chorus];
+  },
+
+  // 🍒 Fruit Fiesta — upbeat tropical bossa nova, marimba-ish melody
+  fruits(fx) {
+    const reverb = new Tone.Reverb({ decay: 1.8, wet: 0.3 }).connect(fx);
+
+    const marimba = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.35, sustain: 0.05, release: 0.4 },
+      volume: -8,
+    }).connect(reverb);
+
+    const bass = new Tone.MonoSynth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.2 },
+      filter: { frequency: 500, type: 'lowpass' },
+      volume: -10,
+    }).connect(reverb);
+
+    const clave = new Tone.MembraneSynth({
+      pitchDecay: 0.008, octaves: 2,
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.02 },
+      volume: -18,
+    }).connect(fx);
+
+    const shaker = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.005, decay: 0.05, sustain: 0, release: 0.02 },
+      volume: -28,
+    }).connect(new Tone.Filter(5000, 'highpass').connect(fx));
+
+    const kick = new Tone.MembraneSynth({
+      pitchDecay: 0.04, octaves: 5,
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
+      volume: -15,
+    }).connect(fx);
+
+    Tone.Transport.bpm.value = 126;
+
+    // Bright F major melody — marimba-like
+    const melodyPart = new Tone.Part((t, v) => marimba.triggerAttackRelease(v.n, v.d, t), [
+      {time:'0:0',   n:'F4',  d:'8n'},  {time:'0:0.5', n:'A4',  d:'8n'},
+      {time:'0:1',   n:'C5',  d:'4n'},  {time:'0:2',   n:'A4',  d:'8n'},
+      {time:'0:2.5', n:'F4',  d:'8n'},  {time:'0:3',   n:'G4',  d:'4n'},
+      {time:'1:0',   n:'Bb4', d:'8n'},  {time:'1:0.5', n:'G4',  d:'8n'},
+      {time:'1:1',   n:'F4',  d:'4n'},  {time:'1:2',   n:'C5',  d:'8n'},
+      {time:'1:2.5', n:'A4',  d:'8n'},  {time:'1:3',   n:['F4','A4','C5'], d:'2n'},
+    ]);
+    melodyPart.loop = true; melodyPart.loopEnd = '2m';
+
+    const bassNotes = ['F2',null,'C2',null,'Bb2',null,'F2','C2','F2',null,'C2',null,'G2',null,'F2',null];
+    const bassPart = new Tone.Sequence((t,n) => { if(n) bass.triggerAttackRelease(n,'8n',t); }, bassNotes, '8n');
+
+    const clavePart = new Tone.Sequence((t,v) => { if(v) clave.triggerAttackRelease('G3','32n',t); },
+      [1,null,null,1,null,1,null,null,1,null,1,null,null,1,null,null], '16n');
+    const shakerPart = new Tone.Sequence((t) => shaker.triggerAttackRelease('16n',t), [1,1,1,1,1,1,1,1], '8n');
+    const kickPart = new Tone.Sequence((t) => kick.triggerAttackRelease('C1','8n',t),
+      [1,null,null,null,null,null,1,null,1,null,null,null,null,null,1,null], '8n');
+
+    [melodyPart, bassPart, clavePart, shakerPart, kickPart].forEach(p => p.start(0));
+    return [marimba,bass,clave,shaker,kick,melodyPart,bassPart,clavePart,shakerPart,kickPart,reverb];
+  },
+
+  // 💎 Diamond Mine — cinematic tension, minor key, ominous pulse
+  diamonds(fx) {
+    const reverb = new Tone.Reverb({ decay: 3.5, wet: 0.45 }).connect(fx);
+    const delay  = new Tone.PingPongDelay('8n', 0.3).connect(reverb);
+
+    const pad = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.4, decay: 0.5, sustain: 0.7, release: 2.0 },
+      volume: -16,
+    }).connect(new Tone.Filter(1200, 'lowpass').connect(reverb));
+
+    const arp = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.005, decay: 0.2, sustain: 0.1, release: 0.5 },
+      volume: -14,
+    }).connect(delay);
+
+    const bass = new Tone.MonoSynth({
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.05, decay: 0.3, sustain: 0.6, release: 0.5 },
+      filter: { frequency: 300, type: 'lowpass' },
+      volume: -8,
+    }).connect(reverb);
+
+    const perc = new Tone.MembraneSynth({
+      pitchDecay: 0.08, octaves: 4,
+      envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.2 },
+      volume: -16,
+    }).connect(fx);
+
+    const metalHit = new Tone.MetalSynth({
+      frequency: 400, envelope: { attack: 0.001, decay: 0.4, release: 0.2 },
+      harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5,
+      volume: -20,
+    }).connect(reverb);
+
+    Tone.Transport.bpm.value = 88;
+
+    // Dark Dm arpeggio
+    const arpNotes = ['D3','F3','A3','C4','A3','F3','D3','F3',
+                      'E3','G3','Bb3','D4','Bb3','G3','E3','G3'];
+    const arpPart = new Tone.Sequence((t,n) => arp.triggerAttackRelease(n,'16n',t), arpNotes, '8n');
+
+    // Slow pad swells — 4 bar loop
+    const padPart = new Tone.Part((t,v) => pad.triggerAttackRelease(v.n, v.d, t), [
+      {time:'0:0', n:['D3','F3','A3'],       d:'1n'},
+      {time:'1:0', n:['G3','Bb3','D4'],      d:'1n'},
+      {time:'2:0', n:['A3','C4','E4'],       d:'1n'},
+      {time:'3:0', n:['D3','F3','A3','C4'],  d:'1n'},
+    ]);
+    padPart.loop = true; padPart.loopEnd = '4m';
+
+    const bassPart = new Tone.Sequence((t,n) => { if(n) bass.triggerAttackRelease(n,'4n',t); },
+      ['D2',null,'A2',null,'G2',null,'A2',null], '4n');
+
+    const percPart = new Tone.Sequence((t,v) => { if(v) perc.triggerAttackRelease('C1','8n',t); },
+      [1,null,null,1,null,null,1,null], '4n');
+
+    const metalPart = new Tone.Sequence((t,v) => { if(v) metalHit.triggerAttackRelease('16n',t); },
+      [null,null,null,null,null,null,null,1], '4n');
+
+    [arpPart, padPart, bassPart, percPart, metalPart].forEach(p => p.start(0));
+    return [pad,arp,bass,perc,metalHit,arpPart,padPart,bassPart,percPart,metalPart,reverb,delay];
+  },
+
+  // ⭐ Starburst — synthwave/space, pulsing arpeggios, 80s vibes
+  // ⭐ Starburst — cosmic dream, slow drifting pads, glitchy arp, sub bass pulse
+  // Key: C# minor pentatonic, 96 bpm, ethereal/hypnotic
+  stars(fx) {
+    const revDeep  = new Tone.Reverb({ decay: 6, wet: 0.55 }).connect(fx);
+    const pingPong = new Tone.PingPongDelay('4n.', 0.45).connect(revDeep);
+    const chorus   = new Tone.Chorus(1.5, 6, 0.5).start().connect(revDeep);
+
+    // Drifting sine pad — slow attack, long sustain
+    const pad1 = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sine' },
+      envelope: { attack: 1.2, decay: 0.8, sustain: 0.9, release: 3.0 },
+      volume: -14,
+    }).connect(chorus);
+
+    // Shimmer pad — slightly detuned triangle for beating
+    const pad2 = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.8, decay: 1.0, sustain: 0.7, release: 2.5 },
+      volume: -18,
+    }).connect(revDeep);
+
+    // Glitchy crystal arp — sine through ping pong
+    const arp = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.3, sustain: 0.1, release: 0.6 },
+      volume: -16,
+    }).connect(pingPong);
+
+    // Deep sub pulse
+    const sub = new Tone.MonoSynth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.05, decay: 0.4, sustain: 0.6, release: 0.8 },
+      filter: { frequency: 180, type: 'lowpass' },
+      volume: -12,
+    }).connect(fx);
+
+    // Soft metallic accent pings
+    const ping = new Tone.MetalSynth({
+      frequency: 420,
+      envelope: { attack: 0.001, decay: 0.8, release: 0.5 },
+      harmonicity: 8,
+      modulationIndex: 20,
+      resonance: 3200,
+      octaves: 0.5,
+      volume: -22,
+    }).connect(revDeep);
+
+    Tone.Transport.bpm.value = 96;
+
+    // Slow drifting pad chords — C#m / A / E / B (4 bars each, very spacious)
+    const padPart = new Tone.Part((t,v) => {
+      pad1.triggerAttackRelease(v.n, '2n.', t);
+      pad2.triggerAttackRelease(v.n.map(n => n.replace('4','3')), '1n', t);
+    }, [
+      {time:'0:0',  n:['C#4','E4','G#4']},
+      {time:'2:0',  n:['A3','C#4','E4']},
+      {time:'4:0',  n:['E4','G#4','B4']},
+      {time:'6:0',  n:['B3','D#4','F#4']},
+    ]);
+    padPart.loop = true; padPart.loopEnd = '8m';
+
+    // Crystal arp — C# minor pentatonic, sparse 8th note pattern
+    const arpNotes = [
+      'C#5',null,'E5',null,'G#5',null,null,'B4',
+      null,'C#5',null,null,'E5',null,'G#4',null,
+      'A4', null,'C#5',null,null,'E5',null,'F#5',
+      null,null,'G#5',null,null,'E5',null,null,
+    ];
+    const arpSeq = new Tone.Sequence(
+      (t,n) => { if(n) arp.triggerAttackRelease(n, '16n', t); },
+      arpNotes, '8n'
+    );
+
+    // Sub pulse — root notes, slow
+    const subPart = new Tone.Sequence(
+      (t,n) => { if(n) sub.triggerAttackRelease(n, '4n', t); },
+      ['C#2',null,null,null,'C#2',null,null,null,
+       'A1', null,null,null,'E2', null,null,null], '4n'
+    );
+
+    // Accent pings — sparse hits at phrase boundaries
+    const pingPart = new Tone.Part((t) => {
+      ping.triggerAttackRelease('16n', t);
+    }, [{time:'0:0'},{time:'1:2'},{time:'3:0'},{time:'5:1'},{time:'7:3'}]);
+    pingPart.loop = true; pingPart.loopEnd = '8m';
+
+    [padPart, arpSeq, subPart, pingPart].forEach(p => p.start(0));
+    return [pad1,pad2,arp,sub,ping,padPart,arpSeq,subPart,pingPart,revDeep,pingPong,chorus];
+  },
+};
+
+const MUSIC = {
+  start(machineId) {
+    if (!toneReady || !Tone || !musicOn) return;
+    const id = machineId || state.currentMachine;
+    if (_musicStarted && _currentMusicId === id) return;
+
+    // If already playing a different track, stop it first
+    if (_musicStarted) {
+      MUSIC._stopParts();
+      // Small gap before starting new track
+      setTimeout(() => MUSIC._launch(id), 200);
+    } else {
+      MUSIC._launch(id);
+    }
+  },
+
+  _launch(id) {
+    if (!toneReady || !Tone || !musicOn) return;
+    _musicStarted = true;
+    _currentMusicId = id;
+    try {
+      const fx = getFXChain();
+      const builder = TRACKS[id] || TRACKS.lucky7s;
+      _musicParts = builder(fx);
+      if (Tone.Transport.state !== 'started') Tone.Transport.start();
+    } catch(e) { _musicStarted = false; }
+  },
+
+  _stopParts() {
+    _musicParts.forEach(p => { try { p.stop?.(); p.dispose?.(); } catch(e){} });
+    _musicParts = [];
+    _musicStarted = false;
+    _currentMusicId = null;
+  },
+
+  stop() {
+    if (!toneReady || !Tone) return;
+    try {
+      Tone.Transport.stop();
+      MUSIC._stopParts();
+    } catch(e) {}
+  },
+
+  switch(machineId) {
+    if (!toneReady || !Tone || !musicOn) return;
+    if (_currentMusicId === machineId) return;
+    // Fade out current, swap track
+    MUSIC.setVolume(-40);
+    setTimeout(() => {
+      MUSIC._stopParts();
+      MUSIC.setVolume(-6);
+      MUSIC._launch(machineId);
+    }, 400);
+  },
+
+  setVolume(db) {
+    if (_masterVol) _masterVol.volume.rampTo(db, 0.3);
+  },
+
+  duck()     { MUSIC.setVolume(-20); setTimeout(() => MUSIC.setVolume(-6), 3000); },
+  duckFull() { MUSIC.setVolume(-40); },
+  restore()  { MUSIC.setVolume(-6); },
+};
+
+// ---- SFX Engine — pre-instantiated pooled nodes ----
+// All synths are created ONCE in initSFX() and reused forever.
+// No nodes are created or disposed per SFX event — zero allocation hot path.
+let _sfx = null; // populated by initSFX()
+
+function initSFX() {
+  if (_sfx || !toneReady || !Tone) return;
   try {
-    const ctx = getAudioCtx();
-    const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = 800;
-    filter.Q.value = 0.8;
-    src.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
-    src.start(ctx.currentTime + delay);
-    src.stop(ctx.currentTime + delay + dur + 0.05);
-  } catch(e) {}
+    const fx = getFXChain();
+
+    // --- Shared reverbs (expensive convolution — create once) ---
+    const revShort  = new Tone.Reverb({ decay: 0.3, wet: 0.20 }).connect(fx);
+    const revMed    = new Tone.Reverb({ decay: 0.9, wet: 0.30 }).connect(fx);
+    const revLong   = new Tone.Reverb({ decay: 2.5, wet: 0.40 }).connect(fx);
+    const delayNode = new Tone.FeedbackDelay('8n', 0.35).connect(revLong);
+    const chorus    = new Tone.Chorus(4, 2, 0.5).start().connect(delayNode);
+
+    // --- spinStart: noise burst + click ---
+    const spinNoise = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.01, decay: 0.08, sustain: 0, release: 0.02 },
+      volume: -12,
+    }).connect(new Tone.Filter(600, 'bandpass').connect(fx));
+
+    const spinClick = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.02 },
+      volume: -16,
+    }).connect(fx);
+
+    // --- reelTick: square synth through bandpass ---
+    const tickSynth = new Tone.Synth({
+      oscillator: { type: 'square' },
+      envelope: { attack: 0.001, decay: 0.015, sustain: 0, release: 0.005 },
+      volume: -22,
+    }).connect(new Tone.Filter(1200, 'bandpass').connect(fx));
+
+    // --- reelStop: thud + knock (one set, triggered sequentially) ---
+    const stopThud = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0.05, release: 0.15 },
+      volume: -10,
+    }).connect(revShort);
+
+    const stopKnock = new Tone.MembraneSynth({
+      pitchDecay: 0.02, octaves: 3,
+      envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.05 },
+      volume: -16,
+    }).connect(fx);
+
+    // --- smallWin: arpeggio poly ---
+    const winSmall = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 },
+      volume: -8,
+    }).connect(revMed);
+
+    // --- bigWin: arpeggio + brass ---
+    const winBigArp = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.01, decay: 0.3, sustain: 0.3, release: 0.5 },
+      volume: -4,
+    }).connect(revLong);
+
+    const winBigBrass = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.05, decay: 0.2, sustain: 0.5, release: 0.4 },
+      volume: -12,
+    }).connect(new Tone.Filter(2000, 'lowpass').connect(revLong));
+
+    // --- jackpot: fanfare lead + pad + bass ---
+    const jpLead = new Tone.Synth({
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.02, decay: 0.1, sustain: 0.8, release: 0.5 },
+      volume: -4,
+    }).connect(chorus);
+
+    const jpPad = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.3, decay: 0.5, sustain: 0.8, release: 1.5 },
+      volume: -12,
+    }).connect(revLong);
+
+    const jpBass = new Tone.MonoSynth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.01, decay: 0.3, sustain: 0.6, release: 0.4 },
+      volume: -8,
+    }).connect(fx);
+
+    // --- coin pool: 6 coin voices, round-robined to avoid overlap stacking ---
+    // Each voice: carrier osc + modulator osc + envelope + noise transient + thud
+    // Using simpler but still metallic approach: MetalSynth pool
+    const COIN_POOL_SIZE = 6;
+    const coinPool = [];
+    for (let i = 0; i < COIN_POOL_SIZE; i++) {
+      const coinFilter = new Tone.Filter(5500, 'lowpass').connect(fx);
+      // MetalSynth gives metallic bell sound without creating multiple oscillators
+      const metal = new Tone.MetalSynth({
+        frequency: 340,
+        envelope: { attack: 0.001, decay: 0.22, release: 0.1 },
+        harmonicity: 5.1,
+        modulationIndex: 32,
+        resonance: 4000,
+        octaves: 1.5,
+        volume: -14,
+      }).connect(coinFilter);
+      // Noise transient
+      const snap = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: { attack: 0.0005, decay: 0.018, sustain: 0, release: 0.005 },
+        volume: -26,
+      }).connect(new Tone.Filter(7000, 'highpass').connect(fx));
+      coinPool.push({ metal, snap });
+    }
+    let _coinIdx = 0;
+
+    // --- buttonClick ---
+    const btnSynth = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.02 },
+      volume: -24,
+    }).connect(fx);
+
+    // --- noMoney ---
+    const noMoneyFilter = new Tone.Filter(800, 'lowpass').connect(fx);
+    const noMoneySynth = new Tone.Synth({
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.01, decay: 0.15, sustain: 0, release: 0.1 },
+      volume: -12,
+    }).connect(noMoneyFilter);
+
+    // --- freeSpins: bells + sparkle ---
+    const freeSparkle = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.3 },
+      volume: -10,
+    }).connect(revMed);
+
+    const freeBells = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.4, sustain: 0.1, release: 0.8 },
+      volume: -6,
+    }).connect(revMed);
+
+    _sfx = {
+      spinNoise, spinClick,
+      tickSynth,
+      stopThud, stopKnock,
+      winSmall,
+      winBigArp, winBigBrass,
+      jpLead, jpPad, jpBass,
+      coinPool, getCoin() { const c = coinPool[_coinIdx % COIN_POOL_SIZE]; _coinIdx++; return c; },
+      btnSynth,
+      noMoneySynth,
+      freeSparkle, freeBells,
+    };
+  } catch(e) { console.warn('initSFX failed', e); }
 }
 
 const SFX = {
   spinStart() {
-    playNoise(0.05, 0.15);
-    playTone(180, 'sawtooth', 0.08, 0.12);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      _sfx.spinNoise.triggerAttackRelease('16n');
+      _sfx.spinClick.triggerAttackRelease('A2', '32n');
+    } catch(e) {}
   },
+
   reelTick() {
-    playNoise(0.02, 0.06);
-    playTone(220 + Math.random()*80, 'square', 0.015, 0.08);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      _sfx.tickSynth.triggerAttackRelease(200 + Math.random() * 120, '64n');
+    } catch(e) {}
   },
+
   reelStop(index) {
-    const freqs = [280, 320, 360];
-    playTone(freqs[index], 'triangle', 0.12, 0.2);
-    playNoise(0.04, 0.1);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      const notes = ['G3', 'B3', 'D4'];
+      _sfx.stopThud.triggerAttackRelease(notes[index] || 'G3', '8n');
+      _sfx.stopKnock.triggerAttackRelease('C2', '16n');
+    } catch(e) {}
   },
+
   smallWin() {
-    playTone(440, 'triangle', 0.1, 0.3);
-    playTone(554, 'triangle', 0.1, 0.25, 0.12);
-    playTone(659, 'triangle', 0.18, 0.25, 0.24);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      const now = Tone.now();
+      _sfx.winSmall.triggerAttackRelease('E4', '8n', now);
+      _sfx.winSmall.triggerAttackRelease('G4', '8n', now + 0.1);
+      _sfx.winSmall.triggerAttackRelease('B4', '4n', now + 0.2);
+      MUSIC.duck();
+    } catch(e) {}
   },
+
   bigWin() {
-    const melody = [523,659,784,1047];
-    melody.forEach((f,i) => playTone(f, 'triangle', 0.15, 0.4, i*0.1));
-    setTimeout(() => {
-      [1047,784,523,659,784,1047].forEach((f,i) => playTone(f, 'sine', 0.2, 0.35, i*0.08));
-    }, 500);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      const now = Tone.now();
+      ['C4','E4','G4','C5'].forEach((n, i) => _sfx.winBigArp.triggerAttackRelease(n, '8n', now + i*0.1));
+      setTimeout(() => {
+        if (!_sfx) return;
+        _sfx.winBigBrass.triggerAttackRelease(['C4','E4','G4','C5'], '2n');
+        setTimeout(() => {
+          if (!_sfx) return;
+          ['E5','G5','C6'].forEach((n,i) => _sfx.winBigArp.triggerAttackRelease(n, '4n', Tone.now() + i*0.12));
+        }, 600);
+      }, 550);
+
+      let coinCount = 0;
+      const coinInterval = setInterval(() => {
+        if (!soundOn || coinCount++ > 8) { clearInterval(coinInterval); return; }
+        SFX.coinClink();
+      }, 220);
+
+      MUSIC.duck();
+    } catch(e) {}
   },
+
   jackpot() {
-    const notes = [261,329,392,523,659,784,1047,1319];
-    notes.forEach((f,i) => {
-      playTone(f, 'triangle', 0.3, 0.5, i*0.12);
-      playTone(f*2, 'sine', 0.2, 0.3, i*0.12+0.06);
-    });
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      MUSIC.duckFull();
+      const now = Tone.now();
+      const fanfare = [
+        ['C5',0],['C5',0.15],['C5',0.3],['E5',0.5],
+        ['G5',0.7],['G5',0.85],['G5',1.0],['C6',1.2],
+        ['B5',1.5],['A5',1.7],['G5',1.9],['C6',2.2],
+        ['G5',2.5],['E5',2.7],['C5',2.9],
+      ];
+      fanfare.forEach(([n,t]) => _sfx.jpLead.triggerAttackRelease(n, '8n', now + t));
+
+      _sfx.jpPad.triggerAttackRelease(['C4','E4','G4'], '1n', now + 0.5);
+      _sfx.jpPad.triggerAttackRelease(['G3','B3','D4','F4'], '1n', now + 1.5);
+      _sfx.jpPad.triggerAttackRelease(['C4','E4','G4','C5'], '2n', now + 2.5);
+
+      ['C2','G2','C3'].forEach((n,i) => _sfx.jpBass.triggerAttackRelease(n, '4n', now + i*1.2));
+
+      let cc = 0;
+      const ci = setInterval(() => {
+        if (!soundOn || cc++ > 20) { clearInterval(ci); return; }
+        SFX.coinClink();
+      }, 140);
+
+      setTimeout(() => MUSIC.restore(), 8000);
+    } catch(e) {}
   },
+
   coinClink() {
-    playTone(1200 + Math.random()*400, 'triangle', 0.06, 0.15);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      const voice = _sfx.getCoin();
+      // Vary pitch by adjusting frequency before trigger
+      voice.metal.frequency.value = 280 + Math.random() * 220; // 280–500 Hz
+      voice.metal.triggerAttackRelease('32n');
+      voice.snap.triggerAttackRelease('32n');
+    } catch(e) {}
   },
+
   buttonClick() {
-    playTone(600, 'square', 0.04, 0.1);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      _sfx.btnSynth.triggerAttackRelease('A4', '64n');
+    } catch(e) {}
   },
+
   noMoney() {
-    playTone(200, 'sawtooth', 0.08, 0.2);
-    playTone(150, 'sawtooth', 0.12, 0.2, 0.1);
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      const now = Tone.now();
+      _sfx.noMoneySynth.triggerAttackRelease('Bb2', '8n', now);
+      _sfx.noMoneySynth.triggerAttackRelease('Ab2', '8n', now + 0.18);
+    } catch(e) {}
   },
+
   freeSpins() {
-    const melody = [659,784,659,880,1047];
-    melody.forEach((f,i) => playTone(f, 'sine', 0.2, 0.4, i*0.1));
-  }
+    if (!toneReady || !Tone || !soundOn || !_sfx) return;
+    try {
+      const now = Tone.now();
+      ['E5','G5','B5','E6'].forEach((n,i) => _sfx.freeSparkle.triggerAttackRelease(n, '16n', now + i*0.08));
+      _sfx.freeBells.triggerAttackRelease(['G4','B4','D5','G5'], '2n', now + 0.4);
+      MUSIC.duck();
+    } catch(e) {}
+  },
 };
+
+// Expose unlockAudio alias used in getAudioCtx calls
+function getAudioCtx() {
+  unlockAudio();
+  return null; // Tone.js manages its own context
+}
+
 
 // ================================================================
 //  MACHINE DEFINITIONS
@@ -1672,7 +2645,8 @@ let state = {
   currentMachine: 'lucky7s',
   bet: 10,
   lines: 1,
-  soundOn: true,
+  musicOn: true,
+  sfxOn: true,
   history: [],
   streak: 0,
   freeSpins: 0,
@@ -1844,12 +2818,16 @@ function buildReels() {
   updateReelHeight();
 }
 
-function updateReelHeight() {
+function getSymHeight() {
+  // Derive symbol height from the actual reel container height at runtime
   const machine = MACHINES[state.currentMachine];
   const reelsEl = $('reels');
-  const symHeight = window.innerHeight < 700 ? Math.floor(200/3) : 80;
-  const totalHeight = symHeight * machine.rows;
-  reelsEl.style.height = totalHeight + 'px';
+  const h = reelsEl.clientHeight;
+  return h > 0 ? Math.floor(h / machine.rows) : 70;
+}
+
+function updateReelHeight() {
+  // No-op: reels fill their flex parent naturally now
 }
 
 function renderReel(r) {
@@ -1857,7 +2835,7 @@ function renderReel(r) {
   const { track, symbols, currentTopIndex } = reelElements[r];
   track.innerHTML = '';
 
-  const symHeight = window.innerHeight < 700 ? Math.floor(200/3) : 80;
+  const symHeight = getSymHeight();
   const visible = machine.rows + 2; // extra for scroll effect
   const count = symbols.length;
 
@@ -2085,6 +3063,12 @@ function showWinMessage(result) {
     msgText = result.totalWin >= state.bet * 5 ? '🎉 GREAT WIN!' : '🎊 WIN!';
   }
 
+  // Force animation restart by removing, reflow, re-adding
+  winMsg.className = 'win-msg';
+  winFlash.className = 'win-amount-flash';
+  void winMsg.offsetWidth;   // trigger reflow
+  void winFlash.offsetWidth;
+
   winMsg.textContent = msgText;
   winMsg.className = `win-msg show ${msgClass}`;
   paylineHL.classList.add('win-line-active');
@@ -2092,14 +3076,30 @@ function showWinMessage(result) {
   if (result.totalWin > 0) {
     winFlash.textContent = `+${fmt(result.totalWin)}`;
     winFlash.className = 'win-amount-flash show';
-    setTimeout(() => winFlash.classList.remove('show'), 600);
+    if (winFlash._dismissTimer) clearTimeout(winFlash._dismissTimer);
+    winFlash._dismissTimer = setTimeout(() => winFlash.classList.remove('show'), 4100);
   }
 
-  setTimeout(() => {
+  const msgDuration = result.isJackpot ? 12000 : result.isBigWin ? 6000 : 4000;
+  if (showWinMessage._timer) clearTimeout(showWinMessage._timer);
+  showWinMessage._timer = setTimeout(() => {
     winMsg.classList.remove('show');
     paylineHL.classList.remove('win-line-active');
-  }, result.isJackpot ? 10000 : 2500);
+  }, msgDuration);
 }
+
+// Tap win display to dismiss early
+function dismissWin() {
+  if (showWinMessage._timer) { clearTimeout(showWinMessage._timer); showWinMessage._timer = null; }
+  if (winFlash._dismissTimer) { clearTimeout(winFlash._dismissTimer); winFlash._dismissTimer = null; }
+  winMsg.classList.remove('show');
+  winFlash.classList.remove('show');
+  paylineHL.classList.remove('win-line-active');
+  hap('light');
+}
+winMsg.addEventListener('click', dismissWin);
+winFlash.addEventListener('click', dismissWin);
+$('winDisplay').addEventListener('click', dismissWin);
 
 function highlightWinningSymbols(winningLines) {
   // Remove previous highlights
@@ -2171,6 +3171,7 @@ $('jpCloseBtn').addEventListener('click', () => {
   $('jackpotCelebration').classList.remove('show');
   if (coinAnimFrame) cancelAnimationFrame(coinAnimFrame);
   coinCanvas.style.display = 'none';
+  MUSIC.restore();
 });
 
 // ================================================================
@@ -2262,7 +3263,7 @@ async function doSpin() {
 
       setTimeout(() => {
         reel.el.classList.add('spinning');
-        const symHeight = window.innerHeight < 700 ? Math.floor(200/3) : 80;
+        const symHeight = getSymHeight();
         const totalScroll = (machine.rows + 2) * symHeight;
 
         let start = null;
@@ -2413,6 +3414,9 @@ function switchMachine(id) {
     t.classList.toggle('active', t.dataset.machine === id);
   });
 
+  // Apply machine theme
+  document.body.dataset.machine = id;
+
   const machine = MACHINES[id];
   machineNameEl.textContent = machine.name;
   machineNameEl.className = 'machine-name classic';
@@ -2427,11 +3431,12 @@ function switchMachine(id) {
   buildPaytableStrip();
   buildLinesRow();
   buildPaytableModal();
-  buildReels();
   updateBetDisplay();
   updateBalanceDisplay();
   saveState();
+  requestAnimationFrame(() => buildReels());
 
+  MUSIC.switch(id);
   SFX.buttonClick();
   hap('medium');
 }
@@ -2521,10 +3526,46 @@ $('paytableOverlay').addEventListener('click', e => {
   }
 });
 
-$('soundToggle').addEventListener('click', () => {
-  soundOn = !soundOn;
-  state.soundOn = soundOn;
-  $('soundToggle').textContent = soundOn ? '🔊' : '🔇';
+// Sound settings panel
+let _soundPanelOpen = false;
+
+function updateSoundToggleIcon() {
+  const icon = (!musicOn && !sfxOn) ? '🔇' : (!musicOn || !sfxOn) ? '🔉' : '🔊';
+  $('soundToggle').textContent = icon;
+}
+
+$('soundToggle').addEventListener('click', (e) => {
+  e.stopPropagation();
+  _soundPanelOpen = !_soundPanelOpen;
+  $('soundPanel').classList.toggle('open', _soundPanelOpen);
+  hap('selection');
+});
+
+// Close panel when clicking outside
+document.addEventListener('click', (e) => {
+  if (_soundPanelOpen && !$('soundPanel').contains(e.target) && e.target !== $('soundToggle')) {
+    _soundPanelOpen = false;
+    $('soundPanel').classList.remove('open');
+  }
+});
+
+$('musicToggle').addEventListener('change', () => {
+  musicOn = $('musicToggle').checked;
+  state.musicOn = musicOn;
+  if (musicOn) {
+    unlockAudio(); // will start music if not already
+  } else {
+    MUSIC.stop();
+  }
+  updateSoundToggleIcon();
+  hap('selection');
+  saveState();
+});
+
+$('sfxToggle').addEventListener('change', () => {
+  sfxOn = $('sfxToggle').checked;
+  state.sfxOn = sfxOn;
+  updateSoundToggleIcon();
   hap('selection');
   saveState();
 });
@@ -2556,17 +3597,27 @@ document.addEventListener('keydown', e => {
 // ================================================================
 //  INIT
 // ================================================================
-soundOn = state.soundOn ?? true;
-$('soundToggle').textContent = soundOn ? '🔊' : '🔇';
+musicOn = state.musicOn ?? true;
+sfxOn   = state.sfxOn   ?? true;
+$('musicToggle').checked = musicOn;
+$('sfxToggle').checked   = sfxOn;
+updateSoundToggleIcon();
 
 buildBulbRow();
 buildPaytableStrip();
 buildLinesRow();
 buildPaytableModal();
-buildReels();
 updateBetDisplay();
 updateBalanceDisplay();
 updateStreak();
+
+// Defer buildReels by one rAF so the flex layout has settled
+// and clientHeight returns the real pixel height
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    buildReels();
+  });
+});
 
 // Restore free spins indicator
 if (state.freeSpins > 0) {
@@ -2585,8 +3636,7 @@ setInterval(() => {
 
 // Resize handler
 window.addEventListener('resize', () => {
-  updateReelHeight();
-  buildReels();
+  requestAnimationFrame(() => buildReels());
 });
 
 </script>
