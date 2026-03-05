@@ -318,8 +318,19 @@ let timeSlowTimer = 0;
 // Input
 const keys = {};
 let mouse = { x:W/2, y:H/2, down:false };
-let touchStart = null;
 let lastMoveDir = { x:1, y:0 };
+
+// Dual-touch joystick state
+const joy = {
+  active: false,
+  id: null,
+  originX: 0, originY: 0,   // where finger first landed (joystick center)
+  currentX: 0, currentY: 0, // current finger position
+  dx: 0, dy: 0,             // normalized direction (-1..1)
+  mag: 0,                   // magnitude 0..1 (distance / radius)
+  radius: 60,               // max joystick throw in px
+};
+const fireTouches = new Map(); // identifier → {x, y} for right-hand fire touches
 
 // HUD flash
 let damageFlashTimer = 0;
@@ -525,14 +536,21 @@ function playerShoot() {
 // ─── UPDATE PLAYER ────────────────────────────────────────────────────────────
 function updatePlayer(dt) {
   if (!player) return;
-  const speed = player.speed * player.speedMult * (timeSlow && !player.dodging ? 1 : 1);
+  const speed = player.speed * player.speedMult;
   let dx=0, dy=0;
-  if (keys['ArrowUp']    || keys['w'] || keys['W']) dy -= 1;
-  if (keys['ArrowDown']  || keys['s'] || keys['S']) dy += 1;
-  if (keys['ArrowLeft']  || keys['a'] || keys['A']) dx -= 1;
-  if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
 
-  if (dx!==0 && dy!==0) { dx*=0.707; dy*=0.707; }
+  if (joy.active) {
+    // Analog joystick — magnitude scales speed (0 at center, full at edge)
+    dx = joy.dx * joy.mag;
+    dy = joy.dy * joy.mag;
+  } else {
+    // Keyboard fallback
+    if (keys['ArrowUp']    || keys['w'] || keys['W']) dy -= 1;
+    if (keys['ArrowDown']  || keys['s'] || keys['S']) dy += 1;
+    if (keys['ArrowLeft']  || keys['a'] || keys['A']) dx -= 1;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
+    if (dx!==0 && dy!==0) { dx*=0.707; dy*=0.707; }
+  }
 
   if (dx!==0 || dy!==0) {
     lastMoveDir.x = dx; lastMoveDir.y = dy;
@@ -561,8 +579,8 @@ function updatePlayer(dt) {
   // Shoot cooldown
   if (player.shootCooldown > 0) player.shootCooldown--;
 
-  // Auto-shoot when mouse held
-  if (mouse.down && player.shootCooldown <= 0) {
+  // Auto-shoot: mouse held (desktop) OR right-hand fire touch active
+  if ((mouse.down || fireTouches.size > 0) && player.shootCooldown <= 0) {
     const fireRate = Math.round(14 * player.fireRateMult);
     player.shootCooldown = fireRate;
     playerShoot();
@@ -1487,6 +1505,57 @@ function renderHUD() {
     });
   }
 
+  // Joystick overlay (touch only)
+  if (joy.active) {
+    const jx = joy.originX, jy = joy.originY;
+    const r = joy.radius;
+    // Outer ring
+    hCtx.beginPath();
+    hCtx.arc(jx, jy, r, 0, Math.PI*2);
+    hCtx.strokeStyle = 'rgba(0,245,255,0.25)';
+    hCtx.lineWidth = 2;
+    hCtx.stroke();
+    hCtx.fillStyle = 'rgba(0,245,255,0.06)';
+    hCtx.fill();
+    // Direction line
+    const knobX = jx + joy.dx * joy.mag * r;
+    const knobY = jy + joy.dy * joy.mag * r;
+    if (joy.mag > 0.05) {
+      hCtx.beginPath();
+      hCtx.moveTo(jx, jy);
+      hCtx.lineTo(knobX, knobY);
+      hCtx.strokeStyle = 'rgba(0,245,255,0.3)';
+      hCtx.lineWidth = 1.5;
+      hCtx.stroke();
+    }
+    // Knob
+    hCtx.beginPath();
+    hCtx.arc(knobX, knobY, 22, 0, Math.PI*2);
+    hCtx.fillStyle = 'rgba(0,245,255,0.22)';
+    hCtx.fill();
+    hCtx.strokeStyle = 'rgba(0,245,255,0.6)';
+    hCtx.lineWidth = 2;
+    hCtx.stroke();
+    // Centre dot
+    hCtx.beginPath();
+    hCtx.arc(jx, jy, 4, 0, Math.PI*2);
+    hCtx.fillStyle = 'rgba(0,245,255,0.4)';
+    hCtx.fill();
+  }
+
+  // Fire touch indicator (right side, subtle)
+  if (fireTouches.size > 0) {
+    fireTouches.forEach(ft => {
+      hCtx.beginPath();
+      hCtx.arc(ft.x, ft.y, 28, 0, Math.PI*2);
+      hCtx.strokeStyle = 'rgba(255,0,229,0.4)';
+      hCtx.lineWidth = 2;
+      hCtx.stroke();
+      hCtx.fillStyle = 'rgba(255,0,229,0.1)';
+      hCtx.fill();
+    });
+  }
+
   hCtx.restore();
 }
 
@@ -1823,52 +1892,103 @@ gameCanvas.addEventListener('mousedown', e => {
 });
 gameCanvas.addEventListener('mouseup', e => { if(e.button===0) mouse.down=false; });
 
-// Touch
-let touchId=null;
+// ─── DUAL-TOUCH CONTROLS ──────────────────────────────────────────────────────
+// Left half of screen  → floating joystick (move)
+// Right half of screen → fire touch (aim toward player + fire while held)
+// Double-tap anywhere  → dodge roll
+
+function _joyUpdate(cx, cy) {
+  const rawDx = cx - joy.originX;
+  const rawDy = cy - joy.originY;
+  const dist = Math.hypot(rawDx, rawDy);
+  joy.currentX = cx;
+  joy.currentY = cy;
+  if (dist < 4) {
+    joy.dx = 0; joy.dy = 0; joy.mag = 0;
+  } else {
+    joy.dx = rawDx / dist;
+    joy.dy = rawDy / dist;
+    joy.mag = Math.min(dist / joy.radius, 1);
+  }
+}
+
+function _fireTouchAim(cx, cy) {
+  // Aim from player toward the fire touch point
+  if (!player || state !== 'playing') return;
+  mouse.x = cx;
+  mouse.y = cy;
+  player.facing = Math.atan2(cy + camY - player.y, cx + camX - player.x);
+}
+
+// Double-tap for dodge
+let _lastTapTime = 0;
+
 gameCanvas.addEventListener('touchstart', e=>{
   e.preventDefault();
   getAudioCtx();
-  for(const t of e.changedTouches) {
-    if(touchId===null) {
-      touchId=t.identifier;
-      touchStart={x:t.clientX,y:t.clientY};
-      mouse.x=t.clientX; mouse.y=t.clientY;
-      mouse.down=true;
+  for (const t of e.changedTouches) {
+    const isLeft = t.clientX < W / 2;
+    if (isLeft) {
+      // First left touch becomes the joystick
+      if (!joy.active) {
+        joy.active = true;
+        joy.id = t.identifier;
+        joy.originX = t.clientX;
+        joy.originY = t.clientY;
+        joy.currentX = t.clientX;
+        joy.currentY = t.clientY;
+        joy.dx = 0; joy.dy = 0; joy.mag = 0;
+        // Double-tap left = dodge
+        const now = Date.now();
+        if (now - _lastTapTime < 280) playerDodge();
+        _lastTapTime = now;
+      }
+    } else {
+      // Right side = fire touch
+      fireTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+      _fireTouchAim(t.clientX, t.clientY);
     }
   }
 },{passive:false});
+
 gameCanvas.addEventListener('touchmove', e=>{
   e.preventDefault();
-  for(const t of e.changedTouches) {
-    if(t.identifier===touchId) {
-      mouse.x=t.clientX; mouse.y=t.clientY;
-      if(player&&state==='playing') {
-        player.facing=Math.atan2(t.clientY+camY-player.y, t.clientX+camX-player.x);
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) {
+      _joyUpdate(t.clientX, t.clientY);
+      // Update lastMoveDir continuously for dodge direction
+      if (joy.mag > 0.1) {
+        lastMoveDir.x = joy.dx;
+        lastMoveDir.y = joy.dy;
       }
-      // Virtual joystick for movement
-      if(touchStart) {
-        const dx=t.clientX-touchStart.x, dy=t.clientY-touchStart.y;
-        const dist=Math.hypot(dx,dy);
-        if(dist>20) {
-          const nx=dx/dist, ny=dy/dist;
-          keys['w']=ny<-0.3;
-          keys['s']=ny>0.3;
-          keys['a']=nx<-0.3;
-          keys['d']=nx>0.3;
-        }
-      }
+    } else if (fireTouches.has(t.identifier)) {
+      fireTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+      _fireTouchAim(t.clientX, t.clientY);
     }
   }
 },{passive:false});
+
 gameCanvas.addEventListener('touchend', e=>{
   e.preventDefault();
-  for(const t of e.changedTouches) {
-    if(t.identifier===touchId) {
-      touchId=null;
-      touchStart=null;
-      mouse.down=false;
-      keys['w']=keys['s']=keys['a']=keys['d']=false;
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) {
+      joy.active = false;
+      joy.id = null;
+      joy.dx = 0; joy.dy = 0; joy.mag = 0;
     }
+    fireTouches.delete(t.identifier);
+  }
+  if (fireTouches.size === 0) mouse.down = false;
+},{passive:false});
+
+gameCanvas.addEventListener('touchcancel', e=>{
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) {
+      joy.active = false; joy.id = null;
+      joy.dx = 0; joy.dy = 0; joy.mag = 0;
+    }
+    fireTouches.delete(t.identifier);
   }
 },{passive:false});
 
