@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en" data-theme="synthwave">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <title>Haptics Test — Milgie.com</title>
+  <link rel="stylesheet" href="../../themes.css">
+  <link rel="stylesheet" href="../../styles.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 32px 20px;
+      gap: 0;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-family: var(--font-mono);
+      color: var(--neon1);
+      margin: 0 0 6px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 24px 0 10px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .haptic-btn {
+      padding: 20px 10px;
+      border: 1.5px solid var(--stroke);
+      border-radius: 12px;
+      background: var(--glass);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color .12s, background .12s, transform .06s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .haptic-btn:active {
+      transform: scale(0.95);
+    }
+
+    .haptic-btn .icon {
+      font-size: 22px;
+    }
+
+    .haptic-btn.fired {
+      border-color: var(--neon1);
+      background: rgba(0, 245, 255, 0.08);
+    }
+
+    .haptic-btn.error-color { border-color: var(--stroke); }
+    .haptic-btn.error-color.fired { border-color: #ff4466; background: rgba(255,68,102,0.08); }
+
+    .haptic-btn.success-color.fired { border-color: #44ff88; background: rgba(68,255,136,0.08); }
+
+    .status-box {
+      width: 100%;
+      max-width: 480px;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      background: var(--glass);
+      padding: 14px 16px;
+      margin-top: 28px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status-box .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+    }
+
+    .status-box .val {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .status-box .val.ok { color: #44ff88; }
+    .status-box .val.warn { color: #ffcc00; }
+    .status-box .val.bad { color: #ff4466; }
+
+    #log {
+      width: 100%;
+      max-width: 480px;
+      margin-top: 16px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: var(--glass);
+      min-height: 80px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    #log .entry {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      gap: 10px;
+    }
+
+    #log .entry .ts { color: var(--muted); opacity: 0.5; min-width: 50px; }
+    #log .entry .msg { color: var(--ink); }
+    #log .entry.ok .msg { color: #44ff88; }
+    #log .entry.warn .msg { color: #ffcc00; }
+    #log .entry.bad .msg { color: #ff4466; }
+
+    .back-link {
+      margin-top: 32px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .back-link:hover { color: var(--neon1); }
+  </style>
+</head>
+<body>
+  <h1>Haptics Test</h1>
+  <p class="subtitle">Tap buttons to test haptic feedback.<br>Best experienced on a real mobile device.</p>
+
+  <div class="section-label">Notification Patterns</div>
+  <div class="btn-grid">
+    <button class="haptic-btn success-color" data-haptic="success">
+      <span class="icon">✅</span>SUCCESS
+    </button>
+    <button class="haptic-btn" data-haptic="warning">
+      <span class="icon">⚠️</span>WARNING
+    </button>
+    <button class="haptic-btn error-color" data-haptic="error">
+      <span class="icon">❌</span>ERROR
+    </button>
+  </div>
+
+  <div class="section-label">Impact Patterns</div>
+  <div class="btn-grid">
+    <button class="haptic-btn" data-haptic="light">
+      <span class="icon">🪶</span>LIGHT
+    </button>
+    <button class="haptic-btn" data-haptic="medium">
+      <span class="icon">👊</span>MEDIUM
+    </button>
+    <button class="haptic-btn" data-haptic="heavy">
+      <span class="icon">💥</span>HEAVY
+    </button>
+  </div>
+
+  <div class="btn-grid" style="margin-top:10px">
+    <button class="haptic-btn" data-haptic="soft">
+      <span class="icon">🫧</span>SOFT
+    </button>
+    <button class="haptic-btn" data-haptic="rigid">
+      <span class="icon">🔩</span>RIGID
+    </button>
+    <button class="haptic-btn" data-haptic="selection">
+      <span class="icon">👆</span>SELECT
+    </button>
+  </div>
+
+  <div class="section-label">Custom Patterns</div>
+  <div class="btn-grid">
+    <button class="haptic-btn" data-haptic="nudge">
+      <span class="icon">↗️</span>NUDGE
+    </button>
+    <button class="haptic-btn" data-haptic="buzz">
+      <span class="icon">📳</span>BUZZ
+    </button>
+    <button class="haptic-btn" data-haptic="custom-slot" id="slotBtn">
+      <span class="icon">🎰</span>SLOT WIN
+    </button>
+  </div>
+
+  <div class="status-box">
+    <div class="status-row">
+      <span>Library loaded</span>
+      <span class="val" id="libStatus">Checking…</span>
+    </div>
+    <div class="status-row">
+      <span>Platform</span>
+      <span class="val" id="platformStatus">—</span>
+    </div>
+    <div class="status-row">
+      <span>Vibration API</span>
+      <span class="val" id="vibrateStatus">—</span>
+    </div>
+    <div class="status-row">
+      <span>WebHaptics.isSupported</span>
+      <span class="val" id="supportStatus">—</span>
+    </div>
+    <div class="status-row">
+      <span>Last triggered</span>
+      <span class="val" id="lastTriggered">—</span>
+    </div>
+  </div>
+
+  <div id="log"></div>
+
+  <a class="back-link" href="../">← Back to Games</a>
+
+  <script type="module">
+    // Load web-haptics from CDN
+    let haptics = null;
+    const CDN_URL = 'https://cdn.jsdelivr.net/npm/web-haptics@0.0.6/dist/index.mjs';
+
+    function log(msg, type = '') {
+      const el = document.getElementById('log');
+      const now = new Date();
+      const ts = `${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}.${now.getMilliseconds().toString().padStart(3,'0')}`;
+      const entry = document.createElement('div');
+      entry.className = `entry ${type}`;
+      entry.innerHTML = `<span class="ts">${ts}</span><span class="msg">${msg}</span>`;
+      el.prepend(entry);
+    }
+
+    function setStatus(id, text, cls) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = `val ${cls}`;
+    }
+
+    // Detect platform
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const hasVibrate = 'vibrate' in navigator;
+
+    setStatus('platformStatus',
+      isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop',
+      isIOS || isAndroid ? 'ok' : 'warn'
+    );
+    setStatus('vibrateStatus',
+      hasVibrate ? 'Available' : 'Not available',
+      hasVibrate ? 'ok' : isIOS ? 'warn' : 'bad'
+    );
+
+    log(`Platform: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'} | vibrate API: ${hasVibrate}`);
+
+    // Load the library
+    try {
+      log('Loading web-haptics from CDN…');
+      const mod = await import(CDN_URL);
+      const WebHaptics = mod.WebHaptics;
+
+      haptics = new WebHaptics({ debug: false });
+
+      setStatus('libStatus', 'Loaded ✓', 'ok');
+      setStatus('supportStatus',
+        WebHaptics.isSupported ? 'true' : 'false (iOS uses alt method)',
+        WebHaptics.isSupported ? 'ok' : 'warn'
+      );
+
+      log(`web-haptics v${mod.version} loaded. isSupported=${WebHaptics.isSupported}`, 'ok');
+
+      // Register custom slot-win pattern
+      // A slot win feel: rapid rising pattern then a big pulse
+      const slotWinPattern = [
+        { duration: 15, intensity: 0.4 },
+        { delay: 20, duration: 15, intensity: 0.5 },
+        { delay: 20, duration: 20, intensity: 0.6 },
+        { delay: 20, duration: 25, intensity: 0.8 },
+        { delay: 30, duration: 40, intensity: 1.0 },
+        { delay: 60, duration: 80, intensity: 0.9 },
+      ];
+
+      document.getElementById('slotBtn').dataset.hapticPattern = JSON.stringify(slotWinPattern);
+
+    } catch (err) {
+      setStatus('libStatus', 'FAILED', 'bad');
+      log(`Failed to load: ${err.message}`, 'bad');
+      log('Haptic buttons will still attempt native vibrate if available', 'warn');
+    }
+
+    // Button handlers
+    document.querySelectorAll('.haptic-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const type = btn.dataset.haptic;
+        const customPattern = btn.dataset.hapticPattern;
+
+        log(`Triggering: ${type}`, '');
+        setStatus('lastTriggered', type, 'ok');
+
+        // Flash the button
+        btn.classList.add('fired');
+        setTimeout(() => btn.classList.remove('fired'), 300);
+
+        try {
+          if (haptics) {
+            if (customPattern) {
+              const pattern = JSON.parse(customPattern);
+              await haptics.trigger({ pattern });
+            } else {
+              await haptics.trigger(type);
+            }
+            log(`→ Triggered '${type}' via web-haptics`, 'ok');
+          } else {
+            // Fallback: raw vibrate
+            if (hasVibrate) {
+              navigator.vibrate([30, 20, 60]);
+              log(`→ Triggered via fallback vibrate`, 'warn');
+            } else {
+              log(`→ No haptics available`, 'bad');
+            }
+          }
+        } catch (err) {
+          log(`→ Error: ${err.message}`, 'bad');
+        }
+      });
+    });
+
+    log('Ready. Tap a button to test haptics.', 'ok');
+  </script>
+</body>
+</html>
