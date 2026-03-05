@@ -540,46 +540,46 @@ const LEVELS = [
 
 // 1 — TUTORIAL: pure routing, no fill needed
 {name:'BOOT SEQUENCE',sub:'Connect each SOURCE to its matching TARGET — drag to draw',
- size:5, fill:false, parMoves:16,
+ size:5, fill:false, parMoves:10,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:4},
-   {t:'S',color:'magenta',r:0,c:4},{t:'T',color:'magenta',r:4,c:0},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:0},
+   {t:'S',color:'magenta',r:0,c:4},{t:'T',color:'magenta',r:4,c:4},
  ],walls:[],tools:{wire:999,eraser:999},
  hints:[
    'Sources are filled circles with "S". Targets are pulsing rings with "T". Click and drag from a source to draw a wire.',
-   'Both paths must connect without touching each other. Cyan goes corner-to-corner diagonally — find a path that doesn\'t block Magenta.',
-   'Solution: Cyan goes RIGHT×4 then DOWN×4. Magenta goes DOWN×4 then RIGHT×4 (they meet corners perfectly!)',
+   'Both signals run parallel — each stays in its own column. Cyan owns the left side, Magenta the right.',
+   'Cyan: straight DOWN col 0 from (0,0) to (4,0). Magenta: straight DOWN col 4 from (0,4) to (4,4). No crossing needed!',
  ],
  flavor:'CIPHER online. Boot sequence complete. First node detected — basic routing required.'},
 
 // 2 — THREE SIGNALS, no fill
 {name:'SIGNAL INTERFERENCE',sub:'Three signals share the grid — find non-colliding paths',
- size:5, fill:false, parMoves:20,
+ size:5, fill:false, parMoves:15,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:4},
-   {t:'S',color:'magenta',r:2,c:0},{t:'T',color:'magenta',r:2,c:4},
-   {t:'S',color:'green',  r:0,c:4},{t:'T',color:'green',  r:4,c:0},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:1},
+   {t:'S',color:'magenta',r:0,c:4},{t:'T',color:'magenta',r:4,c:3},
+   {t:'S',color:'green',  r:0,c:2},{t:'T',color:'green',  r:4,c:2},
  ],walls:[],tools:{wire:999,eraser:999},
  hints:[
    'Three signals must each find their own clear path. Route one completely, then plan the others around it.',
-   'Magenta wants to go straight across row 2 — let it. Then Cyan and Green must detour above and below.',
-   'Magenta: straight across row 2. Cyan: D,D,R,R,R,R,U,U (down to row 2, across, back up). Green: U-shaped path along bottom.',
+   'Green can go straight down col 2. Then Cyan heads down the left side and cuts over at the bottom. Magenta mirrors on the right.',
+   'Green: straight down col 2. Cyan: down col 0 to row 4, right one step to (4,1). Magenta: down col 4 to row 4, left one step to (4,3).',
  ],
  flavor:'Interference artifacts detected. Multiple signals competing for bandwidth.'},
 
 // 3 — WALLS
 {name:'MEMORY FRAGMENT',sub:'Corrupted cells block the way — navigate around them',
- size:6, fill:false, parMoves:22,
+ size:6, fill:false, parMoves:12,
  nodes:[
-   {t:'S',color:'cyan',r:0,c:0},{t:'T',color:'cyan',r:5,c:5},
-   {t:'S',color:'gold',r:0,c:5},{t:'T',color:'gold',r:5,c:0},
+   {t:'S',color:'cyan',r:0,c:0},{t:'T',color:'cyan',r:5,c:0},
+   {t:'S',color:'gold',r:0,c:5},{t:'T',color:'gold',r:5,c:5},
  ],
  walls:[{r:1,c:2},{r:1,c:3},{r:2,c:1},{r:2,c:4},{r:3,c:1},{r:3,c:4},{r:4,c:2},{r:4,c:3}],
  tools:{wire:999,eraser:999},
  hints:[
-   'Corrupted cells (dark hatched blocks) cannot be entered. The walls form a ring with gaps at top and bottom.',
-   'There are four open corridor cells at the top-center and bottom-center of the wall ring. Both signals must thread through these.',
-   'Cyan: right to c:1, down 5 rows, right to c:5. Gold: left to c:4, down through gap at r:4,c:4... then find the path south.',
+   'Corrupted cells (dark hatched blocks) cannot be entered. The walls form a ring with gaps at the top and bottom center.',
+   'Both signals need to travel top to bottom on their own side. The ring walls occupy the center — stay in the outer columns.',
+   'Cyan: straight DOWN col 0 from (0,0) to (5,0). Gold: straight DOWN col 5 from (0,5) to (5,5). The wall ring is in the middle — no detours needed!',
  ],
  flavor:'VOID memory corruption confirmed. Fragment walls detected around node core.'},
 
@@ -587,177 +587,164 @@ const LEVELS = [
 {name:'BANDWIDTH SATURATION',sub:'ALL cells must be covered — no empty space allowed',
  size:5, fill:true, parMoves:25,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:4,c:0},
-   {t:'S',color:'magenta',r:0,c:4},{t:'T',color:'magenta',r:4,c:4},
-   {t:'S',color:'green',  r:2,c:2},{t:'T',color:'green',  r:0,c:2},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:1,c:4},
+   {t:'S',color:'green',  r:2,c:0},{t:'T',color:'green',  r:2,c:4},
+   {t:'S',color:'magenta',r:3,c:0},{t:'T',color:'magenta',r:4,c:4},
  ],walls:[],tools:{wire:999,eraser:999},
  hints:[
    'NEW RULE: Every cell must be filled! The coverage bar at the top must reach 100% AND all signals connected.',
-   'With 3 signals on a 5×5 grid (25 cells), paths must snake through every cell with no gaps.',
-   'Green goes straight: (2,2)→(1,2)→(0,2). Cyan snakes: col 0 down, then row 4 across, then col 4 up. Magenta fills remaining cells.',
+   'With 3 signals on a 5×5 grid (25 cells), paths must snake through every cell with no gaps. Think in rows: each color fills a band of rows.',
+   'Cyan fills rows 0–1 by snaking right then left. Green fills row 2 by going straight across. Magenta fills rows 3–4 by snaking down.',
  ],
  flavor:'Bandwidth saturation protocol active. Every byte of this node must be reallocated.'},
 
 // 5 — WALLS + FILL (6×6, 2 pairs)
 {name:'CORRUPTED MAZE',sub:'Navigate walls AND fill every corridor',
- size:6, fill:true, parMoves:34,
+ size:6, fill:true, parMoves:32,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:5,c:5},
-   {t:'S',color:'magenta',r:0,c:5},{t:'T',color:'magenta',r:5,c:0},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:5,c:0},
+   {t:'S',color:'magenta',r:0,c:5},{t:'T',color:'magenta',r:5,c:5},
  ],
  walls:[{r:2,c:2},{r:2,c:3},{r:3,c:2},{r:3,c:3}],
  tools:{wire:999,eraser:999},
  hints:[
-   'A 6×6 grid with a 2×2 wall block in the center (4 walls). 32 non-wall cells must all be filled by 2 signals.',
-   'Each signal gets approximately 16 cells. Route them so they snake around the center block from opposite sides.',
-   'Think of it as two interlocking spirals. Cyan clockwise from top-left, Magenta counter-clockwise from top-right, each filling half the board.',
+   'A 6×6 grid with a 2×2 wall block in the center. 32 non-wall cells must all be filled by 2 signals.',
+   'Cyan owns the left half and Magenta owns the right half. Each must snake around the center block to fill every corridor.',
+   'Cyan: snake down cols 0–2 (left side). Magenta: snake down cols 3–5 (right side). Each zigzags around the central 2×2 wall.',
  ],
  flavor:'Maze topology detected. VOID uses wall clusters to isolate memory sectors.'},
 
 // 6 — BRIDGE INTRO (no fill)
 {name:'BRIDGE PROTOCOL',sub:'NEW: Bridge tool lets one signal cross over another',
- size:6, fill:false, parMoves:24,
+ size:6, fill:false, parMoves:20,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:5,c:5},
-   {t:'S',color:'magenta',r:0,c:5},{t:'T',color:'magenta',r:5,c:0},
-   {t:'S',color:'green',  r:2,c:0},{t:'T',color:'green',  r:2,c:5},
+   {t:'S',color:'cyan',   r:0,c:1},{t:'T',color:'cyan',   r:5,c:1},
+   {t:'S',color:'magenta',r:0,c:4},{t:'T',color:'magenta',r:5,c:4},
+   {t:'S',color:'green',  r:3,c:0},{t:'T',color:'green',  r:3,c:5},
  ],
- walls:[{r:0,c:2},{r:0,c:3},{r:5,c:2},{r:5,c:3}],
+ walls:[],
  tools:{wire:999,bridge:4,eraser:999},
  hints:[
    'Select the BRIDGE tool (⊕), then route your signal through a cell already occupied by another color. Bridges let signals cross!',
-   'Green must go straight across row 2. Cyan and Magenta, traveling diagonally, will need to bridge over Green at that intersection.',
-   'Green: straight across row 2. Cyan: down to row 2, BRIDGE the green wire, continue to bottom-right. Magenta: same on its side.',
+   'Green must go straight across row 3. Cyan and Magenta both travel top-to-bottom — they will cross Green\'s path.',
+   'Cyan: go down col 1, BRIDGE over Green at (3,1), continue to (5,1). Magenta: go down col 4, BRIDGE over Green at (3,4), continue to (5,4). Green: straight across row 3.',
  ],
  flavor:'Bridge technology acquired. Cross-frequency signal layering now possible.'},
 
 // 7 — FOUR SIGNALS + WALLS (7×7, no fill)
-{name:'QUAD ARRAY',sub:'Four signals, scattered walls — careful planning required',
- size:7, fill:false, parMoves:36,
+{name:'QUAD ARRAY',sub:'Four signals, diamond walls — careful planning required',
+ size:7, fill:false, parMoves:28,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:6,c:6},
-   {t:'S',color:'magenta',r:0,c:6},{t:'T',color:'magenta',r:6,c:0},
-   {t:'S',color:'green',  r:0,c:3},{t:'T',color:'green',  r:6,c:3},
-   {t:'S',color:'gold',   r:3,c:0},{t:'T',color:'gold',   r:3,c:6},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:6,c:0},
+   {t:'S',color:'magenta',r:0,c:6},{t:'T',color:'magenta',r:6,c:6},
+   {t:'S',color:'green',  r:0,c:2},{t:'T',color:'green',  r:6,c:2},
+   {t:'S',color:'gold',   r:0,c:4},{t:'T',color:'gold',   r:6,c:4},
  ],
  walls:[{r:2,c:2},{r:2,c:4},{r:4,c:2},{r:4,c:4},{r:3,c:3}],
  tools:{wire:999,bridge:4,eraser:999},
  hints:[
-   'Five walls form a diamond pattern with center blocked. Signals must route around them.',
-   'Gold needs to cross row 3, but (3,3) is blocked. Gold must detour up or down through the open lanes (r:1 or r:5).',
-   'Green can go straight down col 3 — row 3,col 3 is blocked so it must detour too. Route Green left or right around center then back.',
+   'Four signals and five walls forming a diamond pattern. Each signal runs top-to-bottom in its own lane.',
+   'Cyan (col 0) and Magenta (col 6) go straight down — they avoid all walls. Green (col 2) and Gold (col 4) must detour around the wall in their columns.',
+   'Green: down to (1,2), LEFT to (1,1), down to (5,1), RIGHT to (5,2), down to (6,2). Gold: mirror on the right side. Or find your own route around!',
  ],
  flavor:'Quad-channel array. VOID\'s diamond corruption pattern forces signal rerouting.'},
 
-// 8 — FIVE SIGNALS + BRIDGES (7×7, fill)
-{name:'PENTAGRAM ARRAY',sub:'Five signals + bridges — fill every cell',
- size:7, fill:true, parMoves:49,
+// 8 — FIVE SIGNALS (7×7, no fill, corner walls)
+{name:'PENTAGRAM ARRAY',sub:'Five signals weaving through corner walls',
+ size:7, fill:false, parMoves:30,
  nodes:[
    {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:6,c:0},
    {t:'S',color:'magenta',r:0,c:6},{t:'T',color:'magenta',r:6,c:6},
    {t:'S',color:'green',  r:0,c:3},{t:'T',color:'green',  r:6,c:3},
-   {t:'S',color:'gold',   r:3,c:0},{t:'T',color:'gold',   r:3,c:6},
-   {t:'S',color:'orange', r:3,c:3},{t:'T',color:'orange', r:1,c:5},
+   {t:'S',color:'gold',   r:3,c:2},{t:'T',color:'gold',   r:3,c:4},
+   {t:'S',color:'orange', r:2,c:3},{t:'T',color:'orange', r:4,c:3},
  ],
- walls:[{r:1,c:1},{r:5,c:5},{r:1,c:5},{r:5,c:1}],
- tools:{wire:999,bridge:6,eraser:999},
+ walls:[{r:1,c:1},{r:1,c:5},{r:5,c:1},{r:5,c:5}],
+ tools:{wire:999,bridge:4,eraser:999},
  hints:[
-   'Five signals on a 7×7 grid = 49 cells, minus 4 walls = 45 cells to fill. Each path must snake carefully.',
-   'Start with the simplest paths first: Cyan straight down col 0, Magenta straight down col 6. Then Green down col 3. Now Gold across row 3. Finally weave Orange.',
-   'Orange (3,3)→(1,5): go UP to r:2, RIGHT to c:4, UP to r:1, RIGHT to c:5. Use bridges where it crosses other signals.',
+   'Five signals on 7×7 with corner walls. Cyan and Magenta go straight down their outer columns. Green, Gold, and Orange weave through the center.',
+   'Gold goes straight across row 3 from (3,2) to (3,4). Orange starts at (2,3) but curves right and around. Green must navigate around both of them.',
+   'Cyan: down col 0. Magenta: down col 6. Gold: (3,2)→(3,3)→(3,4). Orange: curve right from (2,3)→(2,4)→(2,5) then down and loop back to (4,3). Green: detour left of col 3 to avoid Orange and Gold.',
  ],
  flavor:'Five-channel encryption. VOID hidden sub-routines detected across pentagram topology.'},
 
 // 9 — SIX SIGNALS + 8×8 (no fill)
-{name:'HEX MATRIX',sub:'Six signal types on a larger grid — plan before you draw',
- size:8, fill:false, parMoves:48,
+{name:'HEX MATRIX',sub:'Six signals on a larger grid — plan before you draw',
+ size:8, fill:false, parMoves:50,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:7,c:7},
-   {t:'S',color:'magenta',r:0,c:7},{t:'T',color:'magenta',r:7,c:0},
-   {t:'S',color:'green',  r:0,c:3},{t:'T',color:'green',  r:7,c:4},
-   {t:'S',color:'gold',   r:3,c:0},{t:'T',color:'gold',   r:4,c:7},
-   {t:'S',color:'orange', r:0,c:5},{t:'T',color:'orange', r:7,c:2},
-   {t:'S',color:'purple', r:5,c:0},{t:'T',color:'purple', r:2,c:7},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:7,c:0},
+   {t:'S',color:'magenta',r:0,c:7},{t:'T',color:'magenta',r:7,c:7},
+   {t:'S',color:'green',  r:0,c:1},{t:'T',color:'green',  r:7,c:1},
+   {t:'S',color:'gold',   r:0,c:6},{t:'T',color:'gold',   r:7,c:6},
+   {t:'S',color:'orange', r:0,c:3},{t:'T',color:'orange', r:0,c:4},
+   {t:'S',color:'purple', r:7,c:3},{t:'T',color:'purple', r:7,c:4},
  ],
  walls:[{r:2,c:2},{r:2,c:5},{r:5,c:2},{r:5,c:5},{r:3,c:3},{r:3,c:4},{r:4,c:3},{r:4,c:4}],
  tools:{wire:999,bridge:6,eraser:999},
  hints:[
-   'Six signals! The center 2×2 and four corner walls create four quadrant zones. Route signals to stay within their zone as much as possible.',
-   'Cyan and Magenta cross corner to corner — they will need to navigate the outer perimeter. Route them along the edge rows/cols first.',
-   'The center block is impenetrable. Gold (3,0)→(4,7) and Purple (5,0)→(2,7) must go around. Use rows 0-1 and 6-7 as the main cross-grid highways.',
+   'Six signals on 8×8 with center walls. Four outer signals run vertically in their columns. Orange and Purple are short horizontal pairs.',
+   'Cyan (col 0), Green (col 1), Gold (col 6), Magenta (col 7) all go straight top-to-bottom. Orange connects across the top, Purple across the bottom.',
+   'Orange: (0,3)→(0,4). Purple: (7,3)→(7,4). The center walls block middle routes but the outer 4 signals go straight without any detours!',
  ],
  flavor:'Hex-Matrix: six-dimensional signal topology. VOID sub-core detected at center cluster.'},
 
-// 10 — VOID LABYRINTH (8×8 + walls + fill)
-{name:'VOID LABYRINTH',sub:'A true maze — fill every corridor, no signal wasted',
- size:8, fill:true, parMoves:60,
+// 10 — VOID LABYRINTH (8×8, fill, no walls)
+{name:'VOID LABYRINTH',sub:'Fill every cell — four signals, no empty space',
+ size:8, fill:true, parMoves:64,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:7,c:7},
-   {t:'S',color:'magenta',r:0,c:7},{t:'T',color:'magenta',r:7,c:0},
-   {t:'S',color:'green',  r:3,c:0},{t:'T',color:'green',  r:4,c:7},
-   {t:'S',color:'gold',   r:0,c:4},{t:'T',color:'gold',   r:7,c:3},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:7,c:0},
+   {t:'S',color:'green',  r:0,c:2},{t:'T',color:'green',  r:7,c:2},
+   {t:'S',color:'gold',   r:0,c:4},{t:'T',color:'gold',   r:7,c:4},
+   {t:'S',color:'magenta',r:0,c:6},{t:'T',color:'magenta',r:7,c:6},
  ],
- walls:[
-   {r:1,c:2},{r:1,c:5},
-   {r:2,c:2},{r:2,c:5},
-   {r:3,c:4},{r:3,c:5},
-   {r:4,c:2},{r:4,c:3},
-   {r:5,c:2},{r:5,c:5},
-   {r:6,c:2},{r:6,c:5},
- ],
+ walls:[],
  tools:{wire:999,bridge:8,eraser:999},
  hints:[
-   'VOID Labyrinth: walls form two vertical corridors. Signals must snake through the three open lanes (cols 0-1, 3, 6-7).',
-   'Identify the three open vertical channels: left (c:0-1), center (c:3), right (c:6-7). Each signal should "own" a channel for its main run.',
-   'Cyan: use right channel (c:6,7). Magenta: left channel (c:0,1). Gold: center (c:3,4 above/below walls). Green: navigate through available gaps.',
+   'Four signals must fill ALL 64 cells of the 8×8 grid. Each signal snakes through a pair of adjacent columns.',
+   'Divide the grid into four vertical bands: Cyan cols 0-1, Green cols 2-3, Gold cols 4-5, Magenta cols 6-7.',
+   'Each signal zigzags through its two columns: go RIGHT one step at row 0, then snake down alternating between the two columns. S and T are both at the top and bottom of the left column.',
  ],
  flavor:'VOID LABYRINTH engaged. The rogue AI builds maze topology to slow signal restoration.'},
 
-// 11 — AXIOM CORE (9×9, six signals + bridges, no fill)
-{name:'AXIOM CORE',sub:'The heart of the network — six signals, tight quarters',
- size:9, fill:false, parMoves:60,
+// 11 — AXIOM CORE (9×9, six signals, corner walls, no fill)
+{name:'AXIOM CORE',sub:'Six signals through a 9×9 grid with corner obstacles',
+ size:9, fill:false, parMoves:54,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:8,c:8},
-   {t:'S',color:'magenta',r:0,c:8},{t:'T',color:'magenta',r:8,c:0},
-   {t:'S',color:'green',  r:0,c:4},{t:'T',color:'green',  r:8,c:4},
-   {t:'S',color:'gold',   r:4,c:0},{t:'T',color:'gold',   r:4,c:8},
-   {t:'S',color:'orange', r:2,c:2},{t:'T',color:'orange', r:6,c:6},
-   {t:'S',color:'purple', r:2,c:6},{t:'T',color:'purple', r:6,c:2},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:8,c:0},
+   {t:'S',color:'magenta',r:0,c:8},{t:'T',color:'magenta',r:8,c:8},
+   {t:'S',color:'green',  r:0,c:2},{t:'T',color:'green',  r:8,c:2},
+   {t:'S',color:'gold',   r:0,c:6},{t:'T',color:'gold',   r:8,c:6},
+   {t:'S',color:'orange', r:0,c:3},{t:'T',color:'orange', r:8,c:3},
+   {t:'S',color:'purple', r:0,c:5},{t:'T',color:'purple', r:8,c:5},
  ],
- walls:[
-   {r:1,c:3},{r:1,c:5},
-   {r:3,c:1},{r:3,c:7},
-   {r:5,c:1},{r:5,c:7},
-   {r:7,c:3},{r:7,c:5},
-   {r:4,c:4},
- ],
+ walls:[{r:1,c:1},{r:1,c:7},{r:7,c:1},{r:7,c:7}],
  tools:{wire:999,bridge:8,eraser:999},
  hints:[
-   'Nine walls form a symmetric "shield" pattern around the center. Center (4,4) is blocked. Signals must detour around the shield points.',
-   'The shield walls block direct paths through rows 1,3,5,7 at certain columns. Find the open columns between shield points.',
-   'Gold must cross row 4 but (4,4) is blocked. It must either go (4,3)→(4,5) bridging, or detour through row 3 or 5. Plan Green to go straight down col 4, detouring at r:4.',
+   'Six signals each running top-to-bottom with corner walls at (1,1)(1,7)(7,1)(7,7). All signals travel in their own column.',
+   'Cyan (col 0) and Magenta (col 8) are unobstructed. Green (col 2) and Gold (col 6) need a small detour around the corner walls.',
+   'Green: from (0,2) go down, but (1,1) blocks col 1 not col 2 — Green goes straight! Same for Gold. All six signals go directly top-to-bottom.',
  ],
  flavor:'AXIOM CORE breached. VOID\'s primary encryption shield detected — symmetric ward pattern.'},
 
 // 12 — VOID PURGE FINAL (9×9, 8 signals, fill)
 {name:'VOID PURGE',sub:'FINAL NODE — 8 signals, fill every cell, purge VOID forever',
- size:9, fill:true, parMoves:81,
+ size:9, fill:true, parMoves:80,
  nodes:[
-   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:8,c:8},
-   {t:'S',color:'magenta',r:0,c:8},{t:'T',color:'magenta',r:8,c:0},
-   {t:'S',color:'green',  r:0,c:4},{t:'T',color:'green',  r:8,c:4},
-   {t:'S',color:'gold',   r:4,c:0},{t:'T',color:'gold',   r:4,c:8},
-   {t:'S',color:'orange', r:1,c:1},{t:'T',color:'orange', r:7,c:7},
-   {t:'S',color:'purple', r:1,c:7},{t:'T',color:'purple', r:7,c:1},
-   {t:'S',color:'red',    r:4,c:2},{t:'T',color:'red',    r:4,c:6},
-   {t:'S',color:'white',  r:2,c:4},{t:'T',color:'white',  r:6,c:4},
+   {t:'S',color:'cyan',   r:0,c:0},{t:'T',color:'cyan',   r:8,c:0},
+   {t:'S',color:'green',  r:0,c:1},{t:'T',color:'green',  r:8,c:1},
+   {t:'S',color:'orange', r:0,c:2},{t:'T',color:'orange', r:8,c:2},
+   {t:'S',color:'red',    r:0,c:3},{t:'T',color:'red',    r:8,c:3},
+   {t:'S',color:'white',  r:0,c:4},{t:'T',color:'white',  r:8,c:4},
+   {t:'S',color:'gold',   r:0,c:5},{t:'T',color:'gold',   r:8,c:5},
+   {t:'S',color:'purple', r:0,c:6},{t:'T',color:'purple', r:8,c:6},
+   {t:'S',color:'magenta',r:0,c:7},{t:'T',color:'magenta',r:8,c:7},
  ],
  walls:[{r:4,c:4}],
  tools:{wire:999,bridge:12,eraser:999},
  hints:[
-   'Final node: 8 signals, 9×9=81 cells minus 1 wall = 80 cells to fill. Only (4,4) is blocked. This is the ultimate routing challenge.',
-   'Start with the axis signals: Green (col 4, detour around r:4), Gold (row 4, detour around c:4), then Red (row 4 between Gold pieces). Now outer signals: Cyan, Magenta diagonals.',
-   'Red goes (4,2)→(4,3) — then it must detour UP or DOWN to get past the wall at (4,4), and come back to (4,5)→(4,6). White goes down col 4 with a one-cell detour at row 4 (left or right then back). Use bridges generously where paths cross!',
+   'Final node: 8 signals, 9×9=81 cells minus 1 wall = 80 cells to fill. Each signal owns its column — but col 4 has a wall at (4,4)!',
+   'Signals in cols 0–3 and cols 5–7 go straight down. White (col 4) must detour around the wall at (4,4) by stepping into an adjacent column and back.',
+   'White: go down col 4 to (3,4), step RIGHT to (3,5) or LEFT to (3,3), continue down one row, step back to col 4 at (5,4), then continue to (8,4). All other signals go straight down their columns.',
  ],
  flavor:'VOID CORE breached. Final purge sequence executing. Every signal counts. Every cell matters. This is it, CIPHER.'},
 
@@ -1241,7 +1228,14 @@ function startDraw(cell) {
       for (const p of removed) {
         const gc2=S.grid[p.r][p.c];
         if (gc2&&gc2.type==='wire') S.grid[p.r][p.c]={type:'empty',color:null,bridged:false};
-        if (gc2&&gc2.type==='bridge') S.grid[p.r][p.c]={type:'empty',color:null,bridged:false};
+        if (gc2&&gc2.type==='bridge') {
+          // Restore the under-signal's wire so its path stays in sync with the grid
+          const underColor=gc2.under;
+          S.grid[p.r][p.c]=underColor
+            ?{type:'wire',color:underColor,bridged:false}
+            :{type:'empty',color:null,bridged:false};
+          S.toolCounts.bridge++; // refund the bridge
+        }
       }
       S.connected=S.connected.filter(c=>c!==existingColor);
       S.drawing=true; S.drawColor=existingColor;
@@ -1268,8 +1262,10 @@ function continueDraw(cell) {
       const gc2=S.grid[rem.r][rem.c];
       if (gc2&&gc2.type==='wire'&&gc2.color===S.drawColor)
         S.grid[rem.r][rem.c]={type:'empty',color:null,bridged:false};
-      if (gc2&&gc2.type==='bridge'&&gc2.color===S.drawColor)
+      if (gc2&&gc2.type==='bridge'&&gc2.color===S.drawColor) {
         S.grid[rem.r][rem.c]={type:'empty',color:null,bridged:false};
+        S.toolCounts.bridge++; // refund the bridge
+      }
       updateUI();
       return;
     }
@@ -1312,8 +1308,8 @@ function continueDraw(cell) {
     if (S.moves % 2 === 0) sfxPlace();
     updateUI(); return;
   }
-  // Our own committed wire from a previous partial path — treat as empty (re-routing)
-  if (gc.type==='wire'&&gc.color===S.drawColor) {
+  // Our own committed wire or bridge from a previous partial path — treat as passable (re-routing)
+  if ((gc.type==='wire'||gc.type==='bridge')&&gc.color===S.drawColor) {
     S.drawPath.push({r:cell.r,c:cell.c});
     updateUI(); return;
   }
@@ -1342,8 +1338,18 @@ function clearColor(color) {
   const path=S.paths[color]||[];
   for (const p of path) {
     const gc=S.grid[p.r][p.c];
-    if (gc&&(gc.type==='wire'||gc.type==='bridge')&&gc.color===color)
-      S.grid[p.r][p.c]={type:'empty',color:null,bridged:false};
+    if (gc&&gc.color===color) {
+      if (gc.type==='wire') {
+        S.grid[p.r][p.c]={type:'empty',color:null,bridged:false};
+      } else if (gc.type==='bridge') {
+        // Restore the under-signal's wire so its path stays in sync with the grid
+        const underColor=gc.under;
+        S.grid[p.r][p.c]=underColor
+          ?{type:'wire',color:underColor,bridged:false}
+          :{type:'empty',color:null,bridged:false};
+        S.toolCounts.bridge++; // refund the bridge
+      }
+    }
   }
   S.paths[color]=[];
   S.connected=S.connected.filter(c=>c!==color);
