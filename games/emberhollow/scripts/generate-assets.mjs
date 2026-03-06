@@ -6,12 +6,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const uiDir = path.join(root, 'assets', 'ui');
 const audioDir = path.join(root, 'assets', 'audio');
+const iconDir = path.join(uiDir, 'icons');
+const portraitDir = path.join(uiDir, 'portraits');
 
 fs.mkdirSync(uiDir, { recursive: true });
 fs.mkdirSync(audioDir, { recursive: true });
+fs.mkdirSync(iconDir, { recursive: true });
+fs.mkdirSync(portraitDir, { recursive: true });
 
 function writeSvg(name, svg) {
   fs.writeFileSync(path.join(uiDir, name), svg.trimStart(), 'utf8');
+}
+
+function writeNestedSvg(folder, name, svg) {
+  const dir = path.join(uiDir, folder);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, name), svg.trimStart(), 'utf8');
 }
 
 function writeWav(filePath, samples, sampleRate = 16000) {
@@ -44,6 +54,26 @@ function writeWav(filePath, samples, sampleRate = 16000) {
   fs.writeFileSync(filePath, buffer);
 }
 
+function hashSeed(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function makeRng(seedValue) {
+  let state = hashSeed(seedValue) || 1;
+  return () => {
+    state += 0x6d2b79f5;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function midi(note) {
   return 440 * 2 ** ((note - 69) / 12);
 }
@@ -70,13 +100,13 @@ function addTone(samples, sampleRate, start, duration, frequency, volume, type =
   }
 }
 
-function addNoise(samples, sampleRate, start, duration, volume, decay = 6) {
+function addNoise(samples, sampleRate, start, duration, volume, decay = 6, random = Math.random) {
   const startIndex = Math.floor(start * sampleRate);
   const length = Math.floor(duration * sampleRate);
   for (let i = 0; i < length && startIndex + i < samples.length; i += 1) {
     const t = i / sampleRate;
     const env = Math.exp(-t * decay);
-    samples[startIndex + i] += (Math.random() * 2 - 1) * env * volume;
+    samples[startIndex + i] += (random() * 2 - 1) * env * volume;
   }
 }
 
@@ -147,11 +177,12 @@ const THEMES = {
   },
 };
 
-function renderTheme(config) {
+function renderTheme(config, seedLabel) {
   const sampleRate = 16000;
   const duration = 16;
   const samples = new Float32Array(sampleRate * duration);
   const steps = Math.floor(duration / config.step);
+  const random = makeRng(seedLabel);
 
   for (let step = 0; step < steps; step += 1) {
     const time = step * config.step;
@@ -171,10 +202,10 @@ function renderTheme(config) {
     }
 
     if (step % 2 === 0) {
-      addNoise(samples, sampleRate, time, 0.06, config.percussion, 10);
+      addNoise(samples, sampleRate, time, 0.06, config.percussion, 10, random);
     }
     if (step % 4 === 2) {
-      addNoise(samples, sampleRate, time + 0.18, 0.04, config.percussion * 0.6, 13);
+      addNoise(samples, sampleRate, time + 0.18, 0.04, config.percussion * 0.6, 13, random);
     }
   }
 
@@ -276,8 +307,195 @@ writeSvg('wayfinder-badge.svg', `
 </svg>
 `);
 
+function writeIcon(name, accent, markup, glow = '#fff0ba') {
+  writeNestedSvg('icons', `${name}.svg`, `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg-${name}" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1b2637"/>
+      <stop offset="100%" stop-color="#0d131d"/>
+    </linearGradient>
+    <radialGradient id="halo-${name}" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="${glow}" stop-opacity=".78"/>
+      <stop offset="100%" stop-color="${glow}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg-${name})"/>
+  <circle cx="64" cy="56" r="42" fill="url(#halo-${name})"/>
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#f2cf9a" stroke-width="5"/>
+  <g fill="none" stroke="${accent}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    ${markup}
+  </g>
+  <circle cx="64" cy="64" r="53" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+</svg>
+`);
+}
+
+function writePortrait(name, config) {
+  writeNestedSvg('portraits', `${name}.svg`, `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 440">
+  <defs>
+    <linearGradient id="bg-${name}" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="${config.skyTop}"/>
+      <stop offset="100%" stop-color="${config.skyBottom}"/>
+    </linearGradient>
+    <radialGradient id="glow-${name}" cx="72%" cy="24%" r="36%">
+      <stop offset="0%" stop-color="${config.glow}" stop-opacity=".86"/>
+      <stop offset="100%" stop-color="${config.glow}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="360" height="440" rx="34" fill="url(#bg-${name})"/>
+  <circle cx="274" cy="92" r="96" fill="url(#glow-${name})"/>
+  <path d="M0 286 C70 224 122 232 182 240 C244 250 290 214 360 204 V440 H0 Z" fill="#253646"/>
+  <path d="M0 326 C82 282 136 288 200 300 C270 314 320 284 360 268 V440 H0 Z" fill="${config.trim}"/>
+  <path d="M38 438 L64 334 Q116 258 180 250 Q246 258 296 334 L322 438 Z" fill="${config.robe}"/>
+  <path d="M100 438 L120 338 Q138 292 180 286 Q222 292 240 338 L260 438 Z" fill="${config.trim}" opacity=".72"/>
+  <ellipse cx="180" cy="214" rx="68" ry="82" fill="${config.skin}"/>
+  <path d="M112 226 Q110 144 180 142 Q250 144 248 226 L232 184 Q216 164 180 162 Q144 164 128 184 Z" fill="${config.hair}"/>
+  <circle cx="154" cy="220" r="5" fill="#171512"/>
+  <circle cx="206" cy="220" r="5" fill="#171512"/>
+  <path d="M162 254 Q180 264 198 254" fill="none" stroke="#7a443f" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="286" cy="312" r="36" fill="rgba(12,17,26,.48)" stroke="#f2cf9a" stroke-width="4"/>
+  <path d="${config.sigil}" fill="none" stroke="${config.accent}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  ${config.extra || ''}
+  <text x="180" y="402" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="24" fill="#f8f0d7" letter-spacing="2">${config.label}</text>
+</svg>
+`);
+}
+
+writeIcon('spark-bolt', '#ffd980', `
+  <path d="M76 28 L50 64 H70 L54 100 L84 58 H62 Z"/>
+  <path d="M32 86 Q44 70 56 72"/>
+  <path d="M88 42 Q98 50 100 62"/>
+`);
+
+writeIcon('glow-lantern', '#8ef3df', `
+  <path d="M44 48 H84"/>
+  <path d="M52 48 V88 Q64 100 76 88 V48"/>
+  <path d="M58 40 Q64 28 70 40"/>
+  <path d="M58 66 Q64 54 70 66 Q64 76 58 66 Z" fill="#ffd980" stroke="#ffd980"/>
+`, '#8ef3df');
+
+writeIcon('dash-boots', '#ff9a5d', `
+  <path d="M36 78 L58 56 L70 56 L74 70 L92 76 L92 88 H38 Z"/>
+  <path d="M74 52 L92 40"/>
+  <path d="M80 62 L104 54"/>
+`);
+
+writeIcon('aether-hook', '#8ef3df', `
+  <path d="M80 34 Q92 44 92 62 Q92 88 64 88 Q42 88 42 72 Q42 60 56 56"/>
+  <path d="M64 88 L54 102"/>
+  <path d="M80 34 L72 50"/>
+  <circle cx="62" cy="54" r="10"/>
+`, '#9bdcff');
+
+writeIcon('forge-heart', '#ff6b8d', `
+  <path d="M50 46 Q38 32 26 48 Q20 64 34 76 L64 100 L94 76 Q108 64 102 48 Q90 32 78 46 Q70 56 64 62 Q58 56 50 46 Z" fill="#ff6b8d" stroke="#ff6b8d"/>
+  <path d="M42 94 H86"/>
+  <path d="M54 82 V106"/>
+  <path d="M74 82 V106"/>
+`, '#ff9da4');
+
+writeIcon('wayfinder-lens', '#8ef3df', `
+  <circle cx="58" cy="58" r="24"/>
+  <path d="M74 74 L96 96"/>
+  <path d="M58 30 V46"/>
+  <path d="M58 70 V86"/>
+  <path d="M30 58 H46"/>
+  <path d="M70 58 H86"/>
+`, '#8ef3df');
+
+writeIcon('starfall-core', '#ffd980', `
+  <path d="M64 20 L76 52 L108 64 L76 76 L64 108 L52 76 L20 64 L52 52 Z" fill="#ffd980" stroke="#ffd980"/>
+  <circle cx="64" cy="64" r="14" stroke="#ff6b8d"/>
+`, '#ffd980');
+
+writePortrait('elder-suri', {
+  label: 'Elder Suri',
+  skyTop: '#1d2a3c',
+  skyBottom: '#422b26',
+  glow: '#ffd980',
+  robe: '#5e6d86',
+  trim: '#314960',
+  skin: '#e0b996',
+  hair: '#dad8dd',
+  accent: '#ffd980',
+  sigil: 'M286 288 L296 312 L320 322 L296 332 L286 356 L276 332 L252 322 L276 312 Z',
+  extra: '<path d="M144 264 Q180 300 216 264" fill="#dad8dd" opacity=".86"/>',
+});
+
+writePortrait('brakka-smith', {
+  label: 'Brakka Forgehand',
+  skyTop: '#261d22',
+  skyBottom: '#553322',
+  glow: '#ff9a5d',
+  robe: '#704638',
+  trim: '#aa6b42',
+  skin: '#c79069',
+  hair: '#3a2c26',
+  accent: '#ffcb72',
+  sigil: 'M262 306 H310 M276 290 V338 M256 338 H316',
+  extra: '<rect x="132" y="282" width="96" height="84" rx="18" fill="#3a2c26" opacity=".32"/>',
+});
+
+writePortrait('pippin-bard', {
+  label: 'Pippin the Bard',
+  skyTop: '#1a2440',
+  skyBottom: '#3b2444',
+  glow: '#8ef3df',
+  robe: '#5a386d',
+  trim: '#2c8a88',
+  skin: '#e0b090',
+  hair: '#18233c',
+  accent: '#8ef3df',
+  sigil: 'M264 340 Q286 278 308 340 M254 324 H318 M270 300 H302',
+  extra: '<path d="M130 188 Q180 120 230 188" fill="#18233c"/>',
+});
+
+writePortrait('mara-cartographer', {
+  label: 'Mara Cartographer',
+  skyTop: '#15263a',
+  skyBottom: '#234155',
+  glow: '#8ef3df',
+  robe: '#3a5b6b',
+  trim: '#d9b56f',
+  skin: '#ddb493',
+  hair: '#f1d5a8',
+  accent: '#8ef3df',
+  sigil: 'M256 332 L286 292 L316 332 M286 292 V356',
+  extra: '<path d="M128 176 Q180 132 232 176" fill="#f1d5a8"/>',
+});
+
+writePortrait('ilya-glassweaver', {
+  label: 'Ilya Glassweaver',
+  skyTop: '#1b2a34',
+  skyBottom: '#2c4251',
+  glow: '#9bdcff',
+  robe: '#41637b',
+  trim: '#8ef3df',
+  skin: '#dfb698',
+  hair: '#5e4b58',
+  accent: '#9bdcff',
+  sigil: 'M286 286 L320 320 L286 354 L252 320 Z M286 298 L308 320 L286 342 L264 320 Z',
+  extra: '<path d="M136 170 Q180 144 224 170" fill="#5e4b58"/>',
+});
+
+writePortrait('choir-king', {
+  label: 'Choir King',
+  skyTop: '#130f18',
+  skyBottom: '#351a25',
+  glow: '#ff6b8d',
+  robe: '#3f2437',
+  trim: '#7b2b4d',
+  skin: '#d6d0d8',
+  hair: '#f2cf9a',
+  accent: '#ff6b8d',
+  sigil: 'M286 284 L302 320 L338 336 L302 352 L286 388 L270 352 L234 336 L270 320 Z',
+  extra: '<path d="M126 160 L146 118 L180 150 L214 118 L234 160" fill="none" stroke="#f2cf9a" stroke-width="10" stroke-linejoin="round"/>',
+});
+
 for (const [name, config] of Object.entries(THEMES)) {
-  const { samples, sampleRate } = renderTheme(config);
+  const { samples, sampleRate } = renderTheme(config, name);
   writeWav(path.join(audioDir, `${name}.wav`), samples, sampleRate);
 }
 

@@ -19,6 +19,25 @@ const ENEMY_STATS = {
   vaultKing: { maxHp: 24, speed: 1.6, shards: 0 },
 };
 
+const ABILITY_ICON_URLS = {
+  spark: new URL('../assets/ui/icons/spark-bolt.svg', import.meta.url).href,
+  lantern: new URL('../assets/ui/icons/glow-lantern.svg', import.meta.url).href,
+  dash: new URL('../assets/ui/icons/dash-boots.svg', import.meta.url).href,
+  magnet: new URL('../assets/ui/icons/aether-hook.svg', import.meta.url).href,
+  forgeHeart: new URL('../assets/ui/icons/forge-heart.svg', import.meta.url).href,
+  wayfinder: new URL('../assets/ui/icons/wayfinder-lens.svg', import.meta.url).href,
+  starfall: new URL('../assets/ui/icons/starfall-core.svg', import.meta.url).href,
+};
+
+const PORTRAIT_URLS = {
+  elder: new URL('../assets/ui/portraits/elder-suri.svg', import.meta.url).href,
+  smith: new URL('../assets/ui/portraits/brakka-smith.svg', import.meta.url).href,
+  bard: new URL('../assets/ui/portraits/pippin-bard.svg', import.meta.url).href,
+  cartographer: new URL('../assets/ui/portraits/mara-cartographer.svg', import.meta.url).href,
+  glassweaver: new URL('../assets/ui/portraits/ilya-glassweaver.svg', import.meta.url).href,
+  choirKing: new URL('../assets/ui/portraits/choir-king.svg', import.meta.url).href,
+};
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const distance2D = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -365,6 +384,18 @@ export class EmberhollowGame {
     });
   }
 
+  showCharacterModal({ eyebrow, title, body, portrait, buttons }) {
+    this.showModal({
+      eyebrow,
+      title,
+      body,
+      artSrc: portrait,
+      artAlt: `${title} portrait`,
+      panelClass: 'portrait-panel',
+      buttons,
+    });
+  }
+
   openJournal() {
     const notes = this.state.notes.length
       ? `<ul class="modal-list">${this.state.notes.map((note) => `<li><strong>${note.title}</strong><span>${note.body}</span></li>`).join('')}</ul>`
@@ -372,8 +403,16 @@ export class EmberhollowGame {
 
     const abilities = Object.entries(this.state.abilities)
       .filter(([, unlocked]) => unlocked)
-      .map(([key]) => ABILITY_META[key])
-      .map((item) => `<li><strong>${item.name}</strong><span>${item.key} &middot; ${item.description}</span></li>`)
+      .map(([key]) => ({ key, meta: ABILITY_META[key] }))
+      .map(({ key, meta }) => `
+        <li class="journal-ability">
+          <img class="journal-icon" src="${ABILITY_ICON_URLS[key]}" alt="" />
+          <div>
+            <strong>${meta.name}</strong>
+            <span>${meta.key} &middot; ${meta.description}</span>
+          </div>
+        </li>
+      `)
       .join('');
 
     this.showModal({
@@ -397,7 +436,17 @@ export class EmberhollowGame {
     });
   }
 
-  showModal({ eyebrow = '', title = '', body = '', html = '', buttons = [], footer = '', panelClass = '' }) {
+  showModal({
+    eyebrow = '',
+    title = '',
+    body = '',
+    html = '',
+    buttons = [],
+    footer = '',
+    panelClass = '',
+    artSrc = '',
+    artAlt = '',
+  }) {
     this.overlayVisible = true;
     this.dom.overlay.classList.remove('hidden');
     this.dom.overlay.dataset.mode = panelClass || 'default';
@@ -409,8 +458,18 @@ export class EmberhollowGame {
     if (body) parts.push(`<p class="modal-body">${body}</p>`);
     if (html) parts.push(html);
     if (footer) parts.push(`<p class="modal-footer">${footer}</p>`);
-    parts.push('<div class="modal-actions"></div>');
-    this.dom.panel.innerHTML = parts.join('');
+    const content = parts.join('');
+    this.dom.panel.innerHTML = artSrc
+      ? `
+        <div class="modal-shell with-art">
+          <img class="modal-art" src="${artSrc}" alt="${artAlt}" />
+          <div class="modal-copy">
+            ${content}
+            <div class="modal-actions"></div>
+          </div>
+        </div>
+      `
+      : `${content}<div class="modal-actions"></div>`;
 
     const actions = this.dom.panel.querySelector('.modal-actions');
     buttons.forEach((button) => {
@@ -696,10 +755,11 @@ export class EmberhollowGame {
           ? 'You did it. The valley sounds lighter already.'
           : 'The deeper you go, the less this place behaves like stone. Trust the puzzles.';
 
-      this.showModal({
+      this.showCharacterModal({
         eyebrow: 'Bellroot',
         title: 'Elder Suri',
         body,
+        portrait: PORTRAIT_URLS.elder,
         buttons: [{
           label: !this.state.flags.elderIntro ? 'Open the Road' : 'Back',
           accent: 'primary',
@@ -724,10 +784,11 @@ export class EmberhollowGame {
       const body = this.state.notes.length
         ? `You have ${this.state.notes.length} song fragment${this.state.notes.length === 1 ? '' : 's'}. Bellroot is going to make a ridiculous ballad out of this.`
         : 'Try shooting anything that looks ceremonial. This cave was built for listeners, not looters.';
-      this.showModal({
+      this.showCharacterModal({
         eyebrow: 'Bellroot',
         title: 'Pippin the Bard',
         body,
+        portrait: PORTRAIT_URLS.bard,
         buttons: [{ label: 'Back', accent: 'primary', action: () => this.hideModal(true) }],
       });
       return;
@@ -739,10 +800,11 @@ export class EmberhollowGame {
         : this.state.abilities.magnet
           ? 'The old maps mention an archive tucked off the Echo Gallery. If you see lens locks and song seals, that is the place. Bring back anything that helps you read the cave.'
           : 'Most people come to Starlight Row for lantern soup, not cave maps. Come back once you can pull those old bridge pins around in Echo Cave.';
-      this.showModal({
+      this.showCharacterModal({
         eyebrow: 'Starlight Row',
         title: 'Mara the Cartographer',
         body,
+        portrait: PORTRAIT_URLS.cartographer,
         buttons: [{ label: 'Back', accent: 'primary', action: () => this.hideModal(true) }],
       });
       return;
@@ -752,10 +814,11 @@ export class EmberhollowGame {
       const body = this.state.flags.bossCleared
         ? 'Bellroot already feels different. The glass is catching more dawn than it used to.'
         : 'I make lantern glass thin enough to sing in the wind. The archive under the cave used to make lenses that sang back.';
-      this.showModal({
+      this.showCharacterModal({
         eyebrow: 'Starlight Row',
         title: 'Ilya Glassweaver',
         body,
+        portrait: PORTRAIT_URLS.glassweaver,
         buttons: [{ label: 'Back', accent: 'primary', action: () => this.hideModal(true) }],
       });
     }
@@ -767,6 +830,9 @@ export class EmberhollowGame {
     this.showModal({
       eyebrow: 'Sunforge Shrine',
       title: `Shards: ${this.state.shards}`,
+      artSrc: PORTRAIT_URLS.smith,
+      artAlt: 'Brakka Forgehand portrait',
+      panelClass: 'portrait-panel',
       html: `
         <section class="journal-block">
           <h3>Heart Tempering</h3>
@@ -836,6 +902,9 @@ export class EmberhollowGame {
       eyebrow: 'Relic Claimed',
       title: meta.name,
       body: meta.description,
+      artSrc: ABILITY_ICON_URLS[entity.def.grants],
+      artAlt: `${meta.name} icon`,
+      panelClass: 'relic-panel',
       buttons: [{
         label: 'Take It',
         accent: 'primary',
@@ -1675,9 +1744,21 @@ export class EmberhollowGame {
 
     const abilities = Object.entries(this.state.abilities)
       .filter(([, unlocked]) => unlocked)
-      .map(([key]) => `<span class="ability-chip">${ABILITY_META[key].short}<small>${ABILITY_META[key].key}</small></span>`)
+      .map(([key]) => `
+        <span class="ability-chip">
+          <img class="ability-icon" src="${ABILITY_ICON_URLS[key]}" alt="" />
+          <span class="ability-chip-label">${ABILITY_META[key].short}</span>
+          <small>${ABILITY_META[key].key}</small>
+        </span>
+      `)
       .join('');
-    this.dom.abilities.innerHTML = abilities || '<span class="ability-chip dim">Spark Bolt<small>Starter</small></span>';
+    this.dom.abilities.innerHTML = abilities || `
+      <span class="ability-chip dim">
+        <img class="ability-icon" src="${ABILITY_ICON_URLS.spark}" alt="" />
+        <span class="ability-chip-label">Spark Bolt</span>
+        <small>Starter</small>
+      </span>
+    `;
     this.dom.minimap.parentElement.classList.toggle('wayfinder-ready', this.state.abilities.wayfinder);
 
     const boss = this.entities.get('vault-king');

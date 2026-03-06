@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 440">
+  <defs>
+    <linearGradient id="bg-choir-king" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#130f18"/>
+      <stop offset="100%" stop-color="#351a25"/>
+    </linearGradient>
+    <radialGradient id="glow-choir-king" cx="72%" cy="24%" r="36%">
+      <stop offset="0%" stop-color="#ff6b8d" stop-opacity=".86"/>
+      <stop offset="100%" stop-color="#ff6b8d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="360" height="440" rx="34" fill="url(#bg-choir-king)"/>
+  <circle cx="274" cy="92" r="96" fill="url(#glow-choir-king)"/>
+  <path d="M0 286 C70 224 122 232 182 240 C244 250 290 214 360 204 V440 H0 Z" fill="#253646"/>
+  <path d="M0 326 C82 282 136 288 200 300 C270 314 320 284 360 268 V440 H0 Z" fill="#7b2b4d"/>
+  <path d="M38 438 L64 334 Q116 258 180 250 Q246 258 296 334 L322 438 Z" fill="#3f2437"/>
+  <path d="M100 438 L120 338 Q138 292 180 286 Q222 292 240 338 L260 438 Z" fill="#7b2b4d" opacity=".72"/>
+  <ellipse cx="180" cy="214" rx="68" ry="82" fill="#d6d0d8"/>
+  <path d="M112 226 Q110 144 180 142 Q250 144 248 226 L232 184 Q216 164 180 162 Q144 164 128 184 Z" fill="#f2cf9a"/>
+  <circle cx="154" cy="220" r="5" fill="#171512"/>
+  <circle cx="206" cy="220" r="5" fill="#171512"/>
+  <path d="M162 254 Q180 264 198 254" fill="none" stroke="#7a443f" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="286" cy="312" r="36" fill="rgba(12,17,26,.48)" stroke="#f2cf9a" stroke-width="4"/>
+  <path d="M286 284 L302 320 L338 336 L302 352 L286 388 L270 352 L234 336 L270 320 Z" fill="none" stroke="#ff6b8d" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M126 160 L146 118 L180 150 L214 118 L234 160" fill="none" stroke="#f2cf9a" stroke-width="10" stroke-linejoin="round"/>
+  <text x="180" y="402" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="24" fill="#f8f0d7" letter-spacing="2">Choir King</text>
+</svg>
