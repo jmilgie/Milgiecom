@@ -146,6 +146,14 @@
         linear-gradient(180deg, #020510, #050210);
       background-size: 24px 24px, 24px 24px, 100% 100%;
     }
+
+    /* Emberhollow — warm fantasy dusk with cave glow */
+    .gameTile.emberhollow::before {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,208,120,0.28), transparent 34%),
+        radial-gradient(circle at 80% 70%, rgba(113,224,219,0.18), transparent 32%),
+        linear-gradient(180deg, #1e2831 0%, #5e4027 58%, #120e12 100%);
+    }
   </style>
   <script>
     (function(){
@@ -169,7 +177,7 @@
   <div class="status-bar-header" aria-hidden="true">
     <div class="wrap">
       <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
-      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 4 ACTIVE</span>
+      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 5 ACTIVE</span>
       <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
       <span class="sbh-spacer"></span>
       <span class="sbh-time" id="sys-time">--:--:--</span>
@@ -219,12 +227,13 @@
             Browser-based games &amp; interactive experiences.
           </p>
         </div>
-        <span class="section-badge">4 Active · 1 Incoming</span>
+        <span class="section-badge">5 Active · 2 Incoming</span>
       </div>
 
       <!-- Filter bar -->
       <div class="filter-bar" role="group" aria-label="Filter games">
         <button class="filter-btn active">All</button>
+        <button class="filter-btn">Adventure</button>
         <button class="filter-btn">Idle</button>
         <button class="filter-btn">Strategy</button>
         <button class="filter-btn">Clicker</button>
@@ -235,8 +244,47 @@
       <section class="card portal" aria-label="Games catalog">
         <div class="gamesGrid">
 
-          <!-- FEATURED: Criminal Empire -->
-          <a class="gameTile criminal-empire featured" href="./criminalempire/" aria-label="Play Criminal Empire">
+          <!-- FEATURED: Emberhollow -->
+          <a class="gameTile emberhollow featured" href="./emberhollow/" aria-label="Play Emberhollow">
+            <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Online</span>
+                <span class="status-sep" aria-hidden="true">·</span>
+                <span class="status-type">Adventure / Puzzle / Action RPG</span>
+              </div>
+              <h3>Emberhollow</h3>
+              <p>Bellroot Town sits above a living cave full of musical locks, dash routes, magnetic anchors, hidden vaults, and a real boss fight. Explore in first-person, earn upgrades, and bring the cave song home.</p>
+              <div class="game-stats">
+                <div class="game-stat">
+                  <span class="game-stat-label">Type</span>
+                  <span class="game-stat-val">FPS Zelda-Like</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Journey</span>
+                  <span class="game-stat-val">Town + 4 Floors + Boss</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Status</span>
+                  <span class="game-stat-val" style="color:#00ff88">Active</span>
+                </div>
+              </div>
+              <div class="chipRow">
+                <span class="chip">Adventure</span>
+                <span class="chip">Puzzle</span>
+                <span class="chip">Three.js</span>
+                <span class="chip">Free</span>
+              </div>
+              <div style="margin-top:16px">
+                <span class="playBtn">
+                  Enter Bellroot ▶
+                </span>
+              </div>
+            </div>
+          </a>
+
+          <!-- Criminal Empire -->
+          <a class="gameTile criminal-empire" href="./criminalempire/" aria-label="Play Criminal Empire">
             <div class="content">
               <div class="status-bar">
                 <span class="status-dot" aria-hidden="true"></span>

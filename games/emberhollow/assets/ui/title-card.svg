@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1b2434"/>
+      <stop offset="55%" stop-color="#513826"/>
+      <stop offset="100%" stop-color="#120d12"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ffd980"/>
+      <stop offset="100%" stop-color="#ff9a5d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="38%" r="48%">
+      <stop offset="0%" stop-color="#fff0ba" stop-opacity=".9"/>
+      <stop offset="100%" stop-color="#fff0ba" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="960" height="520" rx="42" fill="url(#bg)"/>
+  <circle cx="480" cy="180" r="160" fill="url(#glow)"/>
+  <path d="M0 390 C110 328 180 308 298 320 C430 334 500 242 616 246 C728 250 804 318 960 280 V520 H0 Z" fill="#253646"/>
+  <path d="M0 438 C152 392 246 398 366 414 C514 434 624 336 768 350 C842 358 896 382 960 360 V520 H0 Z" fill="#6a4630"/>
+  <path d="M470 128 L508 170 L560 178 L522 214 L532 266 L480 244 L428 266 L438 214 L400 178 L452 170 Z" fill="url(#sun)" stroke="#fff1bc" stroke-width="6"/>
+  <g fill="none" stroke="#8ef3df" stroke-width="6" stroke-linecap="round">
+    <path d="M244 244 Q332 162 480 182 Q634 156 720 246"/>
+    <path d="M276 270 Q364 204 480 214 Q598 204 684 270"/>
+  </g>
+  <g fill="none" stroke="#f2cf9a" stroke-width="4" opacity=".8">
+    <path d="M220 92 L316 138 L220 184"/>
+    <path d="M740 92 L644 138 L740 184"/>
+  </g>
+  <text x="480" y="328" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="86" fill="#f8f0d7" letter-spacing="8">EMBERHOLLOW</text>
+  <text x="480" y="376" text-anchor="middle" font-family="Space Mono, monospace" font-size="24" fill="#8ef3df" letter-spacing="7">BELLROOT / ECHO CAVE / STARFALL</text>
+  <text x="480" y="446" text-anchor="middle" font-family="Space Mono, monospace" font-size="20" fill="#f2cf9a" letter-spacing="5">A FIRST-PERSON ADVENTURE OF PUZZLES, RELICS, AND LANTERN SONGS</text>
+</svg>

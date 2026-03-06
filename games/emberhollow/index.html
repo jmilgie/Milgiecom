@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emberhollow | Milgie Games</title>
+  <meta name="description" content="Emberhollow is a first-person action-puzzle adventure built with Three.js for Milgie.com." />
+  <meta name="theme-color" content="#12202f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="preload" href="./assets/ui/title-card.svg" as="image" type="image/svg+xml" />
+  <link rel="preload" href="./assets/ui/panel-ornament.svg" as="image" type="image/svg+xml" />
+  <link rel="preload" href="./assets/ui/minimap-frame.svg" as="image" type="image/svg+xml" />
+  <link rel="preload" href="./assets/audio/town.wav" as="audio" type="audio/wav" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <div class="hud-shell">
+    <header class="topbar glass">
+      <div class="topbar-copy">
+        <div class="eyebrow">Milgie Adventure</div>
+        <h1 id="area-name">Emberhollow</h1>
+        <p id="objective-text">A town waits. A cave hums.</p>
+      </div>
+      <div class="stats">
+        <div class="stat-block">
+          <span class="stat-label">Hearts</span>
+          <span class="hearts" id="health-hearts"></span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-label">Shards</span>
+          <span class="stat-value" id="shard-count">0</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-label">Bolt Tier</span>
+          <span class="stat-value" id="bolt-level">1</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="ability-bar" class="ability-bar"></div>
+
+    <aside class="minimap-wrap glass">
+      <div class="minimap-head">
+        <span>Field Map</span>
+        <a href="../" class="portal-link">Back to Games</a>
+      </div>
+      <canvas id="minimap" width="190" height="190"></canvas>
+    </aside>
+
+    <section id="boss-hud" class="boss-hud glass hidden">
+      <div class="boss-copy">
+        <span class="stat-label">Boss</span>
+        <strong id="boss-label">The Choir King</strong>
+      </div>
+      <div class="boss-bar"><div id="boss-fill"></div></div>
+    </section>
+
+    <div id="interact-prompt" class="prompt hidden"></div>
+    <div class="reticle" aria-hidden="true"></div>
+    <div id="toast-stack" class="toast-stack"></div>
+    <div id="damage-flash" class="damage-flash"></div>
+  </div>
+
+  <div id="overlay" class="overlay">
+    <div id="overlay-panel" class="overlay-panel glass"></div>
+  </div>
+
+  <div id="touch-controls" class="touch-controls hidden">
+    <div class="pad-cluster left">
+      <div class="touch-pad" id="move-pad">
+        <div class="touch-thumb" id="move-thumb"></div>
+      </div>
+    </div>
+    <div class="pad-cluster right">
+      <div class="touch-pad touch-look" id="look-pad">
+        <div class="touch-thumb" id="look-thumb"></div>
+      </div>
+      <div class="touch-buttons">
+        <button id="touch-shoot">Shoot</button>
+        <button id="touch-interact">Use</button>
+        <button id="touch-dash">Dash</button>
+        <button id="touch-hook">Hook</button>
+        <button id="touch-nova">Nova</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.mjs"></script>
+</body>
+</html>
