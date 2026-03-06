@@ -379,6 +379,10 @@
                 <div class="toggle" id="toggleSound" onclick="toggleSetting('sound')"></div>
             </div>
             <div class="settings-row">
+                <label>Music</label>
+                <div class="toggle" id="toggleMusic" onclick="toggleSetting('music')"></div>
+            </div>
+            <div class="settings-row">
                 <label>Vibration</label>
                 <div class="toggle" id="toggleVib" onclick="toggleSetting('vibration')"></div>
             </div>
@@ -620,7 +624,7 @@
 // === SETTINGS & PERSISTENCE ===
 const SAVE_KEY = 'criminalEmpireSave';
 const SAVE_VERSION = 2;
-let settings = { vibration: true, tips: true, debug: false, sound: true };
+let settings = { vibration: true, tips: true, debug: false, sound: true, music: true };
 let lastSeen = Date.now();
 let shownTips = new Set();
 
@@ -861,7 +865,12 @@ import('https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js').then(mod => {
 
 async function _unlockTone() {
     if (_toneUnlocked || !_toneReady || !_Tone) return;
-    try { await _Tone.start(); _toneUnlocked = true; _initSFX(); } catch(e) {}
+    try {
+        await _Tone.start();
+        _toneUnlocked = true;
+        _initSFX();
+        MUSIC.start(getRank());
+    } catch(e) {}
 }
 
 function _initSFX() {
@@ -947,12 +956,434 @@ const SFX = {
 function playSound(freq=440, duration=50, type='sine', volume=0.1) {
     if (!settings.sound) return;
     _unlockTone();
-    // Map common call signatures → SFX presets
     if (freq >= 800) SFX.crit();
     else if (freq >= 650) SFX.buy();
     else if (freq < 400) SFX.alarm();
     else SFX.tap();
 }
+
+// ================================================================
+//  MUSIC ENGINE — Criminal Empire
+//  3 tracks, evolve with rank:
+//    street  — rank 0-1: lo-fi street corner hip-hop (lazy boom-bap, dusty vinyl)
+//    boss    — rank 2-4: dark trap with cinematic brass stabs
+//    legend  — rank 5-6: tense crime jazz (Miles Davis meets Morricone)
+// ================================================================
+let _musicParts = [];
+let _musicStarted = false;
+let _currentTrackId = null;
+let _musicVol = null;
+
+function _getMusicChain() {
+    if (!_toneReady || !_Tone) return null;
+    if (!_musicVol) {
+        _musicVol = new _Tone.Volume(-8).toDestination();
+    }
+    return _musicVol;
+}
+
+const MUSIC_TRACKS = {
+
+    // ── STREET ─────────────────────────────────────────────────────
+    // Lo-fi boom-bap. Lazy swing, dusty snare, warm bass, muted piano chops.
+    // Key: C minor, 82 bpm
+    street(fx) {
+        const T = _Tone;
+        const reverb  = new T.Reverb({ decay: 2.5, wet: 0.35 }).connect(fx);
+        const warmLP   = new T.Filter(1800, 'lowpass').connect(reverb);
+        const tapeWarm = new T.Filter(200, 'highpass').connect(warmLP);
+
+        // Muted piano chops — short triangle with low-pass warmth
+        const piano = new T.PolySynth(T.Synth, {
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.005, decay: 0.18, sustain: 0.05, release: 0.25 },
+            volume: -14,
+        }).connect(tapeWarm);
+
+        // Deep sub bass — sine, lazy groove
+        const bass = new T.MonoSynth({
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.02, decay: 0.3, sustain: 0.6, release: 0.4 },
+            filter: { frequency: 280, type: 'lowpass' },
+            volume: -8,
+        }).connect(tapeWarm);
+
+        // Boom kick — punchy, low
+        const kick = new T.MembraneSynth({
+            pitchDecay: 0.07, octaves: 7,
+            envelope: { attack: 0.001, decay: 0.28, sustain: 0, release: 0.15 },
+            volume: -10,
+        }).connect(fx);
+
+        // Dusty snare — pink noise, heavy lowpass for that muffled vinyl feel
+        const snare = new T.NoiseSynth({
+            noise: { type: 'pink' },
+            envelope: { attack: 0.001, decay: 0.14, sustain: 0, release: 0.06 },
+            volume: -18,
+        }).connect(new T.Filter(3500, 'lowpass').connect(reverb));
+
+        // Closed hi-hat shuffle — vinyl crackle texture
+        const hat = new T.NoiseSynth({
+            noise: { type: 'white' },
+            envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.01 },
+            volume: -26,
+        }).connect(new T.Filter(8000, 'highpass').connect(fx));
+
+        T.Transport.bpm.value = 82;
+
+        // Lazy swing bass — Cm groove
+        const bassNotes = ['C2',null,'G2',null,'C2',null,'Eb2','G2',
+                           'Ab2',null,'F2',null,'G2',null,'C2',null];
+        const bassPart = new T.Sequence((t,n) => { if(n) bass.triggerAttackRelease(n,'8n',t); }, bassNotes, '8n');
+
+        // Piano chops — soulful Cm7 / Ab / Eb / G7
+        const pianoPart = new T.Part((t,v) => piano.triggerAttackRelease(v.n, v.d, t), [
+            {time:'0:0',   n:['C4','Eb4','G4','Bb4'],  d:'8n'},
+            {time:'0:1.5', n:['C4','Eb4','G4'],         d:'16n'},
+            {time:'0:2',   n:['Ab3','C4','Eb4'],        d:'8n'},
+            {time:'0:3',   n:['Ab3','Eb4'],             d:'16n'},
+            {time:'1:0',   n:['Eb4','G4','Bb4'],        d:'8n'},
+            {time:'1:1.5', n:['Eb4','G4'],              d:'16n'},
+            {time:'1:2',   n:['G3','B3','D4','F4'],     d:'8n'},
+            {time:'1:3',   n:['G3','F4'],               d:'16n'},
+        ]);
+        pianoPart.loop = true; pianoPart.loopEnd = '2m';
+
+        // Boom-bap kick — beat 1 & 3 with swing
+        const kickPart = new T.Sequence((t,v) => { if(v) kick.triggerAttackRelease('C1','8n',t); },
+            [1,null,null,null,1,null,null,null], '4n');
+
+        // Snare on 2 & 4
+        const snarePart = new T.Sequence((t,v) => { if(v) snare.triggerAttackRelease('8n',t); },
+            [null,null,1,null,null,null,1,null], '4n');
+
+        // Swing hi-hat with ghost notes
+        const hatPat = [1,0,1,1,0,1,1,0,1,0,1,1,0,1,0,1];
+        const hatPart = new T.Sequence((t,v) => { if(v) hat.triggerAttackRelease('16n',t); }, hatPat, '8n');
+
+        [bassPart, pianoPart, kickPart, snarePart, hatPart].forEach(p => p.start(0));
+        return [piano,bass,kick,snare,hat,bassPart,pianoPart,kickPart,snarePart,hatPart,reverb,warmLP,tapeWarm];
+    },
+
+    // ── BOSS ───────────────────────────────────────────────────────
+    // Dark trap. Slow hi-hats, 808 sub, menacing brass stabs, cinematic tension.
+    // Key: D minor, 140 bpm (trap half-time feel = 70 bpm groove)
+    boss(fx) {
+        const T = _Tone;
+        const reverb   = new T.Reverb({ decay: 3.0, wet: 0.4 }).connect(fx);
+        const delay    = new T.FeedbackDelay('8n.', 0.25).connect(reverb);
+        const brassLP  = new T.Filter(1400, 'lowpass').connect(reverb);
+
+        // 808 sub — deep sine, long decay
+        const sub808 = new T.MonoSynth({
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.01, decay: 0.8, sustain: 0.5, release: 1.2 },
+            filter: { frequency: 200, type: 'lowpass' },
+            volume: -6,
+        }).connect(fx);
+
+        // Trap hi-hat — rolling 16ths with accent variation
+        const hat = new T.NoiseSynth({
+            noise: { type: 'white' },
+            envelope: { attack: 0.001, decay: 0.025, sustain: 0, release: 0.01 },
+            volume: -22,
+        }).connect(new T.Filter(9000, 'highpass').connect(fx));
+
+        // Open hi-hat accent
+        const openHat = new T.NoiseSynth({
+            noise: { type: 'white' },
+            envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.1 },
+            volume: -26,
+        }).connect(new T.Filter(7000, 'highpass').connect(reverb));
+
+        // Kick — heavy membrane
+        const kick = new T.MembraneSynth({
+            pitchDecay: 0.06, octaves: 8,
+            envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 0.2 },
+            volume: -9,
+        }).connect(fx);
+
+        // Brass stab — sawtooth through lowpass, short attack, punchy
+        const brass = new T.PolySynth(T.Synth, {
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.03, decay: 0.2, sustain: 0.3, release: 0.5 },
+            volume: -13,
+        }).connect(brassLP);
+
+        // Dark pad — slow swell, ominous
+        const pad = new T.PolySynth(T.Synth, {
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.8, decay: 1.0, sustain: 0.7, release: 2.0 },
+            volume: -20,
+        }).connect(new T.Filter(900, 'lowpass').connect(reverb));
+
+        // Pluck arpeggio — tense ascending Dm line through delay
+        const pluck = new T.Synth({
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.001, decay: 0.22, sustain: 0.05, release: 0.3 },
+            volume: -16,
+        }).connect(delay);
+
+        T.Transport.bpm.value = 140; // trap = 16th-note rolls at 140
+
+        // 808 bass pattern — Dm groove, half-time feel
+        const subNotes = ['D2',null,null,null,'A2',null,null,null,
+                          'G2',null,null,null,'A2',null,'F2',null];
+        const subPart = new T.Sequence((t,n) => { if(n) sub808.triggerAttackRelease(n,'4n',t); }, subNotes, '8n');
+
+        // Kick on 1 and 3 (half-time)
+        const kickPart = new T.Sequence((t,v) => { if(v) kick.triggerAttackRelease('C1','16n',t); },
+            [1,null,null,null,null,null,null,null,1,null,null,null,null,null,null,null], '16n');
+
+        // Trap hi-hat rolls — classic 16th trap pattern with rests
+        const hatPat = [1,1,0,1,1,0,1,0,1,1,0,1,0,1,1,0];
+        const hatPart = new T.Sequence((t,v) => { if(v) hat.triggerAttackRelease('32n',t); }, hatPat, '16n');
+
+        // Open hat on beat 2 & 4
+        const openPart = new T.Sequence((t,v) => { if(v) openHat.triggerAttackRelease('16n',t); },
+            [null,null,null,null,1,null,null,null,null,null,null,null,1,null,null,null], '16n');
+
+        // Brass stabs — syncopated, menacing
+        const brassPart = new T.Part((t,v) => brass.triggerAttackRelease(v.n, v.d, t), [
+            {time:'0:0',   n:['D3','F3','A3'],   d:'16n'},
+            {time:'0:2.5', n:['D3','F3'],        d:'32n'},
+            {time:'1:0',   n:['C3','Eb3','G3'],  d:'16n'},
+            {time:'1:1.5', n:['A3','C4'],        d:'32n'},
+            {time:'2:0',   n:['Bb2','D3','F3'],  d:'16n'},
+            {time:'2:2',   n:['A2','C3','E3'],   d:'16n'},
+            {time:'3:0',   n:['D3','F3','A3'],   d:'8n'},
+        ]);
+        brassPart.loop = true; brassPart.loopEnd = '4m';
+
+        // Slow pad swell — Dm / Bb / F / A
+        const padPart = new T.Part((t,v) => pad.triggerAttackRelease(v.n, '1n', t), [
+            {time:'0:0', n:['D3','F3','A3']},
+            {time:'2:0', n:['Bb2','D3','F3']},
+            {time:'4:0', n:['F3','A3','C4']},
+            {time:'6:0', n:['A2','C#3','E3']},
+        ]);
+        padPart.loop = true; padPart.loopEnd = '8m';
+
+        // Tense pluck arpeggio — ascending Dm
+        const pluckNotes = ['D4','F4','A4','D5','A4','F4','D4','C4',
+                            'Bb3','D4','F4','Bb4','F4','D4','C4','A3'];
+        const pluckPart = new T.Sequence((t,n) => pluck.triggerAttackRelease(n,'16n',t), pluckNotes, '8n');
+
+        [subPart,kickPart,hatPart,openPart,brassPart,padPart,pluckPart].forEach(p => p.start(0));
+        return [sub808,hat,openHat,kick,brass,pad,pluck,subPart,kickPart,hatPart,openPart,brassPart,padPart,pluckPart,reverb,delay,brassLP];
+    },
+
+    // ── LEGEND ─────────────────────────────────────────────────────
+    // Cinematic crime jazz. Tense, sophisticated — think Heat, Sicario, Godfather.
+    // Walking bass, muted trumpet melody, brush drums, strings swell.
+    // Key: C minor jazz, 96 bpm
+    legend(fx) {
+        const T = _Tone;
+        const reverb   = new T.Reverb({ decay: 3.5, wet: 0.45 }).connect(fx);
+        const chorus   = new T.Chorus(2, 3, 0.3).connect(reverb).start();
+        const delay    = new T.FeedbackDelay('4n.', 0.22).connect(reverb);
+        const stringsLP = new T.Filter(2200, 'lowpass').connect(reverb);
+
+        // Walking bass — acoustic upright feel (triangle + warmth)
+        const walkBass = new T.MonoSynth({
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.02, decay: 0.25, sustain: 0.5, release: 0.35 },
+            filter: { frequency: 600, type: 'lowpass' },
+            volume: -7,
+        }).connect(reverb);
+
+        // Muted trumpet lead — sawtooth through bandpass + chorus
+        const trumpet = new T.Synth({
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.06, decay: 0.1, sustain: 0.8, release: 0.4 },
+            volume: -14,
+        }).connect(new T.Filter({frequency: 2800, type: 'bandpass', Q: 1.5}).connect(chorus));
+
+        // Strings — slow swell, ominous pad
+        const strings = new T.PolySynth(T.Synth, {
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.5, decay: 0.8, sustain: 0.8, release: 2.0 },
+            volume: -18,
+        }).connect(stringsLP);
+
+        // Piano comp — sparse, jazzy voicings
+        const piano = new T.PolySynth(T.Synth, {
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.008, decay: 0.3, sustain: 0.1, release: 0.6 },
+            volume: -15,
+        }).connect(reverb);
+
+        // Brush snare — soft pink noise, very low volume
+        const brushSnare = new T.NoiseSynth({
+            noise: { type: 'pink' },
+            envelope: { attack: 0.003, decay: 0.09, sustain: 0, release: 0.04 },
+            volume: -23,
+        }).connect(new T.Filter(4000, 'lowpass').connect(reverb));
+
+        // Ride cymbal — metallic, airy
+        const ride = new T.MetalSynth({
+            frequency: 480,
+            envelope: { attack: 0.001, decay: 0.35, release: 0.2 },
+            harmonicity: 5.1, modulationIndex: 24,
+            resonance: 4200, octaves: 0.5,
+            volume: -26,
+        }).connect(reverb);
+
+        // Kick — soft jazz kick
+        const kick = new T.MembraneSynth({
+            pitchDecay: 0.04, octaves: 5,
+            envelope: { attack: 0.001, decay: 0.22, sustain: 0, release: 0.12 },
+            volume: -14,
+        }).connect(fx);
+
+        T.Transport.bpm.value = 96;
+
+        // Walking bass — Cm jazz changes: Cm7 / Fm7 / Bb7 / Eb / Ab / G7 / Cm
+        const walkNotes = [
+            'C2','Eb2','G2','Bb2',  'F2','Ab2','C3','Eb3',
+            'Bb2','D3','F3','Ab3',  'Eb2','G2','Bb2','Db3',
+            'Ab2','C3','Eb3','G3',  'G2','B2','D3','F3',
+            'C2','Eb2','G2','Bb2',  'C2','G2','Eb2','C2'
+        ];
+        const walkPart = new T.Sequence((t,n) => walkBass.triggerAttackRelease(n,'4n',t), walkNotes, '4n');
+
+        // Trumpet melody — sparse, haunting phrases over 8 bars
+        const trumpetPart = new T.Part((t,v) => trumpet.triggerAttackRelease(v.n, v.d, t), [
+            {time:'0:2',   n:'G4',  d:'4n'},
+            {time:'0:3',   n:'Eb4', d:'8n'},
+            {time:'1:0',   n:'C4',  d:'2n'},
+            {time:'1:3',   n:'D4',  d:'8n'},
+            {time:'2:0',   n:'Eb4', d:'4n'},
+            {time:'2:1',   n:'G4',  d:'8n'},
+            {time:'2:2',   n:'Bb4', d:'4n.'},
+            {time:'3:1',   n:'Ab4', d:'8n'},
+            {time:'3:2',   n:'G4',  d:'4n'},
+            {time:'3:3',   n:'F4',  d:'8n'},
+            {time:'4:0',   n:'Eb4', d:'2n'},
+            {time:'4:2',   n:'D4',  d:'4n'},
+            {time:'5:0',   n:'G4',  d:'4n'},
+            {time:'5:1',   n:'F4',  d:'8n'},
+            {time:'5:2',   n:'Eb4', d:'8n'},
+            {time:'5:3',   n:'D4',  d:'8n'},
+            {time:'6:0',   n:'C4',  d:'4n.'},
+            {time:'6:2.5', n:'G3',  d:'8n'},
+            {time:'6:3',   n:'Bb3', d:'8n'},
+            {time:'7:0',   n:'C4',  d:'1n'},
+        ]);
+        trumpetPart.loop = true; trumpetPart.loopEnd = '8m';
+
+        // String swells — slow, tense chords
+        const stringPart = new T.Part((t,v) => strings.triggerAttackRelease(v.n, '1n', t), [
+            {time:'0:0', n:['C3','Eb3','G3','Bb3']},
+            {time:'2:0', n:['F3','Ab3','C4','Eb4']},
+            {time:'4:0', n:['Eb3','G3','Bb3','Db4']},
+            {time:'6:0', n:['G3','B3','D4','F4']},
+        ]);
+        stringPart.loop = true; stringPart.loopEnd = '8m';
+
+        // Jazz piano comping — sparse, behind the beat
+        const pianoPart = new T.Part((t,v) => piano.triggerAttackRelease(v.n, v.d, t), [
+            {time:'0:1',   n:['Eb4','G4','Bb4'],     d:'16n'},
+            {time:'0:2.5', n:['D4','F4','Ab4'],      d:'16n'},
+            {time:'1:1',   n:['C4','Eb4','G4','Bb4'],d:'16n'},
+            {time:'2:0.5', n:['F4','Ab4','C5'],      d:'16n'},
+            {time:'2:2',   n:['Eb4','G4','Bb4'],     d:'8n'},
+            {time:'3:1',   n:['G4','B4','D5','F5'],  d:'16n'},
+            {time:'3:3',   n:['G4','Bb4','D5'],      d:'16n'},
+            {time:'4:1',   n:['C4','Eb4','G4'],      d:'8n'},
+            {time:'5:0.5', n:['Ab3','C4','Eb4','G4'],d:'16n'},
+            {time:'6:2',   n:['G3','B3','D4','F4'],  d:'8n'},
+            {time:'7:1',   n:['C4','Eb4','G4','Bb4'],d:'4n'},
+        ]);
+        pianoPart.loop = true; pianoPart.loopEnd = '8m';
+
+        // Brush snare — steady 2 & 4
+        const brushPart = new T.Sequence((t,v) => { if(v) brushSnare.triggerAttackRelease('8n',t); },
+            [null,null,1,null,null,null,1,null], '4n');
+
+        // Ride cymbal — jazz swing 8ths
+        const ridePat = [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,0];
+        const ridePart = new T.Sequence((t,v) => { if(v) ride.triggerAttackRelease('16n',t); }, ridePat, '8n');
+
+        // Soft kick — beat 1 and light syncopation
+        const kickPart = new T.Sequence((t,v) => { if(v) kick.triggerAttackRelease('C1','8n',t); },
+            [1,null,null,null,null,null,null,null,null,null,1,null,null,null,null,null], '8n');
+
+        [walkPart,trumpetPart,stringPart,pianoPart,brushPart,ridePart,kickPart].forEach(p => p.start(0));
+        return [walkBass,trumpet,strings,piano,brushSnare,ride,kick,
+                walkPart,trumpetPart,stringPart,pianoPart,brushPart,ridePart,kickPart,
+                reverb,chorus,delay,stringsLP];
+    },
+};
+
+// Which track plays at each rank
+function _trackForRank(rank) {
+    if (rank >= 5) return 'legend';
+    if (rank >= 2) return 'boss';
+    return 'street';
+}
+
+const MUSIC = {
+    _launch(trackId) {
+        if (!_toneReady || !_Tone || !settings.music) return;
+        const fx = _getMusicChain();
+        if (!fx) return;
+        _musicStarted = true;
+        _currentTrackId = trackId;
+        try {
+            const builder = MUSIC_TRACKS[trackId];
+            _musicParts = builder(fx);
+            if (_Tone.Transport.state !== 'started') _Tone.Transport.start();
+        } catch(e) { console.warn('MUSIC launch failed', e); _musicStarted = false; }
+    },
+
+    _stopParts() {
+        _musicParts.forEach(p => { try { p.stop?.(); p.dispose?.(); } catch(e){} });
+        _musicParts = [];
+        _musicStarted = false;
+        _currentTrackId = null;
+    },
+
+    start(rank) {
+        if (!_toneReady || !_Tone || !settings.music) return;
+        const trackId = _trackForRank(rank || 0);
+        if (_musicStarted && _currentTrackId === trackId) return;
+        this._stopParts();
+        this._launch(trackId);
+    },
+
+    switchToRank(rank) {
+        if (!_toneReady || !_Tone) return;
+        const trackId = _trackForRank(rank);
+        if (_currentTrackId === trackId) return;
+        // Fade out, swap
+        this.setVolume(-50);
+        setTimeout(() => {
+            this._stopParts();
+            this.setVolume(-8);
+            if (settings.music) this._launch(trackId);
+        }, 600);
+    },
+
+    pause() {
+        if (!_toneReady || !_Tone) return;
+        try { _Tone.Transport.pause(); } catch(e) {}
+    },
+
+    resume() {
+        if (!_toneReady || !_Tone || !settings.music) return;
+        try {
+            if (_Tone.Transport.state === 'paused') { _Tone.Transport.start(); }
+            else if (!_musicStarted) { this.start(getRank()); }
+        } catch(e) {}
+    },
+
+    setVolume(db) {
+        if (_musicVol) _musicVol.volume.rampTo(db, 0.4);
+    },
+
+    duck()    { this.setVolume(-22); setTimeout(() => this.setVolume(-8), 2800); },
+};
 function fmt(n){
     if(!isFinite(n)||n<0)return'$0';
     if(n>=1e18)return'$'+(n/1e18).toFixed(2)+'Qi';
@@ -1347,10 +1778,12 @@ function closeSettings(){playSound(400,50,'sine',0.08);document.getElementById('
 function toggleSetting(key){
     settings[key]=!settings[key];
     if(key==='debug')document.getElementById('debugBtns').style.display=settings.debug?'flex':'none';
+    if(key==='music'){if(settings.music)MUSIC.resume();else MUSIC.pause();}
     updateSettingsUI();saveGame();
 }
 function updateSettingsUI(){
     document.getElementById('toggleSound').className='toggle'+(settings.sound?' on':'');
+    document.getElementById('toggleMusic').className='toggle'+(settings.music?' on':'');
     document.getElementById('toggleVib').className='toggle'+(settings.vibration?' on':'');
     document.getElementById('toggleTips').className='toggle'+(settings.tips?' on':'');
     document.getElementById('toggleDebug').className='toggle'+(settings.debug?' on':'');
@@ -1362,6 +1795,7 @@ function showNotif(msg,type,sub=''){
     const n=document.createElement('div');n.className='notification '+type;
     n.innerHTML=msg+(sub?`<small>${sub}</small>`:'');n.onclick=()=>n.remove();
     document.body.appendChild(n);setTimeout(()=>n.remove(),2500);
+    if(type==='rank-up'||type==='police'||type==='heist-win')MUSIC.duck();
 }
 
 function showTip(id,msg){
@@ -1499,7 +1933,7 @@ function addPurchaseFeedback(selector){
     if(el){el.classList.add('just-purchased');setTimeout(()=>el.classList.remove('just-purchased'),500)}
 }
 function buyBiz(i){const u=bizUpgrades[i];let cost=Math.floor(u.baseCost*Math.pow(u.mult,u.owned));if(activeEffects.discount){cost=Math.floor(cost*(1-activeEffects.discount.val));delete activeEffects.discount}if(money>=cost&&u.owned<u.maxOwned){money-=cost;u.owned++;moneyPerSecond+=u.income;reputation+=Math.ceil(cost/800);vib([15,25,15]);playSound(700,80,'triangle',0.12);checkAchievements();updateAll();setTimeout(()=>addPurchaseFeedback(`#bizList .upgrade-card:nth-child(${i+1})`),10)}}
-function buyClick(i){const u=clickUpgrades[i];let cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));if(activeEffects.discount){cost=Math.floor(cost*(1-activeEffects.discount.val));delete activeEffects.discount}if(money>=cost&&u.owned<u.maxOwned){money-=cost;u.owned++;clickPower=Math.floor(clickPower*u.mult);reputation+=Math.ceil(cost/400);vib([15,25,15]);playSound(700,80,'triangle',0.12);updateAll();setTimeout(()=>addPurchaseFeedback(`#clickList .upgrade-card:nth-child(${i+1})`),10)}}
+function buyClick(i){const u=clickUpgrades[i];let cost=Math.floor(u.baseCost*Math.pow(u.costMult,u.owned));if(activeEffects.discount){cost=Math.floor(cost*(1-activeEffects.discount.val));delete activeEffects.discount}if(money>=cost&&u.owned<u.maxOwned){money-=cost;u.owned++;clickPower=clickPower*u.mult;reputation+=Math.ceil(cost/400);vib([15,25,15]);SFX.buy();updateAll();setTimeout(()=>addPurchaseFeedback(`#clickList .upgrade-card:nth-child(${i+1})`),10)}}
 function buyTerritory(id){if(activeEffects.territoryLock){showNotif('⚔️ Locked','event','Territories under attack!');return}const t=territories.find(x=>x.id===id);if(!t||ownedTerritories.includes(id)||money<t.cost)return;money-=t.cost;ownedTerritories.push(id);reputation+=Math.ceil(t.cost/150);vib([25,40,25,40,30]);playSound(900,120,'square',0.15);calcBonuses();showNotif('🗺️ CAPTURED!','event',t.icon+' '+t.name);checkAchievements();updateAll();setTimeout(()=>addPurchaseFeedback(`.territory-card:nth-child(${id+1})`),10)}
 function upgradeTerritory(id){if(activeEffects.territoryLock){showNotif('⚔️ Locked','event','Territories under attack!');return}const t=territories.find(x=>x.id===id);if(!t||!ownedTerritories.includes(id)||t.level>=t.maxLvl)return;const cost=t.upCost*Math.pow(2,t.level);if(money>=cost){money-=cost;t.level++;reputation+=Math.ceil(cost/80);vib([25,40,25,40,30]);calcBonuses();updateAll()}}
 function buyPolice(id){const u=policeUpgrades.find(x=>x.id===id);if(!u||u.owned||money<u.cost)return;money-=u.cost;u.owned=true;u.fx();reputation+=Math.ceil(u.cost/400);vib([25,40,25,40,30]);updateAll()}
@@ -1528,7 +1962,7 @@ function processCrew(){
 function checkRankUp(){
     const newRank=getRank();const oldRank=parseInt(document.body.className.match(/rank-(\d)/)?.[1]||0);
     if(newRank>oldRank){
-        document.body.className=`rank-${newRank}`;vib([40,80,40,80,80,40,150]);SFX.rankUp();
+        document.body.className=`rank-${newRank}`;vib([40,80,40,80,80,40,150]);SFX.rankUp();MUSIC.switchToRank(newRank);
         showNotif('🎖️ RANK UP!','rank-up',ranks[newRank].name);
         if(newRank===1)showTip('crew_unlock','Crew tab unlocked! Hire members for passive income.');
         if(newRank===2)showTip('heist_unlock','Heists unlocked! High risk, high reward.');
