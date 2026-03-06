@@ -29,12 +29,15 @@ const ABILITY_ICON_URLS = {
   starfall: new URL('../assets/ui/icons/starfall-core.svg', import.meta.url).href,
 };
 
+const START_ART_URL = new URL('../assets/ui/scenes/emberhollow-hero.webp', import.meta.url).href;
+const TITLE_CARD_URL = new URL('../assets/ui/title-card.svg', import.meta.url).href;
+
 const PORTRAIT_URLS = {
-  elder: new URL('../assets/ui/portraits/elder-suri.svg', import.meta.url).href,
-  smith: new URL('../assets/ui/portraits/brakka-smith.svg', import.meta.url).href,
-  bard: new URL('../assets/ui/portraits/pippin-bard.svg', import.meta.url).href,
-  cartographer: new URL('../assets/ui/portraits/mara-cartographer.svg', import.meta.url).href,
-  glassweaver: new URL('../assets/ui/portraits/ilya-glassweaver.svg', import.meta.url).href,
+  elder: new URL('../assets/ui/portraits/elder-suri.webp', import.meta.url).href,
+  smith: new URL('../assets/ui/portraits/brakka-smith.webp', import.meta.url).href,
+  bard: new URL('../assets/ui/portraits/pippin-bard.webp', import.meta.url).href,
+  cartographer: new URL('../assets/ui/portraits/mara-cartographer.webp', import.meta.url).href,
+  glassweaver: new URL('../assets/ui/portraits/ilya-glassweaver.webp', import.meta.url).href,
   choirKing: new URL('../assets/ui/portraits/choir-king.svg', import.meta.url).href,
 };
 
@@ -189,8 +192,22 @@ export class EmberhollowGame {
     localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
   }
 
+  resetInputState() {
+    this.input.keys.clear();
+    this.input.movePad.set(0, 0);
+    this.input.lookPad.set(0, 0);
+    this.input.movePointer = null;
+    this.input.lookPointer = null;
+    this.dom.moveThumb.style.transform = 'translate(0px, 0px)';
+    this.dom.lookThumb.style.transform = 'translate(0px, 0px)';
+  }
+
   bindEvents() {
     window.addEventListener('resize', () => this.onResize());
+    window.addEventListener('blur', () => this.resetInputState());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.resetInputState();
+    });
 
     window.addEventListener('keydown', (event) => {
       if (event.code === 'Tab') {
@@ -240,6 +257,7 @@ export class EmberhollowGame {
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === this.dom.canvas;
       if (!this.pointerLocked && !this.overlayVisible && !this.isTouch) {
+        this.resetInputState();
         this.openPauseMenu();
       }
     });
@@ -324,6 +342,7 @@ export class EmberhollowGame {
       this.state = defaultState();
       this.saveState();
     }
+    this.resetInputState();
     await this.audio.resume();
     this.hideModal(true);
     this.loadLevel(this.state.levelId || 'town', this.state.spawnTag || 'default');
@@ -332,14 +351,15 @@ export class EmberhollowGame {
   showStartScreen() {
     const hasSave = !!localStorage.getItem(SAVE_KEY);
     const controls = this.isTouch
-      ? 'Move with the left pad, look with the right pad, and use the buttons for shoot, interact, dash, hook, and nova.'
-      : 'WASD move, mouse look, left click shoot, E interact, Q hook, Space or right click dash, F nova, Tab journal.';
+      ? 'Left pad moves, right pad looks, and the action buttons handle shoot, interact, dash, hook, and nova.'
+      : 'W moves forward, S moves back, A and D strafe, Shift sprints, mouse looks, left click shoots, E interacts, Q uses the hook, Space or right click dashes, F casts nova, Tab opens the journal, and Esc pauses.';
     const featurePills = [
       'Bellroot and Starlight Row',
       'Archive side path',
       'Relics and shrine upgrades',
       'Boss nova reward',
-      'Local soundtrack',
+      'Painted key art',
+      'Illustrated portraits',
       'Modular level data',
     ].map((label) => `<span class="feature-pill">${label}</span>`).join('');
 
@@ -347,7 +367,10 @@ export class EmberhollowGame {
       panelClass: 'start-panel',
       html: `
         <section class="start-hero">
-          <img class="start-art" src="./assets/ui/title-card.svg" alt="Emberhollow title art" />
+          <figure class="start-visual">
+            <img class="start-art" src="${START_ART_URL}" alt="Bellroot Town and Echo Cave at dusk" />
+            <img class="start-brand" src="${TITLE_CARD_URL}" alt="" />
+          </figure>
           <div class="start-copy">
             <div class="modal-eyebrow">Three.js Adventure</div>
             <h2 class="modal-title">Bellroot is open. Echo Cave is waiting.</h2>
@@ -359,7 +382,7 @@ export class EmberhollowGame {
             </section>
             <section class="start-card">
               <h3>Run Notes</h3>
-              <p>Autosaves on transitions, relic claims, important pickups, and boss milestones. The score and UI sigils load locally with the game.</p>
+              <p>Autosaves on transitions, relic claims, important pickups, and boss milestones. The score is generated live, and the launch UI now ships with local illustrated art assets.</p>
             </section>
           </div>
         </section>
@@ -449,6 +472,7 @@ export class EmberhollowGame {
   }) {
     this.overlayVisible = true;
     this.dom.overlay.classList.remove('hidden');
+    this.resetInputState();
     this.dom.overlay.dataset.mode = panelClass || 'default';
     this.dom.panel.className = ['overlay-panel', 'glass', panelClass].filter(Boolean).join(' ');
 
@@ -485,6 +509,7 @@ export class EmberhollowGame {
   hideModal(requestLock = false) {
     this.overlayVisible = false;
     this.dom.overlay.classList.add('hidden');
+    this.resetInputState();
     this.dom.overlay.dataset.mode = 'default';
     this.dom.panel.className = 'overlay-panel glass';
     if (requestLock && !this.isTouch) this.requestPointerLock();
@@ -1436,7 +1461,7 @@ export class EmberhollowGame {
 
     if (this.isTouch) {
       this.player.yaw -= this.input.lookPad.x * dt * 2.4;
-      this.player.pitch += this.input.lookPad.y * dt * 2.1;
+      this.player.pitch -= this.input.lookPad.y * dt * 2.1;
       this.player.pitch = clamp(this.player.pitch, -1.15, 1.15);
     }
 
@@ -1449,18 +1474,19 @@ export class EmberhollowGame {
 
     const move = new THREE.Vector2(
       (this.input.keys.has('KeyD') ? 1 : 0) - (this.input.keys.has('KeyA') ? 1 : 0) + this.input.movePad.x,
-      (this.input.keys.has('KeyS') ? 1 : 0) - (this.input.keys.has('KeyW') ? 1 : 0) + this.input.movePad.y,
+      (this.input.keys.has('KeyW') ? 1 : 0) - (this.input.keys.has('KeyS') ? 1 : 0) - this.input.movePad.y,
     );
 
     const moving = move.lengthSq() > 0.02;
     if (moving) move.normalize();
 
-    const forward = new THREE.Vector3(Math.sin(this.player.yaw), 0, Math.cos(this.player.yaw));
-    const right = new THREE.Vector3(forward.z, 0, -forward.x);
-    const moveDir = new THREE.Vector3().addScaledVector(right, move.x).addScaledVector(forward, -move.y);
+    const forward = new THREE.Vector3(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
+    const right = new THREE.Vector3(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
+    const moveDir = new THREE.Vector3().addScaledVector(right, move.x).addScaledVector(forward, move.y);
     if (moveDir.lengthSq() > 0) moveDir.normalize();
 
-    let speed = this.player.moveSpeed * (this.input.keys.has('ShiftLeft') ? this.player.sprint : 1);
+    const sprinting = this.input.keys.has('ShiftLeft') || this.input.keys.has('ShiftRight');
+    let speed = this.player.moveSpeed * (sprinting ? this.player.sprint : 1);
     if (this.player.dashTimer > 0) {
       this.player.dashTimer -= dt;
       speed *= 3.7;

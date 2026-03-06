@@ -1,106 +1,128 @@
 ﻿const AudioCtor = window.AudioContext || window.webkitAudioContext;
 
-const THEME_NAMES = ['town', 'moss', 'reservoir', 'echo', 'forge', 'market', 'archive', 'boss'];
-const THEME_ASSETS = Object.fromEntries(
-  THEME_NAMES.map((theme) => [theme, new URL(`../assets/audio/${theme}.wav`, import.meta.url)]),
-);
+const midi = (note) => 440 * 2 ** ((note - 69) / 12);
+const patternAt = (pattern, index) => pattern[index % pattern.length];
 
 const THEME_SCORES = {
   town: {
-    stepMs: 420,
-    chords: [
-      [220, 277, 330],
-      [247, 311, 370],
-      [196, 247, 330],
-      [220, 277, 392],
-    ],
-    lead: [659, null, 784, 659, 587, null, 523, 494],
-    bass: [110, 110, 123, 123, 98, 98, 110, 123],
-    noise: 1200,
+    stepMs: 410,
+    padType: 'triangle',
+    leadType: 'sine',
+    bassType: 'triangle',
+    drone: 40,
+    drumFreq: 980,
+    shimmerFreq: 2500,
+    chords: [[52, 56, 59], [55, 59, 62], [50, 54, 57], [52, 56, 59]],
+    bass: [40, 40, 43, 43, 38, 38, 40, 43],
+    leadA: [71, 73, 75, null, 78, 75, 73, 71],
+    leadB: [68, 71, 73, 75, 73, 71, 68, null],
+    counterA: [59, null, 61, null, 63, null, 61, null],
+    bellsA: [83, null, null, 80, null, 78, null, 80],
   },
   moss: {
-    stepMs: 400,
-    chords: [
-      [174, 220, 261],
-      [196, 247, 293],
-      [165, 208, 261],
-      [174, 220, 329],
-    ],
-    lead: [329, 392, null, 349, 329, 294, null, 261],
-    bass: [87, 87, 98, 98, 82, 82, 87, 98],
-    noise: 700,
+    stepMs: 430,
+    padType: 'sine',
+    leadType: 'triangle',
+    bassType: 'triangle',
+    drone: 33,
+    drumFreq: 620,
+    shimmerFreq: 1700,
+    chords: [[48, 52, 55], [50, 53, 57], [45, 48, 52], [47, 50, 55]],
+    bass: [33, 33, 36, 36, 31, 31, 33, 36],
+    leadA: [64, 67, null, 69, 67, 64, 62, null],
+    leadB: [62, null, 64, 67, 64, 62, 60, null],
+    counterA: [55, null, 57, null, 55, null, 53, null],
+    bellsA: [76, null, null, 74, null, 72, null, null],
   },
   reservoir: {
     stepMs: 360,
-    chords: [
-      [196, 247, 294],
-      [220, 277, 330],
-      [196, 262, 330],
-      [175, 220, 294],
-    ],
-    lead: [392, 440, 494, null, 440, 392, 330, null],
-    bass: [98, 110, 98, 87, 98, 110, 98, 87],
-    noise: 1600,
+    padType: 'sine',
+    leadType: 'triangle',
+    bassType: 'triangle',
+    drone: 38,
+    drumFreq: 1500,
+    shimmerFreq: 3000,
+    chords: [[50, 53, 57], [52, 55, 59], [48, 52, 57], [47, 50, 55]],
+    bass: [38, 40, 38, 35, 38, 40, 38, 35],
+    leadA: [69, 71, 74, null, 71, 69, 66, null],
+    leadB: [66, 69, 71, 74, 71, 69, 66, 64],
+    counterA: [57, null, 59, null, 57, null, 55, null],
+    bellsA: [81, null, 78, null, 76, null, 74, null],
   },
   echo: {
-    stepMs: 340,
-    chords: [
-      [165, 208, 247],
-      [185, 233, 277],
-      [208, 247, 311],
-      [185, 233, 294],
-    ],
-    lead: [523, 587, 659, 698, 659, 587, 523, 466],
-    bass: [82, 93, 104, 93, 82, 93, 104, 93],
-    noise: 900,
+    stepMs: 335,
+    padType: 'triangle',
+    leadType: 'sine',
+    bassType: 'triangle',
+    drone: 33,
+    drumFreq: 860,
+    shimmerFreq: 2400,
+    chords: [[45, 48, 52], [50, 53, 57], [52, 55, 59], [48, 52, 55]],
+    bass: [33, 36, 38, 36, 33, 36, 38, 36],
+    leadA: [72, 74, 76, 79, 76, 74, 72, 69],
+    leadB: [69, 72, 74, 76, 74, 72, 69, 67],
+    counterA: [57, null, 60, null, 62, null, 60, null],
+    bellsA: [84, null, null, 81, null, 79, null, 81],
   },
   forge: {
-    stepMs: 320,
-    chords: [
-      [130, 164, 196],
-      [146, 185, 220],
-      [130, 174, 220],
-      [123, 164, 207],
-    ],
-    lead: [392, null, 440, 392, 349, 330, null, 294],
-    bass: [65, 73, 65, 61, 65, 73, 65, 61],
-    noise: 300,
+    stepMs: 300,
+    padType: 'square',
+    leadType: 'triangle',
+    bassType: 'square',
+    drone: 28,
+    drumFreq: 320,
+    shimmerFreq: 1600,
+    chords: [[40, 43, 47], [45, 48, 52], [43, 47, 50], [38, 42, 45]],
+    bass: [28, 31, 29, 26, 28, 31, 29, 26],
+    leadA: [67, null, 69, 67, 64, 62, null, 59],
+    leadB: [59, 62, 64, 67, 64, 62, 59, null],
+    counterA: [52, null, 50, null, 48, null, 47, null],
+    bellsA: [76, null, 74, null, null, 72, null, null],
   },
   market: {
-    stepMs: 300,
-    chords: [
-      [220, 277, 330],
-      [247, 311, 370],
-      [262, 330, 392],
-      [196, 247, 330],
-    ],
-    lead: [784, 880, 988, 880, 784, 659, 587, 659],
-    bass: [110, 123, 131, 98, 110, 123, 131, 98],
-    noise: 1800,
+    stepMs: 285,
+    padType: 'triangle',
+    leadType: 'triangle',
+    bassType: 'triangle',
+    drone: 40,
+    drumFreq: 1900,
+    shimmerFreq: 3200,
+    chords: [[52, 56, 59], [55, 59, 62], [57, 61, 64], [50, 54, 57]],
+    bass: [40, 43, 45, 38, 40, 43, 45, 38],
+    leadA: [79, 81, 83, 86, 83, 81, 79, 76],
+    leadB: [76, 79, 81, 83, 81, 79, 76, 74],
+    counterA: [64, null, 67, null, 69, null, 67, null],
+    bellsA: [88, null, 91, null, 88, null, 86, null],
   },
   archive: {
-    stepMs: 360,
-    chords: [
-      [196, 247, 311],
-      [220, 277, 330],
-      [233, 294, 349],
-      [185, 247, 311],
-    ],
-    lead: [659, null, 698, 659, 587, 523, null, 587],
-    bass: [98, 110, 117, 92, 98, 110, 117, 92],
-    noise: 1400,
+    stepMs: 350,
+    padType: 'sine',
+    leadType: 'triangle',
+    bassType: 'triangle',
+    drone: 38,
+    drumFreq: 1280,
+    shimmerFreq: 2800,
+    chords: [[50, 53, 57], [52, 55, 59], [53, 57, 60], [48, 52, 57]],
+    bass: [38, 40, 41, 36, 38, 40, 41, 36],
+    leadA: [76, null, 78, 76, 74, 71, null, 74],
+    leadB: [71, 74, 76, 78, 76, 74, 71, null],
+    counterA: [60, null, 62, null, 64, null, 62, null],
+    bellsA: [84, null, null, 81, null, 79, null, 78],
   },
   boss: {
-    stepMs: 260,
-    chords: [
-      [110, 147, 175],
-      [98, 131, 165],
-      [123, 165, 196],
-      [98, 131, 175],
-    ],
-    lead: [330, 349, 392, 466, 392, 349, 330, 294],
-    bass: [55, 49, 62, 49, 55, 49, 62, 49],
-    noise: 220,
+    stepMs: 250,
+    padType: 'sawtooth',
+    leadType: 'sawtooth',
+    bassType: 'square',
+    drone: 31,
+    drumFreq: 240,
+    shimmerFreq: 1800,
+    chords: [[43, 46, 50], [41, 45, 48], [45, 48, 52], [41, 45, 50]],
+    bass: [31, 29, 33, 29, 31, 29, 33, 29],
+    leadA: [64, 65, 67, 70, 67, 65, 64, 60],
+    leadB: [60, 64, 65, 67, 65, 64, 60, 57],
+    counterA: [52, null, 53, null, 55, null, 53, null],
+    bellsA: [76, null, 77, null, 79, null, 77, null],
   },
 };
 
@@ -111,14 +133,10 @@ export class AudioController {
     this.musicBus = null;
     this.theme = 'town';
     this.enabled = true;
-    this.timers = new Set();
+    this.musicTimers = new Set();
+    this.fxTimers = new Set();
     this.themeRunning = false;
     this.stepIndex = 0;
-    this.buffersPromise = null;
-    this.themeBuffers = new Map();
-    this.musicSource = null;
-    this.musicGain = null;
-    this.musicTheme = null;
   }
 
   ensure() {
@@ -130,7 +148,7 @@ export class AudioController {
       this.master.connect(this.ctx.destination);
 
       this.musicBus = this.ctx.createGain();
-      this.musicBus.gain.value = 0.76;
+      this.musicBus.gain.value = 0.72;
       this.musicBus.connect(this.master);
     }
     return this.ctx;
@@ -146,155 +164,36 @@ export class AudioController {
         return;
       }
     }
-    this.applyTheme(true);
-    this.loadThemeBuffers().then(() => {
-      if (this.ctx?.state === 'running') this.applyTheme(true);
-    }).catch(() => {});
+    this.startThemeLoop(true);
   }
 
-  loadThemeBuffers() {
-    const ctx = this.ensure();
-    if (!ctx) return Promise.resolve();
-    if (!this.buffersPromise) {
-      this.buffersPromise = Promise.all(
-        Object.entries(THEME_ASSETS).map(async ([theme, url]) => {
-          if (this.themeBuffers.has(theme)) return;
-          try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Theme fetch failed for ${theme}`);
-            const data = await response.arrayBuffer();
-            const buffer = await ctx.decodeAudioData(data.slice(0));
-            this.themeBuffers.set(theme, buffer);
-          } catch {
-            // Fall back to synth loops if asset decoding or loading fails.
-          }
-        }),
-      );
-    }
-    return this.buffersPromise;
-  }
-
-  clearTimers() {
-    this.timers.forEach((timer) => clearTimeout(timer));
-    this.timers.clear();
+  clearMusicTimers() {
+    this.musicTimers.forEach((timer) => clearTimeout(timer));
+    this.musicTimers.clear();
     this.themeRunning = false;
   }
 
-  queue(fn, delay) {
+  queueMusic(fn, delay) {
     const timer = setTimeout(() => {
-      this.timers.delete(timer);
+      this.musicTimers.delete(timer);
       fn();
     }, delay);
-    this.timers.add(timer);
+    this.musicTimers.add(timer);
+    return timer;
+  }
+
+  queueFx(fn, delay) {
+    const timer = setTimeout(() => {
+      this.fxTimers.delete(timer);
+      fn();
+    }, delay);
+    this.fxTimers.add(timer);
     return timer;
   }
 
   setTheme(theme) {
     this.theme = theme;
-    if (this.ctx?.state === 'running') {
-      this.applyTheme();
-      this.loadThemeBuffers().then(() => {
-        if (this.theme === theme && this.ctx?.state === 'running') this.applyTheme(true);
-      }).catch(() => {});
-    }
-  }
-
-  applyTheme(force = false) {
-    const ctx = this.ensure();
-    if (!ctx || ctx.state !== 'running') return;
-
-    if (this.startAssetTheme(force)) {
-      this.clearTimers();
-      return;
-    }
-
-    this.stopAssetTheme(force ? 0.08 : 0.4);
-    this.startThemeLoop(force);
-  }
-
-  startAssetTheme(force = false) {
-    const ctx = this.ensure();
-    const buffer = this.themeBuffers.get(this.theme);
-    if (!ctx || ctx.state !== 'running' || !buffer) return false;
-    if (!force && this.musicSource && this.musicTheme === this.theme) return true;
-
-    const source = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    const now = ctx.currentTime;
-    const targetVolume = this.theme === 'boss' ? 0.74 : this.theme === 'market' ? 0.64 : 0.56;
-
-    source.buffer = buffer;
-    source.loop = true;
-    source.connect(gain);
-    gain.connect(this.musicBus);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(targetVolume, now + (force ? 0.2 : 0.65));
-    source.start(now + 0.01);
-
-    if (this.musicSource && this.musicGain) {
-      const oldSource = this.musicSource;
-      const oldGain = this.musicGain;
-      oldGain.gain.cancelScheduledValues(now);
-      oldGain.gain.setValueAtTime(Math.max(oldGain.gain.value, 0.0001), now);
-      oldGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
-      try {
-        oldSource.stop(now + 0.82);
-      } catch {
-        // No-op if the source already stopped.
-      }
-      window.setTimeout(() => {
-        try {
-          oldSource.disconnect();
-        } catch {
-          // Ignore disconnection issues.
-        }
-        try {
-          oldGain.disconnect();
-        } catch {
-          // Ignore disconnection issues.
-        }
-      }, 1100);
-    }
-
-    this.musicSource = source;
-    this.musicGain = gain;
-    this.musicTheme = this.theme;
-    return true;
-  }
-
-  stopAssetTheme(fadeOut = 0.4) {
-    const ctx = this.ensure();
-    if (!ctx || !this.musicSource || !this.musicGain) return;
-
-    const source = this.musicSource;
-    const gain = this.musicGain;
-    const now = ctx.currentTime;
-
-    this.musicSource = null;
-    this.musicGain = null;
-    this.musicTheme = null;
-
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + fadeOut);
-    try {
-      source.stop(now + fadeOut + 0.08);
-    } catch {
-      // No-op if the source already stopped.
-    }
-
-    window.setTimeout(() => {
-      try {
-        source.disconnect();
-      } catch {
-        // Ignore disconnection issues.
-      }
-      try {
-        gain.disconnect();
-      } catch {
-        // Ignore disconnection issues.
-      }
-    }, Math.max(250, Math.round((fadeOut + 0.22) * 1000)));
+    if (this.ctx?.state === 'running') this.startThemeLoop(true);
   }
 
   tone(freq, duration, options = {}) {
@@ -303,18 +202,22 @@ export class AudioController {
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
+    const targetBus = options.bus || this.master;
     const now = ctx.currentTime + (options.delay || 0);
+    const attack = options.attack || 0.02;
+    const release = options.release || 0.08;
     oscillator.type = options.type || 'sine';
     oscillator.frequency.setValueAtTime(freq, now);
     if (options.detune) oscillator.detune.setValueAtTime(options.detune, now);
     filter.type = options.filter || 'lowpass';
     filter.frequency.value = options.cutoff || 2200;
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(options.volume ?? 0.08, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(options.volume ?? 0.08, now + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(attack + 0.01, duration - release * 0.45));
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     oscillator.connect(filter);
     filter.connect(gain);
-    gain.connect(this.master);
+    gain.connect(targetBus);
     oscillator.start(now);
     oscillator.stop(now + duration + 0.05);
   }
@@ -334,21 +237,111 @@ export class AudioController {
     source.buffer = buffer;
     source.connect(filter);
     filter.connect(gain);
-    gain.connect(this.master);
+    gain.connect(options.bus || this.master);
     source.start(ctx.currentTime + (options.delay || 0));
     source.stop(ctx.currentTime + (options.delay || 0) + duration);
   }
 
-  chord(frequencies, duration, options = {}) {
-    frequencies.forEach((freq, index) => {
-      this.tone(freq, duration, {
-        type: options.type || (index === 0 ? 'triangle' : 'sine'),
-        volume: (options.volume || 0.025) * (index === 0 ? 1 : 0.7),
-        detune: index * 4,
-        cutoff: options.cutoff || 1800,
-        delay: options.delay || 0,
+  musicTone(note, duration, options = {}) {
+    this.tone(midi(note), duration, {
+      bus: this.musicBus,
+      attack: options.attack || 0.02,
+      release: options.release || 0.12,
+      cutoff: options.cutoff || 2200,
+      volume: options.volume ?? 0.04,
+      delay: options.delay || 0,
+      detune: options.detune || 0,
+      type: options.type || 'sine',
+      filter: options.filter || 'lowpass',
+    });
+  }
+
+  playPad(chord, score, phrase) {
+    chord.forEach((note, index) => {
+      this.musicTone(note, score.stepMs / 1000 * 2.8, {
+        type: score.padType,
+        volume: index === 0 ? 0.02 : 0.015,
+        cutoff: score.padType === 'square' ? 1200 : 2000 + index * 140,
+        detune: (phrase % 2 === 0 ? 1 : -1) * index * 3,
+        attack: 0.05,
+        release: 0.35,
+      });
+      this.musicTone(note + 12, score.stepMs / 1000 * 1.9, {
+        type: 'sine',
+        volume: 0.008,
+        cutoff: 2600,
+        detune: index === 0 ? 0 : -4,
+        attack: 0.04,
+        release: 0.22,
       });
     });
+  }
+
+  playThemeStep(score, step, phrase) {
+    const chord = patternAt(score.chords, step + phrase);
+    const bass = patternAt(score.bass, step + phrase);
+    const leadPattern = phrase % 2 === 0 ? score.leadA : (score.leadB || score.leadA);
+    const lead = patternAt(leadPattern, step);
+    const counter = patternAt(score.counterA, step + phrase % 2);
+    const bell = patternAt(score.bellsA, step + phrase);
+    const stepSec = score.stepMs / 1000;
+    const isDownbeat = step % 4 === 0;
+    const isMeasureStart = step % 8 === 0;
+
+    if (isMeasureStart && score.drone) {
+      this.musicTone(score.drone + (phrase % 3 === 2 ? 12 : 0), stepSec * 7.4, {
+        type: 'sine',
+        volume: this.theme === 'boss' ? 0.012 : 0.01,
+        cutoff: 880,
+        attack: 0.3,
+        release: 0.8,
+      });
+    }
+
+    this.playPad(chord, score, phrase);
+    this.musicTone(bass, stepSec * 0.86, {
+      type: score.bassType,
+      volume: this.theme === 'boss' ? 0.032 : 0.026,
+      cutoff: score.bassType === 'square' ? 980 : 860,
+      release: 0.16,
+    });
+
+    if (lead !== null) {
+      this.musicTone(lead, stepSec * 0.7, {
+        type: score.leadType,
+        volume: this.theme === 'boss' ? 0.038 : 0.03,
+        cutoff: this.theme === 'market' ? 3000 : 2500,
+        delay: 0.03,
+        release: 0.1,
+      });
+    }
+
+    if (counter !== null && step % 2 === 1) {
+      this.musicTone(counter, stepSec * 0.4, {
+        type: 'triangle',
+        volume: 0.014,
+        cutoff: 1900,
+        delay: 0.08,
+        release: 0.08,
+      });
+    }
+
+    if (bell !== null && (isDownbeat || phrase % 2 === 1)) {
+      this.musicTone(bell, stepSec * 0.46, {
+        type: 'sine',
+        volume: 0.012,
+        cutoff: score.shimmerFreq,
+        delay: 0.05,
+        release: 0.12,
+      });
+    }
+
+    if (isDownbeat) {
+      this.noise(0.05, { bus: this.musicBus, frequency: score.drumFreq, volume: this.theme === 'boss' ? 0.05 : 0.02 });
+    }
+    if (step % 2 === 1) {
+      this.noise(0.03, { bus: this.musicBus, frequency: score.shimmerFreq, volume: this.theme === 'forge' ? 0.014 : 0.01, delay: 0.06 });
+    }
   }
 
   play(name) {
@@ -367,12 +360,12 @@ export class AudioController {
         break;
       case 'pickup':
         [523, 659, 784].forEach((freq, index) => {
-          this.queue(() => this.tone(freq, 0.14, { type: 'sine', volume: 0.05, cutoff: 2800 }), index * 70);
+          this.queueFx(() => this.tone(freq, 0.14, { type: 'sine', volume: 0.05, cutoff: 2800 }), index * 70);
         });
         break;
       case 'unlock':
         [294, 392, 523, 659].forEach((freq, index) => {
-          this.queue(() => this.tone(freq, 0.22, { type: 'triangle', volume: 0.07, cutoff: 2400 }), index * 80);
+          this.queueFx(() => this.tone(freq, 0.22, { type: 'triangle', volume: 0.07, cutoff: 2400 }), index * 80);
         });
         break;
       case 'hurt':
@@ -395,7 +388,7 @@ export class AudioController {
         break;
       case 'nova':
         [330, 494, 659, 988].forEach((freq, index) => {
-          this.queue(() => this.tone(freq, 0.24, { type: 'triangle', volume: 0.07, cutoff: 2600 }), index * 45);
+          this.queueFx(() => this.tone(freq, 0.24, { type: 'triangle', volume: 0.07, cutoff: 2600 }), index * 45);
         });
         this.noise(0.25, { frequency: 1800, volume: 0.05 });
         break;
@@ -408,55 +401,20 @@ export class AudioController {
     if (!this.enabled) return;
     const ctx = this.ensure();
     if (!ctx || ctx.state !== 'running') return;
-    if (this.musicSource) return;
     if (this.themeRunning && !force) return;
 
-    this.clearTimers();
+    this.clearMusicTimers();
     this.themeRunning = true;
     this.stepIndex = 0;
 
     const scheduleStep = () => {
-      if (!this.themeRunning || this.musicSource) return;
+      if (!this.themeRunning) return;
       const score = THEME_SCORES[this.theme] || THEME_SCORES.town;
       const step = this.stepIndex;
-      const chord = score.chords[step % score.chords.length];
-      const lead = score.lead[step % score.lead.length];
-      const bass = score.bass[step % score.bass.length];
-      const isDownbeat = step % 4 === 0;
-
-      this.chord(chord, score.stepMs / 1000 * 2.4, {
-        volume: this.theme === 'boss' ? 0.028 : 0.022,
-        cutoff: this.theme === 'market' ? 2600 : 1900,
-      });
-      this.tone(bass, score.stepMs / 1000 * 0.8, {
-        type: this.theme === 'forge' ? 'square' : 'triangle',
-        volume: 0.028,
-        cutoff: 900,
-      });
-
-      if (lead) {
-        this.tone(lead, score.stepMs / 1000 * 0.66, {
-          type: this.theme === 'market' ? 'triangle' : 'sine',
-          volume: this.theme === 'boss' ? 0.035 : 0.026,
-          cutoff: 2800,
-          delay: 0.03,
-        });
-      }
-
-      if (isDownbeat) {
-        this.noise(0.06, { frequency: score.noise, volume: this.theme === 'boss' ? 0.045 : 0.018 });
-      }
-      if (step % 2 === 1 && this.theme !== 'town') {
-        this.tone(chord[1], score.stepMs / 1000 * 0.22, {
-          type: 'triangle',
-          volume: 0.015,
-          cutoff: 2200,
-          delay: 0.12,
-        });
-      }
-
+      const phrase = Math.floor(step / 8);
+      this.playThemeStep(score, step, phrase);
       this.stepIndex += 1;
-      this.queue(scheduleStep, score.stepMs);
+      this.queueMusic(scheduleStep, score.stepMs);
     };
 
     scheduleStep();

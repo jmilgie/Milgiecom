@@ -499,13 +499,40 @@ canvas {
   align-items: start;
 }
 
+.start-visual {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.start-visual::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(6, 10, 14, 0) 0%, rgba(6, 10, 14, 0.76) 100%);
+  pointer-events: none;
+}
+
 .start-art {
   width: 100%;
   display: block;
-  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(9, 12, 18, 0.5);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.start-brand {
+  position: absolute;
+  left: 20px;
+  bottom: 18px;
+  width: min(68%, 340px);
+  z-index: 1;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
 }
 
 .start-copy {
