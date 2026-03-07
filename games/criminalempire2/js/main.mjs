@@ -35,6 +35,7 @@ import { EmpireUI } from "./ui.mjs";
 const audio = new AudioDirector();
 
 let state = loadState() || createInitialState();
+let simulationStarted = false;
 const now = Date.now();
 state.settings.reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
 if (!state.contracts?.length) {
@@ -223,11 +224,16 @@ function render() {
 
 document.getElementById("introStart").addEventListener("click", async () => {
   document.getElementById("introScreen").classList.add("hidden");
+  simulationStarted = true;
+  state.lastTickAt = Date.now();
   await audio.boot();
   render();
 });
 
 window.setInterval(() => {
+  if (!simulationStarted) {
+    return;
+  }
   tickState(state, Date.now());
   render();
 }, 400);
@@ -237,6 +243,9 @@ window.setInterval(() => {
 }, 5000);
 
 document.addEventListener("visibilitychange", () => {
+  if (!simulationStarted) {
+    return;
+  }
   if (document.hidden) {
     saveState(state);
   } else {

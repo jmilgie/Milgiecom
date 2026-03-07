@@ -57,6 +57,7 @@ function launchSafeGame(root, config) {
   let targetStart = 20;
   let targetSize = 28;
   let finished = false;
+  let roundLocked = false;
 
   const finish = (score) => {
     if (finished) {
@@ -83,6 +84,8 @@ function launchSafeGame(root, config) {
     resultLabel.textContent = round === 1 ? "Keep it steady." : "Tighter window. Stay cool.";
     current = 0;
     direction = 1;
+    roundLocked = false;
+    stopButton.disabled = false;
   };
 
   const animate = () => {
@@ -99,6 +102,12 @@ function launchSafeGame(root, config) {
   };
 
   const stopNeedle = () => {
+    if (finished || roundLocked) {
+      return;
+    }
+    roundLocked = true;
+    stopButton.disabled = true;
+
     const targetCenter = targetStart + targetSize / 2;
     const distance = Math.abs(current - targetCenter);
     const success = distance <= targetSize / 2;
@@ -128,9 +137,7 @@ function launchSafeGame(root, config) {
 
 function launchSignalGame(root, config) {
   const stage = buildShell(root, "Glitch Veil", "Repeat the node sequence before the trace closes.");
-  const tiles = Array.from({ length: 9 }, (_, index) => {
-    return `<button class="signal-tile" type="button" data-signal-index="${index}">${index + 1}</button>`;
-  }).join("");
+  const tiles = Array.from({ length: 9 }, (_, index) => `<button class="signal-tile" type="button" data-signal-index="${index}">${index + 1}</button>`).join("");
   stage.innerHTML = `
     <div class="mini-metric">Repeat 4 steps</div>
     <div class="signal-grid">${tiles}</div>
@@ -158,7 +165,9 @@ function launchSignalGame(root, config) {
       return;
     }
     finished = true;
-    buttons.forEach((button) => button.disabled = true);
+    buttons.forEach((button) => {
+      button.disabled = true;
+    });
     resolvePromise(clamp(score, 0, 1));
   };
 
@@ -184,9 +193,11 @@ function launchSignalGame(root, config) {
       if (!accepting || finished) {
         return;
       }
+
       const index = Number(button.dataset.signalIndex);
       button.classList.add("lit");
       window.setTimeout(() => button.classList.remove("lit"), 180);
+
       if (index === sequence[pointer]) {
         pointer += 1;
         if (pointer >= sequence.length) {
@@ -213,7 +224,7 @@ function launchSignalGame(root, config) {
 function launchChaseGame(root, config) {
   const stage = buildShell(root, "Hammer Exit", "Stay off the barricades until the tunnel opens.");
   stage.innerHTML = `
-    <div class="mini-metric">Survive 10 seconds · 3 integrity</div>
+    <div class="mini-metric">Survive 10 seconds / 3 integrity</div>
     <div class="chase-shell">
       <div class="chase-road" id="chaseRoad"></div>
       <div class="chase-car lane-1" id="chaseCar"></div>

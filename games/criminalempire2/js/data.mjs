@@ -1,5 +1,5 @@
 export const SAVE_KEY = "criminalEmpire2Save";
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export const PANEL_TABS = [
   { id: "city", label: "City" },
@@ -296,7 +296,7 @@ export const LEGACY_UPGRADES = [
 
 export const DOSSIERS = [
   { id: "d1", name: "Own The Strip", desc: "Seize your first district.", type: "districtsSeized", goal: 1 },
-  { id: "d2", name: "Shine The Money", desc: "Launder $25K clean cash.", type: "lifetimeClean", goal: 25000 },
+  { id: "d2", name: "Shine The Money", desc: "Launder $25K through your fronts.", type: "cleanLaundered", goal: 25000 },
   { id: "d3", name: "Crew In Place", desc: "Reach full starting crew cap.", type: "crewCount", goal: 4 },
   { id: "d4", name: "Window After Window", desc: "Finish 5 heists.", type: "heistsWon", goal: 5 },
   { id: "d5", name: "Three Neon Crowns", desc: "Control 3 districts.", type: "districtsSeized", goal: 3 },

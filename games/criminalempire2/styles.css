@@ -167,6 +167,7 @@ select {
 .summary-chip,
 .status-card,
 .hero-metric,
+.heist-preview div,
 .odds-card div,
 .mini-columns div,
 .micro-grid div {
@@ -179,6 +180,7 @@ select {
 .summary-chip strong,
 .status-card strong,
 .hero-metric strong,
+.heist-preview strong,
 .mini-columns strong,
 .odds-card strong,
 .micro-grid strong {
@@ -304,15 +306,22 @@ select {
   margin-top: 18px;
 }
 
+.ops-layout .section-block + .section-block {
+  margin-top: 0;
+}
+
 .hero-metrics,
 .status-grid,
 .district-stats-row,
 .district-actions,
 .mini-columns,
+.heist-preview,
 .odds-card,
 .stat-row,
 .asset-metrics,
 .card-actions,
+.heist-checklist,
+.legacy-summary,
 .intro-pills,
 .ops-list,
 .micro-grid {
@@ -324,6 +333,7 @@ select {
 .status-grid,
 .district-stats-row,
 .mini-columns,
+.heist-preview,
 .micro-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -331,6 +341,15 @@ select {
 .district-actions,
 .card-actions {
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.heist-checklist {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.legacy-summary {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
 }
 
 .chase-controls {
@@ -352,6 +371,7 @@ select {
 }
 
 .surge-shell,
+.hero-callout,
 .stress-shell,
 .legacy-summary,
 .detail-panel,
@@ -367,6 +387,11 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.035);
   padding: 16px;
+}
+
+.hero-callout strong {
+  display: block;
+  margin-top: 6px;
 }
 
 .progress {
@@ -481,7 +506,8 @@ select {
 .crew-grid,
 .legacy-grid,
 .contract-list,
-.prep-grid {
+.prep-grid,
+.ops-layout {
   display: grid;
   gap: 14px;
 }
@@ -496,6 +522,33 @@ select {
 .contract-list,
 .prep-grid {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.prep-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.heist-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.heist-chip.good {
+  border-color: rgba(125, 255, 176, 0.28);
+  color: var(--lime);
+}
+
+.heist-chip.warn {
+  border-color: rgba(255, 191, 82, 0.3);
+  color: #ffdca0;
 }
 
 .district-card.controlled,
@@ -585,19 +638,37 @@ select {
 
 .crew-pick {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   padding: 12px;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
+  min-height: 92px;
+  cursor: pointer;
 }
 
 .crew-pick.selected {
   border-color: rgba(255, 191, 82, 0.4);
+  background: linear-gradient(135deg, rgba(255, 191, 82, 0.12), rgba(91, 232, 255, 0.08));
 }
 
 .crew-pick.disabled {
   opacity: 0.45;
+}
+
+.crew-pick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.crew-pick strong {
+  display: block;
+}
+
+.crew-pick span,
+.crew-pick small {
+  color: var(--muted);
 }
 
 .select-wrap,
@@ -840,6 +911,9 @@ select {
   .status-grid,
   .district-stats-row,
   .mini-columns,
+  .heist-preview,
+  .heist-checklist,
+  .legacy-summary,
   .micro-grid,
   .summary-strip {
     grid-template-columns: 1fr;
@@ -872,5 +946,15 @@ select {
   .rail-frame,
   .main-frame {
     padding: 14px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .ops-layout {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  }
+
+  .active-ops-block {
+    grid-column: 1 / -1;
   }
 }

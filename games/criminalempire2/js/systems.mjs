@@ -18,7 +18,7 @@ export function clamp(value, min, max) {
 }
 
 function chance(ratePerSecond, dtSeconds) {
-  return Math.random() < ratePerSecond * dtSeconds;
+  return Math.random() < clamp(ratePerSecond * dtSeconds, 0, 1);
 }
 
 function randomBetween(min, max) {
@@ -26,6 +26,9 @@ function randomBetween(min, max) {
 }
 
 function randomItem(list) {
+  if (!list.length) {
+    return null;
+  }
   return list[Math.floor(Math.random() * list.length)];
 }
 
@@ -198,7 +201,7 @@ export function getPromotionCost(crew) {
 export function estimateLegacyGain(state) {
   const districtPoints = (state.stats?.districtsSeized || 0) * 2;
   const heistPoints = Math.floor((state.stats?.heistsWon || 0) / 5);
-  const cleanPoints = Math.floor((state.stats?.lifetimeClean || 0) / 40000);
+  const cleanPoints = Math.floor((state.stats?.cleanLaundered || 0) / 28000);
   const dirtyPoints = Math.floor((state.stats?.lifetimeDirty || 0) / 140000);
   const bonus = Math.floor(((getControlledDistrictBonuses(state).legacyBoost || 0) + (getLegacyBonuses(state).legacyBoost || 0)) * 4);
   return Math.max(0, districtPoints + heistPoints + cleanPoints + dirtyPoints + bonus);
@@ -227,8 +230,13 @@ function addDirtyRevenue(state, amount) {
 
 function addCleanRevenue(state, amount) {
   state.cleanCash += amount;
-  state.stats.cleanLaundered += amount;
+  state.stats.cleanEarned += amount;
   state.stats.lifetimeClean += amount;
+}
+
+function addLaunderedRevenue(state, amount) {
+  addCleanRevenue(state, amount);
+  state.stats.cleanLaundered += amount;
 }
 
 function addIntel(state, amount) {
@@ -257,9 +265,9 @@ function getAssignmentKey(kind, districtId, assetId) {
   return `${kind}:${districtId}:${assetId}`;
 }
 
-function buildAssignmentMap(state) {
+function buildAssignmentMap(state, now) {
   return state.crew.reduce((accumulator, crew) => {
-    if (crew.busyUntil > Date.now()) {
+    if (crew.busyUntil > now) {
       return accumulator;
     }
     if (crew.assignmentKey && crew.assignmentKey !== "idle" && crew.assignmentKey !== "rest") {
@@ -273,8 +281,8 @@ function getCrewEffectiveLoyalty(crew) {
   return crew.loyalty + getTraitEffects(crew).loyaltyShift;
 }
 
-function getCrewAssignmentLabel(state, crew) {
-  if (crew.busyUntil > Date.now()) {
+function getCrewAssignmentLabel(state, crew, now) {
+  if (crew.busyUntil > now) {
     return crew.busyType === "prep" ? "On prep" : "Busy";
   }
   if (crew.assignmentKey === "rest") {
@@ -288,7 +296,7 @@ function getCrewAssignmentLabel(state, crew) {
   const assetDef = kind === "front"
     ? districtDef.fronts.find((entry) => entry.id === assetId)
     : districtDef.rackets.find((entry) => entry.id === assetId);
-  return `${assetDef?.name || "Assigned"} · ${districtDef.shortName}`;
+  return `${assetDef?.name || "Assigned"} / ${districtDef.shortName}`;
 }
 
 function getCrewAssetBonus(crew, kind, definition) {
@@ -310,13 +318,11 @@ function getCrewAssetBonus(crew, kind, definition) {
 }
 
 function getDistrictBonusAggregate(state) {
-  return {
-    ...getLegacyBonuses(state),
-    ...Object.entries(getControlledDistrictBonuses(state)).reduce((accumulator, [key, value]) => {
-      accumulator[key] = (accumulator[key] || 0) + value;
-      return accumulator;
-    }, { ...getLegacyBonuses(state) }),
-  };
+  const combined = { ...getLegacyBonuses(state) };
+  Object.entries(getControlledDistrictBonuses(state)).forEach(([key, value]) => {
+    combined[key] = (combined[key] || 0) + value;
+  });
+  return combined;
 }
 
 function getCityBeatMods(state, now) {
@@ -371,7 +377,7 @@ export function rollContracts(state, now = Date.now()) {
       name: template.name,
       desc: template.desc,
       type: template.type,
-      districtId: randomItem(availableDistricts),
+      districtId: randomItem(availableDistricts) || DISTRICTS[0].id,
       target,
       reward: {},
       claimed: false,
@@ -494,7 +500,7 @@ function getCrewAssignmentOptions(state, crew, assignmentsByKey) {
           return;
         }
         const assetDef = districtDef.rackets.find((entry) => entry.id === assetState.id);
-        options.push({ value: key, label: `${districtDef.shortName} · ${assetDef.name}` });
+        options.push({ value: key, label: `${districtDef.shortName} / ${assetDef.name}` });
       });
       districtState.fronts.forEach((assetState) => {
         if (assetState.level <= 0) {
@@ -506,7 +512,7 @@ function getCrewAssignmentOptions(state, crew, assignmentsByKey) {
           return;
         }
         const assetDef = districtDef.fronts.find((entry) => entry.id === assetState.id);
-        options.push({ value: key, label: `${districtDef.shortName} · ${assetDef.name}` });
+        options.push({ value: key, label: `${districtDef.shortName} / ${assetDef.name}` });
       });
     });
 
@@ -521,7 +527,7 @@ export function calculateDerived(state, now = Date.now()) {
   const beat = cityBeatSummary(state, now);
   const beatMods = getCityBeatMods(state, now);
   const manhunt = getManhuntStage(state.globalHeat);
-  const assignmentsByKey = buildAssignmentMap(state);
+  const assignmentsByKey = buildAssignmentMap(state, now);
   const surgeActive = state.surgeUntil > now;
   const crewCap = state.crewCapBase + (bonusStack.crewCap || 0);
   const operations = [...state.operations].sort((a, b) => a.endsAt - b.endsAt);
@@ -611,6 +617,17 @@ export function calculateDerived(state, now = Date.now()) {
     });
     const heistChance = computeHeistChance(state, districtState, districtDef.heist, selectedApproach, cleanedCrewIds, 0.5, now);
     const prepDoneCount = Object.values(districtState.heist.prepDone || {}).filter(Boolean).length;
+    const prepEffects = districtDef.heist.preps.reduce(
+      (accumulator, prep) => {
+        if (districtState.heist.prepDone[prep.id]) {
+          accumulator.reward += prep.effect.reward || 0;
+          accumulator.clean += prep.effect.clean || 0;
+          accumulator.heat += prep.effect.heat || 0;
+        }
+        return accumulator;
+      },
+      { reward: 0, clean: 0, heat: 0 },
+    );
     const previousDistrict = DISTRICTS[DISTRICTS.findIndex((entry) => entry.id === districtDef.id) - 1];
     const previousState = previousDistrict ? findDistrictState(state, previousDistrict.id) : null;
     const canUnlock =
@@ -622,6 +639,26 @@ export function calculateDerived(state, now = Date.now()) {
       districtState.control >= 100 &&
       state.cleanCash >= districtDef.seizeCost.clean &&
       state.intel >= districtDef.seizeCost.intel;
+
+    const heistBlockers = [];
+    if (districtState.heist.cooldownUntil > now) {
+      heistBlockers.push({ tone: "warn", label: "Cooling down" });
+    }
+    if (state.intel < districtDef.heist.intelCost) {
+      heistBlockers.push({ tone: "warn", label: `Need ${districtDef.heist.intelCost - state.intel} more intel` });
+    }
+    if (cleanedCrewIds.length < selectedApproach.minCrew) {
+      heistBlockers.push({ tone: "warn", label: `Need ${selectedApproach.minCrew - cleanedCrewIds.length} more crew` });
+    }
+    if (!heistBlockers.length && prepDoneCount < districtDef.heist.preps.length) {
+      heistBlockers.push({ tone: "good", label: `${districtDef.heist.preps.length - prepDoneCount} prep slots still optional` });
+    }
+
+    const dirtyPreviewMin = Math.floor(districtDef.heist.dirtyReward[0] * selectedApproach.rewardMult * (1 + prepEffects.reward));
+    const dirtyPreviewMax = Math.floor(districtDef.heist.dirtyReward[1] * selectedApproach.rewardMult * (1.24 + prepEffects.reward));
+    const cleanPreviewMin = Math.floor(districtDef.heist.cleanReward[0] * (1 + prepEffects.clean));
+    const cleanPreviewMax = Math.floor(districtDef.heist.cleanReward[1] * (1.2 + prepEffects.clean));
+    const heatPreview = districtDef.heist.heat * selectedApproach.heatMult * (1 + prepEffects.heat);
 
     return {
       def: districtDef,
@@ -644,6 +681,14 @@ export function calculateDerived(state, now = Date.now()) {
         prepDoneCount,
         ready: districtState.heist.cooldownUntil <= now && state.intel >= districtDef.heist.intelCost && cleanedCrewIds.length >= selectedApproach.minCrew,
         cooldownRemainingMs: Math.max(0, districtState.heist.cooldownUntil - now),
+        blockers: heistBlockers,
+        preview: {
+          dirtyMin: dirtyPreviewMin,
+          dirtyMax: dirtyPreviewMax,
+          cleanMin: cleanPreviewMin,
+          cleanMax: cleanPreviewMax,
+          heat: heatPreview,
+        },
       },
       canUnlock,
       canSeize,
@@ -668,7 +713,7 @@ export function calculateDerived(state, now = Date.now()) {
     archetype: getArchetype(member.archetypeId),
     positiveTrait: getPositiveTrait(member.positiveTraitId),
     negativeTrait: getNegativeTrait(member.negativeTraitId),
-    statusLabel: getCrewAssignmentLabel(state, member),
+    statusLabel: getCrewAssignmentLabel(state, member, now),
     effectiveLoyalty: getCrewEffectiveLoyalty(member),
     promotionCost: getPromotionCost(member),
     assignmentOptions: getCrewAssignmentOptions(state, member, assignmentsByKey),
@@ -696,6 +741,9 @@ export function calculateDerived(state, now = Date.now()) {
         break;
       case "lifetimeClean":
         current = state.stats.lifetimeClean;
+        break;
+      case "cleanLaundered":
+        current = state.stats.cleanLaundered;
         break;
       case "crewCount":
         current = state.crew.length;
@@ -758,7 +806,7 @@ export function setPanel(state, panelId) {
 }
 
 export function selectDistrict(state, districtId) {
-  if (findDistrictState(state, districtId)?.unlocked) {
+  if (findDistrictState(state, districtId)) {
     state.selectedDistrictId = districtId;
   }
 }
@@ -872,10 +920,10 @@ export function setHeistApproach(state, districtId, approachId) {
   return true;
 }
 
-export function toggleHeistCrew(state, districtId, crewId) {
+export function toggleHeistCrew(state, districtId, crewId, now = Date.now()) {
   const draft = state.heistDrafts[districtId];
   const crew = state.crew.find((member) => member.id === crewId);
-  if (!draft || !crew || crew.busyUntil > Date.now()) {
+  if (!draft || !crew || crew.busyUntil > now) {
     return false;
   }
   if (draft.crewIds.includes(crewId)) {
@@ -889,14 +937,14 @@ export function toggleHeistCrew(state, districtId, crewId) {
   return true;
 }
 
-export function assignCrew(state, crewId, assignmentKey) {
+export function assignCrew(state, crewId, assignmentKey, now = Date.now()) {
   const crew = state.crew.find((member) => member.id === crewId);
-  if (!crew || crew.busyUntil > Date.now()) {
+  if (!crew || crew.busyUntil > now) {
     return false;
   }
   if (assignmentKey !== "idle" && assignmentKey !== "rest") {
     state.crew.forEach((member) => {
-      if (member.id !== crew.id && member.assignmentKey === assignmentKey && member.busyUntil <= Date.now()) {
+      if (member.id !== crew.id && member.assignmentKey === assignmentKey && member.busyUntil <= now) {
         member.assignmentKey = "idle";
       }
     });
@@ -1151,7 +1199,7 @@ export function resolveHeistRun(state, run, performanceScore, now = Date.now()) 
     success ? "heist" : "heat",
     success ? `${heistDef.name} landed` : `${heistDef.name} burned`,
     success
-      ? `+${Math.floor(dirtyGain).toLocaleString()} dirty · +${Math.floor(cleanGain).toLocaleString()} clean`
+      ? `+${Math.floor(dirtyGain).toLocaleString()} dirty / +${Math.floor(cleanGain).toLocaleString()} clean`
       : "The city held, but the crew got out alive.",
     now,
   );
@@ -1187,7 +1235,7 @@ export function claimContract(state, contractId, now = Date.now()) {
     state,
     "contract",
     `${contract.name} complete`,
-    `+${contract.reward.dirty.toLocaleString()} dirty · +${contract.reward.clean.toLocaleString()} clean · +${contract.reward.intel} intel`,
+    `+${contract.reward.dirty.toLocaleString()} dirty / +${contract.reward.clean.toLocaleString()} clean / +${contract.reward.intel} intel`,
     now,
   );
   return true;
@@ -1290,7 +1338,7 @@ export function tickState(state, now = Date.now()) {
       if (dirtyTaken > dirtyFromState) {
         dirtyGain -= dirtyTaken - dirtyFromState;
       }
-      addCleanRevenue(state, cleanCreated);
+      addLaunderedRevenue(state, cleanCreated);
     }
 
     if (districtState.lockUntil > 0 && districtState.lockUntil <= now) {

@@ -32,11 +32,46 @@ function pct(value) {
 }
 
 function compactList(list) {
-  return list.length ? list.join(" · ") : "None";
+  return list.length ? list.join(" / ") : "None";
 }
 
 function titleCase(input) {
   return input.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function fmtMoneyRange(min, max) {
+  return `${fmtMoney(min)} to ${fmtMoney(max)}`;
+}
+
+function describePrepEffects(effect) {
+  const parts = [];
+  if (effect.success) {
+    parts.push(`+${Math.round(effect.success * 100)}% success`);
+  }
+  if (effect.reward) {
+    parts.push(`+${Math.round(effect.reward * 100)}% dirty`);
+  }
+  if (effect.clean) {
+    parts.push(`+${Math.round(effect.clean * 100)}% clean`);
+  }
+  if (effect.heat) {
+    parts.push(`${Math.round(effect.heat * 100)}% heat shift`);
+  }
+  return parts.join(" / ") || "Makes the window cleaner.";
+}
+
+function heistButtonLabel(selected, availableIntel) {
+  const approach = selected.heist.def.approaches.find((entry) => entry.id === selected.heist.draft.approachId) || selected.heist.def.approaches[0];
+  if (selected.heist.cooldownRemainingMs > 0) {
+    return `Cooldown ${fmtTime(selected.heist.cooldownRemainingMs)}`;
+  }
+  if (availableIntel < selected.heist.def.intelCost) {
+    return `Need ${selected.heist.def.intelCost - availableIntel} intel`;
+  }
+  if (selected.heist.draft.crewIds.length < approach.minCrew) {
+    return `Need ${approach.minCrew - selected.heist.draft.crewIds.length} crew`;
+  }
+  return "Run the job";
 }
 
 export class EmpireUI {
@@ -143,6 +178,13 @@ export class EmpireUI {
       if (target.matches("[data-heist-crew]")) {
         this.handlers.onToggleHeistCrew(target.dataset.districtId, target.dataset.crewId);
       }
+      if (target.matches("[data-prep-select]")) {
+        const card = target.closest(".prep-card");
+        const button = card?.querySelector("[data-start-prep]");
+        if (button) {
+          button.disabled = !target.value;
+        }
+      }
     });
   }
 
@@ -189,8 +231,8 @@ export class EmpireUI {
           <strong>${fmtMoney(derived.totals.cleanPerSec)}</strong>
         </div>
         <div class="hero-metric">
-          <span>Active Ops</span>
-          <strong>${fmtNumber(derived.operations.length)}</strong>
+          <span>Ready crews</span>
+          <strong>${derived.crew.filter((entry) => !entry.isBusy).length}</strong>
         </div>
       </div>
       <button class="hustle-button" type="button" data-action="hustle">
@@ -200,9 +242,13 @@ export class EmpireUI {
       <div class="surge-shell">
         <div class="surge-label">
           <span>Surge</span>
-          <strong>${derived.surgeActive ? `LIVE · ${fmtTime(derived.surgeRemainingMs)}` : `${Math.round(state.surge)} / 100`}</strong>
+          <strong>${derived.surgeActive ? `LIVE / ${fmtTime(derived.surgeRemainingMs)}` : `${Math.round(state.surge)} / 100`}</strong>
         </div>
         <div class="progress"><span style="width:${derived.surgeActive ? 100 : state.surge}%"></span></div>
+      </div>
+      <div class="hero-callout">
+        <span>Heist crew</span>
+        <strong>${selected.heist.draft.crewIds.length ? selected.heist.draft.crewIds.map((crewId) => derived.crew.find((entry) => entry.crew.id === crewId)?.crew.name || "").filter(Boolean).join(", ") : "No crew drafted"}</strong>
       </div>
     `;
 
@@ -224,7 +270,7 @@ export class EmpireUI {
         <div class="status-card">
           <span>Control</span>
           <strong>${Math.round(selected.state.control)}%</strong>
-          <small>${selected.state.controlled ? "Secured" : "In play"}</small>
+          <small>${selected.state.controlled ? "Secured" : selected.state.unlocked ? "In play" : "Locked"}</small>
         </div>
         <div class="status-card">
           <span>City Beat</span>
@@ -250,10 +296,9 @@ export class EmpireUI {
             style="left:${district.def.map.x}%;top:${district.def.map.y}%"
             data-action="select-district"
             data-district-id="${district.def.id}"
-            ${district.state.unlocked ? "" : "disabled"}
           >
             <span>${district.def.shortName}</span>
-            <small>${district.state.unlocked ? `${Math.round(district.state.control)}%` : "Locked"}</small>
+            <small>${district.state.unlocked ? `${Math.round(district.state.control)}% control` : "Locked"}</small>
           </button>
         `).join("")}
       </div>
@@ -271,7 +316,7 @@ export class EmpireUI {
         </div>
         <div class="progress"><span style="width:${selected.state.control}%"></span></div>
         <div class="district-actions">
-          ${selected.canUnlock ? `<button class="neon-btn" type="button" data-action="unlock-district" data-district-id="${selected.def.id}">Unlock ${fmtMoney(selected.def.unlockCost.clean)} · ${selected.def.unlockCost.intel} intel</button>` : ""}
+          ${selected.canUnlock ? `<button class="neon-btn" type="button" data-action="unlock-district" data-district-id="${selected.def.id}">Unlock / ${fmtMoney(selected.def.unlockCost.clean)} / ${selected.def.unlockCost.intel} intel</button>` : ""}
           ${selected.canSeize ? `<button class="neon-btn gold" type="button" data-action="seize-district" data-district-id="${selected.def.id}">Seize district</button>` : ""}
           <span class="bonus-pill">${selected.def.bonus.label}</span>
         </div>
@@ -305,7 +350,7 @@ export class EmpireUI {
           <div><span>Launder rate</span><strong>${fmtMoney(derived.totals.launderPerSec)}</strong></div>
           <div><span>Avg heat</span><strong>${Math.round(derived.totals.averageHeat)}%</strong></div>
           <div><span>Crew</span><strong>${state.crew.length}/${derived.crewCap}</strong></div>
-          <div><span>Legacy</span><strong>${derived.projectedLegacy} LP</strong></div>
+          <div><span>Washed total</span><strong>${fmtMoney(state.stats.cleanLaundered)}</strong></div>
         </div>
       </div>
     `;
@@ -359,7 +404,7 @@ export class EmpireUI {
               <p>${district.def.flavor}</p>
               <div class="progress"><span style="width:${district.state.control}%"></span></div>
               <div class="card-actions">
-                <button class="ghost-btn" type="button" data-action="select-district" data-district-id="${district.def.id}" ${district.state.unlocked ? "" : "disabled"}>Focus</button>
+                <button class="ghost-btn" type="button" data-action="select-district" data-district-id="${district.def.id}">Focus</button>
                 ${district.canUnlock ? `<button class="neon-btn" type="button" data-action="unlock-district" data-district-id="${district.def.id}">Unlock</button>` : ""}
                 ${district.canSeize ? `<button class="neon-btn gold" type="button" data-action="seize-district" data-district-id="${district.def.id}">Seize</button>` : ""}
               </div>
@@ -383,86 +428,125 @@ export class EmpireUI {
 
   renderOpsPanel(state, derived, selected) {
     const availableCrew = derived.crew.filter((entry) => !entry.isBusy);
+    const selectedApproach = selected.heist.def.approaches.find((entry) => entry.id === selected.heist.draft.approachId) || selected.heist.def.approaches[0];
+    const heistStatus = [
+      {
+        tone: state.intel >= selected.heist.def.intelCost ? "good" : "warn",
+        label: `Intel ${state.intel}/${selected.heist.def.intelCost}`,
+      },
+      {
+        tone: selected.heist.draft.crewIds.length >= selectedApproach.minCrew ? "good" : "warn",
+        label: `Crew ${selected.heist.draft.crewIds.length}/${selectedApproach.minCrew}`,
+      },
+      {
+        tone: selected.heist.prepDoneCount > 0 ? "good" : "warn",
+        label: `Prep ${selected.heist.prepDoneCount}/${selected.heist.def.preps.length}`,
+      },
+      {
+        tone: selected.heist.cooldownRemainingMs > 0 ? "warn" : "good",
+        label: selected.heist.cooldownRemainingMs > 0 ? `Cooldown ${fmtTime(selected.heist.cooldownRemainingMs)}` : "Window open",
+      },
+    ];
+
     return `
-      <section class="section-block">
-        <div class="section-head"><h2>Street Contracts</h2><span>Refresh ${fmtTime(Math.max(0, state.nextContractRefreshAt - derived.now))}</span></div>
-        <div class="contract-list">
-          ${derived.contracts.map(({ contract, ratio, ready }) => `
-            <article class="contract-card ${ready ? "ready" : ""}">
-              <div class="contract-head">
-                <div>
-                  <span class="eyebrow">${titleCase(contract.type)}</span>
-                  <h3>${contract.name}</h3>
+      <div class="ops-layout">
+        <section class="section-block contracts-block">
+          <div class="section-head"><h2>Street Contracts</h2><span>Refresh ${fmtTime(Math.max(0, state.nextContractRefreshAt - derived.now))}</span></div>
+          <div class="contract-list">
+            ${derived.contracts.map(({ contract, ratio, ready }) => `
+              <article class="contract-card ${ready ? "ready" : ""}">
+                <div class="contract-head">
+                  <div>
+                    <span class="eyebrow">${titleCase(contract.type)}</span>
+                    <h3>${contract.name}</h3>
+                  </div>
+                  <span class="contract-target">${fmtNumber(contract.target)}</span>
                 </div>
-                <span class="contract-target">${fmtNumber(contract.target)}</span>
-              </div>
-              <p>${contract.desc}</p>
-              <div class="progress"><span style="width:${ratio * 100}%"></span></div>
-              <div class="contract-reward">Reward: ${fmtMoney(contract.reward.dirty)} · ${fmtMoney(contract.reward.clean)} · ${contract.reward.intel} intel</div>
-              <button class="neon-btn" type="button" data-action="claim-contract" data-contract-id="${contract.id}" ${ready && !contract.claimed ? "" : "disabled"}>${contract.claimed ? "Claimed" : ready ? "Claim" : pct(ratio)}</button>
-            </article>
-          `).join("")}
-        </div>
-      </section>
-      <section class="section-block">
-        <div class="section-head"><h2>${selected.heist.def.name}</h2><span>${selected.heist.cooldownRemainingMs ? fmtTime(selected.heist.cooldownRemainingMs) : "Ready"}</span></div>
-        <p class="section-copy">${selected.heist.def.desc}</p>
-        <div class="approach-row">
-          ${selected.heist.def.approaches.map((approach) => `
-            <button class="approach-chip ${selected.heist.draft.approachId === approach.id ? "active" : ""}" type="button" data-action="set-approach" data-district-id="${selected.def.id}" data-approach-id="${approach.id}">
-              <strong>${approach.name}</strong>
-              <small>${approach.minCrew} crew</small>
-            </button>
-          `).join("")}
-        </div>
-        <div class="prep-grid">
-          ${selected.heist.def.preps.map((prep) => `
-            <article class="prep-card ${selected.state.heist.prepDone[prep.id] ? "done" : ""}">
-              <div class="prep-head">
-                <div>
-                  <span class="eyebrow">${titleCase(prep.preferred)}</span>
-                  <h3>${prep.name}</h3>
-                </div>
-                <span>${fmtTime(prep.duration)}</span>
-              </div>
-              <p>${prep.desc}</p>
-              <select data-prep-select ${selected.state.heist.prepDone[prep.id] ? "disabled" : ""}>
-                <option value="">Choose crew</option>
-                ${availableCrew.map((entry) => `<option value="${entry.crew.id}">${entry.crew.name} · ${entry.archetype.name}</option>`).join("")}
-              </select>
-              <button class="ghost-btn" type="button" data-action="start-prep" data-district-id="${selected.def.id}" data-prep-id="${prep.id}" ${selected.state.heist.prepDone[prep.id] ? "disabled" : ""}>
-                ${selected.state.heist.prepDone[prep.id] ? "Complete" : `${fmtMoney(prep.costDirty)} · ${prep.costIntel} intel`}
+                <p>${contract.desc}</p>
+                <div class="progress"><span style="width:${ratio * 100}%"></span></div>
+                <div class="contract-reward">Reward: ${fmtMoney(contract.reward.dirty)} / ${fmtMoney(contract.reward.clean)} / ${contract.reward.intel} intel</div>
+                <button class="neon-btn" type="button" data-action="claim-contract" data-contract-id="${contract.id}" ${ready && !contract.claimed ? "" : "disabled"}>${contract.claimed ? "Claimed" : ready ? "Claim" : pct(ratio)}</button>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+        <section class="section-block heist-block">
+          <div class="section-head"><h2>${selected.heist.def.name}</h2><span>${selected.heist.cooldownRemainingMs ? fmtTime(selected.heist.cooldownRemainingMs) : "Ready"}</span></div>
+          <p class="section-copy">${selected.heist.def.desc}</p>
+          <div class="heist-checklist">
+            ${heistStatus.map((item) => `<span class="heist-chip ${item.tone}">${item.label}</span>`).join("")}
+            ${selected.heist.blockers.map((item) => `<span class="heist-chip ${item.tone}">${item.label}</span>`).join("")}
+          </div>
+          <div class="heist-preview">
+            <div><span>Dirty payout</span><strong>${fmtMoneyRange(selected.heist.preview.dirtyMin, selected.heist.preview.dirtyMax)}</strong></div>
+            <div><span>Clean payout</span><strong>${fmtMoneyRange(selected.heist.preview.cleanMin, selected.heist.preview.cleanMax)}</strong></div>
+            <div><span>Heat spike</span><strong>${Math.round(selected.heist.preview.heat)}%</strong></div>
+          </div>
+          <div class="approach-row">
+            ${selected.heist.def.approaches.map((approach) => `
+              <button class="approach-chip ${selected.heist.draft.approachId === approach.id ? "active" : ""}" type="button" data-action="set-approach" data-district-id="${selected.def.id}" data-approach-id="${approach.id}">
+                <strong>${approach.name}</strong>
+                <small>${approach.minCrew} crew</small>
               </button>
-            </article>
-          `).join("")}
-        </div>
-        <div class="crew-pick-grid">
-          ${derived.crew.map((entry) => `
-            <label class="crew-pick ${selected.heist.draft.crewIds.includes(entry.crew.id) ? "selected" : ""} ${entry.isBusy ? "disabled" : ""}">
-              <input type="checkbox" data-heist-crew data-district-id="${selected.def.id}" data-crew-id="${entry.crew.id}" ${selected.heist.draft.crewIds.includes(entry.crew.id) ? "checked" : ""} ${entry.isBusy ? "disabled" : ""}>
-              <span>${entry.crew.name}</span>
-              <small>${entry.archetype.name}</small>
-            </label>
-          `).join("")}
-        </div>
-        <div class="odds-card">
-          <div><span>Intel cost</span><strong>${selected.heist.def.intelCost}</strong></div>
-          <div><span>Prep done</span><strong>${selected.heist.prepDoneCount}/3</strong></div>
-          <div><span>Estimated hit</span><strong>${pct(selected.heist.chance)}</strong></div>
-        </div>
-        <button class="neon-btn big" type="button" data-action="launch-heist" data-district-id="${selected.def.id}" ${selected.heist.ready ? "" : "disabled"}>Run the job</button>
-      </section>
-      <section class="section-block">
-        <div class="section-head"><h2>Active Ops</h2><span>${derived.operations.length}</span></div>
-        <div class="ops-list">
-          ${derived.operations.length ? derived.operations.map((operation) => `
-            <div class="ops-item">
-              <strong>${operation.label}</strong>
-              <span>${fmtTime(operation.endsAt - derived.now)}</span>
-            </div>
-          `).join("") : `<div class="empty-copy">No crews are running prep right now.</div>`}
-        </div>
-      </section>
+            `).join("")}
+          </div>
+          <div class="prep-grid">
+            ${selected.heist.def.preps.map((prep) => {
+              const prepDone = Boolean(selected.state.heist.prepDone[prep.id]);
+              const hasCrew = availableCrew.length > 0;
+              const selectedCrewId = hasCrew ? availableCrew[0].crew.id : "";
+              return `
+                <article class="prep-card ${prepDone ? "done" : ""}">
+                  <div class="prep-head">
+                    <div>
+                      <span class="eyebrow">${titleCase(prep.preferred)}</span>
+                      <h3>${prep.name}</h3>
+                    </div>
+                    <span>${fmtTime(prep.duration)}</span>
+                  </div>
+                  <p>${prep.desc}</p>
+                  <div class="prep-note">${describePrepEffects(prep.effect)}</div>
+                  <select data-prep-select ${prepDone || !hasCrew ? "disabled" : ""}>
+                    ${hasCrew
+                      ? availableCrew.map((entry) => `<option value="${entry.crew.id}" ${entry.crew.id === selectedCrewId ? "selected" : ""}>${entry.crew.name} / ${entry.archetype.name}</option>`).join("")
+                      : `<option value="">No crew free</option>`}
+                  </select>
+                  <button class="ghost-btn" type="button" data-action="start-prep" data-start-prep data-district-id="${selected.def.id}" data-prep-id="${prep.id}" ${prepDone || !hasCrew ? "disabled" : ""}>
+                    ${prepDone ? "Complete" : `${fmtMoney(prep.costDirty)} / ${prep.costIntel} intel`}
+                  </button>
+                </article>
+              `;
+            }).join("")}
+          </div>
+          <div class="crew-pick-grid">
+            ${derived.crew.map((entry) => `
+              <label class="crew-pick ${selected.heist.draft.crewIds.includes(entry.crew.id) ? "selected" : ""} ${entry.isBusy ? "disabled" : ""}">
+                <input type="checkbox" data-heist-crew data-district-id="${selected.def.id}" data-crew-id="${entry.crew.id}" ${selected.heist.draft.crewIds.includes(entry.crew.id) ? "checked" : ""} ${entry.isBusy ? "disabled" : ""}>
+                <strong>${entry.crew.name}</strong>
+                <span>${entry.archetype.name}</span>
+                <small>${entry.isBusy ? "Busy" : `Stress ${Math.round(entry.crew.stress)}%`}</small>
+              </label>
+            `).join("")}
+          </div>
+          <div class="odds-card">
+            <div><span>Intel cost</span><strong>${selected.heist.def.intelCost}</strong></div>
+            <div><span>Prep done</span><strong>${selected.heist.prepDoneCount}/${selected.heist.def.preps.length}</strong></div>
+            <div><span>Estimated hit</span><strong>${pct(selected.heist.chance)}</strong></div>
+          </div>
+          <button class="neon-btn big" type="button" data-action="launch-heist" data-district-id="${selected.def.id}" ${selected.heist.ready ? "" : "disabled"}>${heistButtonLabel(selected, state.intel)}</button>
+        </section>
+        <section class="section-block active-ops-block">
+          <div class="section-head"><h2>Active Ops</h2><span>${derived.operations.length}</span></div>
+          <div class="ops-list">
+            ${derived.operations.length ? derived.operations.map((operation) => `
+              <div class="ops-item">
+                <strong>${operation.label}</strong>
+                <span>${fmtTime(operation.endsAt - derived.now)}</span>
+              </div>
+            `).join("") : `<div class="empty-copy">No crews are running prep right now.</div>`}
+          </div>
+        </section>
+      </div>
     `;
   }
 
@@ -479,7 +563,7 @@ export class EmpireUI {
                 </div>
                 <div class="crew-copy">
                   <h3>${entry.crew.name}</h3>
-                  <p>${entry.archetype.name} · ${entry.positiveTrait.name} / ${entry.negativeTrait.name}</p>
+                  <p>${entry.archetype.name} / ${entry.positiveTrait.name} / ${entry.negativeTrait.name}</p>
                 </div>
                 <span class="rank-pill">R${entry.crew.rank}</span>
               </div>
@@ -493,13 +577,14 @@ export class EmpireUI {
                 <div class="progress stress"><span style="width:${entry.crew.stress}%"></span></div>
               </div>
               <p class="section-copy">${entry.statusLabel}</p>
+              <p class="section-copy">${entry.archetype.passive}</p>
               <label class="select-wrap">
                 <span>Assignment</span>
                 <select data-assign-crew="${entry.crew.id}" ${entry.isBusy ? "disabled" : ""}>
                   ${entry.assignmentOptions.map((option) => `<option value="${option.value}" ${entry.crew.assignmentKey === option.value ? "selected" : ""}>${option.label}</option>`).join("")}
                 </select>
               </label>
-              <button class="ghost-btn" type="button" data-action="promote-crew" data-crew-id="${entry.crew.id}" ${entry.crew.rank >= 4 ? "disabled" : ""}>Promote · ${fmtMoney(entry.promotionCost.clean)} + ${entry.promotionCost.intel} intel</button>
+              <button class="ghost-btn" type="button" data-action="promote-crew" data-crew-id="${entry.crew.id}" ${entry.crew.rank >= 4 ? "disabled" : ""}>Promote / ${fmtMoney(entry.promotionCost.clean)} / ${entry.promotionCost.intel} intel</button>
             </article>
           `).join("")}
         </div>
@@ -515,7 +600,7 @@ export class EmpireUI {
                 </div>
                 <div class="crew-copy">
                   <h3>${entry.candidate.name}</h3>
-                  <p>${entry.archetype.name} · ${entry.positiveTrait.name} / ${entry.negativeTrait.name}</p>
+                  <p>${entry.archetype.name} / ${entry.positiveTrait.name} / ${entry.negativeTrait.name}</p>
                 </div>
                 <span class="rank-pill">R${entry.candidate.rank}</span>
               </div>
@@ -524,7 +609,8 @@ export class EmpireUI {
                 <div><span>Nerve</span><strong>${entry.candidate.nerve}</strong></div>
                 <div><span>Loyalty</span><strong>${entry.candidate.loyalty}</strong></div>
               </div>
-              <button class="neon-btn" type="button" data-action="hire-crew" data-candidate-id="${entry.candidate.id}">Hire · ${fmtMoney(entry.cost.dirty)} · ${fmtMoney(entry.cost.clean)} · ${entry.cost.intel} intel</button>
+              <p class="section-copy">${entry.archetype.passive}</p>
+              <button class="neon-btn" type="button" data-action="hire-crew" data-candidate-id="${entry.candidate.id}">Hire / ${fmtMoney(entry.cost.dirty)} / ${fmtMoney(entry.cost.clean)} / ${entry.cost.intel} intel</button>
             </article>
           `).join("")}
         </div>
@@ -551,14 +637,14 @@ export class EmpireUI {
         </div>
         <div class="section-copy">${asset.assignedCrew ? `Assigned: ${asset.assignedCrew.name}` : "No crew assigned"}</div>
         <button class="neon-btn" type="button" data-action="buy-asset" data-district-id="${selected.def.id}" data-kind="${kind}" data-asset-id="${asset.def.id}" ${asset.state.level >= asset.def.maxLevel ? "disabled" : ""}>
-          ${asset.state.level >= asset.def.maxLevel ? "Maxed" : `Upgrade · ${fmtMoney(asset.cost.dirty)} + ${fmtMoney(asset.cost.clean)}`}
+          ${asset.state.level >= asset.def.maxLevel ? "Maxed" : `Upgrade / ${fmtMoney(asset.cost.dirty)} / ${fmtMoney(asset.cost.clean)}`}
         </button>
       </article>
     `;
 
     return `
       <section class="section-block">
-        <div class="section-head"><h2>${selected.def.name} Ledger</h2><span>${fmtMoney(selected.dirtyPerSec)} dirty / s · ${fmtMoney(selected.cleanPerSec)} clean / s</span></div>
+        <div class="section-head"><h2>${selected.def.name} Ledger</h2><span>${fmtMoney(selected.dirtyPerSec)} dirty / s / ${fmtMoney(selected.cleanPerSec)} clean / s</span></div>
         <div class="asset-grid">${selected.rackets.map((asset) => renderAsset(asset, "racket")).join("")}</div>
       </section>
       <section class="section-block">
@@ -574,7 +660,8 @@ export class EmpireUI {
         <div class="section-head"><h2>Neon Legacy</h2><span>${state.legacyPoints} LP on hand</span></div>
         <div class="legacy-summary">
           <div><span>Projected retire gain</span><strong>${derived.projectedLegacy} LP</strong></div>
-          <div><span>Lifetime clean</span><strong>${fmtMoney(state.stats.lifetimeClean)}</strong></div>
+          <div><span>Lifetime washed</span><strong>${fmtMoney(state.stats.cleanLaundered)}</strong></div>
+          <div><span>Total clean earned</span><strong>${fmtMoney(state.stats.lifetimeClean)}</strong></div>
           <div><span>Runs completed</span><strong>${state.stats.legacyRuns}</strong></div>
           <button class="neon-btn gold" type="button" data-action="retire">Retire and rebuild</button>
         </div>
@@ -589,7 +676,7 @@ export class EmpireUI {
                 <span class="rank-pill">${entry.count}/${entry.upgrade.max}</span>
               </div>
               <p>${entry.upgrade.desc}</p>
-              <button class="ghost-btn" type="button" data-action="buy-legacy" data-upgrade-id="${entry.upgrade.id}" ${entry.canBuy ? "" : "disabled"}>Buy · ${entry.upgrade.cost} LP</button>
+              <button class="ghost-btn" type="button" data-action="buy-legacy" data-upgrade-id="${entry.upgrade.id}" ${entry.canBuy ? "" : "disabled"}>Buy / ${entry.upgrade.cost} LP</button>
             </article>
           `).join("")}
         </div>
