@@ -3,9 +3,8 @@ export const SAVE_VERSION = 2;
 
 export const PANEL_TABS = [
   { id: "city", label: "City" },
-  { id: "ops", label: "Ops" },
   { id: "crew", label: "Crew" },
-  { id: "ledger", label: "Ledger" },
+  { id: "ops", label: "Ops" },
   { id: "legacy", label: "Legacy" },
 ];
 

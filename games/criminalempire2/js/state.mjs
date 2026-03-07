@@ -5,6 +5,7 @@ import {
   DISTRICTS,
   LEGACY_UPGRADES,
   NEGATIVE_TRAITS,
+  PANEL_TABS,
   POSITIVE_TRAITS,
   SAVE_KEY,
   SAVE_VERSION,
@@ -205,6 +206,7 @@ function normalizeStats(stats = {}) {
 
 function normalizeState(parsed) {
   const now = Date.now();
+  const validPanels = new Set(PANEL_TABS.map((tab) => tab.id));
   const legacyUpgrades = {
     ...buildLegacyUpgradeDefaults(),
     ...(parsed.legacyUpgrades || {}),
@@ -236,7 +238,7 @@ function normalizeState(parsed) {
     surgeUntil: parsed.surgeUntil || 0,
     globalHeat: parsed.globalHeat ?? 10,
     heatPressure: parsed.heatPressure ?? 0,
-    currentPanel: parsed.currentPanel || "city",
+    currentPanel: validPanels.has(parsed.currentPanel) ? parsed.currentPanel : "city",
     selectedDistrictId: parsed.selectedDistrictId || DISTRICTS[0].id,
     heistDrafts,
     nextContractRefreshAt: parsed.nextContractRefreshAt || now + 240000,

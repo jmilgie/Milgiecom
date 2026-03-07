@@ -4,12 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Criminal Empire II | Milgie Games</title>
-  <meta name="description" content="Criminal Empire II is a mobile-first synthwave crime strategy sequel for Milgie.com." />
-  <meta name="theme-color" content="#0c0618" />
+  <meta name="description" content="Criminal Empire II is a fixed-screen synthwave crime strategy game for Milgie.com." />
+  <meta name="theme-color" content="#07030f" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Monoton&family=Oxanium:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="preload" href="../assets/catalog/criminal-empire-ii.png" as="image" type="image/png" />
+  <link rel="icon" href="../assets/catalog/criminal-empire-ii.png" type="image/png" />
+  <link rel="preload" href="./assets/world/neon-command-city.png" as="image" type="image/png" />
+  <link rel="preload" href="./assets/world/intro-keyart.png" as="image" type="image/png" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -19,11 +21,11 @@
       <div class="intro-copy">
         <div class="deck-kicker">Milgie Crime Strategy</div>
         <h1>Criminal Empire II</h1>
-        <p>Own the night. Wash the cash. Crack the city before the city buries your name in a sealed vault.</p>
+        <p>Build a neon city underworld on one command screen. Dirty cash funds the rise, fronts wash it clean, heists crack control, and the Black Vault ends the campaign.</p>
         <div class="intro-pills">
-          <span>6 districts</span>
-          <span>crew management</span>
-          <span>multi-step heists</span>
+          <span>single-screen command view</span>
+          <span>district conquest</span>
+          <span>moving crew on the map</span>
           <span>legacy loop</span>
         </div>
         <button class="neon-btn big" id="introStart" type="button">Enter the skyline</button>
@@ -39,7 +41,7 @@
   <div class="noise"></div>
 
   <div class="shell" id="appShell">
-    <header class="topbar frame">
+    <header class="top-hud frame">
       <div class="brand-lockup">
         <div class="brand-stack">
           <span class="brand-kicker">Milgie Games</span>
@@ -47,35 +49,31 @@
         </div>
         <a class="back-link" href="../">Games</a>
       </div>
-      <div class="summary-strip" id="summaryStrip"></div>
-      <div class="top-actions">
-        <button class="top-action" id="musicToggle" type="button" data-action="toggle-music">Music On</button>
-        <button class="top-action" id="soundToggle" type="button" data-action="toggle-sound">SFX On</button>
-        <button class="top-action" id="saveButton" type="button" data-action="save">Save</button>
+
+      <div class="goal-strip" id="goalStrip"></div>
+
+      <div class="hud-side">
+        <div class="summary-strip" id="summaryStrip"></div>
+        <div class="top-actions">
+          <button class="top-action" id="musicToggle" type="button" data-action="toggle-music">Music On</button>
+          <button class="top-action" id="soundToggle" type="button" data-action="toggle-sound">SFX On</button>
+          <button class="top-action" id="saveButton" type="button" data-action="save">Save</button>
+        </div>
       </div>
     </header>
 
-    <section class="command-grid">
-      <div class="frame hero-frame" id="heroDeck"></div>
-      <div class="frame status-frame" id="statusDeck"></div>
-    </section>
+    <main class="command-deck">
+      <aside class="mission-rail frame" id="missionRail"></aside>
 
-    <section class="stage-grid">
-      <div class="frame map-frame">
-        <div class="section-head inline">
-          <h2>City Grid</h2>
-          <span>Tap a district to focus</span>
-        </div>
-        <div id="cityMap"></div>
-        <div id="districtPeek"></div>
-      </div>
-      <aside class="frame rail-frame" id="liveRail"></aside>
-    </section>
+      <section class="world-frame frame">
+        <div class="world-stage" id="cityMap"></div>
+      </section>
 
-    <section class="frame main-frame">
-      <nav class="dock-tabs" id="dockTabs"></nav>
-      <div id="panelRoot"></div>
-    </section>
+      <aside class="command-rail frame">
+        <nav class="mode-dock" id="dockTabs"></nav>
+        <div class="command-panel" id="panelRoot"></div>
+      </aside>
+    </main>
   </div>
 
   <div id="overlayRoot"></div>
