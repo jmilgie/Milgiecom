@@ -1,5 +1,5 @@
 export const SAVE_KEY = "neonFrontierSave";
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export const VIEW_TABS = [
   { id: "world", label: "Overland" },
@@ -23,36 +23,32 @@ export const CITY_ANCHORS = [
   { id: "anchor-ops", x: 76, y: 30, buildingTypeId: "operative-hub" },
 ];
 
-export const CITY_CELLS = [
-  { id: "cell-01", x: 17, y: 71, zone: "waterfront" },
-  { id: "cell-02", x: 25, y: 65, zone: "waterfront" },
-  { id: "cell-03", x: 33, y: 59, zone: "waterfront" },
-  { id: "cell-04", x: 41, y: 53, zone: "waterfront" },
-  { id: "cell-05", x: 26, y: 77, zone: "waterfront" },
-  { id: "cell-06", x: 34, y: 71, zone: "waterfront" },
-  { id: "cell-07", x: 42, y: 65, zone: "waterfront" },
-  { id: "cell-08", x: 50, y: 59, zone: "waterfront" },
-  { id: "cell-09", x: 40, y: 81, zone: "core" },
-  { id: "cell-10", x: 48, y: 75, zone: "core" },
-  { id: "cell-11", x: 56, y: 69, zone: "core" },
-  { id: "cell-12", x: 64, y: 63, zone: "core" },
-  { id: "cell-13", x: 49, y: 87, zone: "core" },
-  { id: "cell-14", x: 57, y: 81, zone: "core" },
-  { id: "cell-15", x: 65, y: 75, zone: "core" },
-  { id: "cell-16", x: 73, y: 69, zone: "core" },
-  { id: "cell-17", x: 58, y: 39, zone: "spireline" },
-  { id: "cell-18", x: 66, y: 33, zone: "spireline" },
-  { id: "cell-19", x: 74, y: 27, zone: "spireline" },
-  { id: "cell-20", x: 82, y: 21, zone: "spireline" },
-  { id: "cell-21", x: 72, y: 53, zone: "market" },
-  { id: "cell-22", x: 80, y: 47, zone: "market" },
-  { id: "cell-23", x: 88, y: 41, zone: "market" },
-  { id: "cell-24", x: 80, y: 59, zone: "market" },
-  { id: "cell-25", x: 88, y: 53, zone: "market" },
-  { id: "cell-26", x: 71, y: 85, zone: "core" },
-  { id: "cell-27", x: 79, y: 79, zone: "core" },
-  { id: "cell-28", x: 87, y: 73, zone: "core" },
+export const CITY_PARCELS = [
+  { id: "parcel-waterfront", zone: "waterfront", startX: 13, startY: 61, cols: 6, rows: 4, stepX: 8.2, stepY: 5.8, offsetX: 4.1 },
+  { id: "parcel-core", zone: "core", startX: 36, startY: 58, cols: 7, rows: 5, stepX: 7.3, stepY: 5.8, offsetX: 3.65 },
+  { id: "parcel-spireline", zone: "spireline", startX: 57, startY: 23, cols: 5, rows: 3, stepX: 6.8, stepY: 6.1, offsetX: 3.4 },
+  { id: "parcel-market", zone: "market", startX: 72, startY: 39, cols: 4, rows: 4, stepX: 5.9, stepY: 5.5, offsetX: 2.95 },
 ];
+
+function buildParcelCells(parcel) {
+  const cells = [];
+  for (let row = 0; row < parcel.rows; row += 1) {
+    for (let col = 0; col < parcel.cols; col += 1) {
+      cells.push({
+        id: `plot-${parcel.zone}-${row}-${col}`,
+        parcelId: parcel.id,
+        zone: parcel.zone,
+        row,
+        col,
+        x: Number((parcel.startX + col * parcel.stepX + (row % 2 ? parcel.offsetX : 0)).toFixed(2)),
+        y: Number((parcel.startY + row * parcel.stepY).toFixed(2)),
+      });
+    }
+  }
+  return cells;
+}
+
+export const CITY_CELLS = CITY_PARCELS.flatMap(buildParcelCells);
 
 export const ZONE_META = {
   waterfront: { label: "Waterfront", unlockTier: 1, accent: "#8de7ff" },
@@ -941,12 +937,9 @@ export const STARTING_BUILDINGS = [
   { instanceId: "anchor-helio", typeId: "helio-core", anchorId: "anchor-core", level: 1 },
   { instanceId: "anchor-command", typeId: "command-nexus", anchorId: "anchor-command", level: 1 },
   { instanceId: "anchor-ops", typeId: "operative-hub", anchorId: "anchor-ops", level: 1 },
-  { instanceId: "build-1", typeId: "habitat-pod", cellId: "cell-09", level: 1 },
-  { instanceId: "build-2", typeId: "hydroponic-farm", cellId: "cell-02", level: 1 },
-  { instanceId: "build-3", typeId: "water-loop", cellId: "cell-05", level: 1 },
-  { instanceId: "build-4", typeId: "solar-spine", cellId: "cell-11", level: 1 },
-  { instanceId: "build-5", typeId: "research-lab", cellId: "cell-18", level: 1 },
-  { instanceId: "build-6", typeId: "vanguard-barracks", cellId: "cell-15", level: 1 },
+  { instanceId: "build-1", typeId: "habitat-pod", cellId: "plot-core-3-1", level: 1 },
+  { instanceId: "build-2", typeId: "hydroponic-farm", cellId: "plot-waterfront-1-1", level: 1 },
+  { instanceId: "build-3", typeId: "water-loop", cellId: "plot-waterfront-2-2", level: 1 },
 ];
 
 export const STARTING_OPERATIVE_IDS = ["sol", "mira", "jax"];

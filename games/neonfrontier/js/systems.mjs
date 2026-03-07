@@ -385,6 +385,12 @@ export function selectView(state, viewId) {
   state.currentView = viewId === "city" ? "city" : "world";
 }
 
+export function clearSelection(state) {
+  state.selectedNodeId = "";
+  state.selectedBuildingId = "";
+  state.selectedCellId = "";
+}
+
 export function selectBuilding(state, instanceId) {
   if (getBuildingState(state, instanceId)) {
     state.selectedBuildingId = instanceId;
@@ -427,6 +433,8 @@ export function startPlacement(state, typeId) {
   }
   state.ui.placementTypeId = typeId;
   state.ui.relocatingBuildingId = "";
+  state.selectedBuildingId = "";
+  state.selectedCellId = "";
   state.currentView = "city";
   return true;
 }
@@ -438,6 +446,8 @@ export function startRelocate(state, instanceId) {
   }
   state.ui.relocatingBuildingId = instanceId;
   state.ui.placementTypeId = "";
+  state.selectedBuildingId = "";
+  state.selectedCellId = "";
   state.currentView = "city";
   return true;
 }
@@ -1092,11 +1102,9 @@ export function calculateDerived(state, now = Date.now()) {
   const availableResearch = getAvailableResearch(state);
   const selectedBuilding =
     buildings.find((entry) => entry.building.instanceId === state.selectedBuildingId) ||
-    buildings[0] ||
     null;
   const selectedNode =
     worldNodes.find((entry) => entry.state.id === state.selectedNodeId) ||
-    worldNodes[0] ||
     null;
   const selectedOperative =
     operatives.find((entry) => entry.state.id === state.selectedOperativeId) ||

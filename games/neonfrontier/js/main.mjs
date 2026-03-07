@@ -6,6 +6,7 @@ import {
   calculateDerived,
   cancelPlacement,
   confirmPlacement,
+  clearSelection,
   createMissionRun,
   promoteOperative,
   queueTraining,
@@ -27,7 +28,7 @@ import {
   upgradeBuilding,
   pushAlert,
 } from "./systems.mjs";
-import { NeonFrontierUI } from "./ui.mjs";
+import { NeonFrontierUI } from "./canvas-ui.mjs";
 
 let state = loadState() || createInitialState();
 applyOfflineProgress(state, Date.now());
@@ -159,6 +160,10 @@ const ui = new NeonFrontierUI(document, {
   onSave: () => {
     saveState(state);
     pushAlert(state, "save", "Save complete", "Your city has been written to local storage.", Date.now());
+    render();
+  },
+  onClearSelection: () => {
+    clearSelection(state);
     render();
   },
 });

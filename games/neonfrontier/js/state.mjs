@@ -22,14 +22,14 @@ function buildResourceDefaults() {
 function buildResources(input = {}) {
   return {
     ...buildResourceDefaults(),
-    food: 210,
-    water: 210,
-    energy: 180,
-    alloy: 95,
-    circuits: 36,
-    credits: 520,
-    intel: 12,
-    shards: 2,
+    food: 120,
+    water: 120,
+    energy: 110,
+    alloy: 72,
+    circuits: 12,
+    credits: 260,
+    intel: 4,
+    shards: 1,
     ...input,
   };
 }
@@ -206,8 +206,8 @@ function normalizeState(input = {}) {
     savedAt: input.savedAt || now,
     lastTickAt: input.lastTickAt || input.savedAt || now,
     currentView: input.currentView === "city" ? "city" : "world",
-    selectedNodeId: input.selectedNodeId || WORLD_NODES[0].id,
-    selectedBuildingId: input.selectedBuildingId || "anchor-helio",
+    selectedNodeId: input.selectedNodeId || "",
+    selectedBuildingId: input.selectedBuildingId || "",
     selectedCellId: input.selectedCellId || "",
     selectedOperativeId: input.selectedOperativeId || STARTING_OPERATIVE_IDS[0],
     resources: buildResources(input.resources),
@@ -218,7 +218,7 @@ function normalizeState(input = {}) {
       housing: input.city?.housing ?? 88,
       unlockedZones: input.city?.unlockedZones?.length ? input.city.unlockedZones : ["waterfront", "core"],
       buildings,
-      nextBuildingId: input.city?.nextBuildingId ?? 7,
+      nextBuildingId: input.city?.nextBuildingId ?? 4,
     },
     world: {
       sectorsUnlocked: input.world?.sectorsUnlocked || 1,
@@ -265,7 +265,11 @@ export function loadState() {
     if (!raw) {
       return null;
     }
-    return normalizeState(JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+    if ((parsed.version || 0) !== SAVE_VERSION) {
+      return null;
+    }
+    return normalizeState(parsed);
   } catch (error) {
     console.warn("Failed to load Neon Frontier save.", error);
     return null;
