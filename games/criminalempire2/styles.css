@@ -1,0 +1,876 @@
+:root {
+  --bg-void: #07020f;
+  --bg-deep: #12051e;
+  --bg-mid: #1f0d35;
+  --ink: #f4f6ff;
+  --muted: #b8bfd9;
+  --pink: #ff4f9d;
+  --cyan: #5be8ff;
+  --amber: #ffbf52;
+  --lime: #7dffb0;
+  --danger: #ff6a6a;
+  --glass: rgba(16, 11, 32, 0.68);
+  --glass-strong: rgba(10, 7, 22, 0.82);
+  --stroke: rgba(255, 255, 255, 0.12);
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --glow: 0 0 24px rgba(91, 232, 255, 0.22);
+  --font-display: "Monoton", cursive;
+  --font-head: "Oxanium", sans-serif;
+  --font-mono: "Space Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-head);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top, rgba(255, 96, 166, 0.16), transparent 26%),
+    radial-gradient(circle at 80% 18%, rgba(91, 232, 255, 0.18), transparent 22%),
+    linear-gradient(180deg, #05020e 0%, #130822 36%, #120318 100%);
+  overflow-x: hidden;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+.sunset,
+.horizon-grid,
+.skyline,
+.scanlines,
+.noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sunset {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 191, 82, 0.22), transparent 22%),
+    radial-gradient(circle at 50% 18%, rgba(255, 79, 157, 0.18), transparent 34%);
+}
+
+.horizon-grid {
+  inset: auto 0 0;
+  height: 42vh;
+  background:
+    linear-gradient(rgba(91, 232, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(91, 232, 255, 0.16) 1px, transparent 1px);
+  background-size: 100% 30px, 42px 100%;
+  transform: perspective(480px) rotateX(76deg);
+  transform-origin: bottom;
+  opacity: 0.22;
+}
+
+.skyline {
+  inset: auto 0 0;
+  height: 28vh;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.32) 4%, transparent 10%),
+    linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.6)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 250'%3E%3Cpath fill='%2305030a' d='M0 250V168h30V78h42v90h24V34h52v134h26V96h58v72h38V52h36v116h20V24h64v144h24V90h40v78h40V20h54v148h32V56h42v112h30V88h66v80h22V40h56v128h28V66h38v102h52v-18h44v100Z'/%3E%3C/svg%3E")
+      center bottom / cover no-repeat;
+  opacity: 0.78;
+}
+
+.scanlines {
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03) 1px, transparent 1px, transparent 4px);
+  mix-blend-mode: screen;
+  opacity: 0.1;
+}
+
+.noise {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 0.4px, transparent 0.5px);
+  background-size: 7px 7px;
+  opacity: 0.04;
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  width: min(1440px, calc(100% - 28px));
+  margin: 18px auto 56px;
+  display: grid;
+  gap: 16px;
+}
+
+.frame {
+  border: 1px solid var(--stroke);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(20, 11, 36, 0.84), rgba(8, 5, 18, 0.78));
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.topbar {
+  display: grid;
+  gap: 14px;
+  padding: 18px 18px 16px;
+}
+
+.brand-lockup,
+.top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.brand-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-kicker,
+.summary-label,
+.deck-kicker,
+.eyebrow,
+.section-label,
+.district-kicker {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+}
+
+.brand-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.back-link {
+  color: var(--cyan);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-chip,
+.status-card,
+.hero-metric,
+.odds-card div,
+.mini-columns div,
+.micro-grid div {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 14px;
+}
+
+.summary-chip strong,
+.status-card strong,
+.hero-metric strong,
+.mini-columns strong,
+.odds-card strong,
+.micro-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.05rem;
+}
+
+.summary-chip.heat strong {
+  color: var(--danger);
+}
+
+.top-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.top-action,
+.ghost-btn,
+.neon-btn,
+.dock-tab,
+.approach-chip,
+.mini-action,
+.mini-close {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.top-action:hover,
+.ghost-btn:hover,
+.neon-btn:hover,
+.dock-tab:hover,
+.approach-chip:hover,
+.mini-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(91, 232, 255, 0.42);
+  background: rgba(91, 232, 255, 0.08);
+}
+
+.top-action,
+.ghost-btn,
+.approach-chip {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+
+.neon-btn,
+.mini-action {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 79, 157, 0.18), rgba(91, 232, 255, 0.12));
+  border-color: rgba(255, 79, 157, 0.32);
+  box-shadow: 0 0 24px rgba(255, 79, 157, 0.12);
+}
+
+.neon-btn.gold {
+  background: linear-gradient(135deg, rgba(255, 191, 82, 0.22), rgba(255, 79, 157, 0.12));
+  border-color: rgba(255, 191, 82, 0.38);
+}
+
+.neon-btn.big,
+.hustle-button {
+  width: 100%;
+  justify-content: space-between;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+}
+
+.command-grid,
+.stage-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.hero-frame,
+.status-frame,
+.map-frame,
+.rail-frame,
+.main-frame {
+  padding: 18px;
+}
+
+.hero-frame {
+  min-height: 240px;
+  background:
+    linear-gradient(180deg, rgba(8, 5, 20, 0.28), rgba(8, 5, 20, 0.84)),
+    url("../assets/catalog/criminal-empire-ii.png") center center / cover no-repeat;
+}
+
+.hero-frame h1 {
+  margin: 6px 0 12px;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  letter-spacing: 0.08em;
+  color: #ffd4a7;
+  text-shadow: 0 0 20px rgba(255, 191, 82, 0.22);
+}
+
+.hero-frame p,
+.section-copy,
+.district-card p,
+.alert-item p,
+.prep-card p,
+.asset-card p,
+.crew-card p,
+.legacy-card p,
+.detail-panel p,
+.empty-copy,
+.contract-reward,
+.mini-result,
+.mini-metric {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.section-block + .section-block {
+  margin-top: 18px;
+}
+
+.hero-metrics,
+.status-grid,
+.district-stats-row,
+.district-actions,
+.mini-columns,
+.odds-card,
+.stat-row,
+.asset-metrics,
+.card-actions,
+.intro-pills,
+.ops-list,
+.micro-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.hero-metrics,
+.status-grid,
+.district-stats-row,
+.mini-columns,
+.micro-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.district-actions,
+.card-actions {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.chase-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.hustle-button {
+  margin-top: 16px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, rgba(255, 79, 157, 0.24), rgba(91, 232, 255, 0.18));
+  border: 1px solid rgba(255, 79, 157, 0.34);
+  border-radius: 22px;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 0 34px rgba(255, 79, 157, 0.18);
+}
+
+.surge-shell,
+.stress-shell,
+.legacy-summary,
+.detail-panel,
+.district-peek-card,
+.rail-card,
+.contract-card,
+.prep-card,
+.crew-card,
+.asset-card,
+.legacy-card,
+.district-card {
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 16px;
+}
+
+.progress {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--pink), var(--amber), var(--cyan));
+  box-shadow: 0 0 16px rgba(91, 232, 255, 0.28);
+}
+
+.progress.stress span {
+  background: linear-gradient(90deg, var(--lime), var(--amber), var(--danger));
+}
+
+.stage-grid {
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.9fr);
+}
+
+.map-frame {
+  display: grid;
+  gap: 16px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+}
+
+.map-shell {
+  position: relative;
+  min-height: 300px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(91, 232, 255, 0.14), transparent 26%),
+    linear-gradient(180deg, rgba(14, 9, 28, 0.95), rgba(7, 4, 15, 0.94));
+  border: 1px solid rgba(91, 232, 255, 0.12);
+  overflow: hidden;
+}
+
+.map-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-lines line {
+  stroke: rgba(91, 232, 255, 0.32);
+  stroke-width: 1.1;
+}
+
+.district-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 96px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 8, 26, 0.92);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+}
+
+.district-node span {
+  display: block;
+  font-weight: 700;
+}
+
+.district-node small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.district-node.unlocked {
+  border-color: rgba(91, 232, 255, 0.3);
+}
+
+.district-node.controlled {
+  border-color: rgba(125, 255, 176, 0.42);
+  box-shadow: 0 0 28px rgba(125, 255, 176, 0.16);
+}
+
+.district-node.selected {
+  outline: 2px solid rgba(255, 79, 157, 0.5);
+}
+
+.district-node.locked {
+  opacity: 0.36;
+}
+
+.district-grid,
+.asset-grid,
+.crew-grid,
+.legacy-grid,
+.contract-list,
+.prep-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.district-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.asset-grid,
+.crew-grid,
+.legacy-grid,
+.contract-list,
+.prep-grid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.district-card.controlled,
+.legacy-card,
+.contract-card.ready {
+  border-color: rgba(125, 255, 176, 0.24);
+}
+
+.district-card.focus,
+.prep-card.done {
+  border-color: rgba(255, 191, 82, 0.36);
+}
+
+.district-card-head,
+.contract-head,
+.asset-head,
+.crew-head,
+.prep-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.district-tag,
+.rank-pill,
+.bonus-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.crew-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 79, 157, 0.4), rgba(91, 232, 255, 0.24)),
+    hsl(var(--avatar-hue) 70% 35%);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.queue-item,
+.ops-item,
+.alert-item {
+  border-radius: 18px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.alert-item strong,
+.queue-item strong,
+.ops-item strong {
+  display: block;
+}
+
+.dock-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dock-tab {
+  padding: 12px 8px;
+  font-weight: 700;
+}
+
+.dock-tab.active,
+.approach-chip.active {
+  background: linear-gradient(135deg, rgba(255, 79, 157, 0.22), rgba(91, 232, 255, 0.14));
+  border-color: rgba(255, 79, 157, 0.44);
+}
+
+.crew-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.crew-pick {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.crew-pick.selected {
+  border-color: rgba(255, 191, 82, 0.4);
+}
+
+.crew-pick.disabled {
+  opacity: 0.45;
+}
+
+.select-wrap,
+.prep-card select {
+  display: grid;
+  gap: 6px;
+}
+
+select {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--ink);
+  padding: 10px 12px;
+}
+
+.toast-root {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 8;
+  display: grid;
+  gap: 10px;
+}
+
+.toast {
+  min-width: 260px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(10, 7, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.intro-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 2, 12, 0.92);
+  backdrop-filter: blur(20px);
+}
+
+.intro-screen.hidden {
+  display: none;
+}
+
+.intro-panel {
+  width: min(1100px, 100%);
+  border-radius: 32px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(14, 9, 28, 0.92), rgba(7, 4, 15, 0.95));
+  box-shadow: var(--shadow);
+  display: grid;
+}
+
+.intro-art {
+  min-height: 280px;
+  background:
+    linear-gradient(180deg, rgba(7, 3, 16, 0.18), rgba(7, 3, 16, 0.72)),
+    url("../assets/catalog/criminal-empire-ii.png") center center / cover no-repeat;
+}
+
+.intro-copy {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.intro-copy h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 10vw, 3.6rem);
+  color: #ffd5a8;
+}
+
+.intro-pills {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.intro-pills span,
+.asset-metrics span {
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.mini-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 2, 8, 0.86);
+  backdrop-filter: blur(16px);
+}
+
+.mini-card {
+  width: min(720px, 100%);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(14, 9, 28, 0.96), rgba(7, 4, 15, 0.96));
+  padding: 18px;
+}
+
+.mini-card h2 {
+  margin: 8px 0 8px;
+}
+
+.mini-close {
+  float: right;
+  padding: 8px 12px;
+}
+
+.mini-stage {
+  margin-top: 18px;
+}
+
+.safe-track {
+  position: relative;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.safe-target,
+.safe-needle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.safe-target {
+  background: linear-gradient(90deg, rgba(255, 191, 82, 0.7), rgba(255, 79, 157, 0.72));
+}
+
+.safe-needle {
+  width: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.signal-tile {
+  aspect-ratio: 1;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.signal-tile.lit {
+  background: linear-gradient(135deg, rgba(91, 232, 255, 0.22), rgba(255, 79, 157, 0.24));
+  border-color: rgba(91, 232, 255, 0.34);
+}
+
+.chase-shell {
+  display: grid;
+  place-items: center;
+}
+
+.chase-road {
+  position: relative;
+  width: min(320px, 100%);
+  height: 320px;
+  border-radius: 26px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.3));
+}
+
+.chase-car,
+.chase-obstacle {
+  position: absolute;
+  width: 22%;
+  height: 46px;
+  border-radius: 16px;
+  left: 39%;
+}
+
+.chase-car {
+  bottom: 12px;
+  background: linear-gradient(135deg, var(--pink), var(--amber));
+}
+
+.chase-car.lane-0,
+.chase-obstacle.lane-0 {
+  left: 8%;
+}
+
+.chase-car.lane-1,
+.chase-obstacle.lane-1 {
+  left: 39%;
+}
+
+.chase-car.lane-2,
+.chase-obstacle.lane-2 {
+  left: 70%;
+}
+
+.chase-obstacle {
+  top: -56px;
+  background: linear-gradient(135deg, rgba(91, 232, 255, 0.7), rgba(255, 255, 255, 0.18));
+}
+
+.chase-obstacle.hit {
+  background: linear-gradient(135deg, var(--danger), rgba(255, 255, 255, 0.2));
+}
+
+@media (max-width: 980px) {
+  .stage-grid,
+  .command-grid,
+  .hero-metrics,
+  .status-grid,
+  .district-stats-row,
+  .mini-columns,
+  .micro-grid,
+  .summary-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    width: min(100%, calc(100% - 16px));
+    margin: 8px auto 28px;
+  }
+
+  .frame,
+  .intro-panel {
+    border-radius: 22px;
+  }
+
+  .dock-tabs {
+    position: sticky;
+    bottom: 0;
+    background: rgba(7, 4, 15, 0.94);
+    padding-top: 4px;
+    z-index: 2;
+  }
+
+  .topbar,
+  .hero-frame,
+  .status-frame,
+  .map-frame,
+  .rail-frame,
+  .main-frame {
+    padding: 14px;
+  }
+}
