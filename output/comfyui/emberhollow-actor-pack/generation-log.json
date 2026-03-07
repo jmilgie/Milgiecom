@@ -1,0 +1,92 @@
+[
+    {
+        "Name":  "skin-aged",
+        "PromptId":  "1560b58f-acd8-4f0d-9280-47ff28ed52d8",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-skin-aged_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\skin-aged.png"
+    },
+    {
+        "Name":  "skin-young",
+        "PromptId":  "29ba7cbd-4bca-4bad-8f64-fb7e6d2a8d35",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-skin-young_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\skin-young.png"
+    },
+    {
+        "Name":  "hair-strands",
+        "PromptId":  "1618ab28-5a9a-41fd-9704-4c5fb7e54b83",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-hair-strands_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\hair-strands.png"
+    },
+    {
+        "Name":  "cloth-frontier",
+        "PromptId":  "1dea5a75-49cd-432e-8174-72d3b1ed0c03",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-cloth-frontier_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\cloth-frontier.png"
+    },
+    {
+        "Name":  "cloth-brocade",
+        "PromptId":  "1b30dd44-4e48-4a71-9cb1-c7d5dc903e7e",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-cloth-brocade_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\cloth-brocade.png"
+    },
+    {
+        "Name":  "cloth-explorer",
+        "PromptId":  "eea9426c-b704-43f0-8c2a-e966bb6e8e21",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-cloth-explorer_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\cloth-explorer.png"
+    },
+    {
+        "Name":  "cloth-glass",
+        "PromptId":  "f1e29bd0-0827-4df7-8faa-f27811da2cdc",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-cloth-glass_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\cloth-glass.png"
+    },
+    {
+        "Name":  "leather-worn",
+        "PromptId":  "2f883d95-890d-47f9-88fd-3c7a3366faa4",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-leather-worn_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\leather-worn.png"
+    },
+    {
+        "Name":  "apron-soot",
+        "PromptId":  "49a8d69e-e96b-49de-8585-bad8fb5414bc",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-apron-soot_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\apron-soot.png"
+    },
+    {
+        "Name":  "crawler-carapace",
+        "PromptId":  "7f54ece6-c823-4407-8917-fcf8ced3fbd7",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-crawler-carapace_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\crawler-carapace.png"
+    },
+    {
+        "Name":  "crawler-underhide",
+        "PromptId":  "94dccf87-8933-41a1-82d7-d71165f2b41a",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-crawler-underhide_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\crawler-underhide.png"
+    },
+    {
+        "Name":  "warden-armor",
+        "PromptId":  "ac969ca8-155b-425f-9c8b-80a0928e0e82",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-warden-armor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\warden-armor.png"
+    },
+    {
+        "Name":  "wisp-energy",
+        "PromptId":  "ccfa6b80-08e6-468f-9d4b-32bd50d7bfb6",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-wisp-energy_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\wisp-energy.png"
+    },
+    {
+        "Name":  "choir-obsidian",
+        "PromptId":  "8668f3b1-d4fa-414f-9c48-560be83c9826",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-choir-obsidian_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\choir-obsidian.png"
+    },
+    {
+        "Name":  "choir-gilded",
+        "PromptId":  "6a7f49da-792c-4a9f-9d19-e1a299e4db75",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-choir-gilded_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-pack\\raw\\choir-gilded.png"
+    }
+]

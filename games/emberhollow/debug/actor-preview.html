@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Emberhollow Actor Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b10;
+      --panel: rgba(12, 17, 25, 0.82);
+      --border: rgba(255, 220, 168, 0.22);
+      --text: #f6ecd7;
+      --muted: #b8b3a8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top, rgba(255, 190, 110, 0.12), transparent 42%),
+        linear-gradient(180deg, #171b26 0%, var(--bg) 100%);
+      color: var(--text);
+      font: 14px/1.45 "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 20px 20px auto;
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel);
+      backdrop-filter: blur(8px);
+      max-width: 380px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .legend {
+      position: fixed;
+      left: 20px;
+      right: 20px;
+      bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(10, 14, 21, 0.76);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <h1>Actor Detail Preview</h1>
+    <p>NPCs, monsters, and the Choir King rebuilt with layered geometry, material-specific textures, and live animation hooks.</p>
+  </div>
+
+  <div class="legend">
+    <div class="card"><strong>Town</strong><span>Elder Suri, Brakka, Pippin</span></div>
+    <div class="card"><strong>District</strong><span>Mara, Ilya, archive palette</span></div>
+    <div class="card"><strong>Threats</strong><span>Wisp, crawler, warden, Choir King</span></div>
+  </div>
+
+  <script type="module">
+    import * as THREE from '../vendor/three.module.js';
+    import { createBossVisual, createEnemyVisual, createNpcVisual } from '../js/actors.mjs';
+    import { THEMES } from '../js/world.mjs';
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    document.body.prepend(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x090b10);
+    scene.fog = new THREE.FogExp2(0x0b0d13, 0.018);
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 8.6, 24);
+    camera.lookAt(0, 2.3, 0);
+
+    const hemi = new THREE.HemisphereLight(0xfff2d1, 0x1e2434, 1.6);
+    scene.add(hemi);
+
+    const key = new THREE.DirectionalLight(0xfff2dc, 2.8);
+    key.position.set(8, 12, 10);
+    scene.add(key);
+
+    const rim = new THREE.DirectionalLight(0x7ab9ff, 1.1);
+    rim.position.set(-10, 6, -8);
+    scene.add(rim);
+
+    const ground = new THREE.Mesh(
+      new THREE.CylinderGeometry(15.5, 18.5, 1.4, 40),
+      new THREE.MeshStandardMaterial({
+        color: 0x161b25,
+        roughness: 0.92,
+        metalness: 0.08,
+      }),
+    );
+    ground.position.y = -0.8;
+    scene.add(ground);
+
+    const runes = new THREE.Mesh(
+      new THREE.RingGeometry(6.4, 12.4, 48, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xd6ae75,
+        emissive: 0xd6ae75,
+        emissiveIntensity: 0.18,
+        roughness: 0.42,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide,
+      }),
+    );
+    runes.rotation.x = -Math.PI / 2;
+    runes.position.y = -0.08;
+    scene.add(runes);
+
+    const previewItems = [
+      { label: 'Elder Suri', theme: 'town', build: () => createNpcVisual({ id: 'elder' }, THEMES.town, 'town'), x: -10, z: -2, pedestal: 0xa08a69 },
+      { label: 'Brakka', theme: 'forge', build: () => createNpcVisual({ id: 'smith' }, THEMES.forge, 'forge'), x: -5, z: -2, pedestal: 0xa36a46 },
+      { label: 'Pippin', theme: 'market', build: () => createNpcVisual({ id: 'bard' }, THEMES.market, 'market'), x: 0, z: -2, pedestal: 0xa37d56 },
+      { label: 'Mara', theme: 'archive', build: () => createNpcVisual({ id: 'cartographer' }, THEMES.archive, 'archive'), x: 5, z: -2, pedestal: 0x658296 },
+      { label: 'Ilya', theme: 'echo', build: () => createNpcVisual({ id: 'glassweaver' }, THEMES.echo, 'echo'), x: 10, z: -2, pedestal: 0x8aa7b7 },
+      { label: 'Wisp', theme: 'echo', build: () => createEnemyVisual('wisp', THEMES.echo, 'echo'), x: -7.5, z: 5.8, pedestal: 0x7e5d9f, entity: {} },
+      { label: 'Crawler', theme: 'moss', build: () => createEnemyVisual('crawler', THEMES.moss, 'moss'), x: -1.8, z: 5.8, pedestal: 0x556b58, entity: {} },
+      { label: 'Warden', theme: 'forge', build: () => createEnemyVisual('warden', THEMES.forge, 'forge'), x: 4.2, z: 5.8, pedestal: 0x7c6658, entity: {} },
+      { label: 'Choir King', theme: 'boss', build: () => createBossVisual(THEMES.boss, 'boss'), x: 10.2, z: 6.4, pedestal: 0x6f415d, entity: { state: { shieldCount: 3 } }, scale: 1.08 },
+    ];
+
+    const previewEntries = previewItems.map((item) => {
+      const built = item.build();
+      const pedestal = new THREE.Mesh(
+        new THREE.CylinderGeometry(item.scale ? 1.9 : 1.45, item.scale ? 2.15 : 1.65, 0.72, 24),
+        new THREE.MeshStandardMaterial({
+          color: item.pedestal,
+          roughness: 0.86,
+          metalness: 0.16,
+          emissive: item.pedestal,
+          emissiveIntensity: 0.08,
+        }),
+      );
+      pedestal.position.set(item.x, -0.02, item.z);
+      scene.add(pedestal);
+
+      built.mesh.position.set(item.x, 0.35, item.z);
+      if (item.scale) {
+        built.mesh.scale.setScalar(item.scale);
+      }
+      built.mesh.rotation.y = item.label === 'Choir King' ? Math.PI * 0.25 : -0.22;
+      scene.add(built.mesh);
+
+      const glow = new THREE.Mesh(
+        new THREE.RingGeometry(0.88, 1.24, 28),
+        new THREE.MeshStandardMaterial({
+          color: item.pedestal,
+          emissive: item.pedestal,
+          emissiveIntensity: 0.22,
+          transparent: true,
+          opacity: 0.78,
+          side: THREE.DoubleSide,
+        }),
+      );
+      glow.rotation.x = -Math.PI / 2;
+      glow.position.set(item.x, 0.02, item.z);
+      scene.add(glow);
+
+      return {
+        ...item,
+        glow,
+        entity: item.entity || null,
+        mesh: built.mesh,
+        animators: built.animators || [],
+      };
+    });
+
+    document.body.dataset.previewReady = String(previewEntries.length);
+
+    const clock = new THREE.Clock();
+
+    function render() {
+      const elapsed = clock.getElapsedTime();
+      previewEntries.forEach((entry, index) => {
+        entry.animators.forEach((animator) => animator(elapsed, entry.entity));
+        entry.mesh.rotation.y += (entry.label === 'Choir King' ? 0.0014 : 0.001) * (index % 2 === 0 ? 1 : -1);
+        entry.glow.material.opacity = 0.62 + Math.sin(elapsed * 2.2 + index) * 0.12;
+      });
+      camera.position.x = Math.sin(elapsed * 0.16) * 1.4;
+      camera.lookAt(0, 2.4, 1.8);
+      renderer.render(scene, camera);
+      requestAnimationFrame(render);
+    }
+
+    render();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

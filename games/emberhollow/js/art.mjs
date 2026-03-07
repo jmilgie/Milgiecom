@@ -11,6 +11,20 @@ function surfaceTextureSet(name) {
   };
 }
 
+function actorTextureSet(name, extension = 'webp') {
+  return {
+    color: new URL(`../assets/textures/actors/${name}.${extension}`, import.meta.url).href,
+    height: new URL(`../assets/textures/actors/${name}-height.${extension}`, import.meta.url).href,
+  };
+}
+
+function actorMaskSet(name) {
+  return {
+    color: new URL(`../assets/textures/actors/${name}.png`, import.meta.url).href,
+    alpha: new URL(`../assets/textures/actors/${name}-alpha.png`, import.meta.url).href,
+  };
+}
+
 const SURFACE_TEXTURES = {
   townFloor: surfaceTextureSet('town-floor'),
   caveFloor: surfaceTextureSet('cave-floor'),
@@ -37,6 +51,39 @@ const SURFACE_TEXTURES = {
   water: surfaceTextureSet('water-surface'),
   crystal: surfaceTextureSet('crystal-facets'),
   hazard: surfaceTextureSet('rune-hazard'),
+};
+
+const ACTOR_TEXTURES = {
+  skinAged: actorTextureSet('skin-aged'),
+  skinYoung: actorTextureSet('skin-young'),
+  hair: actorTextureSet('hair-strands'),
+  frontierCloth: actorTextureSet('cloth-frontier'),
+  brocadeCloth: actorTextureSet('cloth-brocade'),
+  explorerCloth: actorTextureSet('cloth-explorer'),
+  glassCloth: actorTextureSet('cloth-glass'),
+  leather: actorTextureSet('leather-worn'),
+  apron: actorTextureSet('apron-soot'),
+  crawlerShell: actorTextureSet('crawler-carapace'),
+  crawlerHide: actorTextureSet('crawler-underhide'),
+  wardenArmor: actorTextureSet('warden-armor'),
+  wispEnergy: actorTextureSet('wisp-energy'),
+  choirObsidian: actorTextureSet('choir-obsidian'),
+  choirGilded: actorTextureSet('choir-gilded'),
+  choirVeil: actorTextureSet('choir-veil', 'png'),
+  choirHeartSurface: actorTextureSet('choir-heart-surface', 'png'),
+};
+
+const ACTOR_MASKS = {
+  elderFace: actorMaskSet('face-elder'),
+  smithFace: actorMaskSet('face-smith'),
+  bardFace: actorMaskSet('face-bard'),
+  cartographerFace: actorMaskSet('face-cartographer'),
+  glassweaverFace: actorMaskSet('face-glassweaver'),
+  wispRunes: actorMaskSet('wisp-runes'),
+  wardenRunes: actorMaskSet('warden-runes'),
+  crawlerEyes: actorMaskSet('crawler-eyes'),
+  choirRunes: actorMaskSet('choir-runes'),
+  choirHeartMask: actorMaskSet('choir-heart-mask'),
 };
 
 const DEFAULT_THEME_SURFACE_PROFILE = {
@@ -297,14 +344,36 @@ function material(color, extras = {}) {
   return new THREE.MeshStandardMaterial({
     color,
     map: extras.map ?? null,
+    alphaMap: extras.alphaMap ?? null,
     bumpMap: extras.bumpMap ?? null,
     bumpScale: extras.bumpScale ?? 0,
     roughness: extras.roughness ?? 0.72,
     metalness: extras.metalness ?? 0.08,
     emissive: extras.emissive ?? 0x000000,
+    emissiveMap: extras.emissiveMap ?? null,
     emissiveIntensity: extras.emissiveIntensity ?? 0,
     transparent: extras.transparent ?? false,
     opacity: extras.opacity ?? 1,
+    alphaTest: extras.alphaTest ?? 0,
+    side: extras.side ?? THREE.FrontSide,
+    depthWrite: extras.depthWrite ?? true,
+  });
+}
+
+function overlayMaterial(map, alphaMap, color = 0xffffff, extras = {}) {
+  return material(color, {
+    map,
+    alphaMap,
+    transparent: true,
+    opacity: extras.opacity ?? 1,
+    roughness: extras.roughness ?? 0.58,
+    metalness: extras.metalness ?? 0.06,
+    emissive: extras.emissive ?? 0x000000,
+    emissiveMap: extras.emissiveMap ?? map,
+    emissiveIntensity: extras.emissiveIntensity ?? 0,
+    alphaTest: extras.alphaTest ?? 0.08,
+    side: extras.side ?? THREE.DoubleSide,
+    depthWrite: extras.depthWrite ?? false,
   });
 }
 
@@ -359,6 +428,96 @@ export function buildThemeMaterials(theme, themeId = 'town') {
     fabricMat: material(shade(theme.wallTrim, -0.04), { map: fabricMap, bumpMap: fabricHeightMap, bumpScale: 0.018, roughness: 0.74 }),
     paperMat: material(shade(theme.ambient, 0.08), { map: paperMap, bumpMap: paperHeightMap, bumpScale: 0.01, roughness: 0.95 }),
     crystalMat: material(theme.accent, { map: crystalMap, bumpMap: crystalHeightMap, bumpScale: 0.06, roughness: 0.16, emissive: theme.accent, emissiveIntensity: 0.42 }),
+  };
+}
+
+export function buildActorMaterials(theme, themeId = 'town') {
+  const base = buildThemeMaterials(theme, themeId);
+  const skinAgedMap = loadTextureAsset(ACTOR_TEXTURES.skinAged.color, [1.2, 1.2], THREE.SRGBColorSpace);
+  const skinAgedHeightMap = loadTextureAsset(ACTOR_TEXTURES.skinAged.height, [1.2, 1.2], THREE.NoColorSpace);
+  const skinYoungMap = loadTextureAsset(ACTOR_TEXTURES.skinYoung.color, [1.2, 1.2], THREE.SRGBColorSpace);
+  const skinYoungHeightMap = loadTextureAsset(ACTOR_TEXTURES.skinYoung.height, [1.2, 1.2], THREE.NoColorSpace);
+  const hairMap = loadTextureAsset(ACTOR_TEXTURES.hair.color, [1.4, 1.4], THREE.SRGBColorSpace);
+  const hairHeightMap = loadTextureAsset(ACTOR_TEXTURES.hair.height, [1.4, 1.4], THREE.NoColorSpace);
+  const frontierClothMap = loadTextureAsset(ACTOR_TEXTURES.frontierCloth.color, [2, 2], THREE.SRGBColorSpace);
+  const frontierClothHeightMap = loadTextureAsset(ACTOR_TEXTURES.frontierCloth.height, [2, 2], THREE.NoColorSpace);
+  const brocadeMap = loadTextureAsset(ACTOR_TEXTURES.brocadeCloth.color, [2, 2], THREE.SRGBColorSpace);
+  const brocadeHeightMap = loadTextureAsset(ACTOR_TEXTURES.brocadeCloth.height, [2, 2], THREE.NoColorSpace);
+  const explorerMap = loadTextureAsset(ACTOR_TEXTURES.explorerCloth.color, [2, 2], THREE.SRGBColorSpace);
+  const explorerHeightMap = loadTextureAsset(ACTOR_TEXTURES.explorerCloth.height, [2, 2], THREE.NoColorSpace);
+  const glassClothMap = loadTextureAsset(ACTOR_TEXTURES.glassCloth.color, [1.8, 1.8], THREE.SRGBColorSpace);
+  const glassClothHeightMap = loadTextureAsset(ACTOR_TEXTURES.glassCloth.height, [1.8, 1.8], THREE.NoColorSpace);
+  const leatherMap = loadTextureAsset(ACTOR_TEXTURES.leather.color, [2.1, 2.1], THREE.SRGBColorSpace);
+  const leatherHeightMap = loadTextureAsset(ACTOR_TEXTURES.leather.height, [2.1, 2.1], THREE.NoColorSpace);
+  const apronMap = loadTextureAsset(ACTOR_TEXTURES.apron.color, [1.8, 1.8], THREE.SRGBColorSpace);
+  const apronHeightMap = loadTextureAsset(ACTOR_TEXTURES.apron.height, [1.8, 1.8], THREE.NoColorSpace);
+  const crawlerShellMap = loadTextureAsset(ACTOR_TEXTURES.crawlerShell.color, [2.4, 2.4], THREE.SRGBColorSpace);
+  const crawlerShellHeightMap = loadTextureAsset(ACTOR_TEXTURES.crawlerShell.height, [2.4, 2.4], THREE.NoColorSpace);
+  const crawlerHideMap = loadTextureAsset(ACTOR_TEXTURES.crawlerHide.color, [2.1, 2.1], THREE.SRGBColorSpace);
+  const crawlerHideHeightMap = loadTextureAsset(ACTOR_TEXTURES.crawlerHide.height, [2.1, 2.1], THREE.NoColorSpace);
+  const wardenArmorMap = loadTextureAsset(ACTOR_TEXTURES.wardenArmor.color, [1.9, 1.9], THREE.SRGBColorSpace);
+  const wardenArmorHeightMap = loadTextureAsset(ACTOR_TEXTURES.wardenArmor.height, [1.9, 1.9], THREE.NoColorSpace);
+  const wispMap = loadTextureAsset(ACTOR_TEXTURES.wispEnergy.color, [2.5, 2.5], THREE.SRGBColorSpace);
+  const wispHeightMap = loadTextureAsset(ACTOR_TEXTURES.wispEnergy.height, [2.5, 2.5], THREE.NoColorSpace);
+  const choirObsidianMap = loadTextureAsset(ACTOR_TEXTURES.choirObsidian.color, [1.9, 1.9], THREE.SRGBColorSpace);
+  const choirObsidianHeightMap = loadTextureAsset(ACTOR_TEXTURES.choirObsidian.height, [1.9, 1.9], THREE.NoColorSpace);
+  const choirGildedMap = loadTextureAsset(ACTOR_TEXTURES.choirGilded.color, [1.7, 1.7], THREE.SRGBColorSpace);
+  const choirGildedHeightMap = loadTextureAsset(ACTOR_TEXTURES.choirGilded.height, [1.7, 1.7], THREE.NoColorSpace);
+  const choirVeilMap = loadTextureAsset(ACTOR_TEXTURES.choirVeil.color, [1.4, 1.4], THREE.SRGBColorSpace);
+  const choirVeilHeightMap = loadTextureAsset(ACTOR_TEXTURES.choirVeil.height, [1.4, 1.4], THREE.NoColorSpace);
+  const choirHeartSurfaceMap = loadTextureAsset(ACTOR_TEXTURES.choirHeartSurface.color, [1.25, 1.25], THREE.SRGBColorSpace);
+  const choirHeartSurfaceHeightMap = loadTextureAsset(ACTOR_TEXTURES.choirHeartSurface.height, [1.25, 1.25], THREE.NoColorSpace);
+
+  const elderFaceMap = loadTextureAsset(ACTOR_MASKS.elderFace.color, [1, 1], THREE.SRGBColorSpace);
+  const elderFaceAlpha = loadTextureAsset(ACTOR_MASKS.elderFace.alpha, [1, 1], THREE.NoColorSpace);
+  const smithFaceMap = loadTextureAsset(ACTOR_MASKS.smithFace.color, [1, 1], THREE.SRGBColorSpace);
+  const smithFaceAlpha = loadTextureAsset(ACTOR_MASKS.smithFace.alpha, [1, 1], THREE.NoColorSpace);
+  const bardFaceMap = loadTextureAsset(ACTOR_MASKS.bardFace.color, [1, 1], THREE.SRGBColorSpace);
+  const bardFaceAlpha = loadTextureAsset(ACTOR_MASKS.bardFace.alpha, [1, 1], THREE.NoColorSpace);
+  const cartographerFaceMap = loadTextureAsset(ACTOR_MASKS.cartographerFace.color, [1, 1], THREE.SRGBColorSpace);
+  const cartographerFaceAlpha = loadTextureAsset(ACTOR_MASKS.cartographerFace.alpha, [1, 1], THREE.NoColorSpace);
+  const glassweaverFaceMap = loadTextureAsset(ACTOR_MASKS.glassweaverFace.color, [1, 1], THREE.SRGBColorSpace);
+  const glassweaverFaceAlpha = loadTextureAsset(ACTOR_MASKS.glassweaverFace.alpha, [1, 1], THREE.NoColorSpace);
+  const wispRuneMap = loadTextureAsset(ACTOR_MASKS.wispRunes.color, [1, 1], THREE.SRGBColorSpace);
+  const wispRuneAlpha = loadTextureAsset(ACTOR_MASKS.wispRunes.alpha, [1, 1], THREE.NoColorSpace);
+  const wardenRuneMap = loadTextureAsset(ACTOR_MASKS.wardenRunes.color, [1, 1], THREE.SRGBColorSpace);
+  const wardenRuneAlpha = loadTextureAsset(ACTOR_MASKS.wardenRunes.alpha, [1, 1], THREE.NoColorSpace);
+  const crawlerEyesMap = loadTextureAsset(ACTOR_MASKS.crawlerEyes.color, [1, 1], THREE.SRGBColorSpace);
+  const crawlerEyesAlpha = loadTextureAsset(ACTOR_MASKS.crawlerEyes.alpha, [1, 1], THREE.NoColorSpace);
+  const choirRuneMap = loadTextureAsset(ACTOR_MASKS.choirRunes.color, [1, 1], THREE.SRGBColorSpace);
+  const choirRuneAlpha = loadTextureAsset(ACTOR_MASKS.choirRunes.alpha, [1, 1], THREE.NoColorSpace);
+  const choirHeartMaskMap = loadTextureAsset(ACTOR_MASKS.choirHeartMask.color, [1, 1], THREE.SRGBColorSpace);
+  const choirHeartMaskAlpha = loadTextureAsset(ACTOR_MASKS.choirHeartMask.alpha, [1, 1], THREE.NoColorSpace);
+
+  return {
+    ...base,
+    skinAgedMat: material(0xd0af95, { map: skinAgedMap, bumpMap: skinAgedHeightMap, bumpScale: 0.012, roughness: 0.92 }),
+    skinYoungMat: material(0xe0bc9b, { map: skinYoungMap, bumpMap: skinYoungHeightMap, bumpScale: 0.01, roughness: 0.9 }),
+    hairMat: material(0x79665a, { map: hairMap, bumpMap: hairHeightMap, bumpScale: 0.03, roughness: 0.82 }),
+    frontierClothMat: material(0x9d856d, { map: frontierClothMap, bumpMap: frontierClothHeightMap, bumpScale: 0.03, roughness: 0.88 }),
+    brocadeClothMat: material(0x8a6a7a, { map: brocadeMap, bumpMap: brocadeHeightMap, bumpScale: 0.032, roughness: 0.8 }),
+    explorerClothMat: material(0x6d7b6f, { map: explorerMap, bumpMap: explorerHeightMap, bumpScale: 0.032, roughness: 0.84 }),
+    glassClothMat: material(0xa5c3d6, { map: glassClothMap, bumpMap: glassClothHeightMap, bumpScale: 0.026, roughness: 0.62 }),
+    leatherMat: material(0x7b5a3f, { map: leatherMap, bumpMap: leatherHeightMap, bumpScale: 0.04, roughness: 0.9 }),
+    apronMat: material(0x7d5a47, { map: apronMap, bumpMap: apronHeightMap, bumpScale: 0.04, roughness: 0.92 }),
+    crawlerShellMat: material(0x7f8a79, { map: crawlerShellMap, bumpMap: crawlerShellHeightMap, bumpScale: 0.065, roughness: 0.52 }),
+    crawlerHideMat: material(0x8b7467, { map: crawlerHideMap, bumpMap: crawlerHideHeightMap, bumpScale: 0.05, roughness: 0.72 }),
+    wardenArmorMat: material(shade(theme.wallTrim, -0.08), { map: wardenArmorMap, bumpMap: wardenArmorHeightMap, bumpScale: 0.055, roughness: 0.42, metalness: 0.62 }),
+    wispEnergyMat: material(theme.accentSoft, { map: wispMap, bumpMap: wispHeightMap, bumpScale: 0.02, roughness: 0.08, transparent: true, opacity: 0.82, emissive: theme.accentSoft, emissiveIntensity: 0.72 }),
+    choirObsidianMat: material(shade(theme.wall, -0.02), { map: choirObsidianMap, bumpMap: choirObsidianHeightMap, bumpScale: 0.06, roughness: 0.24, metalness: 0.12, emissive: theme.accent, emissiveIntensity: 0.06 }),
+    choirGildedMat: material(shade(theme.wallTrim, 0.08), { map: choirGildedMap, bumpMap: choirGildedHeightMap, bumpScale: 0.05, roughness: 0.25, metalness: 0.78, emissive: theme.wallTrim, emissiveIntensity: 0.1 }),
+    choirVeilMat: material(theme.accent, { map: choirVeilMap, bumpMap: choirVeilHeightMap, bumpScale: 0.03, roughness: 0.74, emissive: theme.accent, emissiveIntensity: 0.06 }),
+    choirHeartSurfaceMat: material(theme.accentSoft, { map: choirHeartSurfaceMap, bumpMap: choirHeartSurfaceHeightMap, bumpScale: 0.05, roughness: 0.16, emissive: theme.accentSoft, emissiveIntensity: 0.18 }),
+    elderFaceMat: overlayMaterial(elderFaceMap, elderFaceAlpha, 0xffffff, { roughness: 0.66 }),
+    smithFaceMat: overlayMaterial(smithFaceMap, smithFaceAlpha, 0xffffff, { roughness: 0.7 }),
+    bardFaceMat: overlayMaterial(bardFaceMap, bardFaceAlpha, 0xffffff, { roughness: 0.62 }),
+    cartographerFaceMat: overlayMaterial(cartographerFaceMap, cartographerFaceAlpha, 0xffffff, { roughness: 0.66 }),
+    glassweaverFaceMat: overlayMaterial(glassweaverFaceMap, glassweaverFaceAlpha, 0xffffff, { roughness: 0.58, emissive: theme.accentSoft, emissiveIntensity: 0.03 }),
+    wispRuneMat: overlayMaterial(wispRuneMap, wispRuneAlpha, 0xffffff, { emissive: theme.accentSoft, emissiveMap: wispRuneMap, emissiveIntensity: 0.95, roughness: 0.14, opacity: 0.94 }),
+    wardenRuneMat: overlayMaterial(wardenRuneMap, wardenRuneAlpha, 0xffffff, { emissive: theme.accentSoft, emissiveMap: wardenRuneMap, emissiveIntensity: 0.88, roughness: 0.22, metalness: 0.24 }),
+    crawlerEyesMat: overlayMaterial(crawlerEyesMap, crawlerEyesAlpha, 0xffffff, { emissive: theme.accentSoft, emissiveMap: crawlerEyesMap, emissiveIntensity: 0.94, roughness: 0.08, opacity: 0.92 }),
+    choirRuneMat: overlayMaterial(choirRuneMap, choirRuneAlpha, 0xffffff, { emissive: theme.accent, emissiveMap: choirRuneMap, emissiveIntensity: 0.96, roughness: 0.18, metalness: 0.18, opacity: 0.96 }),
+    choirHeartMaskMat: overlayMaterial(choirHeartMaskMap, choirHeartMaskAlpha, 0xffffff, { emissive: theme.accentSoft, emissiveMap: choirHeartMaskMap, emissiveIntensity: 1.08, roughness: 0.08, opacity: 0.98 }),
   };
 }
 

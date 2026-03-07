@@ -1,0 +1,110 @@
+﻿[
+    {
+        "Name":  "face-elder",
+        "Type":  "face",
+        "Prompt":  "hand-painted fantasy RPG elder face decal, centered front-facing eyes brows nose and mouth only, wise weathered expression, warm parchment skin tones, isolated on a pure black background, no hair, no ears, no frame, no text, crisp decal texture",
+        "PromptId":  null,
+        "Url":  null,
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\face-elder.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\face-elder.png"
+    },
+    {
+        "Name":  "face-smith",
+        "Type":  "face",
+        "Prompt":  "hand-painted fantasy RPG blacksmith face decal, centered front-facing eyes brows nose and mouth only, soot-smudged cheeks, strong practical expression, isolated on a pure black background, no hair, no ears, no frame, no text, crisp decal texture",
+        "PromptId":  null,
+        "Url":  null,
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\face-smith.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\face-smith.png"
+    },
+    {
+        "Name":  "face-bard",
+        "Type":  "face",
+        "Prompt":  "hand-painted fantasy RPG bard face decal, centered front-facing eyes brows nose and mouth only, playful smile, expressive eyes, isolated on a pure black background, no hair, no ears, no frame, no text, crisp decal texture",
+        "PromptId":  null,
+        "Url":  null,
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\face-bard.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\face-bard.png"
+    },
+    {
+        "Name":  "face-cartographer",
+        "Type":  "face",
+        "Prompt":  "hand-painted fantasy RPG cartographer face decal, centered front-facing eyes brows nose and mouth only, focused explorer expression, subtle freckles, isolated on a pure black background, no hair, no ears, no frame, no text, crisp decal texture",
+        "PromptId":  null,
+        "Url":  null,
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\face-cartographer.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\face-cartographer.png"
+    },
+    {
+        "Name":  "face-glassweaver",
+        "Type":  "face",
+        "Prompt":  "hand-painted fantasy RPG artisan face decal, centered front-facing eyes brows nose and mouth only, refined calm expression, luminous makeup marks, isolated on a pure black background, no hair, no ears, no frame, no text, crisp decal texture",
+        "PromptId":  "cf95a1dd-b1fa-4300-9839-08ec60d3d93c",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-face-glassweaver_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\face-glassweaver.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\face-glassweaver.png"
+    },
+    {
+        "Name":  "wisp-runes",
+        "Type":  "mask",
+        "Prompt":  "arcane spectral rune mask for a floating wisp enemy, concentric glowing glyph lines and drifting sigils, bright cyan and amber glow on a pure black background, centered, no border, no frame, no text, clean emissive game texture",
+        "PromptId":  "70f0989c-10b1-4178-bc15-84563b7b5c38",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-wisp-runes_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\wisp-runes.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\wisp-runes.png"
+    },
+    {
+        "Name":  "warden-runes",
+        "Type":  "mask",
+        "Prompt":  "ancient guardian armor rune mask, vertical visor sigils and chest seal motifs, bright molten gold and teal glow on a pure black background, centered, no border, no frame, no text, clean emissive game texture",
+        "PromptId":  "1b6ce213-fc78-4e05-966d-3e65afcc168f",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-warden-runes_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\warden-runes.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\warden-runes.png"
+    },
+    {
+        "Name":  "crawler-eyes",
+        "Type":  "mask",
+        "Prompt":  "predatory cave crawler eye mask, clustered glowing insect eyes and tiny sigil scratches, eerie teal glow on a pure black background, centered, no border, no frame, no text, clean emissive game texture",
+        "PromptId":  "d0f4ceab-0492-427b-bf06-7c2d884533f3",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-crawler-eyes_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\crawler-eyes.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\crawler-eyes.png"
+    },
+    {
+        "Name":  "choir-runes",
+        "Type":  "mask",
+        "Prompt":  "forbidden choir king rune mask, ceremonial crown sigils and concentric sacred geometry, magenta gold and pale cyan glow on a pure black background, centered, no border, no frame, no text, clean emissive game texture",
+        "PromptId":  "a45f1fd7-62e8-4357-9606-ef6f7f12ff85",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-choir-runes_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\choir-runes.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\choir-runes.png"
+    },
+    {
+        "Name":  "choir-heart-mask",
+        "Type":  "mask",
+        "Prompt":  "eldritch crystal heart emissive mask, branching inner fissures and pulsing sacred veins, pale cyan and ember magenta glow on a pure black background, centered, no border, no frame, no text, clean emissive game texture",
+        "PromptId":  "4680fc41-af48-4fd9-a121-da6de4ea204d",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-choir-heart-mask_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\choir-heart-mask.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\choir-heart-mask.png"
+    },
+    {
+        "Name":  "choir-veil",
+        "Type":  "surface",
+        "Prompt":  "ornate ceremonial veil textile for a dark fantasy boss, top-down fabric texture with gold-thread embroidery, magenta velvet, subtle sacred motifs, even lighting, seamless style, no perspective, no objects, no text",
+        "PromptId":  "b129fe56-2b04-4027-b6a4-6392baaf27e9",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-choir-veil_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\choir-veil.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\choir-veil.png"
+    },
+    {
+        "Name":  "choir-heart-surface",
+        "Type":  "surface",
+        "Prompt":  "dark fantasy crystal heart surface texture, top-down mineral and enamel texture with pale cyan glowing veins and magenta undertones, even lighting, seamless style, no perspective, no objects, no text",
+        "PromptId":  "44e3f5e3-6adb-444f-8bd2-5f61990abc5b",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-choir-heart-surface_00001_.png\u0026subfolder=\u0026type=output",
+        "Raw":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-actor-enhancement-pack\\raw\\choir-heart-surface.png",
+        "Shipped":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\textures\\actors\\choir-heart-surface.png"
+    }
+]

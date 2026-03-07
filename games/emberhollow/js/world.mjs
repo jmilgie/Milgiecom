@@ -1,5 +1,10 @@
 import * as THREE from '../vendor/three.module.js';
 import { addStringLights, buildThemeMaterials } from './art.mjs';
+import {
+  createBossVisual as createDetailedBossVisual,
+  createEnemyVisual as createDetailedEnemyVisual,
+  createNpcVisual as createDetailedNpcVisual,
+} from './actors.mjs';
 
 export const TILE_SIZE = 4;
 
@@ -335,25 +340,7 @@ export function createObjectVisual(object, levelTheme) {
 
   switch (object.kind) {
     case 'npc': {
-      const robeColor = npcRobes[object.id] || theme.wallTrim;
-      const robe = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 1.3, 4, 8), tintMaterial(mats.fabricMat, robeColor, { roughness: 0.86, emissive: robeColor, emissiveIntensity: 0.04 }));
-      robe.position.y = 1.15;
-      group.add(robe);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), material(0xf2d6bc, { roughness: 0.95 }));
-      head.position.y = 2.28;
-      group.add(head);
-      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.08, 10, 18), mats.metalMat);
-      collar.position.y = 1.78;
-      collar.rotation.x = Math.PI / 2;
-      group.add(collar);
-      const halo = makeLabelRing(theme.accentSoft);
-      halo.position.y = 2.95;
-      halo.scale.setScalar(0.58);
-      group.add(halo);
-      animators.push((elapsed) => {
-        halo.rotation.z = elapsed * 0.7;
-      });
-      break;
+      return createDetailedNpcVisual(object, theme, levelTheme);
     }
     case 'fountain': {
       const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.75, 0.8, 24), tintMaterial(mats.carvedStoneMat, theme.wallTrim, { roughness: 0.92 }));
@@ -640,165 +627,12 @@ export function createObjectVisual(object, levelTheme) {
 
 export function createEnemyVisual(type, levelTheme) {
   const theme = THEMES[levelTheme] || THEMES.town;
-  const group = new THREE.Group();
-  const animators = [];
-  const mats = buildThemeMaterials(theme, levelTheme);
-
-  if (type === 'wisp') {
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.56, 18, 18), material(theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.72, roughness: 0.1, transparent: true, opacity: 0.92 }));
-    orb.position.y = 1.25;
-    group.add(orb);
-    const petals = [];
-    for (let i = 0; i < 5; i += 1) {
-      const petal = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.8, 4), material(theme.accent, { emissive: theme.accent, emissiveIntensity: 0.35, roughness: 0.28, transparent: true, opacity: 0.72 }));
-      petal.position.y = 1.2;
-      petal.rotation.z = Math.PI / 2;
-      petal.rotation.y = (Math.PI * 2 * i) / 5;
-      petal.position.x = Math.cos(petal.rotation.y) * 0.62;
-      petal.position.z = Math.sin(petal.rotation.y) * 0.62;
-      petals.push(petal);
-      group.add(petal);
-    }
-    const ring = makeLabelRing(theme.accent);
-    ring.position.y = 1.18;
-    ring.scale.setScalar(0.72);
-    group.add(ring);
-    animators.push((elapsed) => {
-      orb.position.y = 1.2 + Math.sin(elapsed * 3.4) * 0.18;
-      ring.rotation.z = elapsed * 2;
-      petals.forEach((petal, index) => {
-        petal.rotation.x = Math.sin(elapsed * 3 + index) * 0.22;
-      });
-    });
-  } else if (type === 'warden') {
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.84, 2.3, 6), mats.metalMat);
-    torso.position.y = 1.35;
-    group.add(torso);
-    const shoulderLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 1.2), mats.carvedStoneMat);
-    shoulderLeft.position.set(-0.78, 1.95, 0);
-    group.add(shoulderLeft);
-    const shoulderRight = shoulderLeft.clone();
-    shoulderRight.position.x = 0.78;
-    group.add(shoulderRight);
-    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.22, 0.4), material(theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.82, roughness: 0.18 }));
-    visor.position.set(0, 2.08, 0.48);
-    group.add(visor);
-    const crown = new THREE.Mesh(CRYSTAL_GEOMETRY, tintMaterial(mats.crystalMat, theme.accent, { emissive: theme.accent, emissiveIntensity: 0.75, roughness: 0.12 }));
-    crown.position.y = 2.92;
-    crown.scale.set(0.9, 1.3, 0.9);
-    group.add(crown);
-    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 8), mats.metalMat);
-    staff.position.set(0.66, 1.2, 0);
-    staff.rotation.z = 0.18;
-    group.add(staff);
-    const seal = makeLabelRing(theme.accent);
-    seal.position.set(0.82, 2.15, 0);
-    seal.scale.setScalar(0.4);
-    seal.rotation.y = Math.PI / 2;
-    group.add(seal);
-    animators.push((elapsed) => {
-      crown.rotation.y = elapsed * 1.5;
-      seal.rotation.z = elapsed * 1.3;
-    });
-  } else {
-    const abdomen = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 16), material(theme.wallTrim, { emissive: theme.accentSoft, emissiveIntensity: 0.14, roughness: 0.52 }));
-    abdomen.position.set(0, 0.88, -0.16);
-    abdomen.scale.set(1, 0.78, 1.2);
-    group.add(abdomen);
-    const thorax = new THREE.Mesh(new THREE.SphereGeometry(0.44, 16, 16), mats.metalMat);
-    thorax.position.set(0, 0.9, 0.34);
-    thorax.scale.set(1, 0.82, 0.9);
-    group.add(thorax);
-    const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 0), material(theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.54, roughness: 0.22 }));
-    head.position.set(0, 1, 0.9);
-    group.add(head);
-    const legs = [];
-    for (let side = -1; side <= 1; side += 2) {
-      for (let i = 0; i < 3; i += 1) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.8), mats.metalMat);
-        leg.position.set(side * (0.42 + i * 0.05), 0.52, -0.26 + i * 0.42);
-        leg.rotation.z = side * 0.7;
-        leg.rotation.y = (i - 1) * 0.28;
-        legs.push(leg);
-        group.add(leg);
-      }
-    }
-    const mandibleLeft = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 4), material(theme.accent, { emissive: theme.accent, emissiveIntensity: 0.3 }));
-    mandibleLeft.position.set(-0.14, 0.86, 1.18);
-    mandibleLeft.rotation.x = Math.PI / 2;
-    mandibleLeft.rotation.z = -0.45;
-    group.add(mandibleLeft);
-    const mandibleRight = mandibleLeft.clone();
-    mandibleRight.position.x = 0.14;
-    mandibleRight.rotation.z = 0.45;
-    group.add(mandibleRight);
-    animators.push((elapsed) => {
-      abdomen.position.y = 0.88 + Math.sin(elapsed * 5.2) * 0.05;
-      thorax.position.y = 0.9 + Math.sin(elapsed * 5.2 + 0.2) * 0.04;
-      head.rotation.y = Math.sin(elapsed * 3) * 0.2;
-      legs.forEach((leg, index) => {
-        leg.rotation.x = Math.sin(elapsed * 7 + index) * 0.2;
-      });
-    });
-  }
-
-  return { mesh: group, animators };
+  return createDetailedEnemyVisual(type, theme, levelTheme);
 }
 
 export function createBossVisual(levelTheme) {
   const theme = THEMES[levelTheme] || THEMES.boss;
-  const group = new THREE.Group();
-  const animators = [];
-  const mats = buildThemeMaterials(theme, levelTheme);
-  const crown = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.2, 1.5, 7), mats.metalMat);
-  crown.position.y = 2.25;
-  group.add(crown);
-  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(1.35, 0), tintMaterial(mats.crystalMat, theme.accent, { emissive: theme.accent, emissiveIntensity: 0.45, roughness: 0.18 }));
-  body.position.y = 2.15;
-  group.add(body);
-
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.9, 20, 20), tintMaterial(mats.crystalMat, theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.85, roughness: 0.12 }));
-  core.position.y = 2.1;
-  group.add(core);
-
-  const mantle = [];
-  for (let i = 0; i < 6; i += 1) {
-    const shard = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.8), material(theme.wallTrim, { emissive: theme.wallTrim, emissiveIntensity: 0.16, metalness: 0.48, roughness: 0.36 }));
-    const angle = (Math.PI * 2 * i) / 6;
-    shard.position.set(Math.cos(angle) * 1.8, 1.6, Math.sin(angle) * 1.8);
-    shard.lookAt(0, 1.6, 0);
-    mantle.push(shard);
-    group.add(shard);
-  }
-
-  const orbiters = [];
-  for (let i = 0; i < 4; i += 1) {
-    const orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), tintMaterial(mats.crystalMat, theme.hazard, { emissive: theme.hazard, emissiveIntensity: 0.75 }));
-    orb.position.y = 2.1;
-    orbiters.push(orb);
-    group.add(orb);
-  }
-
-  animators.push((elapsed, entity) => {
-    crown.rotation.y = -elapsed * 0.4;
-    body.rotation.x = elapsed * 0.3;
-    body.rotation.y = elapsed * 0.9;
-    core.scale.setScalar(1 + Math.sin(elapsed * 4) * 0.08);
-    mantle.forEach((shard, index) => {
-      shard.position.y = 1.55 + Math.sin(elapsed * 2 + index) * 0.12;
-      shard.rotation.y += 0.01;
-    });
-    const shieldCount = entity?.state?.shieldCount ?? 3;
-    orbiters.forEach((orb, index) => {
-      orb.visible = index < shieldCount;
-      if (orb.visible) {
-        const angle = elapsed * 1.2 + index * ((Math.PI * 2) / 4);
-        orb.position.set(Math.cos(angle) * 2.5, 2.1 + Math.sin(elapsed * 3 + index) * 0.3, Math.sin(angle) * 2.5);
-      }
-    });
-  });
-
-  return { mesh: group, animators };
+  return createDetailedBossVisual(theme, levelTheme);
 }
 
 export function runeColor(rune) {
