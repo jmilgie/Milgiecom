@@ -444,6 +444,10 @@ export class NeonFrontierUI {
     }
   }
 
+  isCompactViewport() {
+    return window.matchMedia("(max-width: 720px)").matches;
+  }
+
   render(state, derived, missionRun) {
     this.lastState = state;
     this.lastDerived = derived;
@@ -468,6 +472,52 @@ export class NeonFrontierUI {
 
   renderHud(state, derived) {
     const buildableCount = derived.buildChoices.filter((choice) => choice.buildable).length;
+    const compact = this.isCompactViewport();
+    const resourceEntries = compact
+      ? ["food", "water", "energy", "alloy", "credits", "circuits"].map((key) => [key, state.resources[key]])
+      : Object.entries(state.resources);
+
+    if (compact) {
+      return `
+        <header class="top-bar frame compact-hud">
+          <div class="compact-topline">
+            <div class="player-lockup compact">
+              <div class="avatar-core">NF</div>
+              <div>
+                <strong>Neon Frontier</strong>
+                <small>Tier ${state.city.tier} | ${fmtNumber(derived.squadPower)} power</small>
+              </div>
+            </div>
+            <div class="top-actions compact">
+              <button class="hud-icon round compact-icon ${this.trackerCollapsed ? "" : "active"}" type="button" data-action="toggle-tracker" aria-label="Toggle tracker">
+                ${iconSvg("track")}
+              </button>
+              <button class="hud-icon round compact-icon" type="button" data-action="save" aria-label="Save game">
+                ${iconSvg("save")}
+              </button>
+            </div>
+          </div>
+          <div class="compact-status-strip">
+            <span class="compact-view">${state.currentView === "world" ? "Map" : "City"}</span>
+            <span>${Math.round(state.city.morale)}% morale</span>
+            <span>${Math.round(state.world.control)}% control</span>
+            <span>${buildableCount} ready</span>
+          </div>
+          <div class="resource-rack compact-resource-rack">
+            ${resourceEntries.map(([key, value]) => `
+              <article class="resource-pill compact" data-resource="${key}">
+                ${resourceIconMarkup(key)}
+                <div class="resource-copy">
+                  <span>${RESOURCE_META[key].label}</span>
+                  <strong>${fmtNumber(value)}</strong>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </header>
+      `;
+    }
+
     return `
       <header class="top-bar frame">
         <div class="top-main">
@@ -496,7 +546,7 @@ export class NeonFrontierUI {
           </div>
         </div>
         <div class="resource-rack">
-          ${Object.entries(state.resources).map(([key, value]) => `
+          ${resourceEntries.map(([key, value]) => `
             <article class="resource-pill" data-resource="${key}">
               ${resourceIconMarkup(key)}
               <div class="resource-copy">
@@ -538,6 +588,24 @@ export class NeonFrontierUI {
   }
 
   renderStageControls(state) {
+    if (this.isCompactViewport()) {
+      return `
+        <aside class="stage-rail mobile-right">
+          <div class="zoom-rail mobile">
+            <button class="utility-btn compact" type="button" data-action="zoom-in" aria-label="Zoom in">
+              <span class="utility-icon">${iconSvg("zoomIn")}</span>
+            </button>
+            <button class="utility-btn compact" type="button" data-action="zoom-out" aria-label="Zoom out">
+              <span class="utility-icon">${iconSvg("zoomOut")}</span>
+            </button>
+            <button class="utility-btn compact" type="button" data-action="reset-camera" aria-label="Reset camera">
+              <span class="utility-icon">${iconSvg("fit")}</span>
+            </button>
+          </div>
+        </aside>
+      `;
+    }
+
     const cityShortcut = state.currentView === "city"
       ? `
         <button class="utility-btn ${this.buildPaletteOpen ? "active" : ""}" type="button" data-action="toggle-build-palette">
@@ -593,6 +661,9 @@ export class NeonFrontierUI {
   }
 
   renderAlertStack(derived) {
+    if (this.isCompactViewport()) {
+      return "";
+    }
     const alerts = derived.topAlerts.slice(0, 2);
     if (!alerts.length) {
       return "";
@@ -738,6 +809,10 @@ export class NeonFrontierUI {
   }
 
   renderTracker(state, derived) {
+    if (this.isCompactViewport() && this.trackerCollapsed) {
+      return "";
+    }
+
     const timers = [
       ...(state.research.activeId ? [{
         label: `Research: ${derived.availableResearch.find((item) => item.active)?.definition.name || state.research.activeId}`,
@@ -822,8 +897,9 @@ export class NeonFrontierUI {
   }
 
   renderBuildPalette(derived) {
+    const compact = this.isCompactViewport();
     return `
-      <section class="detail-card build-palette frame themed-card" style="--card-accent:#ff9a68">
+      <section class="detail-card build-palette frame themed-card ${compact ? "compact-detail" : ""}" style="--card-accent:#ff9a68">
         <div class="card-head">
           <div>
             <span class="eyebrow">Build menu</span>
@@ -860,6 +936,32 @@ export class NeonFrontierUI {
     const meta = kindMeta(node.definition.kind);
     const powerGap = derived.squadPower - node.definition.enemyPower;
     const matchupWidth = Math.max(14, Math.min(100, (derived.squadPower / Math.max(node.definition.enemyPower, 1)) * 54));
+    if (this.isCompactViewport()) {
+      return `
+        <section class="detail-card frame themed-card compact-detail compact-world-card" style="--card-accent:${meta.accent}">
+          <div class="card-head">
+            <div>
+              <h3>${node.definition.name}</h3>
+            </div>
+            <button class="hud-icon round compact-icon" type="button" data-action="switch-view" data-view="city" aria-label="Enter city">
+              ${iconSvg("city")}
+            </button>
+          </div>
+          <div class="card-chips">${bundleMarkup(node.definition.reward)}</div>
+          <div class="card-actions compact-actions">
+            <button class="action-btn primary" type="button" data-action="open-mission" data-node-id="${node.state.id}" ${node.ready ? "" : "disabled"}>
+              ${node.locked ? "Locked" : node.cooldownRemainingMs ? `Cooldown ${fmtTime(node.cooldownRemainingMs)}` : "Launch skirmish"}
+            </button>
+          </div>
+          <div class="compact-stat-row">
+            <span class="compact-stat-pill">${meta.label}</span>
+            <span class="compact-stat-pill">Enemy ${fmtNumber(node.definition.enemyPower)}</span>
+            <span class="compact-stat-pill">Squad ${fmtNumber(derived.squadPower)}</span>
+            <span class="compact-stat-pill ${powerGap >= 0 ? "good" : "bad"}">${powerGap >= 0 ? "+" : ""}${fmtNumber(powerGap)}</span>
+          </div>
+        </section>
+      `;
+    }
     return `
       <section class="detail-card frame themed-card" style="--card-accent:${meta.accent}">
         <div class="card-head">
@@ -920,6 +1022,30 @@ export class NeonFrontierUI {
 
     if (!selected && selectedCell) {
       const quickChoices = this.recommendBuildChoices(selectedCell, derived);
+      if (this.isCompactViewport()) {
+        return `
+          <section class="detail-card frame themed-card compact-detail" style="--card-accent:#84ffca">
+            <div class="card-head">
+              <div>
+                <span class="eyebrow">Open plot</span>
+                <h3>${titleCase(selectedCell.zone)}</h3>
+              </div>
+              <button class="hud-icon round compact-icon" type="button" data-action="toggle-build-palette" aria-label="Open build palette">
+                ${iconSvg("build")}
+              </button>
+            </div>
+            <p>Place a new structure on this plot.</p>
+            <div class="quick-grid compact-quick-grid">
+              ${quickChoices.map((choice) => `
+                <button class="quick-card" type="button" data-action="start-placement" data-type-id="${choice.definition.id}" ${choice.buildable ? "" : "disabled"}>
+                  <strong>${choice.definition.name}</strong>
+                  <small>${groupMeta(choice.definition.group).label}</small>
+                </button>
+              `).join("")}
+            </div>
+          </section>
+        `;
+      }
       return `
         <section class="detail-card frame themed-card" style="--card-accent:#84ffca">
           <div class="card-head">
@@ -953,6 +1079,38 @@ export class NeonFrontierUI {
 
     const special = this.renderBuildingExtras(state, derived, selected);
     const meta = groupMeta(selected.definition.group);
+    if (this.isCompactViewport()) {
+      return `
+        <section class="detail-card frame themed-card compact-detail compact-city-card" style="--card-accent:${selected.definition.accent}">
+          <div class="card-head">
+            <div>
+              <h3>${selected.definition.name}</h3>
+            </div>
+            <div class="card-head-actions compact">
+              ${!selected.building.anchorId ? `<button class="hud-icon round compact-icon" type="button" data-action="relocate-building" data-instance-id="${selected.building.instanceId}" aria-label="Move building">${iconSvg("focus")}</button>` : ""}
+              <button class="hud-icon round compact-icon" type="button" data-action="toggle-build-palette" aria-label="Open build palette">${iconSvg("build")}</button>
+            </div>
+          </div>
+          <div class="card-chips">${rateMarkup(selected.definition.outputPerSec)}</div>
+          <div class="card-actions compact-actions">
+            ${selected.definition.action && !["research-lab", "vanguard-barracks", "operative-hub"].includes(selected.definition.id) ? `
+              <button class="action-btn primary" type="button" data-action="building-action" data-instance-id="${selected.building.instanceId}" ${selected.cooldownRemainingMs > 0 || selected.busyRemainingMs > 0 ? "disabled" : ""}>
+                ${selected.cooldownRemainingMs > 0 ? `Cooldown ${fmtTime(selected.cooldownRemainingMs)}` : selected.definition.action.label}
+              </button>
+            ` : ""}
+            <button class="action-btn" type="button" data-action="upgrade-building" data-instance-id="${selected.building.instanceId}" ${selected.canUpgrade ? "" : "disabled"}>
+              ${selected.canUpgrade ? "Upgrade" : selected.building.level >= selected.definition.maxLevel ? "Max level" : "Locked"}
+            </button>
+          </div>
+          <div class="compact-stat-row">
+            <span class="compact-stat-pill">${meta.label}</span>
+            <span class="compact-stat-pill">Lv ${selected.building.level}</span>
+            <span class="compact-stat-pill">${selected.building.anchorId ? "Anchor" : titleCase(selected.position.zone || "anchor")}</span>
+          </div>
+          ${special}
+        </section>
+      `;
+    }
     return `
       <section class="detail-card frame themed-card" style="--card-accent:${selected.definition.accent}">
         <div class="card-head">
@@ -998,10 +1156,11 @@ export class NeonFrontierUI {
   }
 
   renderBuildingExtras(state, derived, selected) {
+    const compact = this.isCompactViewport();
     if (selected.definition.id === "research-lab") {
       return `
-        <div class="quick-grid">
-          ${derived.availableResearch.filter((item) => !item.completed).slice(0, 3).map((item) => `
+        <div class="quick-grid ${compact ? "compact-quick-grid" : ""}">
+          ${derived.availableResearch.filter((item) => !item.completed).slice(0, compact ? 2 : 3).map((item) => `
             <button class="quick-card" type="button" data-action="start-research" data-research-id="${item.definition.id}" ${item.locked || item.active ? "disabled" : ""}>
               <strong>${item.definition.name}</strong>
               <small>${item.active ? `Active | ${fmtTime(Math.max(0, this.lastState.research.activeEndsAt - Date.now()))}` : item.locked ? "Locked" : "Start research"}</small>
@@ -1013,8 +1172,8 @@ export class NeonFrontierUI {
 
     if (selected.definition.id === "vanguard-barracks") {
       return `
-        <div class="quick-grid">
-          ${UNIT_DEFS.map((unit) => `
+        <div class="quick-grid ${compact ? "compact-quick-grid" : ""}">
+          ${UNIT_DEFS.slice(0, compact ? 2 : UNIT_DEFS.length).map((unit) => `
             <button class="quick-card" type="button" data-action="queue-training" data-unit-id="${unit.id}" ${state.training.unitId ? "disabled" : ""}>
               <strong>${unit.name}</strong>
               <small>${unit.batch} units | ${fmtTime(unit.timeMs)}</small>
@@ -1026,8 +1185,8 @@ export class NeonFrontierUI {
 
     if (selected.definition.id === "operative-hub") {
       return `
-        <div class="quick-grid">
-          ${derived.operatives.slice(0, 4).map((entry) => `
+        <div class="quick-grid ${compact ? "compact-quick-grid" : ""}">
+          ${derived.operatives.slice(0, compact ? 2 : 4).map((entry) => `
             <button class="quick-card" type="button" data-action="${entry.state.recruited ? "promote-operative" : "recruit-operative"}" data-operative-id="${entry.state.id}">
               <strong>${entry.definition.name}</strong>
               <small>${entry.state.recruited ? `Promote | rank ${entry.state.rank}` : "Recruit"}</small>
