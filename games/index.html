@@ -10,16 +10,14 @@
   <style>
     /* ---- Game-image override (relative to this page) ---- */
     .gameTile.criminal-empire::before {
-      background-image: url('./criminalempire/assets/titleScreen.png');
+      background-image: url('./assets/catalog/criminal-empire.png');
+      background-position: center top;
     }
 
-    /* Nexus Protocol — animated grid + neon glow BG */
+    /* Nexus Protocol */
     .gameTile.nexus-protocol::before {
-      background:
-        linear-gradient(rgba(0,245,255,0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,245,255,0.05) 1px, transparent 1px),
-        linear-gradient(180deg, #020510, #050d1f);
-      background-size: 24px 24px, 24px 24px, 100% 100%;
+      background-image: url('./assets/catalog/nexus-protocol.png');
+      background-position: center top;
     }
 
     /* Classified tile dark noise BG */
@@ -118,42 +116,22 @@
       min-height: 260px;
     }
 
-    /* Lucky 7s Casino — gold felt + neon Vegas BG */
+    /* Lucky 7s Casino */
     .gameTile.lucky-7s::before {
-      background:
-        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,180,0,.18), transparent 60%),
-        repeating-linear-gradient(
-          45deg,
-          rgba(255,215,0,.03) 0px, rgba(255,215,0,.03) 1px,
-          transparent 1px, transparent 12px
-        ),
-        linear-gradient(180deg, #1a0800, #0a0400);
+      background-image: url('./assets/catalog/lucky-7s-casino.png');
+      background-position: center top;
     }
 
-    /* Void Runner — dark grid + magenta/cyan neon bg */
+    /* Void Runner */
     .gameTile.void-runner::before {
-      background:
-        repeating-linear-gradient(
-          0deg,
-          rgba(255,0,229,0.04) 0px, rgba(255,0,229,0.04) 1px,
-          transparent 1px, transparent 24px
-        ),
-        repeating-linear-gradient(
-          90deg,
-          rgba(0,245,255,0.04) 0px, rgba(0,245,255,0.04) 1px,
-          transparent 1px, transparent 24px
-        ),
-        linear-gradient(180deg, #020510, #050210);
-      background-size: 24px 24px, 24px 24px, 100% 100%;
+      background-image: url('./assets/catalog/void-runner.png');
+      background-position: center center;
     }
 
-    /* Emberhollow — warm fantasy dusk with cave glow */
+    /* Emberhollow */
     .gameTile.emberhollow::before {
-      background:
-        linear-gradient(180deg, rgba(5, 8, 12, 0.12) 0%, rgba(5, 8, 12, 0.66) 100%),
-        radial-gradient(circle at 18% 78%, rgba(255, 190, 104, 0.28), transparent 28%),
-        radial-gradient(circle at 72% 42%, rgba(113, 224, 219, 0.24), transparent 24%),
-        url('./emberhollow/assets/ui/scenes/emberhollow-hero.webp') center / cover no-repeat;
+      background-image: url('./assets/catalog/emberhollow.png');
+      background-position: center top;
     }
   </style>
   <script>

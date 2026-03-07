@@ -1,0 +1,98 @@
+﻿[
+    {
+        "Key":  "shadow",
+        "Name":  "Shadow",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_shadow.png",
+        "PromptId":  "31cea97f-17e7-4ce8-a5e9-1a7a5465cdd0",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_shadow_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "ghost",
+        "Name":  "Ghost",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_ghost.png",
+        "PromptId":  "437be777-86f9-498f-b338-e1d999e05288",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_ghost_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "viper",
+        "Name":  "Viper",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_viper.png",
+        "PromptId":  "842debe8-dae4-48c0-901d-30447eb73957",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_viper_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "raven",
+        "Name":  "Raven",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_raven.png",
+        "PromptId":  "6b173b7d-4b84-410c-8c12-165af494794d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_raven_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "wolf",
+        "Name":  "Wolf",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_wolf.png",
+        "PromptId":  "a89002d6-44f2-40d7-aa3a-249ea293ccc6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_wolf_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "phantom",
+        "Name":  "Phantom",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_phantom.png",
+        "PromptId":  "58fc3129-d983-48fc-899f-9c9a9f0d2af1",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_phantom_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "ace",
+        "Name":  "Ace",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_ace.png",
+        "PromptId":  "5797e7c0-f7d0-4dbf-84c3-02445d27d0be",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_ace_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "blaze",
+        "Name":  "Blaze",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_blaze.png",
+        "PromptId":  "125d553b-d140-488d-b4c0-e341338f097d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_blaze_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "cipher",
+        "Name":  "Cipher",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_cipher.png",
+        "PromptId":  "2fa571a0-7113-4d2a-8cc4-3ddaff6a09ea",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_cipher_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "duke",
+        "Name":  "Duke",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_duke.png",
+        "PromptId":  "b9e4f9fe-a2f3-4832-b4fd-0d7bb4a57915",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_duke_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "echo",
+        "Name":  "Echo",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_echo.png",
+        "PromptId":  "72e4e955-3660-48e3-90dd-a789e54f2308",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_echo_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "frost",
+        "Name":  "Frost",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_frost.png",
+        "PromptId":  "07881a61-aa9d-4d27-a995-e5409f95bd39",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_frost_00002_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    }
+]

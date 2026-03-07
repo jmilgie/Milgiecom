@@ -1,0 +1,177 @@
+﻿[
+    {
+        "Key":  "bg_biz_bank",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_bank.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_biz_casino",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_casino.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_biz_corp",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_corp.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_biz_factory",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_factory.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_biz_food_cart",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_food_cart.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_biz_lemonade",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_lemonade.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_biz_restaurant",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_restaurant.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_biz_shop",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_biz_shop.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_click_briefcase",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_click_briefcase.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_click_gloves",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_click_gloves.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_click_jet",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_click_jet.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_click_lambo",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_click_lambo.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_click_rings",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_click_rings.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_click_watch",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_click_watch.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_click_yacht",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_click_yacht.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_heist_bank",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_heist_bank.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_heist_casino",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_heist_casino.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_heist_corner_store",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_heist_corner_store.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_heist_jewelry",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_heist_jewelry.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_heist_reserve",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_heist_reserve.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_police_chief",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_police_chief.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_police_insider",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_police_insider.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_police_judge",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_police_judge.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_police_safehouse",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_police_safehouse.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_police_scanner",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_police_scanner.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_special_crit1",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_special_crit1.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_special_crit2",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_special_crit2.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_special_crit3",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_special_crit3.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_special_luck1",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_special_luck1.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_special_luck2",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_special_luck2.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_special_luck3",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_special_luck3.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_storage_mattress",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_storage_mattress.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_storage_offshore",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_storage_offshore.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_storage_safe",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_storage_safe.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "bg_storage_vault",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\bg_storage_vault.png",
+        "Status":  "generated"
+    }
+]

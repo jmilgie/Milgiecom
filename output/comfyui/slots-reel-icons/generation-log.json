@@ -1,0 +1,322 @@
+﻿[
+    {
+        "Machine":  "lucky7s",
+        "Key":  "highroller",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\highroller.png",
+        "PromptId":  "e0d74b03-274b-4921-86a2-c5428c9c31c3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=highroller_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "champagne",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\champagne.png",
+        "PromptId":  "60fda6ad-8cb5-4f4e-ba85-f6091dcd97f1",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=champagne_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "dice",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\dice.png",
+        "PromptId":  "f08c317e-68a2-4fb2-bcb6-1eeb4abe0963",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=dice_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "sax",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\sax.png",
+        "PromptId":  "f0701ea9-1429-46d3-a786-22320f123030",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sax_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "martini",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\martini.png",
+        "PromptId":  "23ec7a7d-ea9c-4974-a0b2-5536b7c54d40",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=martini_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "cufflinks",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\cufflinks.png",
+        "PromptId":  "4bb01e20-1dae-4e7a-9eeb-a45e90672ddf",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=cufflinks_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "lighter",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\lighter.png",
+        "PromptId":  "5ddd3b1b-8edc-4afb-8718-738f40787e9b",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=lighter_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "chip",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\chip.png",
+        "PromptId":  "de6083d9-e338-47fc-ab7d-5f57b038baf2",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=chip_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "scatter",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\scatter.png",
+        "PromptId":  "f5bd69d7-6956-4989-b32e-39514af662f6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=scatter_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "lucky7s",
+        "Key":  "wild",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\lucky7s\\wild.png",
+        "PromptId":  "1e3e4b7c-09ea-4e01-bb17-3f65431f692d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=wild_00001_.png\u0026subfolder=slots%5Clucky7s\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "jackpot",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\jackpot.png",
+        "PromptId":  "a31bdd43-4f7c-45ae-8f06-e62a728ceed8",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=jackpot_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "parrot",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\parrot.png",
+        "PromptId":  "a48e24b9-ce86-4e16-825b-b067e0624587",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=parrot_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "dragonfruit",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\dragonfruit.png",
+        "PromptId":  "4f8700c8-30b1-46e0-a920-076d2e6a25be",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=dragonfruit_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "coconut",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\coconut.png",
+        "PromptId":  "e6ccaaae-4b86-4c12-8416-cae2fab1374d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=coconut_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "hibiscus",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\hibiscus.png",
+        "PromptId":  "68ecc98a-4e46-4da4-96f0-7de7b39c01d9",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=hibiscus_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "papaya",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\papaya.png",
+        "PromptId":  "d2f5dab3-a619-4129-99e7-6bbd33cb6490",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=papaya_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "lime",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\lime.png",
+        "PromptId":  "dd6174c2-6000-4927-8fcd-a362edafaab8",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=lime_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "shell",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\shell.png",
+        "PromptId":  "659e2931-7e29-44f0-92bf-49a0be7f27a9",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=shell_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "scatter",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\scatter.png",
+        "PromptId":  "cc7d48bd-8cfe-4f67-998a-f796dba8a447",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=scatter_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "fruits",
+        "Key":  "wild",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\fruits\\wild.png",
+        "PromptId":  "7fcc56fc-6c90-4732-81a9-df1d0ae1e0ca",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=wild_00001_.png\u0026subfolder=slots%5Cfruits\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "diamond",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\diamond.png",
+        "PromptId":  "78ec63e8-8262-43ac-8416-529fefb59c55",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=diamond_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "ruby",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\ruby.png",
+        "PromptId":  "d60786dd-cff6-4817-b8e7-a7184ef9db29",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=ruby_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "sapphire",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\sapphire.png",
+        "PromptId":  "87a9d7c1-6d33-4575-b74e-0c7a74a2496a",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sapphire_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "emerald",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\emerald.png",
+        "PromptId":  "6c2c9fd2-dd20-4ae4-9bf6-3ec2e5775f69",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=emerald_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "amber",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\amber.png",
+        "PromptId":  "e4b9a4f5-4c9d-4d77-b07d-eb65b2dde499",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=amber_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "crown",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\crown.png",
+        "PromptId":  "d726b7b4-ec13-423f-a278-a9b11b6448f7",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crown_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "locket",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\locket.png",
+        "PromptId":  "0c76a690-a9f1-422e-877b-2c59945f6aaa",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=locket_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "coin",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\coin.png",
+        "PromptId":  "c9c06fbe-a617-41cd-8679-8f568e949862",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=coin_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "scatter",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\scatter.png",
+        "PromptId":  "8a53ea88-3b56-4244-8ed8-1dca1eb8cb1e",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=scatter_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "diamonds",
+        "Key":  "wild",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\diamonds\\wild.png",
+        "PromptId":  "62fd4fcb-c3ae-40d9-a237-d6d598a1be13",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=wild_00001_.png\u0026subfolder=slots%5Cdiamonds\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "star7",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\star7.png",
+        "PromptId":  "643a3933-579e-4dea-8097-e2fca70c5467",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=star7_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "helm",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\helm.png",
+        "PromptId":  "5aecdf18-11bf-4e8a-aef2-47792ad4bffd",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=helm_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "comet",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\comet.png",
+        "PromptId":  "a8e2c9f4-1930-4e01-a7b9-73c35e1902d4",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=comet_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "eclipse",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\eclipse.png",
+        "PromptId":  "bddebbb4-06cf-4744-889e-eb4abdddf237",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=eclipse_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "satellite",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\satellite.png",
+        "PromptId":  "642ce587-de70-4dc6-b9c8-1444aa9170c6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=satellite_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "drone",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\drone.png",
+        "PromptId":  "d6e4064a-55e1-4f5c-a178-451816bc8801",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=drone_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "ufo",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\ufo.png",
+        "PromptId":  "43197ef1-7fed-4a09-89dc-59b94a306736",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=ufo_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "star",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\star.png",
+        "PromptId":  "393c07f8-a258-498f-bf0e-9b98952b5675",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=star_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "scatter",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\scatter.png",
+        "PromptId":  "86a0a156-6cef-48b6-927c-452181d4d47b",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=scatter_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Machine":  "stars",
+        "Key":  "wild",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\reels\\stars\\wild.png",
+        "PromptId":  "4d3ffd75-5fd1-4d79-8f1b-be22ad447a78",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=wild_00001_.png\u0026subfolder=slots%5Cstars\u0026type=output",
+        "Status":  "generated"
+    }
+]

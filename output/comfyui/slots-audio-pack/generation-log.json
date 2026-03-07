@@ -1,0 +1,100 @@
+﻿[
+    {
+        "Key":  "theme-lucky7s",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\theme-lucky7s.mp3",
+        "PromptId":  "f88c6560-9647-40de-bc15-00dafe0a486e",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-lucky7s_00002_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-fruits",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\theme-fruits.mp3",
+        "PromptId":  "fa413ee3-5caa-4383-b1f4-e2b754e739d3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-fruits_00002_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-diamonds",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\theme-diamonds.mp3",
+        "PromptId":  "dd2a3068-e2a6-4305-abb8-90765e270d74",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-diamonds_00002_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-stars",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\theme-stars.mp3",
+        "PromptId":  "40238668-d490-4668-9fbb-ce19c05e1dbe",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-stars_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-spinStart",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-spinStart.mp3",
+        "PromptId":  "b93217a1-dabf-47a4-9ec4-4d3a5c4dcfb2",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-spinStart_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-reelTick",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-reelTick.mp3",
+        "PromptId":  "dc0f7ff2-86a8-41ae-b5ea-c606a42de1b9",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-reelTick_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-reelStop",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-reelStop.mp3",
+        "PromptId":  "c94b1681-b1a7-4891-accd-05b7894a8bf4",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-reelStop_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-smallWin",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-smallWin.mp3",
+        "PromptId":  "125ee9ba-0f71-4062-bb7b-71a1d1d2237d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-smallWin_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-bigWin",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-bigWin.mp3",
+        "PromptId":  "f61ecad1-e5ab-448f-b564-ec72e9eb1035",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-bigWin_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-jackpot",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-jackpot.mp3",
+        "PromptId":  "6880f008-0794-4063-ba2f-8147e9380ed6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-jackpot_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-coinClink",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-coinClink.mp3",
+        "PromptId":  "cee060d2-0b21-41fb-9151-67bc06a561a3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-coinClink_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-buttonClick",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-buttonClick.mp3",
+        "PromptId":  "2e58c997-d569-423c-9418-7ffca84c79f6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-buttonClick_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-noMoney",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-noMoney.mp3",
+        "PromptId":  "dc95e8ac-56a8-4b7b-a366-a1a060d9effe",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-noMoney_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-freeSpins",
+        "Target":  "C:\\src\\Milgiecom\\games\\slots\\assets\\audio\\sfx-freeSpins.mp3",
+        "PromptId":  "4dfa9912-a901-46cd-8ed2-fcda0e90daf2",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-freeSpins_00001_.mp3\u0026subfolder=slots\u0026type=output",
+        "Status":  "generated"
+    }
+]

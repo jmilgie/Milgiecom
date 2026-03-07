@@ -1,0 +1,27 @@
+﻿[
+    {
+        "Key":  "emberhollow",
+        "Target":  "C:\\src\\Milgiecom\\games\\assets\\catalog\\emberhollow.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "criminal-empire",
+        "Target":  "C:\\src\\Milgiecom\\games\\assets\\catalog\\criminal-empire.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "nexus-protocol",
+        "Target":  "C:\\src\\Milgiecom\\games\\assets\\catalog\\nexus-protocol.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "lucky-7s-casino",
+        "Target":  "C:\\src\\Milgiecom\\games\\assets\\catalog\\lucky-7s-casino.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "void-runner",
+        "Target":  "C:\\src\\Milgiecom\\games\\assets\\catalog\\void-runner.png",
+        "Status":  "generated"
+    }
+]

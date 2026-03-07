@@ -1,0 +1,98 @@
+﻿[
+    {
+        "Key":  "special_luck1",
+        "Label":  "Lucky Charm",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\special_luck1.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "special_crit1",
+        "Label":  "Sharp Eye",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\special_crit1.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "special_crit2",
+        "Label":  "Crit Master",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\special_crit2.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "special_luck2",
+        "Label":  "Gambler",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\special_luck2.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "special_crit3",
+        "Label":  "Devastation",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\special_crit3.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "special_luck3",
+        "Label":  "Fortune",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\special_luck3.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "police_scanner",
+        "Label":  "Scanner",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\police_scanner.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "police_safehouse",
+        "Label":  "Safehouse",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\police_safehouse.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "police_insider",
+        "Label":  "Insider",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\police_insider.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "police_judge",
+        "Label":  "Judge",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\police_judge.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "police_chief",
+        "Label":  "Chief",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\police_chief.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "heist_corner_store",
+        "Label":  "Corner Store",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\heist_corner_store.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "heist_jewelry",
+        "Label":  "Jewelry",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\heist_jewelry.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "heist_bank",
+        "Label":  "Bank",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\heist_bank.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "heist_casino",
+        "Label":  "Casino",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\heist_casino.png",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "heist_reserve",
+        "Label":  "Reserve",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\heist_reserve.png",
+        "Status":  "generated"
+    }
+]

@@ -1,0 +1,205 @@
+﻿[
+    {
+        "Key":  "biz_lemonade",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_lemonade.png",
+        "PromptId":  "8b6ae696-92f0-4f30-ab9c-514788c35ec4",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_lemonade_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "biz_food_cart",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_food_cart.png",
+        "PromptId":  "e2b2b5d5-39af-47c6-93bd-2ddbbbda87f3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_food_cart_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "biz_shop",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_shop.png",
+        "PromptId":  "8d0f29be-4411-47a2-9548-ae5ba83c002e",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_shop_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "biz_restaurant",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_restaurant.png",
+        "PromptId":  "9170468b-f5a7-4805-b29e-dd67d7cf60e3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_restaurant_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "biz_factory",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_factory.png",
+        "PromptId":  "8128b26a-0c2b-48a8-b808-16f2ee8c6141",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_factory_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "biz_corp",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_corp.png",
+        "PromptId":  "109f015d-58ca-4f6d-9f37-5ff204a14089",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_corp_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "biz_bank",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_bank.png",
+        "PromptId":  "9d1051d4-3f2f-4f40-8bfa-46065c1f0fed",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_bank_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "biz_casino",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\biz_casino.png",
+        "PromptId":  "2dbd9f85-f227-4356-acc9-4cfdcf33f03c",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=biz_casino_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "click_gloves",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\click_gloves.png",
+        "PromptId":  "60748fcf-0922-4c09-ac32-dd91fec7b2f6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=click_gloves_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "click_rings",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\click_rings.png",
+        "PromptId":  "6f5f3395-33c7-415f-be1e-64dddecc0981",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=click_rings_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "click_watch",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\click_watch.png",
+        "PromptId":  "abbadee6-a4d3-4a88-8550-b30511c6c640",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=click_watch_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "click_briefcase",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\click_briefcase.png",
+        "PromptId":  "2d31e71b-f63d-4f36-b44c-3d1df04118f3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=click_briefcase_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "click_lambo",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\click_lambo.png",
+        "PromptId":  "b1b71753-dfc1-4588-8bdb-90acd69a1305",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=click_lambo_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "click_yacht",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\click_yacht.png",
+        "PromptId":  "40f4319c-71cc-433f-a885-4add79034117",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=click_yacht_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "click_jet",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\click_jet.png",
+        "PromptId":  "6259c617-9a56-425c-8597-0cdbeb609717",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=click_jet_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "storage_mattress",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\storage_mattress.png",
+        "PromptId":  "d971265f-e0e5-4d64-807c-26ed5cc7d73a",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=storage_mattress_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "storage_safe",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\storage_safe.png",
+        "PromptId":  "f36cd7f6-60f2-4392-ac51-9f654ffaa8c9",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=storage_safe_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "storage_vault",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\storage_vault.png",
+        "PromptId":  "d0794170-9d4e-46d7-9852-254ea76a5c7a",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=storage_vault_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "storage_offshore",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\storage_offshore.png",
+        "PromptId":  "ff7a72e7-d113-4074-98c9-26970aba0bae",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=storage_offshore_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "crew_enforcer",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_enforcer.png",
+        "PromptId":  "8bbf54ba-308e-4c93-939c-58595addfbf9",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_enforcer_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "crew_hacker",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_hacker.png",
+        "PromptId":  "639e72f3-2ab5-4fd9-a49e-edbc12bee390",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_hacker_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "crew_driver",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_driver.png",
+        "PromptId":  "d7856846-4c42-4bdf-b94e-0b0bca08764d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_driver_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "crew_smuggler",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_smuggler.png",
+        "PromptId":  "4fe5246c-379a-444a-a3dd-c1b63db8e9f8",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_smuggler_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "crew_insider",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\crew_insider.png",
+        "PromptId":  "957fc40b-5dc8-46e5-ae7f-a4a0da5a04cb",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=crew_insider_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "casino_slots",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\casino_slots.png",
+        "PromptId":  "967ee651-cde1-4909-a12f-bd0e5b6fb2c8",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=casino_slots_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "casino_dice",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\casino_dice.png",
+        "PromptId":  "32c33a2b-632d-4f9a-8596-3981ec2d3462",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=casino_dice_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "casino_roulette",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\casino_roulette.png",
+        "PromptId":  "647198dc-1ca3-4791-adcb-cb8b41ec81f2",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=casino_roulette_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "mode_classic",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\mode_classic.png",
+        "PromptId":  "7966b24c-d83b-4737-b24c-8d4cf96fa5c6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=mode_classic_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "mode_mega",
+        "Target":  "C:\\src\\Milgiecom\\games\\criminalempire\\assets\\mode_mega.png",
+        "PromptId":  "a4b5c3c5-6ec6-4864-ba93-a120d70a3b89",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=mode_mega_00001_.png\u0026subfolder=criminalempire\u0026type=output",
+        "Status":  "generated"
+    }
+]
