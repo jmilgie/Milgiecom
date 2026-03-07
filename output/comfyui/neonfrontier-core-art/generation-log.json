@@ -1,0 +1,30 @@
+﻿[
+    {
+        "Key":  "neon-frontier",
+        "Target":  "C:\\src\\Milgiecom\\games\\assets\\catalog\\neon-frontier.png",
+        "PromptId":  "8bedcaaa-1b78-4062-8630-010aca3dfcf5",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=catalog_00001_.png\u0026subfolder=neonfrontier\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "intro-keyart",
+        "Target":  "C:\\src\\Milgiecom\\games\\neonfrontier\\assets\\world\\intro-keyart.png",
+        "PromptId":  "2a4407bf-b0d8-4a8a-96b6-308b4d9a0659",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=intro_00001_.png\u0026subfolder=neonfrontier\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "world-map",
+        "Target":  "C:\\src\\Milgiecom\\games\\neonfrontier\\assets\\world\\world-map.png",
+        "PromptId":  "51844a53-dcf7-424b-ab52-dc03f5bcb8a1",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=world_00001_.png\u0026subfolder=neonfrontier\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "city-plate",
+        "Target":  "C:\\src\\Milgiecom\\games\\neonfrontier\\assets\\world\\city-plate.png",
+        "PromptId":  "d510e7be-eeb1-480c-a0da-be52fbb57beb",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=city_00001_.png\u0026subfolder=neonfrontier\u0026type=output",
+        "Status":  "generated"
+    }
+]

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Neon Frontier | Milgie Games</title>
+  <meta name="description" content="Neon Frontier is a browser-based cyber-synthwave city strategy game with an overland map, building actions, and tactical skirmishes." />
+  <meta name="theme-color" content="#140b2e" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Monoton&family=Sora:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="../assets/catalog/neon-frontier.png" type="image/png" />
+  <link rel="preload" href="./assets/world/intro-keyart.png" as="image" type="image/png" />
+  <link rel="preload" href="./assets/world/world-map.png" as="image" type="image/png" />
+  <link rel="preload" href="./assets/world/city-plate.png" as="image" type="image/png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="backdrop aurora"></div>
+  <div class="backdrop haze"></div>
+  <div class="backdrop grid"></div>
+  <div class="backdrop scanlines"></div>
+
+  <div class="intro-screen" id="introScreen">
+    <div class="intro-panel">
+      <div class="intro-art">
+        <div class="intro-city"></div>
+      </div>
+      <div class="intro-copy">
+        <span class="eyebrow">Milgie Browser Strategy</span>
+        <h1>Neon Frontier</h1>
+        <p>Command a radiant megacity, place and upgrade key buildings, dispatch operatives across the frontier, and break open new sectors one district at a time.</p>
+        <div class="intro-pills">
+          <span>overland map</span>
+          <span>city builder</span>
+          <span>building actions</span>
+          <span>tactical skirmishes</span>
+        </div>
+        <button class="glass-btn accent large" id="introStart" type="button">Enter the frontier</button>
+        <a class="back-link" href="../">Back to Games</a>
+      </div>
+    </div>
+  </div>
+
+  <main class="shell" id="appShell">
+    <div id="hudRoot"></div>
+    <div id="objectiveRoot"></div>
+    <section class="main-grid">
+      <div id="stageRoot"></div>
+      <aside id="panelRoot"></aside>
+    </section>
+  </main>
+
+  <div id="overlayRoot"></div>
+
+  <script type="module" src="./js/main.mjs"></script>
+</body>
+</html>

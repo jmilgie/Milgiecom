@@ -19,6 +19,11 @@
       background-position: center center;
     }
 
+    .gameTile.neon-frontier::before {
+      background-image: url('./assets/catalog/neon-frontier.png');
+      background-position: center center;
+    }
+
     /* Nexus Protocol */
     .gameTile.nexus-protocol::before {
       background-image: url('./assets/catalog/nexus-protocol.png');
@@ -161,7 +166,7 @@
   <div class="status-bar-header" aria-hidden="true">
     <div class="wrap">
       <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
-      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 6 ACTIVE</span>
+      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 7 ACTIVE</span>
       <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
       <span class="sbh-spacer"></span>
       <span class="sbh-time" id="sys-time">--:--:--</span>
@@ -211,7 +216,7 @@
             Browser-based games &amp; interactive experiences.
           </p>
         </div>
-        <span class="section-badge">6 Active Â· 2 Incoming</span>
+        <span class="section-badge">7 Active Â· 1 Incoming</span>
       </div>
 
       <!-- Filter bar -->
@@ -480,25 +485,44 @@
             </div>
           </div>
 
-          <!-- CLASSIFIED: Coming Soon B -->
-          <div class="gameTile classified" aria-label="Classified â€” in development" role="article">
+          <!-- Neon Frontier -->
+          <a class="gameTile neon-frontier" href="./neonfrontier/" aria-label="Play Neon Frontier">
             <div class="content">
               <div class="status-bar">
-                <span class="status-dot" style="background:#ff9a00;box-shadow:0 0 8px #ff9a00" aria-hidden="true"></span>
-                <span class="status-label" style="color:#ff9a00">In Development</span>
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Online</span>
+                <span class="status-sep" aria-hidden="true">·</span>
+                <span class="status-type">Strategy / City Builder / Tactics</span>
               </div>
-              <h3>???</h3>
-              <p>Details classified. More intel inbound.</p>
+              <h3>Neon Frontier</h3>
+              <p>Build a radiant megacity, place and upgrade core structures, manage building-specific actions, and launch operative squads across a glowing frontier map.</p>
+              <div class="game-stats">
+                <div class="game-stat">
+                  <span class="game-stat-label">Type</span>
+                  <span class="game-stat-val">City Strategy</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Views</span>
+                  <span class="game-stat-val">Map + City</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Status</span>
+                  <span class="game-stat-val" style="color:#00ff88">New</span>
+                </div>
+              </div>
               <div class="chipRow">
                 <span class="chip">Strategy</span>
-                <span class="chip">???</span>
+                <span class="chip">Builder</span>
+                <span class="chip">Synthwave</span>
+                <span class="chip">Free</span>
+              </div>
+              <div style="margin-top:16px">
+                <span class="playBtn">
+                  Enter the Frontier ▶
+                </span>
               </div>
             </div>
-            <div class="classified-badge" aria-hidden="true">
-              <div class="classified-text">CLASSIFIED</div>
-              <div class="classified-sub">Access Restricted</div>
-            </div>
-          </div>
+          </a>
 
         </div>
       </section>
