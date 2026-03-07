@@ -1,0 +1,135 @@
+﻿[
+    {
+        "Key":  "theme-town",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-town.mp3",
+        "PromptId":  "ae54911f-30b1-40c7-b114-a2c841fcf458",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-town_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-market",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-market.mp3",
+        "PromptId":  "b78120d9-6af1-4520-88c4-be42941bcb33",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-market_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-moss",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-moss.mp3",
+        "PromptId":  "a4bb3f1b-f46c-495d-ba47-b3ea442db5d5",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-moss_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-reservoir",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-reservoir.mp3",
+        "PromptId":  "54480d7f-d8f6-460a-81a5-a7885c5e6c7b",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-reservoir_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-echo",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-echo.mp3",
+        "PromptId":  "8c6974ac-ddcd-4d6c-82ef-0b223aa6d05d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-echo_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-archive",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-archive.mp3",
+        "PromptId":  "e2678658-a37c-41d7-b1e6-452c555c1579",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-archive_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-forge",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-forge.mp3",
+        "PromptId":  "ad6d272d-8342-4827-9279-2ed892f3baa3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-forge_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "theme-boss",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\theme-boss.mp3",
+        "PromptId":  "f0c64ff5-48fa-4104-82ec-0068e6c07de6",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=theme-boss_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-shoot",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-shoot.mp3",
+        "PromptId":  "202f0757-9c2d-44b3-8f45-c9747e7c1d3d",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-shoot_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-hit",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-hit.mp3",
+        "PromptId":  "22419942-27aa-41a7-ab4d-5aac9425f347",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-hit_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-enemyDown",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-enemyDown.mp3",
+        "PromptId":  "b49b86bc-f1ab-46db-8f1c-925be14de8ce",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-enemyDown_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-pickup",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-pickup.mp3",
+        "PromptId":  "40411400-341c-45de-bdb7-815df13deb08",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-pickup_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-unlock",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-unlock.mp3",
+        "PromptId":  "21bafd33-ed3e-4514-863f-8d2ef2e3cdc3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-unlock_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-hurt",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-hurt.mp3",
+        "PromptId":  "38f7c046-5383-4c95-b4f6-56ceb5d75e0f",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-hurt_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-heal",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-heal.mp3",
+        "PromptId":  "9827f1f0-4949-42a4-9736-c4fc7af0c802",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-heal_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-dash",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-dash.mp3",
+        "PromptId":  "dbdf6c79-d6e3-44d4-b29d-f874de954ff5",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-dash_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-magnet",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-magnet.mp3",
+        "PromptId":  "765d50f8-63fc-437f-87ec-00c67b129f27",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-magnet_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-bossCharge",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-bossCharge.mp3",
+        "PromptId":  "99d03aa5-78d4-47dc-9eaf-bc4c750087b3",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-bossCharge_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    },
+    {
+        "Key":  "sfx-nova",
+        "Target":  "C:\\src\\Milgiecom\\games\\emberhollow\\assets\\audio\\sfx-nova.mp3",
+        "PromptId":  "cc6f7185-74c8-4328-8d3f-6aca09bece6c",
+        "SourceUrl":  "http://10.13.37.219:8188/view?filename=sfx-nova_00001_.mp3\u0026subfolder=audio\u0026type=output",
+        "Status":  "generated"
+    }
+]

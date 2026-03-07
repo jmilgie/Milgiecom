@@ -1,7 +1,46 @@
-﻿const AudioCtor = window.AudioContext || window.webkitAudioContext;
+const AudioCtor = window.AudioContext || window.webkitAudioContext;
 
 const midi = (note) => 440 * 2 ** ((note - 69) / 12);
 const patternAt = (pattern, index) => pattern[index % pattern.length];
+
+const THEME_AUDIO_ASSETS = {
+  town: new URL('../assets/audio/theme-town.mp3', import.meta.url).href,
+  moss: new URL('../assets/audio/theme-moss.mp3', import.meta.url).href,
+  reservoir: new URL('../assets/audio/theme-reservoir.mp3', import.meta.url).href,
+  echo: new URL('../assets/audio/theme-echo.mp3', import.meta.url).href,
+  forge: new URL('../assets/audio/theme-forge.mp3', import.meta.url).href,
+  market: new URL('../assets/audio/theme-market.mp3', import.meta.url).href,
+  archive: new URL('../assets/audio/theme-archive.mp3', import.meta.url).href,
+  boss: new URL('../assets/audio/theme-boss.mp3', import.meta.url).href,
+};
+
+const SFX_AUDIO_ASSETS = {
+  shoot: new URL('../assets/audio/sfx-shoot.mp3', import.meta.url).href,
+  hit: new URL('../assets/audio/sfx-hit.mp3', import.meta.url).href,
+  enemyDown: new URL('../assets/audio/sfx-enemyDown.mp3', import.meta.url).href,
+  pickup: new URL('../assets/audio/sfx-pickup.mp3', import.meta.url).href,
+  unlock: new URL('../assets/audio/sfx-unlock.mp3', import.meta.url).href,
+  hurt: new URL('../assets/audio/sfx-hurt.mp3', import.meta.url).href,
+  heal: new URL('../assets/audio/sfx-heal.mp3', import.meta.url).href,
+  dash: new URL('../assets/audio/sfx-dash.mp3', import.meta.url).href,
+  magnet: new URL('../assets/audio/sfx-magnet.mp3', import.meta.url).href,
+  bossCharge: new URL('../assets/audio/sfx-bossCharge.mp3', import.meta.url).href,
+  nova: new URL('../assets/audio/sfx-nova.mp3', import.meta.url).href,
+};
+
+const SFX_LEVELS = {
+  shoot: 0.8,
+  hit: 0.84,
+  enemyDown: 0.9,
+  pickup: 0.66,
+  unlock: 0.82,
+  hurt: 0.8,
+  heal: 0.72,
+  dash: 0.8,
+  magnet: 0.78,
+  bossCharge: 0.92,
+  nova: 0.98,
+};
 
 const THEME_SCORES = {
   town: {
@@ -131,12 +170,18 @@ export class AudioController {
     this.ctx = null;
     this.master = null;
     this.musicBus = null;
+    this.fxBus = null;
     this.theme = 'town';
     this.enabled = true;
     this.musicTimers = new Set();
     this.fxTimers = new Set();
     this.themeRunning = false;
     this.stepIndex = 0;
+    this.musicEntries = new Map();
+    this.musicLoads = new Map();
+    this.sfxBuffers = new Map();
+    this.sfxLoads = new Map();
+    this.activeMusicTheme = null;
   }
 
   ensure() {
@@ -148,8 +193,12 @@ export class AudioController {
       this.master.connect(this.ctx.destination);
 
       this.musicBus = this.ctx.createGain();
-      this.musicBus.gain.value = 0.72;
+      this.musicBus.gain.value = 0.78;
       this.musicBus.connect(this.master);
+
+      this.fxBus = this.ctx.createGain();
+      this.fxBus.gain.value = 0.92;
+      this.fxBus.connect(this.master);
     }
     return this.ctx;
   }
@@ -164,6 +213,8 @@ export class AudioController {
         return;
       }
     }
+    this.preloadCommonEffects();
+    this.primeThemeAsset(this.theme);
     this.startThemeLoop(true);
   }
 
@@ -193,7 +244,186 @@ export class AudioController {
 
   setTheme(theme) {
     this.theme = theme;
+    this.primeThemeAsset(theme);
     if (this.ctx?.state === 'running') this.startThemeLoop(true);
+  }
+
+  preloadCommonEffects() {
+    Object.keys(SFX_AUDIO_ASSETS).forEach((name) => this.loadSfxBuffer(name));
+  }
+
+  primeThemeAsset(theme) {
+    const url = THEME_AUDIO_ASSETS[theme];
+    const ctx = this.ensure();
+    if (!ctx || !url) return Promise.resolve(null);
+    if (this.musicEntries.has(theme)) return Promise.resolve(this.musicEntries.get(theme));
+    if (this.musicLoads.has(theme)) return this.musicLoads.get(theme);
+
+    const audio = new Audio(url);
+    audio.preload = 'auto';
+    audio.loop = true;
+    audio.crossOrigin = 'anonymous';
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    const source = ctx.createMediaElementSource(audio);
+    source.connect(gain);
+    gain.connect(this.musicBus);
+
+    const entry = {
+      theme,
+      audio,
+      gain,
+      ready: false,
+      failed: false,
+    };
+    this.musicEntries.set(theme, entry);
+
+    const loadPromise = new Promise((resolve, reject) => {
+      const finish = () => {
+        audio.removeEventListener('canplaythrough', onReady);
+        audio.removeEventListener('loadeddata', onReady);
+        audio.removeEventListener('error', onError);
+      };
+      const onReady = () => {
+        entry.ready = true;
+        finish();
+        resolve(entry);
+      };
+      const onError = () => {
+        entry.failed = true;
+        finish();
+        reject(new Error(`Music asset failed to load: ${theme}`));
+      };
+
+      if (audio.readyState >= 2) {
+        entry.ready = true;
+        resolve(entry);
+        return;
+      }
+
+      audio.addEventListener('canplaythrough', onReady, { once: true });
+      audio.addEventListener('loadeddata', onReady, { once: true });
+      audio.addEventListener('error', onError, { once: true });
+      audio.load();
+    }).then((loaded) => {
+      if (this.theme === theme && this.ctx?.state === 'running') {
+        this.startThemeLoop(true);
+      }
+      return loaded;
+    }).catch(() => entry).finally(() => {
+      this.musicLoads.delete(theme);
+    });
+
+    this.musicLoads.set(theme, loadPromise);
+    return loadPromise;
+  }
+
+  fadeMusicEntry(entry, target, duration = 0.55) {
+    const ctx = this.ensure();
+    if (!ctx || !entry?.gain) return;
+    const now = ctx.currentTime;
+    entry.gain.gain.cancelScheduledValues(now);
+    entry.gain.gain.setValueAtTime(Math.max(0.0001, entry.gain.gain.value), now);
+    entry.gain.gain.linearRampToValueAtTime(Math.max(0.0001, target), now + duration);
+  }
+
+  stopActiveMusicEntry(duration = 0.45) {
+    if (!this.activeMusicTheme) return;
+    const entry = this.musicEntries.get(this.activeMusicTheme);
+    if (!entry) {
+      this.activeMusicTheme = null;
+      return;
+    }
+    const previousTheme = this.activeMusicTheme;
+    this.fadeMusicEntry(entry, 0.0001, duration);
+    setTimeout(() => {
+      if (this.activeMusicTheme !== previousTheme) {
+        entry.audio.pause();
+        entry.audio.currentTime = 0;
+      }
+    }, duration * 1000 + 100);
+  }
+
+  startAssetTheme(force = false) {
+    const ctx = this.ensure();
+    if (!ctx || ctx.state !== 'running') return false;
+
+    const url = THEME_AUDIO_ASSETS[this.theme];
+    if (!url) return false;
+
+    const entry = this.musicEntries.get(this.theme);
+    if (!entry) {
+      this.primeThemeAsset(this.theme);
+      return false;
+    }
+    if (entry.failed) return false;
+    if (!entry.ready) return false;
+
+    if (!force && this.activeMusicTheme === this.theme && !entry.audio.paused) return true;
+
+    this.clearMusicTimers();
+
+    const previousTheme = this.activeMusicTheme;
+    if (previousTheme && previousTheme !== this.theme) {
+      this.stopActiveMusicEntry(0.65);
+    }
+
+    this.activeMusicTheme = this.theme;
+    if (previousTheme !== this.theme) {
+      entry.audio.currentTime = 0;
+    }
+    this.fadeMusicEntry(entry, 0.88, 0.75);
+    entry.audio.play().catch(() => {
+      entry.failed = true;
+    });
+    return true;
+  }
+
+  async loadSfxBuffer(name) {
+    const url = SFX_AUDIO_ASSETS[name];
+    const ctx = this.ensure();
+    if (!ctx || !url) return null;
+    if (this.sfxBuffers.has(name)) return this.sfxBuffers.get(name);
+    if (this.sfxLoads.has(name)) return this.sfxLoads.get(name);
+
+    const loadPromise = fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Failed to fetch SFX asset: ${name}`);
+        return response.arrayBuffer();
+      })
+      .then((buffer) => ctx.decodeAudioData(buffer.slice(0)))
+      .then((decoded) => {
+        this.sfxBuffers.set(name, decoded);
+        return decoded;
+      })
+      .catch(() => null)
+      .finally(() => {
+        this.sfxLoads.delete(name);
+      });
+
+    this.sfxLoads.set(name, loadPromise);
+    return loadPromise;
+  }
+
+  playBufferedSfx(name) {
+    const ctx = this.ensure();
+    if (!ctx || ctx.state !== 'running') return false;
+    const buffer = this.sfxBuffers.get(name);
+    if (!buffer) {
+      this.loadSfxBuffer(name);
+      return false;
+    }
+
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    source.playbackRate.value = name === 'unlock' || name === 'bossCharge' ? 1 : 0.97 + Math.random() * 0.06;
+    gain.gain.value = SFX_LEVELS[name] ?? 0.8;
+    source.connect(gain);
+    gain.connect(this.fxBus);
+    source.start();
+    return true;
   }
 
   tone(freq, duration, options = {}) {
@@ -202,7 +432,7 @@ export class AudioController {
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
-    const targetBus = options.bus || this.master;
+    const targetBus = options.bus || this.fxBus || this.master;
     const now = ctx.currentTime + (options.delay || 0);
     const attack = options.attack || 0.02;
     const release = options.release || 0.08;
@@ -237,7 +467,7 @@ export class AudioController {
     source.buffer = buffer;
     source.connect(filter);
     filter.connect(gain);
-    gain.connect(options.bus || this.master);
+    gain.connect(options.bus || this.fxBus || this.master);
     source.start(ctx.currentTime + (options.delay || 0));
     source.stop(ctx.currentTime + (options.delay || 0) + duration);
   }
@@ -344,7 +574,7 @@ export class AudioController {
     }
   }
 
-  play(name) {
+  playSynth(name) {
     switch (name) {
       case 'shoot':
         this.tone(510, 0.08, { type: 'triangle', volume: 0.06, detune: 120, cutoff: 2600 });
@@ -397,12 +627,17 @@ export class AudioController {
     }
   }
 
-  startThemeLoop(force = false) {
+  play(name) {
+    if (this.playBufferedSfx(name)) return;
+    this.playSynth(name);
+  }
+
+  startSynthThemeLoop() {
     if (!this.enabled) return;
     const ctx = this.ensure();
     if (!ctx || ctx.state !== 'running') return;
-    if (this.themeRunning && !force) return;
 
+    this.stopActiveMusicEntry(0.35);
     this.clearMusicTimers();
     this.themeRunning = true;
     this.stepIndex = 0;
@@ -418,5 +653,13 @@ export class AudioController {
     };
 
     scheduleStep();
+  }
+
+  startThemeLoop(force = false) {
+    if (!this.enabled) return;
+    const ctx = this.ensure();
+    if (!ctx || ctx.state !== 'running') return;
+    if (this.startAssetTheme(force)) return;
+    this.startSynthThemeLoop();
   }
 }

@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Emberhollow Audio Preview</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, rgba(255, 193, 117, 0.14), transparent 42%), #081019;
+      color: #f3ead6;
+      font: 14px/1.5 "Trebuchet MS", Verdana, sans-serif;
+    }
+    .panel {
+      width: min(640px, calc(100vw - 32px));
+      padding: 24px;
+      border: 1px solid rgba(255, 214, 163, 0.2);
+      border-radius: 18px;
+      background: rgba(10, 18, 28, 0.86);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    p {
+      margin: 0 0 12px;
+      color: #c5bcae;
+    }
+    code {
+      color: #ffe0a8;
+    }
+  </style>
+</head>
+<body data-audio-ready="1">
+  <div class="panel">
+    <h1>Audio Preview</h1>
+    <p>Boots the asset-backed Emberhollow audio controller, starts town music, and fires a short SFX sequence.</p>
+    <p>Status: <code id="status">ready</code></p>
+  </div>
+  <script type="module">
+    import { AudioController } from '../js/audio.mjs';
+
+    const status = document.getElementById('status');
+    const audio = new AudioController();
+
+    async function boot() {
+      try {
+        await audio.resume();
+        audio.setTheme('town');
+        setTimeout(() => audio.play('shoot'), 200);
+        setTimeout(() => audio.play('pickup'), 650);
+        setTimeout(() => audio.play('unlock'), 1150);
+        setTimeout(() => audio.play('nova'), 1750);
+        status.textContent = 'ready';
+        document.body.dataset.audioReady = '1';
+      } catch (error) {
+        status.textContent = 'error';
+        document.body.dataset.audioReady = '0';
+        document.body.dataset.audioError = error?.message || 'unknown';
+      }
+    }
+
+    boot();
+  </script>
+
+
+</body></html>
