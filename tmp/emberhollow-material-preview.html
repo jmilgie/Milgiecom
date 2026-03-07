@@ -1,0 +1,148 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emberhollow Material Preview</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #081019; color: #efe6cf; font-family: Georgia, serif; }
+    body { overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .legend {
+      position: fixed;
+      inset: 20px auto auto 20px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: rgba(8, 12, 18, 0.72);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .legend strong { display: block; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <canvas id="preview"></canvas>
+  <div class="legend">
+    <div><strong>Top Row</strong> Town, Reservoir, Echo</div>
+    <div><strong>Bottom Row</strong> Forge, Archive, Boss</div>
+    <div>Each cluster shows floor, wall, carved stone, metal, paper, water, and crystal response.</div>
+  </div>
+  <script type="module">
+    import * as THREE from '/games/emberhollow/vendor/three.module.js';
+    import { THEMES } from '/games/emberhollow/js/world.mjs';
+    import { buildThemeMaterials } from '/games/emberhollow/js/art.mjs';
+
+    const canvas = document.getElementById('preview');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x081019);
+    scene.fog = new THREE.Fog(0x081019, 24, 62);
+
+    const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 120);
+    camera.position.set(0, 18, 36);
+    camera.lookAt(0, 4.2, 0);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.18));
+    const key = new THREE.DirectionalLight(0xffefd1, 1.6);
+    key.position.set(14, 24, 10);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0x83d7ff, 0.78);
+    rim.position.set(-16, 12, -12);
+    scene.add(rim);
+
+    const themes = [
+      { id: 'town', x: -10, z: -7 },
+      { id: 'reservoir', x: 0, z: -7 },
+      { id: 'echo', x: 10, z: -7 },
+      { id: 'forge', x: -10, z: 8 },
+      { id: 'archive', x: 0, z: 8 },
+      { id: 'boss', x: 10, z: 8 },
+    ];
+
+    const floorGeo = new THREE.BoxGeometry(5.2, 0.5, 5.2);
+    const wallGeo = new THREE.BoxGeometry(4.4, 4.8, 1.1);
+    const stoneGeo = new THREE.BoxGeometry(1.4, 1.4, 1.4);
+    const metalGeo = new THREE.BoxGeometry(1.2, 1.2, 0.18);
+    const paperGeo = new THREE.BoxGeometry(1.1, 1.5, 0.08);
+    const waterGeo = new THREE.CylinderGeometry(0.8, 0.95, 0.18, 28);
+    const crystalGeo = new THREE.OctahedronGeometry(0.7, 0);
+
+    themes.forEach(({ id, x, z }) => {
+      const theme = THEMES[id];
+      const mats = buildThemeMaterials(theme, id);
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+
+      const floor = new THREE.Mesh(floorGeo, mats.floorMat);
+      floor.position.set(0, -0.28, 0);
+      group.add(floor);
+
+      const wall = new THREE.Mesh(wallGeo, mats.wallMat);
+      wall.position.set(0, 2.05, -1.65);
+      group.add(wall);
+
+      const stone = new THREE.Mesh(stoneGeo, mats.carvedStoneMat);
+      stone.position.set(-1.6, 0.8, 1.15);
+      group.add(stone);
+
+      const metal = new THREE.Mesh(metalGeo, mats.metalMat);
+      metal.position.set(1.82, 1.1, 1.25);
+      metal.rotation.y = -0.28;
+      group.add(metal);
+
+      const paper = new THREE.Mesh(paperGeo, mats.paperMat);
+      paper.position.set(1.55, 1.1, 0.25);
+      paper.rotation.y = -0.2;
+      group.add(paper);
+
+      const water = new THREE.Mesh(waterGeo, mats.waterMat);
+      water.position.set(-1.85, 0.2, -1.15);
+      group.add(water);
+
+      const crystal = new THREE.Mesh(crystalGeo, mats.crystalMat);
+      crystal.position.set(1.45, 2.45, -0.15);
+      crystal.scale.set(0.82, 1.28, 0.82);
+      group.add(crystal);
+
+      const hazard = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.12, 24), mats.hazardMat);
+      hazard.position.set(0, 0.04, 1.65);
+      group.add(hazard);
+
+      scene.add(group);
+    });
+
+    const clock = new THREE.Clock();
+    function frame() {
+      const t = clock.getElapsedTime();
+      scene.children.forEach((child) => {
+        if (child.isGroup) {
+          child.rotation.y = Math.sin(t * 0.22 + child.position.x * 0.05) * 0.06;
+          const crystal = child.children[6];
+          if (crystal) {
+            crystal.rotation.y += 0.012;
+            crystal.position.y = 2.45 + Math.sin(t * 2.2 + child.position.z * 0.15) * 0.15;
+          }
+        }
+      });
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    frame();
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>
+

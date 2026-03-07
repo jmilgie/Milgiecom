@@ -126,6 +126,9 @@ export const THEMES = {
 function material(color, extras = {}) {
   return new THREE.MeshStandardMaterial({
     color,
+    map: extras.map ?? null,
+    bumpMap: extras.bumpMap ?? null,
+    bumpScale: extras.bumpScale ?? 0,
     roughness: extras.roughness ?? 0.74,
     metalness: extras.metalness ?? 0.08,
     emissive: extras.emissive ?? 0x000000,
@@ -133,6 +136,18 @@ function material(color, extras = {}) {
     transparent: extras.transparent ?? false,
     opacity: extras.opacity ?? 1,
   });
+}
+
+function tintMaterial(baseMaterial, color, extras = {}) {
+  const mat = baseMaterial.clone();
+  mat.color.setHex(color);
+  mat.roughness = extras.roughness ?? mat.roughness;
+  mat.metalness = extras.metalness ?? mat.metalness;
+  mat.transparent = extras.transparent ?? mat.transparent;
+  mat.opacity = extras.opacity ?? mat.opacity;
+  mat.emissive.setHex(extras.emissive ?? 0x000000);
+  mat.emissiveIntensity = extras.emissiveIntensity ?? mat.emissiveIntensity;
+  return mat;
 }
 
 export function tileToWorld(level, x, z) {
@@ -179,7 +194,7 @@ export function buildLevelGeometry(level) {
     leafMat,
     roofMat,
     stoneMat,
-  } = buildThemeMaterials(theme);
+  } = buildThemeMaterials(theme, level.theme);
 
   level.map.forEach((row, z) => {
     row.split('').forEach((char, x) => {
@@ -309,7 +324,7 @@ export function createObjectVisual(object, levelTheme) {
   const group = new THREE.Group();
   const animators = [];
   const accent = theme.accent;
-  const mats = buildThemeMaterials(theme);
+  const mats = buildThemeMaterials(theme, levelTheme);
   const npcRobes = {
     elder: 0xf1b86c,
     smith: 0xc56b56,
@@ -321,7 +336,7 @@ export function createObjectVisual(object, levelTheme) {
   switch (object.kind) {
     case 'npc': {
       const robeColor = npcRobes[object.id] || theme.wallTrim;
-      const robe = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 1.3, 4, 8), material(robeColor, { map: mats.fabricMat.map, roughness: 0.86, emissive: robeColor, emissiveIntensity: 0.04 }));
+      const robe = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 1.3, 4, 8), tintMaterial(mats.fabricMat, robeColor, { roughness: 0.86, emissive: robeColor, emissiveIntensity: 0.04 }));
       robe.position.y = 1.15;
       group.add(robe);
       const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), material(0xf2d6bc, { roughness: 0.95 }));
@@ -341,10 +356,10 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'fountain': {
-      const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.75, 0.8, 24), material(theme.wallTrim, { roughness: 0.92 }));
+      const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.75, 0.8, 24), tintMaterial(mats.carvedStoneMat, theme.wallTrim, { roughness: 0.92 }));
       basin.position.y = 0.4;
       group.add(basin);
-      const water = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.22, 0.24, 24), material(theme.accentSoft, { transparent: true, opacity: 0.78, emissive: theme.accentSoft, emissiveIntensity: 0.35 }));
+      const water = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.22, 0.24, 24), tintMaterial(mats.waterMat, theme.accentSoft, { transparent: true, opacity: 0.78, emissive: theme.accentSoft, emissiveIntensity: 0.35 }));
       water.position.y = 0.74;
       group.add(water);
       animators.push((elapsed) => {
@@ -353,10 +368,10 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'shrine': {
-      const slab = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.8, 1.4), material(theme.wallTrim, { emissive: accent, emissiveIntensity: 0.08 }));
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.8, 1.4), tintMaterial(mats.carvedStoneMat, theme.wallTrim, { emissive: accent, emissiveIntensity: 0.08 }));
       slab.position.y = 1.4;
       group.add(slab);
-      const crystal = new THREE.Mesh(CRYSTAL_GEOMETRY, material(accent, { emissive: accent, emissiveIntensity: 0.6, roughness: 0.2 }));
+      const crystal = new THREE.Mesh(CRYSTAL_GEOMETRY, tintMaterial(mats.crystalMat, accent, { emissive: accent, emissiveIntensity: 0.6, roughness: 0.2 }));
       crystal.position.y = 3.1;
       crystal.scale.setScalar(1.2);
       group.add(crystal);
@@ -385,7 +400,7 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'gate': {
-      const gate = new THREE.Mesh(new THREE.BoxGeometry(2.8, 3.8, 0.8), material(theme.wall, { roughness: 0.88, emissive: theme.wallTrim, emissiveIntensity: 0.04 }));
+      const gate = new THREE.Mesh(new THREE.BoxGeometry(2.8, 3.8, 0.8), tintMaterial(mats.wallMat, theme.wall, { roughness: 0.88, emissive: theme.wallTrim, emissiveIntensity: 0.04 }));
       gate.position.y = 1.8;
       group.add(gate);
       break;
@@ -424,10 +439,10 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'pedestal': {
-      const column = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.92, 1.6, 10), material(theme.wallTrim, { roughness: 0.84 }));
+      const column = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.92, 1.6, 10), tintMaterial(mats.carvedStoneMat, theme.wallTrim, { roughness: 0.84 }));
       column.position.y = 0.8;
       group.add(column);
-      const item = new THREE.Mesh(CRYSTAL_GEOMETRY, material(accent, { emissive: accent, emissiveIntensity: 0.65, roughness: 0.1 }));
+      const item = new THREE.Mesh(CRYSTAL_GEOMETRY, tintMaterial(mats.crystalMat, accent, { emissive: accent, emissiveIntensity: 0.65, roughness: 0.1 }));
       item.position.y = 2.15;
       item.scale.setScalar(object.grants === 'starfall' ? 1.45 : 1.05);
       group.add(item);
@@ -442,7 +457,7 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'plate': {
-      const plate = new THREE.Mesh(PLATE_GEOMETRY, material(theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.06, roughness: 0.22 }));
+      const plate = new THREE.Mesh(PLATE_GEOMETRY, tintMaterial(mats.hazardMat, theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.06, roughness: 0.22 }));
       plate.position.y = 0.08;
       group.add(plate);
       animators.push((elapsed, entity) => {
@@ -467,10 +482,10 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'resonator': {
-      const column = new THREE.Mesh(PILLAR_GEOMETRY, material(theme.wall, { roughness: 0.88 }));
+      const column = new THREE.Mesh(PILLAR_GEOMETRY, tintMaterial(mats.stoneMat, theme.wall, { roughness: 0.88 }));
       column.position.y = 1.2;
       group.add(column);
-      const crystal = new THREE.Mesh(CRYSTAL_GEOMETRY, material(runeColor(object.rune), { emissive: runeColor(object.rune), emissiveIntensity: 0.55, roughness: 0.14 }));
+      const crystal = new THREE.Mesh(CRYSTAL_GEOMETRY, tintMaterial(mats.crystalMat, runeColor(object.rune), { emissive: runeColor(object.rune), emissiveIntensity: 0.55, roughness: 0.14 }));
       crystal.position.y = 2.65;
       crystal.scale.setScalar(1.25);
       group.add(crystal);
@@ -512,7 +527,7 @@ export function createObjectVisual(object, levelTheme) {
           group.add(post);
         });
       });
-      const table = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.16, 1.6), mats.stoneMat);
+      const table = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.16, 1.6), mats.carvedStoneMat);
       table.position.y = 1.06;
       group.add(table);
       for (let i = 0; i < 3; i += 1) {
@@ -555,10 +570,10 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'bench': {
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 0.45), mats.stoneMat);
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 0.45), mats.carvedStoneMat);
       seat.position.y = 0.7;
       group.add(seat);
-      const back = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 0.45), mats.stoneMat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 0.45), mats.carvedStoneMat);
       back.position.set(0, 1.15, -0.2);
       back.rotation.x = 0.35;
       group.add(back);
@@ -570,7 +585,7 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'bookshelf': {
-      const body = new THREE.Mesh(new THREE.BoxGeometry(2, 2.6, 0.5), mats.stoneMat);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2, 2.6, 0.5), mats.carvedStoneMat);
       body.position.y = 1.3;
       group.add(body);
       for (let shelf = 0; shelf < 3; shelf += 1) {
@@ -586,7 +601,7 @@ export function createObjectVisual(object, levelTheme) {
       break;
     }
     case 'cart': {
-      const bed = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 1.4), mats.stoneMat);
+      const bed = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 1.4), mats.carvedStoneMat);
       bed.position.y = 0.85;
       group.add(bed);
       [-0.9, 0.9].forEach((x) => {
@@ -627,7 +642,7 @@ export function createEnemyVisual(type, levelTheme) {
   const theme = THEMES[levelTheme] || THEMES.town;
   const group = new THREE.Group();
   const animators = [];
-  const mats = buildThemeMaterials(theme);
+  const mats = buildThemeMaterials(theme, levelTheme);
 
   if (type === 'wisp') {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(0.56, 18, 18), material(theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.72, roughness: 0.1, transparent: true, opacity: 0.92 }));
@@ -659,7 +674,7 @@ export function createEnemyVisual(type, levelTheme) {
     const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.84, 2.3, 6), mats.metalMat);
     torso.position.y = 1.35;
     group.add(torso);
-    const shoulderLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 1.2), mats.stoneMat);
+    const shoulderLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 1.2), mats.carvedStoneMat);
     shoulderLeft.position.set(-0.78, 1.95, 0);
     group.add(shoulderLeft);
     const shoulderRight = shoulderLeft.clone();
@@ -668,7 +683,7 @@ export function createEnemyVisual(type, levelTheme) {
     const visor = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.22, 0.4), material(theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.82, roughness: 0.18 }));
     visor.position.set(0, 2.08, 0.48);
     group.add(visor);
-    const crown = new THREE.Mesh(CRYSTAL_GEOMETRY, material(theme.accent, { emissive: theme.accent, emissiveIntensity: 0.75, roughness: 0.12 }));
+    const crown = new THREE.Mesh(CRYSTAL_GEOMETRY, tintMaterial(mats.crystalMat, theme.accent, { emissive: theme.accent, emissiveIntensity: 0.75, roughness: 0.12 }));
     crown.position.y = 2.92;
     crown.scale.set(0.9, 1.3, 0.9);
     group.add(crown);
@@ -734,15 +749,15 @@ export function createBossVisual(levelTheme) {
   const theme = THEMES[levelTheme] || THEMES.boss;
   const group = new THREE.Group();
   const animators = [];
-  const mats = buildThemeMaterials(theme);
+  const mats = buildThemeMaterials(theme, levelTheme);
   const crown = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.2, 1.5, 7), mats.metalMat);
   crown.position.y = 2.25;
   group.add(crown);
-  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(1.35, 0), material(theme.accent, { emissive: theme.accent, emissiveIntensity: 0.45, roughness: 0.18 }));
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(1.35, 0), tintMaterial(mats.crystalMat, theme.accent, { emissive: theme.accent, emissiveIntensity: 0.45, roughness: 0.18 }));
   body.position.y = 2.15;
   group.add(body);
 
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.9, 20, 20), material(theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.85, roughness: 0.12 }));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.9, 20, 20), tintMaterial(mats.crystalMat, theme.accentSoft, { emissive: theme.accentSoft, emissiveIntensity: 0.85, roughness: 0.12 }));
   core.position.y = 2.1;
   group.add(core);
 
@@ -758,7 +773,7 @@ export function createBossVisual(levelTheme) {
 
   const orbiters = [];
   for (let i = 0; i < 4; i += 1) {
-    const orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), material(theme.hazard, { emissive: theme.hazard, emissiveIntensity: 0.75 }));
+    const orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), tintMaterial(mats.crystalMat, theme.hazard, { emissive: theme.hazard, emissiveIntensity: 0.75 }));
     orb.position.y = 2.1;
     orbiters.push(orb);
     group.add(orb);

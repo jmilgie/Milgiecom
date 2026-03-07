@@ -1,0 +1,110 @@
+[
+    {
+        "Name":  "moss-floor",
+        "PromptId":  "64b07c2c-76ad-4994-9b1c-b0b06df6205c",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-moss-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\moss-floor.png"
+    },
+    {
+        "Name":  "moss-wall",
+        "PromptId":  "507a8985-ef7e-460c-b544-01cab21c53f7",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-moss-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\moss-wall.png"
+    },
+    {
+        "Name":  "reservoir-floor",
+        "PromptId":  "118c60ff-88d6-4df0-bf15-0273805cec98",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-reservoir-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\reservoir-floor.png"
+    },
+    {
+        "Name":  "reservoir-wall",
+        "PromptId":  "afa9ffbd-2a55-46f6-8c50-9b128bbd1748",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-reservoir-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\reservoir-wall.png"
+    },
+    {
+        "Name":  "echo-floor",
+        "PromptId":  "8f441500-8446-4716-8a0f-6a13669a0f0e",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-echo-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\echo-floor.png"
+    },
+    {
+        "Name":  "echo-wall",
+        "PromptId":  "5f07b2cf-6f83-4f41-8bf9-49d5997a96e4",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-echo-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\echo-wall.png"
+    },
+    {
+        "Name":  "forge-floor",
+        "PromptId":  "b9ceaec6-dc33-4840-879f-8eb1b7f19d8e",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-forge-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\forge-floor.png"
+    },
+    {
+        "Name":  "forge-wall",
+        "PromptId":  "e4cc63b2-924b-4231-96ee-dfaaeefa7974",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-forge-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\forge-wall.png"
+    },
+    {
+        "Name":  "archive-floor",
+        "PromptId":  "097a3adc-e2c6-40fc-ba72-78c81c9eaba0",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-archive-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\archive-floor.png"
+    },
+    {
+        "Name":  "archive-wall",
+        "PromptId":  "1036928c-8dc3-4eb4-b37c-8451e27125da",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-archive-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\archive-wall.png"
+    },
+    {
+        "Name":  "boss-floor",
+        "PromptId":  "a8b28ffb-905a-4fc1-8f93-872f53a4d0bd",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-boss-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\boss-floor.png"
+    },
+    {
+        "Name":  "boss-wall",
+        "PromptId":  "0c4d3e6f-3c47-4bda-a56f-7cd96de1ae53",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-boss-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\boss-wall.png"
+    },
+    {
+        "Name":  "stone-blocks",
+        "PromptId":  "064f4384-b2ea-4324-9174-766b39ed0adc",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-stone-blocks_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\stone-blocks.png"
+    },
+    {
+        "Name":  "forge-metal",
+        "PromptId":  "d69a1a5f-f074-456f-8bbd-82e98264ac67",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-forge-metal_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\forge-metal.png"
+    },
+    {
+        "Name":  "archive-paper",
+        "PromptId":  "5c8ea7eb-e086-4ea2-bd6b-659c35947e2b",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-archive-paper_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\archive-paper.png"
+    },
+    {
+        "Name":  "water-surface",
+        "PromptId":  "aa11fa84-6881-4458-be7d-001ead1f306d",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-water-surface_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\water-surface.png"
+    },
+    {
+        "Name":  "crystal-facets",
+        "PromptId":  "37490e7f-6f90-4892-a28d-dbcf881bcd5e",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-crystal-facets_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\crystal-facets.png"
+    },
+    {
+        "Name":  "rune-hazard",
+        "PromptId":  "2714e7d7-c94e-464e-b94c-f0b2b8f3a9dd",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-rune-hazard_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-material-pack\\raw\\rune-hazard.png"
+    }
+]

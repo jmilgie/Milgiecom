@@ -1,0 +1,120 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emberhollow Texture Preview</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #091018; color: #f2ead3; font-family: Georgia, serif; }
+    body { overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .labels {
+      position: fixed;
+      inset: 24px auto auto 24px;
+      display: grid;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: rgba(8, 12, 18, 0.68);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .labels strong { display: block; font-size: 16px; letter-spacing: 0.04em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <canvas id="preview"></canvas>
+  <div class="labels">
+    <div><strong>Town</strong> town floor, frontier wall, roof, bark, cloth</div>
+    <div><strong>Echo</strong> cave floor, cave wall, roof, bark, cloth</div>
+    <div><strong>Boss</strong> cave floor and wall with boss tinting</div>
+  </div>
+  <script type="module">
+    import * as THREE from '/games/emberhollow/vendor/three.module.js';
+    import { THEMES } from '/games/emberhollow/js/world.mjs';
+    import { buildThemeMaterials } from '/games/emberhollow/js/art.mjs';
+
+    const canvas = document.getElementById('preview');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x091018);
+    scene.fog = new THREE.Fog(0x091018, 18, 48);
+
+    const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 7.5, 20);
+    camera.lookAt(0, 2.8, 0);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.25));
+    const key = new THREE.DirectionalLight(0xfff0d7, 1.85);
+    key.position.set(8, 16, 10);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0x7fd4ff, 0.75);
+    rim.position.set(-10, 7, -8);
+    scene.add(rim);
+
+    const themes = [
+      { id: 'town', theme: THEMES.town, x: -10 },
+      { id: 'echo', theme: THEMES.echo, x: 0 },
+      { id: 'boss', theme: THEMES.boss, x: 10 },
+    ];
+
+    const floorGeo = new THREE.BoxGeometry(5.2, 0.5, 5.2);
+    const wallGeo = new THREE.BoxGeometry(4.1, 4.6, 1.4);
+    const roofGeo = new THREE.ConeGeometry(2.9, 2.4, 4);
+    const barkGeo = new THREE.CylinderGeometry(0.6, 0.72, 4.4, 10);
+    const fabricGeo = new THREE.BoxGeometry(1.7, 2.4, 0.16);
+
+    themes.forEach(({ id, theme, x }) => {
+      const mats = buildThemeMaterials(theme, id);
+      const group = new THREE.Group();
+      group.position.x = x;
+
+      const floor = new THREE.Mesh(floorGeo, mats.floorMat);
+      floor.position.set(0, -0.3, 0);
+      group.add(floor);
+
+      const wall = new THREE.Mesh(wallGeo, mats.wallMat);
+      wall.position.set(0, 2.05, -1.45);
+      group.add(wall);
+
+      const roof = new THREE.Mesh(roofGeo, mats.roofMat);
+      roof.position.set(0, 5.15, -1.45);
+      roof.rotation.y = Math.PI * 0.25;
+      group.add(roof);
+
+      const trunk = new THREE.Mesh(barkGeo, mats.barkMat);
+      trunk.position.set(-1.9, 2.05, 1.3);
+      group.add(trunk);
+
+      const fabric = new THREE.Mesh(fabricGeo, mats.fabricMat);
+      fabric.position.set(1.95, 1.6, 1.48);
+      group.add(fabric);
+
+      scene.add(group);
+    });
+
+    const clock = new THREE.Clock();
+    function frame() {
+      const t = clock.getElapsedTime();
+      scene.children.forEach((child) => {
+        if (child.isGroup) child.rotation.y = Math.sin(t * 0.18) * 0.08;
+      });
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    frame();
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>

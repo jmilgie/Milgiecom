@@ -1,0 +1,44 @@
+[
+    {
+        "Name":  "town-floor",
+        "PromptId":  "63155030-bd50-4ca7-b592-d370d9726c0c",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-town-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-textures\\raw\\town-floor.png"
+    },
+    {
+        "Name":  "cave-floor",
+        "PromptId":  "75d5bc4a-d3aa-40e4-9a79-ecde786388fc",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-cave-floor_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-textures\\raw\\cave-floor.png"
+    },
+    {
+        "Name":  "cave-wall",
+        "PromptId":  "a16d322f-c677-4d41-aa96-9e89c0fac06a",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-cave-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-textures\\raw\\cave-wall.png"
+    },
+    {
+        "Name":  "town-wall",
+        "PromptId":  "32a1a5f4-db95-4a6a-a9ec-813b3c559fe0",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-town-wall_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-textures\\raw\\town-wall.png"
+    },
+    {
+        "Name":  "roof-shingles",
+        "PromptId":  "72130c54-87e2-4523-862d-e58a445fa455",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-roof-shingles_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-textures\\raw\\roof-shingles.png"
+    },
+    {
+        "Name":  "tree-bark",
+        "PromptId":  "b14ff925-b8a5-458a-b401-40d2a87a26c6",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-tree-bark_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-textures\\raw\\tree-bark.png"
+    },
+    {
+        "Name":  "woven-trim",
+        "PromptId":  "615de541-a438-4c92-aadd-7f40042174b8",
+        "Url":  "http://10.13.37.219:8188/view?filename=Emberhollow-woven-trim_00001_.png\u0026subfolder=\u0026type=output",
+        "Out":  "C:\\src\\Milgiecom\\output\\comfyui\\emberhollow-textures\\raw\\woven-trim.png"
+    }
+]
