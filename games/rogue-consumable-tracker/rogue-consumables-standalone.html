@@ -28,7 +28,6 @@
       background:radial-gradient(ellipse 90% 35% at 50% 0%,rgba(180,100,20,.2) 0%,transparent 55%),radial-gradient(ellipse 50% 50% at 85% 85%,rgba(100,40,10,.12) 0%,transparent 55%),#0e0a07;
       min-height:100vh;
     }
-    body.modal-open{overflow:hidden}
     button,input{font:inherit;-webkit-appearance:none}
     img{display:block}
     .page{width:min(960px,100%);margin:0 auto;padding:0 0 48px}
@@ -48,6 +47,16 @@
       color:var(--gold);background:rgba(255,214,148,.07);
       font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
       white-space:nowrap;flex-shrink:0;
+    }
+    .eyebrow.title-pill{
+      padding:7px 12px;
+      font-size:11px;
+      letter-spacing:.08em;
+      box-shadow:inset 0 1px 0 rgba(255,214,148,.05);
+    }
+    .sr-only{
+      position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+      clip:rect(0,0,0,0);white-space:nowrap;border:0;
     }
     h1{
       margin:0;flex:1;min-width:0;
@@ -69,6 +78,52 @@
     .btn:active{transform:scale(.96)}
     .btn.ghost{background:rgba(255,240,212,.04);border-color:rgba(255,240,212,.1);color:var(--muted)}
     .btn.ghost:hover{background:rgba(255,240,212,.09);color:var(--text)}
+    .bag-toggle{
+      display:inline-flex;align-items:center;gap:8px;
+      min-width:126px;justify-content:flex-end;
+      padding:6px 10px 6px 8px;
+      border-radius:14px;
+      border:1px solid rgba(204,147,72,.35);
+      background:linear-gradient(180deg,rgba(61,37,16,.96),rgba(26,15,6,.98));
+      color:var(--gold2);
+      box-shadow:inset 0 1px 0 rgba(255,220,160,.07), 0 4px 14px rgba(0,0,0,.35);
+      cursor:pointer;
+      transition:var(--t);
+    }
+    .bag-toggle:hover{filter:brightness(1.12);border-color:rgba(239,201,126,.5)}
+    .bag-toggle:active{transform:scale(.98)}
+    .bag-toggle.open{box-shadow:inset 0 0 0 1px rgba(255,220,160,.09),0 6px 18px rgba(0,0,0,.45)}
+    .bag-toggle-label{display:flex;flex-direction:column;align-items:flex-end;line-height:1.05}
+    .bag-toggle-label strong{font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+    .bag-toggle-label span{font-size:11px;color:var(--muted);font-weight:700}
+    .bag-icon{
+      position:relative;
+      width:34px;height:30px;flex-shrink:0;
+      border-radius:9px;
+      background:
+        radial-gradient(circle at 50% 10%,rgba(255,234,180,.2),transparent 38%),
+        url('data:image/jpeg;base64,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') center/cover no-repeat;
+      border:1px solid rgba(255,212,152,.18);
+      box-shadow:inset 0 0 0 1px rgba(40,18,6,.32),0 3px 10px rgba(0,0,0,.3);
+    }
+    .bag-icon::before{
+      content:"";
+      position:absolute;inset:0;
+      border-radius:9px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+    .bag-icon::after{
+      content:none;
+    }
+    .bag-badge{
+      position:absolute;right:-6px;bottom:-6px;
+      min-width:20px;height:20px;padding:0 5px;
+      border-radius:999px;border:1px solid rgba(255,225,160,.16);
+      background:linear-gradient(180deg,#f0d68b,#b97819);
+      color:#1b0c00;font-size:11px;font-weight:900;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 10px rgba(0,0,0,.35);
+    }
     .stats-bar{
       display:flex;align-items:center;gap:10px;
       padding:7px 12px;
@@ -104,6 +159,113 @@
       box-shadow:0 2px 8px rgba(200,130,30,.35);
     }
     .content{padding:12px 14px 0}
+    .bag-panel{
+      margin:0 14px 12px;
+      border:1px solid rgba(190,136,72,.24);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at top,rgba(186,116,35,.14),transparent 35%),
+        linear-gradient(180deg,rgba(32,19,10,.98),rgba(13,8,4,1));
+      box-shadow:var(--sh);
+      overflow:hidden;
+      max-height:0;
+      opacity:0;
+      transform:translateY(-8px);
+      transition:max-height .35s ease, opacity .2s ease, transform .25s ease, margin-bottom .25s ease;
+      margin-bottom:0;
+    }
+    .bag-panel.open{
+      max-height:860px;
+      opacity:1;
+      transform:translateY(0);
+      margin-bottom:12px;
+    }
+    .bag-shell{
+      position:relative;
+      padding:16px 14px 14px;
+      border-top:1px solid rgba(255,220,160,.06);
+    }
+    .bag-shell::before,
+    .bag-shell::after{
+      content:"";
+      position:absolute;top:0;bottom:0;width:10px;
+      background:linear-gradient(180deg,rgba(122,72,28,.4),rgba(52,28,10,.35));
+    }
+    .bag-shell::before{left:0}
+    .bag-shell::after{right:0}
+    .bag-head{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      margin-bottom:12px;
+    }
+    .bag-title{display:flex;align-items:center;gap:10px}
+    .bag-title h2{margin:0;font-size:1rem;letter-spacing:-.02em}
+    .bag-title p{margin:2px 0 0;color:var(--muted);font-size:.78rem}
+    .bag-count{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:68px;padding:5px 10px;border-radius:999px;
+      border:1px solid rgba(255,220,160,.12);
+      background:rgba(255,240,212,.04);
+      color:var(--gold2);font-size:.82rem;font-weight:800;
+    }
+    .bag-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(58px,1fr));
+      gap:8px;
+    }
+    .bag-slot{
+      position:relative;
+      aspect-ratio:1/1;
+      border-radius:12px;
+      border:1px solid rgba(255,240,212,.08);
+      background:
+        linear-gradient(180deg,rgba(14,8,4,.95),rgba(8,5,2,.98)),
+        repeating-linear-gradient(45deg,rgba(255,240,212,.015) 0,rgba(255,240,212,.015) 6px,transparent 6px,transparent 12px);
+      box-shadow:inset 0 0 0 1px rgba(0,0,0,.45);
+      overflow:hidden;
+    }
+    .bag-slot.empty::after{
+      content:"";
+      position:absolute;inset:14px;
+      border:1px dashed rgba(255,240,212,.08);
+      border-radius:8px;
+    }
+    .bag-slot.filled{
+      border-color:rgba(255,220,160,.18);
+      background:
+        radial-gradient(circle at 50% 20%,rgba(236,185,88,.18),transparent 50%),
+        linear-gradient(180deg,rgba(27,18,10,.98),rgba(10,6,3,1));
+    }
+    .bag-item{
+      position:absolute;inset:0;
+      display:flex;align-items:center;justify-content:center;
+      padding:9px;
+    }
+    .bag-item.is-new{animation:bagPop .28s cubic-bezier(.2,.9,.2,1)}
+    .bag-item img{
+      width:100%;height:100%;
+      object-fit:cover;border-radius:10px;
+      box-shadow:0 6px 18px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.1);
+    }
+    .bag-qty{
+      position:absolute;right:5px;bottom:5px;
+      min-width:22px;height:18px;padding:0 5px;
+      border-radius:999px;
+      background:linear-gradient(180deg,rgba(248,223,162,.95),rgba(182,125,35,.95));
+      color:#1c0d00;font-size:10px;font-weight:900;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 10px rgba(0,0,0,.35);
+    }
+    .bag-name{
+      position:absolute;left:5px;right:5px;bottom:4px;
+      padding:2px 4px;border-radius:7px;
+      background:rgba(0,0,0,.58);
+      color:var(--gold3);font-size:9px;font-weight:700;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      opacity:0;transform:translateY(3px);transition:var(--t);
+      pointer-events:none;
+    }
+    .bag-slot:hover .bag-name,
+    .bag-slot:focus-within .bag-name{opacity:1;transform:translateY(0)}
     .sections{display:grid;gap:10px}
     .section{
       border:1px solid var(--line);border-radius:var(--r);
@@ -188,17 +350,18 @@
       padding:3px 7px 3px 3px;
       cursor:pointer;color:inherit;text-align:left;
       transition:var(--t);
+      position:relative;
     }
     .item:hover{background:rgba(255,240,212,.07);border-color:rgba(255,240,212,.17);transform:translateY(-1px)}
     .item:active{transform:translateY(0)}
     .item span{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
     .icon{width:24px;height:24px;border-radius:5px;object-fit:cover;background:#1a0e07;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
-    .q1 .item{border-color:rgba(200,200,200,.1)} .q1 .item span{color:#c0c0c0}
-    .q2 .item{border-color:rgba(30,255,0,.1)} .q2 .item span{color:#1eff00}
-    .q3 .item{border-color:rgba(77,171,247,.12)} .q3 .item span{color:#4dabf7}
-    .q4 .item{border-color:rgba(200,117,247,.12)} .q4 .item span{color:#c875f7}
-    .q5 .item{border-color:rgba(255,154,60,.12)} .q5 .item span{color:#ff9a3c}
-    .q6 .item{border-color:rgba(230,204,128,.12)} .q6 .item span{color:#e6cc80}
+    .item.q1{border-color:rgba(200,200,200,.1)} .item.q1 span{color:#c0c0c0}
+    .item.q2{border-color:rgba(30,255,0,.1)} .item.q2 span{color:#1eff00}
+    .item.q3{border-color:rgba(77,171,247,.12)} .item.q3 span{color:#4dabf7}
+    .item.q4{border-color:rgba(200,117,247,.12)} .item.q4 span{color:#c875f7}
+    .item.q5{border-color:rgba(255,154,60,.12)} .item.q5 span{color:#ff9a3c}
+    .item.q6{border-color:rgba(230,204,128,.12)} .item.q6 span{color:#e6cc80}
     .meta-line{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
     .meta{
       display:inline-flex;align-items:center;border-radius:999px;
@@ -240,51 +403,46 @@
     }
     .status-dot.missing{color:var(--warn);border:1px solid var(--warnline);background:var(--warnbg)}
     .status-dot.ready{color:var(--ok);border:1px solid var(--okline);background:var(--okbg)}
-    .modal{
-      position:fixed;inset:0;z-index:50;
-      display:none;align-items:flex-end;justify-content:center;
-      background:rgba(0,0,0,.74);
-      backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
-    }
-    .modal.open{display:flex}
-    .sheet{
-      width:min(660px,100%);
-      max-height:min(82vh,850px);overflow-y:auto;
-      border-radius:22px 22px 0 0;
-      border:1px solid rgba(255,240,212,.12);border-bottom:none;
-      background:linear-gradient(180deg,rgba(26,17,10,.99),rgba(9,6,3,1));
+    .tooltip-pop{
+      position:fixed;left:0;top:0;z-index:60;
+      width:min(320px,calc(100vw - 18px));
+      padding:10px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,240,212,.16);
+      background:linear-gradient(180deg,rgba(32,20,10,.985),rgba(10,6,3,.995));
       box-shadow:var(--sh2);
-      padding-bottom:env(safe-area-inset-bottom);
+      color:var(--text);
+      opacity:0;
+      transform:translateY(8px) scale(.98);
+      pointer-events:none;
+      transition:opacity .14s ease, transform .14s ease;
     }
-    @media(min-width:500px){.sheet{border-radius:20px;margin:14px;max-height:min(85vh,850px)}}
-    .sheet-head{
-      display:flex;gap:11px;align-items:center;
-      padding:14px;border-bottom:1px solid var(--line);
-      position:sticky;top:0;
-      background:rgba(22,14,8,.98);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    .tooltip-pop.open{opacity:1;transform:translateY(0) scale(1)}
+    .tooltip-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .tooltip-icon{
+      width:36px;height:36px;border-radius:9px;object-fit:cover;background:#1a0e07;flex-shrink:0;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 3px 10px rgba(0,0,0,.4)
     }
-    .sheet-icon{width:40px;height:40px;border-radius:9px;object-fit:cover;background:#1a0e07;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 3px 10px rgba(0,0,0,.4)}
-    .sheet-info{flex:1;min-width:0}
-    .sheet-info h2{margin:0 0 2px;font-size:.95rem;font-weight:800;line-height:1.2}
-    .sheet-sub{color:var(--muted);font-size:.78rem}
-    .close{
-      width:30px;height:30px;border-radius:999px;
-      border:1px solid rgba(255,240,212,.11);
-      background:rgba(255,240,212,.05);
-      color:var(--muted);cursor:pointer;font-size:14px;
-      display:flex;align-items:center;justify-content:center;
-      transition:var(--t);flex-shrink:0;
-    }
-    .close:hover{background:rgba(255,240,212,.1);color:var(--text)}
-    .sheet-body{padding:14px}
+    .tooltip-info{min-width:0}
+    .tooltip-info h2{margin:0;font-size:.92rem;line-height:1.15}
     .tooltip{width:100%;color:var(--text)}
     .tooltip table{width:100%;border-collapse:collapse}
     .tooltip td,.tooltip th{padding:1px 0;vertical-align:top;text-align:left;font-weight:400}
     .tooltip th{width:0;background:none!important;white-space:nowrap;padding-right:8px;color:var(--muted)}
     .tooltip td{line-height:1.5}
+    .tooltip p{margin:0}
+    .fly-item{
+      position:fixed;z-index:70;
+      width:34px;height:34px;border-radius:9px;
+      box-shadow:0 10px 24px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.12);
+      pointer-events:none;
+      opacity:1;
+      filter:saturate(1.12) brightness(1.06);
+    }
     .foot{margin:18px 14px 0;color:var(--soft);font-size:.75rem;text-align:center;opacity:.65}
     @media(max-width:560px){
       .hero,.filters-bar,.content{padding-left:10px;padding-right:10px}
+      .bag-panel{margin-left:10px;margin-right:10px}
       h1{font-size:1.05rem}
       .stats-bar{gap:7px;padding:6px 10px}
       .stat-value{font-size:.88rem}
@@ -292,19 +450,31 @@
       .row-side{grid-column:2}
       .sh-left p{display:none}
       .item span{max-width:110px}
+      .bag-toggle-label{display:none}
+      .bag-toggle{min-width:auto;padding-right:8px}
+      .bag-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
     }
-    @media(max-width:360px){.eyebrow{display:none}}
+    @media(max-width:360px){.eyebrow.title-pill{font-size:10px;padding:6px 10px}}
     @keyframes flashOk{0%{background-color:rgba(80,170,100,.12)}100%{background-color:transparent}}
     .row.just-done{animation:flashOk .5s ease}
+    @keyframes bagPop{
+      0%{transform:scale(.72);opacity:0}
+      70%{transform:scale(1.08);opacity:1}
+      100%{transform:scale(1);opacity:1}
+    }
   </style>
 </head>
 <body>
   <div class="page">
     <header class="hero">
       <div class="hero-top">
-        <span class="eyebrow">WoW Classic</span>
-        <h1>Rogue Consumables</h1>
+        <span class="eyebrow title-pill">Rogue Consumables</span>
+        <h1 class="sr-only">Rogue Consumables</h1>
         <div class="hero-btns">
+          <button class="bag-toggle" id="bagToggle" type="button" aria-expanded="false" aria-controls="bagPanel">
+            <span class="bag-icon" id="bagAnchor"><span class="bag-badge" id="bagFilledCount">0</span></span>
+            <span class="bag-toggle-label"><strong>Bag</strong><span id="bagStatus">0 / 32 slots</span></span>
+          </button>
           <button class="btn" id="markVisibleReady" type="button">Pack All</button>
           <button class="btn ghost" id="clearVisible" type="button">Clear</button>
         </div>
@@ -329,23 +499,34 @@
     <nav class="filters-bar" aria-label="Raid filters">
       <div class="filters" id="filters"></div>
     </nav>
+    <section class="bag-panel" id="bagPanel" aria-label="Packed bag">
+      <div class="bag-shell">
+        <div class="bag-head">
+          <div class="bag-title">
+            <span class="bag-icon"><span class="bag-badge" id="bagPanelBadge">0</span></span>
+            <div>
+              <h2>Raid Bag</h2>
+              <p>Checked-off consumables land here. Empty slots stay ready for the next run.</p>
+            </div>
+          </div>
+          <div class="bag-count" id="bagCount">0 / 32</div>
+        </div>
+        <div class="bag-grid" id="bagGrid"></div>
+      </div>
+    </section>
     <main class="content">
       <div class="sections" id="sections"></div>
       <p class="foot">State saved in this browser via <code>localStorage</code>. Single self-contained file &mdash; works offline.</p>
     </main>
   </div>
-  <div class="modal" id="tooltipModal" aria-hidden="true">
-    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tooltipTitle">
-      <div class="sheet-head">
-        <img class="sheet-icon" id="tooltipIcon" alt="">
-        <div class="sheet-info">
-          <h2 id="tooltipTitle"></h2>
-          <div class="sheet-sub" id="tooltipSubtitle"></div>
-        </div>
-        <button class="close" id="tooltipClose" type="button" aria-label="Close">&#x2715;</button>
+  <div class="tooltip-pop" id="tooltipPop" aria-hidden="true">
+    <div class="tooltip-head">
+      <img class="tooltip-icon" id="tooltipIcon" alt="">
+      <div class="tooltip-info">
+        <h2 id="tooltipTitle"></h2>
       </div>
-      <div class="sheet-body"><div class="tooltip" id="tooltipBody"></div></div>
     </div>
+    <div class="tooltip" id="tooltipBody"></div>
   </div>
   <script id="rogueConsumablesData" type="application/json">{"generatedAt":"2026-03-13T19:53:03.088Z","version":1,"filters":[{"id":"all","label":"All"},{"id":"always","label":"Every Raid"},{"id":"mc","label":"MC"},{"id":"bwl","label":"BWL"},{"id":"aq40","label":"AQ40"},{"id":"naxx","label":"Naxx"},{"id":"progression","label":"Progression"},{"id":"utility","label":"Utility"}],"sections":[{"id":"core-baseline","title":"Core Physical DPS Consumables","intro":"Bring this as your standard raid baseline.","rows":[{"id":"mongoose","title":"Elixir of the Mongoose","required":15,"itemEntries":[13452],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":13452,"name":"Elixir of the Mongoose","quality":1,"icon":"INV_Potion_32","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eElixir of the Mongoose\u003c/b\u003e\u003cbr /\u003eRequires Level 46\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases Agility by 25 and chance to get a critical hit by 2% for 3600 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"juju-power","title":"Juju Power","required":20,"itemEntries":[12451],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":12451,"name":"Juju Power","quality":1,"icon":"INV_Misc_MonsterScales_11","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eJuju Power\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases the target's Strength by 30 for 1800 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"juju-might","title":"Juju Might","required":20,"itemEntries":[12460],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":12460,"name":"Juju Might","quality":1,"icon":"INV_Misc_MonsterScales_07","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eJuju Might\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases attack power by 40 for 600 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"juju-flurry","title":"Juju Flurry","required":20,"itemEntries":[12450],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":12450,"name":"Juju Flurry","quality":1,"icon":"INV_Misc_MonsterScales_17","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eJuju Flurry\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases the target's attack speed by 3% for 20 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"desert-dumplings","title":"Smoked Desert Dumplings","required":20,"itemEntries":[20452],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":20452,"name":"Smoked Desert Dumplings","quality":1,"icon":"INV_Misc_Food_64","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eSmoked Desert Dumplings\u003c/b\u003e\u003cbr /\u003eRequires Level 45\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eRestores 2148 health over 30 sec.  Must remain seated while eating.  If you spend at least 10 seconds eating you will become well fed and gain 20 Strength for 900 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"scorpok","title":"Ground Scorpok Assay","required":1,"itemEntries":[8412],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":8412,"name":"Ground Scorpok Assay","quality":1,"icon":"INV_Misc_Dust_02","iconDataUrl":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA4ADgDASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAAIEBgcIAQUD/8QAMRAAAQMDAgQEBAYDAAAAAAAAAQIDBAAFESExBhJBUQcTImEIFDJxI0KBkcHRUrHx/8QAGAEAAwEBAAAAAAAAAAAAAAAAAgMEAQD/xAAbEQADAQADAQAAAAAAAAAAAAAAAQIREiExA//aAAwDAQACEQMRAD8Ax6+6/KkvS5b7siQ+suOuuqKlrWTkqUTqSSckmk4T2oT9IrtaacwntSkN86glKSSTgAdae2K0zr3cm7fbmFvPLOyUkhI6qONgO9bK8MfCnhngzhVmZNiIm3NwecH32sLWQAQAMnlTtpr3O9BdqQpjTFLzKmllDiFIWN0qGCKRhPatD+NfDVt4iWqTb2m4lyYbKwMYStKQAUnAx2we/saz262ppxTawUqSSFA9CK752rXR1Rx9OMuvxZLMuI+5HfYWHGnW1FK0LByFJI1BBGQRRSVfSaKIAE/SK9CwWmdfLsxbLcyXZD6glIxokdVHsBuTTe3Q5M+U1DhsrefdVyoQkZKjWxfhz8LYXDkEzri2HLhJT6vObSrk005cEjG/fehu+KDidJD4CeEVu4LiGc9LEmVKZBWtQKChSSdR1H2z161KeNJzgBSEto8vCchOM7ajX/tTKQ0iLag88EHnJQEhRwSNSPtVR8WzUvMqUY2fXqErycjYk/wfao7Y+SrPEFClzPMbISTjGM+gjaqv4qsC7++5Kj+S3cmkJ81KRypkadM/m2x3/SrX4vikNokKLqkL0xjcgb56npVZyj8rNQ6gOICk8w5hkZHT2ofnTXaGWk1jKseQpsqQtJSpJwQRgg9qKnnG9vi3WAq7wUoEto4fbSceYManHce2aKum1S0kqeLxlp/DzwFChtMcQz15mKHM2FD0tg5CdO+M/v7VpWJKdikEujkCMgtNFJJ79c7msUcFceX612+K1BlQ7kpzIXFP4braUgnc+nGBvj98mrQ4d+Ia3Rra0qVbJzChlLa+UKGevKdtNP6qWprdY6anEkaFvk1xhh7mUy8yhoLVzEhSlEdB06VW81CnYanGkoQtxRJQNcnO5PXbevFjeKnDlyujLCLzFeExnzeYuBBQrBPKrOxwNQeulNZvGdheX8lEnQlkvALCZCfRr3+9LaYyWhleA44kxFFIka4SoHH3qvL5FX5i2lNFxZACeQ6J98VPrzO+ZnuNRUsLVHSTI/FSBjbc/wAVDbk4wxGFyMtpC3lnQu6oAHXtoNqFbofRD7wh1iEeQ+lQ2wc++aKTxDfbQ9BIRKL6zoEtp69znFFUzNYIqlvpAYz64y3m3GUc3KW1JdRkpOx0OxFelP4juk6xQrJJk88GCSWG+UeknP8AZ/miiqMJ9G1wkwlrZXBiuxeVsBwF7nyvqRoCPtrTUPYWF8x5gc565oorcOfo4VcpZUFfNPAjqleP9Uu4zo0hDIjtPtlKAHi48V+Yr/LXaiiuSRmvw+94mW6YI6bZbDGfPpUlCioKyMYAJJJz+utFFFDPSNqnp//Z","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eGround Scorpok Assay\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003eUnique\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases Agility by 25 when consumed. Effect lasts for 60 minutes.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"roids","title":"R.O.I.D.S.","required":1,"itemEntries":[8410],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":8410,"name":"R.O.I.D.S.","quality":1,"icon":"INV_Stone_15","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eR.O.I.D.S.\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003eUnique\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases Strength by 25 when consumed. Effect lasts for 60 minutes.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003cspan class=\"q\"\u003e\"Robust Operational Imbue Derived From Snickerfang\"\u003c/span\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"drink-buff","title":"Rumsey Rum Black Label or Gordok Green Grog","required":20,"itemEntries":[21151,18269],"notes":["Bring one of these stamina drink options as your baseline raid drink."],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":21151,"name":"Rumsey Rum Black Label","quality":1,"icon":"INV_Drink_04","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eRumsey Rum Black Label\u003c/b\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases Stamina by 15 for 900 sec and gets you drunk to boot!\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"},{"entry":18269,"name":"Gordok Green Grog","quality":2,"icon":"INV_Drink_03","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q2\"\u003eGordok Green Grog\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases Stamina by 10 for 900 sec and gets you drunk to boot.  Green means it's good!\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"spirit-zanza","title":"Spirit of Zanza","required":1,"itemEntries":[20079],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":20079,"name":"Spirit of Zanza","quality":2,"icon":"INV_Potion_30","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q2\"\u003eSpirit of Zanza\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003eUnique\u003cbr /\u003eRequires Level 55\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases the player's Spirit by 50 and Stamina by 50 for 7200 sec.  You can only have the effect of one Zanza potion at a time.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003cspan class=\"q\"\u003e\"Blessed with the mojo of Zanza!\"\u003c/span\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]}]},{"id":"burst-potions","title":"Pre-Pot / High Effort","intro":"Optional extra prep when you are trying hard.","rows":[{"id":"swiftness-zanza","title":"Swiftness of Zanza","required":1,"itemEntries":[20081],"notes":["Useful as a pre-pot on serious attempts."],"encounters":[],"tags":["progression"],"important":false,"items":[{"entry":20081,"name":"Swiftness of Zanza","quality":2,"icon":"INV_Potion_31","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q2\"\u003eSwiftness of Zanza\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003eUnique\u003cbr /\u003eRequires Level 55\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases the player's run speed by 20% for 7200 sec.  You can only have the effect of one Zanza potion at a time.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003cspan class=\"q\"\u003e\"Blessed with the mojo of Zanza!\"\u003c/span\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]}]},{"id":"rogue-core","title":"Rogue-Specific Core Supplies","intro":"Core rogue maintenance items to keep on hand every raid night.","rows":[{"id":"thistle-tea","title":"Thistle Tea","required":20,"itemEntries":[7676],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":7676,"name":"Thistle Tea","quality":1,"icon":"INV_Drink_Milk_05","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eThistle Tea\u003c/b\u003e\u003cbr /\u003eClasses: Rogue\u003cbr /\u003eRequires Level 5\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eInstantly restores 100 energy.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"instant-poison","title":"Instant Poison VI","required":20,"itemEntries":[8928],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":8928,"name":"Instant Poison VI","quality":1,"icon":"Ability_Poisons","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eInstant Poison VI\u003c/b\u003e\u003cbr /\u003eClasses: Rogue\u003cbr /\u003eRequires Level 60\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003ca href=\"#\" class=\"q2\"\u003eCoats a weapon with poison that lasts for 30 minutes.\r\nEach strike has a 20% chance of poisoning the enemy which instantly inflicts 112 to 149 Nature damage.  115 charges.\u003c/a\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"consecrated-stone","title":"Consecrated Sharpening Stone","required":20,"itemEntries":[23122],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":23122,"name":"Consecrated Sharpening Stone","quality":2,"icon":"INV_Stone_SharpeningStone_02","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q2\"\u003eConsecrated Sharpening Stone\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003ctable width=\"100%\"\u003e\u003ctr\u003e\u003ctd\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003eRequires Level 50\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eWhile applied to target weapon it increases attack power against undead by 100. Lasts for 1 hour.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"dense-stone","title":"Dense Sharpening Stone","required":20,"itemEntries":[12404],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":12404,"name":"Dense Sharpening Stone","quality":1,"icon":"INV_Stone_SharpeningStone_05","iconDataUrl":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA4ADgDASIAAhEBAxEB/8QAHAAAAgIDAQEAAAAAAAAAAAAAAAcFCAMEBgEC/8QANxAAAQMDAwICBwYGAwAAAAAAAQIDBAAFEQYSIQcxQVETFCJhcYGRFSMyQqGxCBZSYnLRwfDx/8QAGgEAAgMBAQAAAAAAAAAAAAAABAUAAwYCAf/EAC4RAAEDAgIIBAcAAAAAAAAAAAEAAgMEEQUxEhMhQVFxkaFh0eHwBhQjJDIzgf/aAAwDAQACEQMRAD8Ap28uRLkuyZLzj77yytxxxRUpaiclRJ5JJ5Jrft8YlQ4ryHH3kV09kti3XEpQgqWSMDFCTTBoT/DcPMrgpfRmnXbxcWITCFKccWAEgd/j5fOrKdK9NaImql2CTbGJMqMnKZClHe6eyyCOCAcY47Vw1v06vSemWpbu316ag7DgZQ2cZI8ic4+Hyr40BqF7TOsYF1bJQlhwFSUrOChQwoH3EHmvKWDSGskGfFW4vX6LhBTusG5kbz72Ka1Lp612uYpn7LQpAUdqslOR4VFph2eUoB2IQR2AOasN1D0/H1Hp37TtyWUodQHVAJGfiCaQF1tjsKcIyAVFxQQFdtxPYfCijTwnNg6JQ2tqRlIepXI9TdPWq0W6BcrQ67DmoT6y2ttRStB3eycjsfZJB8CPqVh6uXVuTJnxm2ghqNsiNgf2ApJ+u40UtkAbI4DYPRaKlZroGSP2k3v1KVFlibsE1YDoD0+evM127S2ibfCG/bgZeWBlKceR7/8AopcdNdNP3u6sQoydy1qGARwQMkknyAFXH6YGHbWDZou0R8bdxzudXj2lH4nt7qkbDPLt/EK+tqBhtII2fsf2G8+SUevHXjNcU8ylxIUTsIyAOAMeVcJKi8JkLc2pH5Vj2lJ8MDy99N3rTbGrWv0zTX3i1/jKfZB47DzzSckenfkLUXAQlOC4s4CuKcLGXT96Aatbultc0zOVtUhva0CcjA7d/wBqy9R9LsWq0zb2pba02xkvhJXgLVg7QPiSKSGkLqbVeGJMdagptxJKiOO/bHjTR/ib1IzK6fREQHlBy7SG21JaP40oTuUO3Izt/SoVFWbU7q1adYde9p195bhV4nnv9TRR1Bw1HZjjnbv9rtntRShv1C53iVrj9vGxngO+0qxPSzR67DpUzVR1uzZiNwUlBy23wcH3q/bHNS9qvAt9wKm3EIda4SlwYAFV01FKujKhe7RPmxI8k7XQw+pHo1/0nBHHGRWpE19qtoEKuzsgeAfSHMfAkZ8KNo9AxN0PZ3pDiuu+beJs79t3b3dW21lJGpNLia0Ehxg/echXA7/9/wBUhLo1KXJdT6Xcgc8DAxUBa+rOooLK2fV4akOfi2oKAe/cJIBrfV1Ktk5IE3TwjuDguw3sHH+KgQaJS4L5SAhpCgglRJyo9h/uvNWyXn7hp6zuLUpMdoPFOSdqnFbtpB8khP1oevGmpzjYYvEyNkgq9Zjdh4jKScVHxZCblrWTMSFbA4VJCgMgJGAPkAK4lfq2OdwCIpojPMyPiQO65fqKsruTufygAc0Voase9LKfWe6lmilVKLRALXYpbXmykdP6kVDbKW+UK7A+HnkYqWam6ekcvQnmR4eicz/xRRVbwY3HQJH9R1M2OtjBnYHHkh606blA+rznmSPcFD9TWudKOrBMaW25juHAEH5ZPNFFUOxCeM535+ll3J8OUD2lwaW8j53WH+XLmyvmM4vB/Lg/sal2ibbDkTZCVekWU4bPGT5UUUWap89OdIcMuaSw4dFR4hGGEnPO24cglvd5C3ng0hJWpZwAO+fIUUUUXCwBqBr5364r/9k=","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eDense Sharpening Stone\u003c/b\u003e\u003ctable width=\"100%\"\u003e\u003ctr\u003e\u003ctd\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003eRequires Level 35\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncrease sharp weapon damage by 8 for 30 minutes.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"mind-numbing","title":"Mind-numbing Poison III","required":1,"itemEntries":[9186],"notes":["Bring for specific encounters like Skeram."],"encounters":[],"tags":["aq40"],"important":false,"items":[{"entry":9186,"name":"Mind-numbing Poison III","quality":1,"icon":"Spell_Nature_NullifyDisease","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eMind-numbing Poison III\u003c/b\u003e\u003cbr /\u003eClasses: Rogue\u003cbr /\u003eRequires Level 52\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003ca href=\"#\" class=\"q2\"\u003eCoats a weapon with poison that lasts for 30 minutes.\r\nEach strike has a 20% chance of poisoning the enemy, increasing their casting time by 60% for 14 sec.  100 charges.\u003c/a\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"flash-powder","title":"Flash Powder","required":20,"itemEntries":[5140],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":5140,"name":"Flash Powder","quality":1,"icon":"INV_Misc_Powder_Purple","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eFlash Powder\u003c/b\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]}]},{"id":"utility","title":"Utility / Special Use","intro":"Encounter-specific tools and niche quality-of-life supplies.","rows":[{"id":"frost-oil","title":"Frost Oil","required":5,"itemEntries":[3829],"notes":[],"encounters":["Viscidus"],"tags":["aq40"],"important":false,"items":[{"entry":3829,"name":"Frost Oil","quality":1,"icon":"INV_Potion_20","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eFrost Oil\u003c/b\u003e\u003cbr /\u003eRequires Level 30\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eWhen applied to a melee weapon it gives a 10% chance of casting Frostbolt at the opponent when it hits.  Lasts 30 minutes.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"holy-water","title":"Stratholme Holy Water","required":10,"itemEntries":[13180],"notes":["Great for Nefarian adds and some Naxx utility pulls."],"encounters":[],"tags":["bwl","naxx"],"important":false,"items":[{"entry":13180,"name":"Stratholme Holy Water","quality":1,"icon":"INV_Potion_75","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eStratholme Holy Water\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eInflicts between 438 and 562 damage to Undead in a 10 yard radius.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003cspan class=\"q\"\u003e\"Just 1 calorie.\"\u003c/span\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"whipper-root","title":"Whipper Root Tuber","required":20,"itemEntries":[11951],"notes":[],"encounters":["Loatheb"],"tags":["naxx"],"important":false,"items":[{"entry":11951,"name":"Whipper Root Tuber","quality":1,"icon":"INV_Misc_Food_55","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eWhipper Root Tuber\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003eRequires Level 45\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eRestores 700 to 901 health.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"deviate-delight","title":"Savory Deviate Delight","required":20,"itemEntries":[6657],"notes":["Niche use, especially for fights like Garr."],"encounters":[],"tags":["utility"],"important":false,"items":[{"entry":6657,"name":"Savory Deviate Delight","quality":1,"icon":"INV_Misc_MonsterHead_04","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eSavory Deviate Delight\u003c/b\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eEat me.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"noggenfogger","title":"Noggenfogger Elixir","required":20,"itemEntries":[8529],"notes":["Movement, slow fall, size, and other utility rolls."],"encounters":[],"tags":["utility"],"important":false,"items":[{"entry":8529,"name":"Noggenfogger Elixir","quality":1,"icon":"INV_Potion_83","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eNoggenfogger Elixir\u003c/b\u003e\u003cbr /\u003eBinds when picked up\u003cbr /\u003eRequires Level 35\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eDrink Me.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"sapper","title":"Goblin Sapper Charge","required":10,"itemEntries":[10646],"notes":[],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":10646,"name":"Goblin Sapper Charge","quality":1,"icon":"Spell_Fire_SelfDestruct","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eGoblin Sapper Charge\u003c/b\u003e\u003ctable width=\"100%\"\u003e\u003ctr\u003e\u003ctd\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003eRequires Engineering (205)\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eExplodes when triggered dealing 450 to 751 Fire damage to all enemies nearby and 375 to 626 damage to you.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"dynamite","title":"Dense Dynamite or EZ-Thro Dynamite II","required":10,"itemEntries":[18641,18588],"notes":["Either engineering explosive works for this slot."],"encounters":[],"tags":["always"],"important":false,"items":[{"entry":18641,"name":"Dense Dynamite","quality":1,"icon":"INV_Misc_Bomb_06","iconDataUrl":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA4ADgDASIAAhEBAxEB/8QAHAABAAMAAwEBAAAAAAAAAAAAAAUGBwIDCAQB/8QAMxAAAgEDAwIEAggHAAAAAAAAAQIDAAQRBQYhEkEHMVFhEyIyM0JxkaGx0QgjUnKBwdL/xAAbAQABBAMAAAAAAAAAAAAAAAAGAAMEBQECB//EACsRAAEEAQIDBgcAAAAAAAAAAAEAAgMEERIhBTHwE1FhkcHRFBUWI0Gh4f/aAAwDAQACEQMRAD8A8b3dxcXd1Nd3c8txcTO0kssrlnkdjksxPJJJySa6qUpJJSlW3YG0pdcmN9eI6aXBlpGHBlx9lf8AZ+/vTcsrYmF7jspNSpLblEUQyT1k+CitK2xrmp2YvLSwdrZmKrNI6xoxHmAWIBx7V13+h6ppZSW8swYwcnpkVxgepUnFatoNnp93exzalFHe44SN/qoIz5Kq+QHv61erfZu0rq3Gvy2EVjpunyB5jGOkXTDkQBTwxby48h3Heq+aEShmOvP0RP8ATLfhzLr5Y6xj9ZWa/wASR03T/ETS7/bFrHo6NpdpdRR2h+G0D9IKkFfJgAnI54BpVW8VNQ1DXtyXuuXyfDd7hojCv0YFGAiL7BRjt5Uq1icHNBCFrMbo5CCFTqV+qCzBVBJPkK0Tw82Q940d7qEbNFkFYQPrPvP9I/OtLFhkDNT09QoTXpRHEP4vg2JsxtTKajqIZbMH+XHj5pz/AM+9b/sra1y93b2UNrgsFVYFUcJnB4qY2Fs3496rXELdEYBRGXpU+nFbZZXui7Khk1LUlgnvpVBZI0AZMDjB8gMccfmTQ3JK667U84aEfwxRcHj7KBuuQ+ZPt14rxpr+l32zt3aloOswyW86TsgLLj5PssvqpGCDX1jW7q8it9Pnu2lgtU6YIzhVjHfAHr3PnWheNe49L37exXOtWZSW2PTHeW5CyGMNypGMHjyOPP8ACsbnn23p8k0kt7qotwSFEUcRZ/QZJ8/8U+C2UkRnmmvu1mtdO0Ajx5d6rG/LlXvNRHd5oxnt1AcilQGt6hFezdNrA0FujEorv1M2e7HuaVfV2aIwEC35xPO5463z6q8+FGzDq0q3dyvXEXHREfJznjq9B+vFeoNk7HCTCWTCRpj52GM47+wzUP4D6Dp8O3YtQmCsV+bnOMnvjNXHdO6YLa3EMFzHEOQVGcj8Oc0MXJDJIXSnYcgug8MjENZsVUbkblSWr7gsNBtDHpq9T4w0mfm9MD05rFt8b1kDiaSRTIM9MYAI/OoPd28mlaRYpMZPzv1YHHv6Vju5N0PLIY7Z+tucy+n9v71mvVktOBOw7lm3ercLjODlx/Klt27nZpZJLiQySP8ARhDfr6D2qh313PeTGWZyfQdgPaul2Z3LuxZicknvXGiSCuyEbLn97iEtt2XHZKUpUhQF6K2D4owafttdNmURNE2Cp4Ixngg9/WoPdW/bW7YyPKSGyehe5/bmlKo3043zlzkaV+LTw0gxmNvdZVr+vT6kTEmY7fPC9z99Q1KVcsY1gw1CE08k79chyUpSlbppco0eR1jjVndiAqqMkk9hSlKSS//Z","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eDense Dynamite\u003c/b\u003e\u003ctable width=\"100%\"\u003e\u003ctr\u003e\u003ctd\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003eRequires Engineering (250)\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eInflicts 340 to 461 Fire damage in a 5 yard radius.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"},{"entry":18588,"name":"Ez-Thro Dynamite II","quality":1,"icon":"INV_Misc_Bomb_03","iconDataUrl":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA4ADgDASIAAhEBAxEB/8QAHAABAAEFAQEAAAAAAAAAAAAAAAcBAwUGCAQC/8QANRAAAgEDAwMBBAcJAQAAAAAAAQIDAAQRBQYhBxIxQSJRgZETUmFicaGxFiMkMjRCkqLBsv/EABsBAAEFAQEAAAAAAAAAAAAAAAQAAgMFBgEH/8QAKhEAAQQBAwMDAwUAAAAAAAAAAQACAwQREjFREyFhBUFxBtHxFKGx4fD/2gAMAwEAAhEDEQA/AON7m4nubmW5uZpJ55nLySSMWZ2JyWJPJJPOatUpSSSlB5qQttdJ9f1uzhnS5trd5gGWGQN3gHxnjioZrEcAzIcIqrSntkthbnC0GGN3J7ADgZ/mA/Wp76Z9PrrdvT9Le02xZPcwmVxfxkiedZAO3IPHsEYHpn41Gmv9Nty6BexpqcdvFbYDSXayBool97Y9r0PpyfFS30h64WOxdvX2mWcLOmGw0/DS5ycgc9v4c/nQlh/WYDCc/CPqQmrIRO3DvKiXUdN3HtXV7/StOuNQtrodr3ENqzLj6NlkViQQcq3aQccHxSsfv7ckm4dyXGpqiw/SHgRsfHnGaUWxri0EoKZ0XUOnZa1SlS70D6bvuPVINQ1WzlltGcG2tu3i5I8lvuD/AGPHA8qedkDNb02nTkuS9OMfPAHJXo6G9OJr+6ttb1G0M3eQ1nbsnykI/wDI9fPgA10Lql3Y7N0t7S3ZGvWXE0oOTn1UH9T5zkVsW459L2bo7xWskZvSnbNPn2s/VU8+88iucd8bmku5GkZu1MnsT/uKx9h0tyc5/HheoelVYK1XDRhg7kndx5PjgKzuzcsz3clysvkFexx3Kyn+1l8EEcVEm77OztL8yWkTJBdKs1uA3EY5DIffgjHwrMzyXF9c9qBnZjWK3o8SS2tikola2RlcjwrFslfhV9RgEDg1qzX1Da/VxF5GANvn8fwteJyeaUpVwsUs9tCz083kepa0ofTYZMNF3EGdsZ7RjJx4J+zj1zXT/TTqxoVhp91HDaCG+mAVbwciNeQF7cAqMYAOMDmuXdKb6XSGUN7VvKWK/dcAZ+a/nWchd4lhaN2R1XuDDgjiqi7D1XZJ7jZbP0aaOGHRpBacE8k/Ydxj7qVOoO7XvpG/euYFJCrnHfUX3E1xqV32Jkkn5V675rjV4LSeIFpHzHIAOO8Y5+Ir513U7falobC0VJdZkUrK/kWgPke4yEf4/j4ErQCEBjBlyt/U7wkGp50xj9/A8/7kqxuDVINtRPp2myLJqbL2zTAf04PlQfre/wB1aGSSSSck+TVWJZizEkk5JPrXzV3BCIhyfcrBXbr7T8nsBsOP75KUqppU6CV2KSezuSQCkiEqysPmCP8AlZ621C3uFH8SkDYwUlyBj7GwaUqKSMOGSjadqSJ2kbFer9qZNIsHstJkWSeQsXuu0gJ3eezPOfTJ+38RqjMzOzuxZmOSSckmlK5HE2PJA7ndK3bksOGs9hsPYKlKUqRCIiPJIsaKzuxAVVGSSfQUpSnJq//Z","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eEz-Thro Dynamite II\u003c/b\u003e\u003ctable width=\"100%\"\u003e\u003ctr\u003e\u003ctd\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003eRequires Level 30\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eInflicts 213 to 288 Fire damage in a 5 yard radius (Assuming that it gets to the target, some restrictions may apply.)\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003cspan class=\"q\"\u003e\"The dynamite for Non-Engineers that rarely* blows up in your hand with over twice the blasting power of standard EZ-Thro.\"\u003c/span\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]}]},{"id":"progression-flask","title":"Progression Flask","intro":"Bring this when progression is serious.","rows":[{"id":"titans","title":"Flask of the Titans","required":1,"itemEntries":[13510],"notes":["Highly appreciated on progression."],"encounters":[],"tags":["progression"],"important":true,"items":[{"entry":13510,"name":"Flask of the Titans","quality":1,"icon":"INV_Potion_62","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eFlask of the Titans\u003c/b\u003e\u003cbr /\u003eRequires Level 50\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eIncreases the player's maximum health by 1200 for 7200 sec.  You can only have the effect of one flask at a time.  This effect persists through death.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]}]},{"id":"protection-potions","title":"Protection Potions by Encounter Type","intro":"Keep a reserve by damage school so you are never scrambling for late-fight prep.","rows":[{"id":"gnpp","title":"Greater Nature Protection Potion","required":15,"itemEntries":[13458],"notes":[],"encounters":["AQ40","Bug Trio","Huhuran","Ouro","C'Thun","Viscidus","Heigan","Grobbulus"],"tags":["aq40","naxx"],"important":false,"items":[{"entry":13458,"name":"Greater Nature Protection Potion","quality":1,"icon":"INV_Potion_22","iconDataUrl":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA4ADgDASIAAhEBAxEB/8QAGgAAAgMBAQAAAAAAAAAAAAAAAAYEBQcDCP/EADAQAAIBAwQBAgUDAwUAAAAAAAECAwQFEQAGEiExE0EHFCJRYTJxsQgVQhYjgYKR/8QAGgEAAgMBAQAAAAAAAAAAAAAABQYBAwQCAP/EAC4RAAEDAwIEAwgDAAAAAAAAAAECAxEABCExQQUSYXFRgdEGEyIykaGx8MHh8f/aAAwDAQACEQMRAD8A80W67xV44zZMrktIzMWLsTkkk95Jyckk/nV7a9n3i87eudba9ttX0EE6zVVUkfKWEKhygbOeOOyAD4/50i/ISRyc4G/81p3ws3Xd7TQ1O3Ki81NtsNycCsMUQaSNSCGKHBIyMA4/nS9xAraQXbcicYM+emZ8KoXIEpr0R/T7sXZ1LtZ75chHV1yKCyzQswV3Q8MBcllIyOv8gR5UjUP+oatr7NR2AUMtFbnqZZBLTUFCokkXCsrs0gJTGACn5OSfGuXwMsdZfLK/yMdTWwUzzIZUigdowSDEQk7ADJV8YOV78cs6V/j1YLhb1s1VVWSanR5ZUJakpo+RKg5xHUSKW68lVH8aW20lxaVq3Kteh6/oozw1llbPMRnP5NZ1vq2C9bfpL61tpqGeSaSFWgHFKor5kCg4Xvo4OCR7aW90NZqK5E2ComrKLhE6/NJhuWAXRhgZHLI/Y++tGtlouO5LTbbTQJCslKanmZnKLGvqcu8A9/WOlGO/bBzlO5qOvhu9VQNbmSpo+a1KxAvj0+nc/j3JGBohw1YWstFXyzidicddsd+1CXQA+pA0BP0qsvV7Z7094pKeK1zeossUVEfTWBlxgoRgr2M9e+jVO9LLO/Ino6NNLYabSE10AIp22tt66xbfa/V9nE9tq1MFPM8xQxuTgShV7YA5GD0ffrvTntsWJLRVw19J6ta+fQfgS2cfTwII4kHs/wA6WrFWXmrtJtEM9VPSRAyimTJVAMsT17Z7/fT38NNvS3/cMEMcLyQQOkkzKcHHZCj98efYDPtpV4g8o8xWdM48NqyOr5QSqtCsdFT7W29akr7pcaR7ikkixUkqwzfpJ5sTFKDH2oGQrKxyCc4FHueigu22YZoNz1QpJakvSJca1ZGrPSD+q0JSmWTCFQM8SC2QMnw5Xnbfz10mul5uM81ZNEYYhTERRwRd4REwTxGezn+TqFVbWSqr5aihorlVTMyD1I62JIaVFyVXJxwjTshR9z5zrLa3tilsNK+NYkzkAkmTHbx3isVt7VsNgNtqny8zqKz+lgrF29HcNsXeoFTZxIasLG0MixzMXDjJy6dEZPeVOQCBrNrnBNBBdK03euprmQUjiwxarEjDmHf2+5z++tiNLR7U3Klahr4qkRgmjSYyM0bd+lKzjhxI+2TkAg58VO+tt0vo/wCptvkVlpqgRLDMOb0kmPqRh9hnKnJ9j3jXk3bDFx8Hyq0kb68pMZnJHeNRJsa4g1cOEpOTmvPsnzBjYKkqsCOCpHlcd5z9vbGjV7cKyKgqw3oxyqMpl1OASPIPjkNGmlLyyJSiaJAmmraNsrnqEpKZpVkmIjZ4yQFUnGWI/wAdekYLdafh5t9qWnlhp7pVxmWRhG7emMYVyGJIB6KoTk+/XelT4CbaWvs10rJ7xDaROyqssroOSR5YkKzLy7wvkYz51rsmxzVlrrW/2mTnUh6N2opxNVygoY5HYVWPqZegQcKF8DKhY9w5fKUrYH/Z88VhurBy8aISYn+D5VlVPbIaS1x33dN0uVuDjCQlm+brMew+oYUjGQOOM+e9LO6d3V1wRKSMR261gYjo6dulGfMjeXY4HZ6OOtP/AMQLDdJPiFW2u9bXstwrFphVC5S1tZFHLHw/xXm3FfUzGFB6OevqBKMm36O52Woup2CkZhQcsX+UySueuKhkYchg9E9Y99ULsw04UrOnb1rG37I3BAWkg/b1FVt4rZJrPb61eL1FIWo2LHo8cMhOBkkocf8AU65bN3RUW6rqIEo0uFJUrwrqR/pilX2774kd4b210udHWJZ7i9tsL0dIscfrlrmsxDA8gysEUqQDg9Hp/HnVHUU9PBTpTSinip3nYwxxLmAcAVPJDkyEnsO5JGDgDVYtmlNlDmZP97aRt9aIcP8AZV0Km4PLB23Hfbw0rp8T6qKn+HMG3rXbQLXcp2uNJUysokReWfTKLkcgcrnl46I0ahVc81ytVXTQQRyUtJH81MwPL5djhRhx19ZByv4J++jRjhalWzam0jMknO58esR+d63LtfdOKQk6elNu1N2zVlqporRWRLURqsfyNZSxSxHiMEo7plC2PqUkdg+NSH3PvJECS7TtkxUj6mooic4IH6CR0CR+PGjRoVd3K7N73KMjXPfpFQ3fu25DYAI1yOvSPvXGbcFa8J+Y2Ascqjt1jmjHEn9JAx9ORnAI7GdTRua322kgqJdqtDT1DO5jorrVhuXQJceuCpzjsr2PB0aNSy4XoJ370xWjpfRKhRa9xWqrU2yyU13jqap3c04uktQJmP6g6SK4c+5A/PnSBJbo6gM1HOKSzR5iWuqP92Sr4gZEKkDmuTgHCoMdknOjRq5UtKPKdY66z6YmuOJOKaaHIY/RUe+3Ojitpt9thko7f6glmMjepNVSgYVnYAZPeAqjAz0NGjRoraWyC3NK4HNk1//Z","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eGreater Nature Protection Potion\u003c/b\u003e\u003cbr /\u003eRequires Level 48\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eAbsorbs 1950 to 3251 nature damage.  Lasts 3600 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"gspp","title":"Greater Shadow Protection Potion","required":15,"itemEntries":[13459],"notes":[],"encounters":["C'Thun","Nefarian","Gothik","Loatheb"],"tags":["bwl","aq40","naxx"],"important":false,"items":[{"entry":13459,"name":"Greater Shadow Protection Potion","quality":1,"icon":"INV_Potion_23","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eGreater Shadow Protection Potion\u003c/b\u003e\u003cbr /\u003eRequires Level 48\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eAbsorbs 1950 to 3251 shadow damage.  Lasts 3600 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"gapp","title":"Greater Arcane Protection Potion","required":5,"itemEntries":[13461],"notes":[],"encounters":["Shazzrah","Skeram","Gothik"],"tags":["mc","aq40","naxx"],"important":false,"items":[{"entry":13461,"name":"Greater Arcane Protection Potion","quality":1,"icon":"INV_Potion_83","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eGreater Arcane Protection Potion\u003c/b\u003e\u003cbr /\u003eRequires Level 48\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eAbsorbs 1950 to 3251 arcane damage.  Lasts 3600 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"gfpp","title":"Greater Fire Protection Potion","required":10,"itemEntries":[13457],"notes":[],"encounters":["Magmadar","Razorgore (pre-pot)","Firemaw","Twins","Four Horsemen","Grand Widow Faerlina"],"tags":["mc","bwl","aq40","naxx"],"important":false,"items":[{"entry":13457,"name":"Greater Fire Protection Potion","quality":1,"icon":"INV_Potion_24","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eGreater Fire Protection Potion\u003c/b\u003e\u003cbr /\u003eRequires Level 48\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eAbsorbs 1950 to 3251 fire damage.  Lasts 3600 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"grfpp","title":"Greater Frost Protection Potion","required":10,"itemEntries":[13456],"notes":["This is basically your late-endgame frost reserve."],"encounters":["Sapphiron","Kel'Thuzad"],"tags":["naxx"],"important":false,"items":[{"entry":13456,"name":"Greater Frost Protection Potion","quality":1,"icon":"INV_Potion_20","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eGreater Frost Protection Potion\u003c/b\u003e\u003cbr /\u003eRequires Level 48\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eAbsorbs 1950 to 3251 frost damage.  Lasts 3600 sec.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"poison-resist","title":"Elixir of Poison Resistance","required":15,"itemEntries":[3386],"notes":[],"encounters":["Viscidus","Grand Widow Faerlina"],"tags":["aq40","naxx"],"important":false,"items":[{"entry":3386,"name":"Elixir of Poison Resistance","quality":1,"icon":"INV_Potion_12","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eElixir of Poison Resistance\u003c/b\u003e\u003cbr /\u003eRequires Level 14\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eImbiber is cured of up to four poisons up to level 60.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]}]},{"id":"other-potions","title":"Other Notable Potions","intro":"Keep these ready for the specific fights that call for them.","rows":[{"id":"free-action","title":"Free Action Potion","required":10,"itemEntries":[5634],"notes":[],"encounters":["Gehennas","Sulfuron","Golemagg","Razorgore","BWL trash"],"tags":["mc","bwl"],"important":false,"items":[{"entry":5634,"name":"Free Action Potion","quality":1,"icon":"INV_Potion_04","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eFree Action Potion\u003c/b\u003e\u003cbr /\u003eRequires Level 20\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eMakes you immune to Stun and Movement Impairing effects for the next 30 sec.   Does not remove effects already on the imbiber.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]},{"id":"restorative","title":"Restorative Potion","required":5,"itemEntries":[9030],"notes":[],"encounters":["Lucifron"],"tags":["mc"],"important":false,"items":[{"entry":9030,"name":"Restorative Potion","quality":1,"icon":"INV_Potion_01","iconDataUrl":"data:image/jpeg;base64,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","tooltipHtml":"\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cb class=\"q1\"\u003eRestorative Potion\u003c/b\u003e\u003cbr /\u003eRequires Level 32\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e\u003ctable\u003e\u003ctr\u003e\u003ctd\u003e\u003cspan class=\"q2\"\u003eUse: \u003cspan class=\"q2\"\u003eRemoves 1 magic, curse, poison or disease effect on you every 5 seconds for 30 seconds.\u003c/span\u003e\u003c/span\u003e\u003cbr /\u003e\u003c/td\u003e\u003c/tr\u003e\u003c/table\u003e"}]}]}]}</script>
   <script>
@@ -360,36 +541,162 @@
         percent: document.getElementById('percentValue'),
         packed: document.getElementById('packedTotal'),
         fill: document.getElementById('progressFill'),
-        modal: document.getElementById('tooltipModal'),
+        bagToggle: document.getElementById('bagToggle'),
+        bagPanel: document.getElementById('bagPanel'),
+        bagGrid: document.getElementById('bagGrid'),
+        bagCount: document.getElementById('bagCount'),
+        bagFilledCount: document.getElementById('bagFilledCount'),
+        bagPanelBadge: document.getElementById('bagPanelBadge'),
+        bagStatus: document.getElementById('bagStatus'),
+        bagAnchor: document.getElementById('bagAnchor'),
+        tooltipPop: document.getElementById('tooltipPop'),
         tooltipIcon: document.getElementById('tooltipIcon'),
         tooltipTitle: document.getElementById('tooltipTitle'),
-        tooltipSubtitle: document.getElementById('tooltipSubtitle'),
         tooltipBody: document.getElementById('tooltipBody')
       };
       let activeFilter = 'all';
       let state = loadState();
+      let tooltipState = null;
+      let hideTooltipTimer = null;
+      let bagAnimationState = { pending: new Set(), landed: new Set() };
+      const allRows = data.sections.flatMap((section) => section.rows);
+      const bagCapacity = allRows.length;
 
       function loadState() { try { return JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; } catch { return {}; } }
       function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
-      function rowState(id) { return state[id] || { ready: false, have: 0 }; }
+      function rowState(id) { return state[id] || { ready: false, have: 0, bagOpen: false }; }
       function visibleRows() { return data.sections.flatMap((s) => s.rows).filter(isVisible); }
       function isVisible(row) { return activeFilter === 'all' || row.tags.includes(activeFilter); }
       function isComplete(row) { const current = rowState(row.id); return Boolean(current.ready) || Number(current.have || 0) >= Number(row.required || 0); }
       function esc(value) { return String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-      function openTooltip(item) {
+      function getUiState() { return state.__ui || { bagOpen: false }; }
+      function setUiState(patch) { state.__ui = { ...getUiState(), ...patch }; saveState(); }
+      function packedRows() { return allRows.filter(isComplete); }
+      function isLandedComplete(row) {
+        return isComplete(row) && (!bagAnimationState.pending.has(row.id) || bagAnimationState.landed.has(row.id));
+      }
+      function getTooltipBodyHtml(item) {
+        if (!item.tooltipHtml) return '<p>No tooltip data available.</p>';
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = item.tooltipHtml;
+        const tables = wrapper.querySelectorAll('table');
+        if (tables.length > 1) {
+          tables[0].remove();
+        }
+        return wrapper.innerHTML.trim() || item.tooltipHtml;
+      }
+      function displayPackedRows() {
+        return packedRows().filter(isLandedComplete);
+      }
+      function packCount(row) {
+        const current = rowState(row.id);
+        return Math.max(Number(row.required || 0), Number(current.have || 0), current.ready ? Number(row.required || 0) : 0);
+      }
+      function openTooltip(item, anchor) {
+        clearTimeout(hideTooltipTimer);
+        tooltipState = { item: item, anchor: anchor };
         els.tooltipIcon.src = item.iconDataUrl;
         els.tooltipIcon.alt = item.name;
         els.tooltipTitle.textContent = item.name;
-        els.tooltipSubtitle.textContent = 'Embedded item tooltip';
-        els.tooltipBody.innerHTML = item.tooltipHtml || '<p>No tooltip data available.</p>';
-        els.modal.classList.add('open');
-        els.modal.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('modal-open');
+        els.tooltipBody.innerHTML = getTooltipBodyHtml(item);
+        els.tooltipPop.classList.add('open');
+        els.tooltipPop.setAttribute('aria-hidden', 'false');
+        positionTooltip(anchor);
       }
       function closeTooltip() {
-        els.modal.classList.remove('open');
-        els.modal.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('modal-open');
+        tooltipState = null;
+        els.tooltipPop.classList.remove('open');
+        els.tooltipPop.setAttribute('aria-hidden', 'true');
+      }
+      function scheduleTooltipClose() {
+        clearTimeout(hideTooltipTimer);
+        hideTooltipTimer = setTimeout(closeTooltip, 110);
+      }
+      function positionTooltip(anchor) {
+        if (!tooltipState || !anchor) return;
+        const rect = anchor.getBoundingClientRect();
+        const popRect = els.tooltipPop.getBoundingClientRect();
+        const width = popRect.width || 320;
+        const height = popRect.height || 160;
+        const gap = 10;
+        const maxLeft = window.innerWidth - width - 9;
+        let left = Math.min(Math.max(9, rect.left), Math.max(9, maxLeft));
+        let top = rect.bottom + gap;
+        if (top + height > window.innerHeight - 9) {
+          top = Math.max(9, rect.top - height - gap);
+        }
+        if (window.innerWidth <= 560) {
+          left = Math.min(Math.max(9, rect.left + rect.width / 2 - width / 2), Math.max(9, maxLeft));
+        }
+        els.tooltipPop.style.left = left + 'px';
+        els.tooltipPop.style.top = top + 'px';
+      }
+      function attachTooltip(trigger, item) {
+        trigger.addEventListener('mouseenter', function() { openTooltip(item, trigger); });
+        trigger.addEventListener('mouseleave', scheduleTooltipClose);
+        trigger.addEventListener('focus', function() { openTooltip(item, trigger); });
+        trigger.addEventListener('blur', scheduleTooltipClose);
+        trigger.addEventListener('click', function(event) {
+          if (window.matchMedia('(hover: none)').matches) {
+            event.preventDefault();
+            if (tooltipState && tooltipState.anchor === trigger) {
+              closeTooltip();
+              return;
+            }
+            openTooltip(item, trigger);
+          }
+        });
+      }
+      function animateIntoBag(item, sourceElOrRect, onDone) {
+        if (!sourceElOrRect || !els.bagAnchor) return;
+        const from = typeof sourceElOrRect.getBoundingClientRect === 'function'
+          ? sourceElOrRect.getBoundingClientRect()
+          : sourceElOrRect;
+        const to = els.bagAnchor.getBoundingClientRect();
+        const flyer = document.createElement('img');
+        flyer.className = 'fly-item';
+        flyer.src = item.iconDataUrl;
+        flyer.alt = '';
+        flyer.style.left = from.left + 'px';
+        flyer.style.top = from.top + 'px';
+        flyer.style.width = from.width + 'px';
+        flyer.style.height = from.height + 'px';
+        document.body.appendChild(flyer);
+        let finished = false;
+        const finalize = function() {
+          if (finished) return;
+          finished = true;
+          flyer.remove();
+          if (typeof onDone === 'function') onDone();
+        };
+        requestAnimationFrame(function() {
+          flyer.style.transition = 'transform .36s cubic-bezier(.2,.85,.18,1), opacity .36s ease, left .36s ease, top .36s ease, width .36s ease, height .36s ease';
+          flyer.style.left = to.left + 'px';
+          flyer.style.top = to.top + 'px';
+          flyer.style.width = '24px';
+          flyer.style.height = '24px';
+          flyer.style.transform = 'scale(.7) rotate(-10deg)';
+          flyer.style.opacity = '0.92';
+        });
+        flyer.addEventListener('transitionend', finalize, { once: true });
+        window.setTimeout(finalize, 500);
+      }
+      function beginBagArrival(rowId) {
+        bagAnimationState.pending.add(rowId);
+        bagAnimationState.landed.delete(rowId);
+        renderSummary();
+        renderBag();
+      }
+      function finishBagArrival(rowId) {
+        if (!bagAnimationState.pending.has(rowId)) return;
+        bagAnimationState.landed.add(rowId);
+        renderSummary();
+        renderBag();
+        requestAnimationFrame(function() {
+          bagAnimationState.pending.delete(rowId);
+          bagAnimationState.landed.delete(rowId);
+          renderSummary();
+        });
       }
       function renderFilters() {
         els.filters.innerHTML = '';
@@ -407,6 +714,7 @@
         var complete = isComplete(row);
         var haveVal = Number(current.have || 0);
         var rowEl = document.createElement("article");
+        rowEl.setAttribute("data-row-id", row.id);
         rowEl.className = "row" + (complete ? " complete" : "") + (row.important ? " important" : "");
         var itemsHtml = "";
         row.items.forEach(function(item, i) {
@@ -435,33 +743,100 @@
             "</div>" +
             "<div class=\"status-dot " + (complete ? "ready" : "missing") + "\">" + (complete ? "Ready" : "Need") + "</div>" +
           "</div>";
-        row.items.forEach(function(item, i) {
-          rowEl.querySelectorAll(".item")[i].addEventListener("click", function(){ openTooltip(item); });
-        });
+        row.items.forEach(function(item, i) { attachTooltip(rowEl.querySelectorAll(".item")[i], item); });
         var toggle = rowEl.querySelector(".toggle");
         var input = rowEl.querySelector(".step-val");
         var minusBtn = rowEl.querySelector(".step-btn.minus");
         var plusBtn = rowEl.querySelector(".step-btn.plus");
         var statusEl = rowEl.querySelector(".status-dot");
-        var sync = function(flash) {
+        var primaryItemEl = rowEl.querySelector(".item");
+        var sync = function(flash, shouldAnimateBag) {
           var completeNow = isComplete(row);
           if (flash && completeNow && !rowEl.classList.contains("complete")) {
             rowEl.classList.add("just-done");
             rowEl.addEventListener("animationend", function(){ rowEl.classList.remove("just-done"); }, {once:true});
+          }
+          if (shouldAnimateBag && completeNow && primaryItemEl) {
+            beginBagArrival(row.id);
+            animateIntoBag(row.items[0], primaryItemEl, function() { finishBagArrival(row.id); });
           }
           rowEl.classList.toggle("complete", completeNow);
           statusEl.textContent = completeNow ? "Ready" : "Need";
           statusEl.className = "status-dot " + (completeNow ? "ready" : "missing");
         };
         var save = function() {
-          state[row.id] = { ready: toggle.checked, have: Math.max(0, Number(input.value||0)) };
-          saveState(); sync(true); renderSummary();
+          var wasComplete = isComplete(row);
+          state[row.id] = { ...rowState(row.id), ready: toggle.checked, have: Math.max(0, Number(input.value||0)) };
+          saveState();
+          sync(true, !wasComplete && isComplete(row));
+          renderSummary();
+          renderBag();
         };
         toggle.addEventListener("change", save);
         input.addEventListener("input", save);
         minusBtn.addEventListener("click", function(){ input.value = Math.max(0, Number(input.value||0) - 1); save(); });
         plusBtn.addEventListener("click", function(){ input.value = Number(input.value||0) + 1; save(); });
         return rowEl;
+      }
+      function renderBag() {
+        const packed = displayPackedRows();
+        const uiState = getUiState();
+        els.bagPanel.classList.toggle('open', Boolean(uiState.bagOpen));
+        els.bagToggle.classList.toggle('open', Boolean(uiState.bagOpen));
+        els.bagToggle.setAttribute('aria-expanded', uiState.bagOpen ? 'true' : 'false');
+        els.bagStatus.textContent = packed.length + ' / ' + bagCapacity + ' slots';
+        els.bagCount.textContent = packed.length + ' / ' + bagCapacity;
+        els.bagFilledCount.textContent = String(packed.length);
+        els.bagPanelBadge.textContent = String(packed.length);
+        const existingSlots = Array.from(els.bagGrid.children);
+        for (let index = 0; index < bagCapacity; index += 1) {
+          const row = packed[index];
+          const slot = existingSlots[index] || document.createElement('div');
+          const previousRowId = slot.getAttribute('data-row-id');
+          slot.className = 'bag-slot' + (row ? ' filled' : ' empty');
+          if (row) {
+            const item = row.items[0];
+            const isNewArrival = previousRowId !== row.id;
+            slot.setAttribute('data-row-id', row.id);
+            if (isNewArrival) {
+              slot.innerHTML =
+                '<div class="bag-item' + (bagAnimationState.landed.has(row.id) ? ' is-new' : '') + '"><img src="' + item.iconDataUrl + '" alt="' + esc(item.name) + '"></div>' +
+                '<div class="bag-qty">' + packCount(row) + '</div>' +
+                '<div class="bag-name">' + esc(row.title) + '</div>';
+              slot.__tooltipBoundId = null;
+            } else {
+              const qtyEl = slot.querySelector('.bag-qty');
+              const nameEl = slot.querySelector('.bag-name');
+              const imgEl = slot.querySelector('.bag-item img');
+              if (qtyEl) qtyEl.textContent = String(packCount(row));
+              if (nameEl) nameEl.textContent = row.title;
+              if (imgEl && imgEl.getAttribute('src') !== item.iconDataUrl) {
+                imgEl.setAttribute('src', item.iconDataUrl);
+                imgEl.setAttribute('alt', item.name);
+              }
+              const bagItemEl = slot.querySelector('.bag-item');
+              if (bagItemEl) {
+                bagItemEl.classList.toggle('is-new', bagAnimationState.landed.has(row.id));
+              }
+            }
+            if (slot.__tooltipBoundId !== row.id) {
+              attachTooltip(slot, item);
+              slot.__tooltipBoundId = row.id;
+            }
+            slot.tabIndex = 0;
+          } else {
+            slot.removeAttribute('data-row-id');
+            slot.__tooltipBoundId = null;
+            slot.innerHTML = '';
+            slot.removeAttribute('tabindex');
+          }
+          if (!existingSlots[index]) {
+            els.bagGrid.appendChild(slot);
+          }
+        }
+        while (els.bagGrid.children.length > bagCapacity) {
+          els.bagGrid.removeChild(els.bagGrid.lastChild);
+        }
       }
       function renderSections() {
         els.sections.innerHTML = "";
@@ -470,7 +845,7 @@
           var sectionEl = document.createElement("section");
           sectionEl.className = "section";
           if (!rows.length) { sectionEl.hidden = true; }
-          var doneCount = rows.filter(isComplete).length;
+          var doneCount = rows.filter(isLandedComplete).length;
           var allDone = doneCount === rows.length && rows.length > 0;
           sectionEl.innerHTML =
             "<header class=\"section-head\">" +
@@ -488,10 +863,10 @@
           els.sections.appendChild(sectionEl);
         });
       }
-            function renderSummary() {
+      function renderSummary() {
         const rows = visibleRows();
-        const complete = rows.filter(isComplete).length;
-        const packed = rows.reduce((sum, row) => sum + Number(rowState(row.id).have || 0), 0);
+        const complete = rows.filter(isLandedComplete).length;
+        const packed = rows.filter(isLandedComplete).reduce((sum, row) => sum + packCount(row), 0);
         const percent = rows.length ? Math.round((complete / rows.length) * 100) : 0;
         els.complete.textContent = String(complete);
         els.visible.textContent = String(rows.length);
@@ -499,12 +874,58 @@
         els.packed.textContent = String(packed);
         els.fill.style.width = percent + '%';
       }
-      function render() { renderFilters(); renderSections(); renderSummary(); }
-      document.getElementById('markVisibleReady').addEventListener('click', () => { visibleRows().forEach((row) => { state[row.id] = { ...rowState(row.id), ready: true }; }); saveState(); render(); });
-      document.getElementById('clearVisible').addEventListener('click', () => { visibleRows().forEach((row) => { state[row.id] = { ready: false, have: 0 }; }); saveState(); render(); });
-      document.getElementById('tooltipClose').addEventListener('click', closeTooltip);
-      els.modal.addEventListener('click', (event) => { if (event.target === els.modal) closeTooltip(); });
+      function render() { renderFilters(); renderSections(); renderSummary(); renderBag(); }
+      document.getElementById('markVisibleReady').addEventListener('click', () => {
+        const animations = [];
+        if (!getUiState().bagOpen) {
+          setUiState({ bagOpen: true });
+        }
+        visibleRows().forEach((row) => {
+          const wasComplete = isComplete(row);
+          if (!wasComplete) {
+            const sourceEl = document.querySelector('[data-row-id="' + row.id + '"] .item');
+            if (sourceEl) {
+              const rect = sourceEl.getBoundingClientRect();
+              animations.push({ rowId: row.id, item: row.items[0], rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } });
+            }
+          }
+          state[row.id] = { ...rowState(row.id), ready: true };
+        });
+        animations.forEach(function(animation) {
+          bagAnimationState.pending.add(animation.rowId);
+          bagAnimationState.landed.delete(animation.rowId);
+        });
+        saveState();
+        render();
+        const stagger = animations.length ? Math.max(35, Math.min(85, Math.floor(2200 / animations.length))) : 0;
+        requestAnimationFrame(function() {
+          animations.forEach(function(animation, index) {
+            setTimeout(function() {
+              animateIntoBag(animation.item, animation.rect, function() { finishBagArrival(animation.rowId); });
+            }, index * stagger);
+          });
+        });
+      });
+      document.getElementById('clearVisible').addEventListener('click', () => {
+        visibleRows().forEach((row) => { state[row.id] = { ...rowState(row.id), ready: false, have: 0 }; });
+        saveState();
+        render();
+      });
+      els.bagToggle.addEventListener('click', function() {
+        const nextOpen = !getUiState().bagOpen;
+        setUiState({ bagOpen: nextOpen });
+        renderBag();
+      });
+      els.tooltipPop.addEventListener('mouseenter', function() { clearTimeout(hideTooltipTimer); });
+      els.tooltipPop.addEventListener('mouseleave', scheduleTooltipClose);
+      document.addEventListener('click', function(event) {
+        if (!els.tooltipPop.contains(event.target) && !event.target.closest('.item') && !event.target.closest('.bag-slot.filled')) {
+          closeTooltip();
+        }
+      });
       document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeTooltip(); });
+      window.addEventListener('scroll', function() { if (tooltipState) positionTooltip(tooltipState.anchor); }, { passive: true });
+      window.addEventListener('resize', function() { if (tooltipState) positionTooltip(tooltipState.anchor); });
       render();
     })();
   </script>
