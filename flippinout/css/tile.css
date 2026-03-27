@@ -1,0 +1,141 @@
+/* Tile Wrapper */
+.tile {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  perspective: 600px;
+  background: #0a0a0a;
+  border-radius: 2px;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+/* Inner Container (transform target) */
+.tile-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.05s ease-out;
+}
+
+/* Tile Faces */
+.tile-front,
+.tile-back {
+  position: absolute;
+  inset: 2px;
+  backface-visibility: hidden;
+  background: var(--theme-tile-bg, #1C1C1C);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.6),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.03),
+    0 1px 0 rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.tile-front span,
+.tile-back span {
+  font-size: calc(var(--tile-size) * 0.55);
+  font-weight: 900;
+  color: var(--theme-text-color, #FFFFFF);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  font-family: 'Helvetica Neue', 'Arial Black', Helvetica, Arial, sans-serif;
+  text-shadow: 0 0 12px currentColor,
+               0 0 4px currentColor;
+}
+
+.tile-back {
+  transform: rotateX(180deg);
+}
+
+/* Horizontal Split Line — subtle mechanical seam */
+.tile-front::after,
+.tile-back::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+/* Highlight Sweep (metallic reflection during flip) */
+.tile-front::before,
+.tile-back::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+/* 3D Flip Animation */
+.tile-inner.flipping {
+  animation: tileFlip var(--flip-duration, 300ms) ease-in-out forwards;
+}
+
+.tile-inner.flipping .tile-front::before,
+.tile-inner.flipping .tile-back::before {
+  opacity: 1;
+}
+
+@keyframes tileFlip {
+  0% {
+    transform: rotateX(0deg);
+  }
+  50% {
+    transform: rotateX(-90deg);
+  }
+  100% {
+    transform: rotateX(-180deg);
+  }
+}
+
+/* GPU acceleration for smooth 3D flips */
+.tile-inner.flipping {
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+
+.tile.scrambling .tile-inner {
+  will-change: transform;
+}
+
+/* Ensure smooth backface visibility during flip */
+.tile-inner.flipping .tile-front,
+.tile-inner.flipping .tile-back {
+  backface-visibility: hidden;
+}
+
+/* Add depth shadow during flip for 3D effect */
+.tile.scrambling {
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Enhance perspective for more dramatic flip */
+.tile {
+  perspective: 800px;
+}
+
+.tile-inner {
+  transform-style: preserve-3d;
+}

@@ -1,0 +1,243 @@
+/* Page Frame — mock browser window */
+.page-frame {
+  max-width: 1280px;
+  margin: 0 auto;
+  background: #F5F5F5;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Desktop styling */
+@media (min-width: 768px) {
+  .page-frame {
+    margin: 24px auto;
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+    min-height: calc(100vh - 48px);
+  }
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 36px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.header-logo {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.header-nav a {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.header-nav a:hover {
+  color: #000;
+}
+
+.volume-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  color: #666;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.volume-icon:hover {
+  color: #000;
+}
+
+.volume-icon.muted svg path:last-child,
+.volume-icon.muted svg path:nth-child(2) {
+  display: none;
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 24px 16px 20px;
+  flex-shrink: 0;
+}
+
+.hero h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+  max-width: 650px;
+  margin: 0 auto 10px;
+  color: #111;
+}
+
+@media (min-width: 768px) {
+  .hero {
+    padding: 56px 24px 44px;
+  }
+  
+  .hero h1 {
+    font-size: 48px;
+    letter-spacing: -1.5px;
+    line-height: 1.15;
+    margin: 0 auto 14px;
+  }
+}
+
+.hero .subtitle {
+  font-size: 16px;
+  color: #888;
+  margin-bottom: 28px;
+  font-weight: 400;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero-cta input {
+  padding: 12px 18px;
+  border: 1.5px solid #E0E0E0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  width: 220px;
+}
+
+.hero-cta input::placeholder {
+  color: #bbb;
+}
+
+.hero-cta input:focus {
+  border-color: #999;
+}
+
+.hero-cta button {
+  padding: 12px 22px;
+  background: #000;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.hero-cta button:hover {
+  background: #222;
+}
+
+/* Board Section */
+.board-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 8px 16px;
+}
+
+@media (min-width: 768px) {
+  .board-section {
+    padding: 0 24px 32px;
+  }
+}
+
+/* Fullscreen: hide header+hero, board fills viewport */
+:fullscreen .header,
+:fullscreen .hero {
+  display: none;
+}
+
+:fullscreen .page-frame {
+  margin: 0;
+  border-radius: 0;
+  background: var(--theme-board-bg, #0F0F0F);
+}
+
+:fullscreen .board-section {
+  padding: 0;
+  min-height: 100vh;
+  width: 100vw;
+  align-items: center;
+  justify-content: center;
+}
+
+:fullscreen .board {
+  width: 100vw;
+  min-height: 100vh;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-board-bg, #0F0F0F);
+}
+
+/* Hide email and keyboard hint on mobile */
+.hero-cta input,
+.hero p:last-child {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .hero-cta input,
+  .hero p:last-child {
+    display: block;
+  }
+}
+
+.hero-cta button {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .hero-cta button {
+    width: auto;
+  }
+}
+
+/* Mode notification (theme/clock changes) */
+.mode-notification {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 1000;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.mode-notification.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
