@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milgie Recipes | Family Recipes, Batch Planned</title>
+  <meta
+    name="description"
+    content="Milgie Recipes turns family recipes into guided cooking flows with shopping, prep, and cook views."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="./cooking.css" />
+</head>
+<body data-page="landing">
+  <div class="page-noise" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand-mark" href="../">Milgie.com</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="./">Recipes</a>
+      <a href="./pierogi.html">Pierogi</a>
+      <a href="../games/">Games</a>
+    </nav>
+  </header>
+
+  <main class="site-main">
+    <section class="hero hero-landing">
+      <div class="hero-copy">
+        <p class="eyebrow">Milgie Recipes</p>
+        <h1>Family recipes, rebuilt as a calm kitchen app.</h1>
+        <p class="hero-text">
+          Every recipe gets the same three-view flow: shop what you need, prep in the right order, and cook with a
+          focused checklist that keeps your place.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="./pierogi.html">Open Aunt Flo's Pierogi</a>
+          <a class="button button-secondary" href="#recipe-library">Browse recipes</a>
+        </div>
+      </div>
+
+      <aside class="hero-panel">
+        <div class="panel-badge">Template preview</div>
+        <h2>Three views, one shared recipe system</h2>
+        <div class="phase-preview-grid">
+          <article class="phase-preview-card shopping">
+            <span class="phase-number">01</span>
+            <h3>Shopping list</h3>
+            <p>Scale ingredients by batch count, group them by department, and check off the cart as you go.</p>
+          </article>
+          <article class="phase-preview-card prep">
+            <span class="phase-number">02</span>
+            <h3>Prep</h3>
+            <p>Split the work into make-ahead tasks and day-of setup so the cooking day stays easy.</p>
+          </article>
+          <article class="phase-preview-card cook">
+            <span class="phase-number">03</span>
+            <h3>Cook</h3>
+            <p>Use a live checklist for assembly, boiling, cooling, and the final buttery finish.</p>
+          </article>
+        </div>
+      </aside>
+    </section>
+
+    <section class="feature-band">
+      <article class="feature-card">
+        <p class="feature-kicker">Batch scaling</p>
+        <h2>Plan one dinner or a freezer day.</h2>
+        <p>Set separate batch counts for dough and each filling, then let the recipe adjust the math for you.</p>
+      </article>
+      <article class="feature-card">
+        <p class="feature-kicker">Progress saved</p>
+        <h2>Leave the counter. Come back where you left off.</h2>
+        <p>Shopping, prep, and cook checklists stay marked so the flow still works in a real kitchen.</p>
+      </article>
+      <article class="feature-card">
+        <p class="feature-kicker">Built for real recipes</p>
+        <h2>Make-ahead details stay attached to the recipe.</h2>
+        <p>The first guide leans into what makes pierogi practical: fillings can be finished days ahead.</p>
+      </article>
+    </section>
+
+    <section class="library-section" id="recipe-library">
+      <div class="section-heading">
+        <p class="eyebrow">Recipe library</p>
+        <h2>Live guides in the kitchen</h2>
+        <p>Start with Aunt Flo's pierogi, then keep adding recipes on the same structure.</p>
+      </div>
+      <div class="library-grid" id="recipeLibrary"></div>
+    </section>
+
+    <section class="notes-section">
+      <div class="notes-copy">
+        <p class="eyebrow">Kitchen philosophy</p>
+        <h2>Recipes should help while your hands are busy.</h2>
+        <p>
+          This format is built around real cooking rhythm: shop once, prep the parts that can rest, then cook from a
+          stripped-down view without rereading the whole recipe card.
+        </p>
+      </div>
+      <div class="notes-grid">
+        <article class="note-card">
+          <h3>Relevant view only</h3>
+          <p>Each phase shows only the information you need right now, instead of one giant wall of instructions.</p>
+        </article>
+        <article class="note-card">
+          <h3>Recipe by recipe</h3>
+          <p>The layout stays familiar while the ingredient math, notes, and steps stay specific to the dish.</p>
+        </article>
+        <article class="note-card">
+          <h3>Friendly for helpers</h3>
+          <p>Anyone joining the kitchen can pick a phase, mark progress, and stay synced without asking what is next.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="./recipes.js" defer></script>
+  <script src="./cooking.js" defer></script>
+</body>
+</html>

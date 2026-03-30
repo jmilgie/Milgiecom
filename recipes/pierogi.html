@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aunt Flo's Pierogi | Milgie Recipes</title>
+  <meta
+    name="description"
+    content="Aunt Flo's pierogi recipe rebuilt as a guided shopping, prep, and cook flow with batch scaling."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="./cooking.css" />
+</head>
+<body data-page="recipe" data-recipe-id="aunt-flo-pierogi">
+  <div class="page-noise" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand-mark" href="../">Milgie.com</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="./">Recipes</a>
+      <a href="./pierogi.html" aria-current="page">Pierogi</a>
+      <a href="../games/">Games</a>
+    </nav>
+  </header>
+
+  <main class="site-main recipe-shell" id="recipeApp">
+    <section class="hero hero-recipe">
+      <div class="hero-copy">
+        <p class="eyebrow" id="recipeEyebrow"></p>
+        <h1 id="recipeTitle"></h1>
+        <p class="hero-text" id="recipeSummary"></p>
+        <div class="hero-stat-grid" id="recipeStats"></div>
+      </div>
+
+      <aside class="planner-panel">
+        <div class="panel-badge">Batch planner</div>
+        <div class="planner-header">
+          <h2>Set the run size</h2>
+          <p>Scale dough and each filling separately, then work through the phases without losing your place.</p>
+        </div>
+
+        <div class="planner-presets" id="plannerPresets"></div>
+        <div class="planner-grid" id="plannerControls"></div>
+
+        <div class="planner-actions">
+          <button class="button button-secondary" type="button" data-action="sync-dough">Match dough to fillings</button>
+          <button class="button button-ghost" type="button" data-action="reset-progress">Reset checklist progress</button>
+        </div>
+
+        <div class="summary-strip" id="plannerSummary"></div>
+      </aside>
+    </section>
+
+    <nav class="phase-nav" id="phaseNav" aria-label="Recipe phases"></nav>
+
+    <section class="phase-stage">
+      <div class="phase-stage-header">
+        <div class="phase-stage-copy">
+          <p class="eyebrow" id="phaseKicker"></p>
+          <h2 id="phaseTitle"></h2>
+          <p class="phase-description" id="phaseDescription"></p>
+        </div>
+        <div class="phase-progress-card" id="phaseProgressCard"></div>
+      </div>
+
+      <div class="callout-strip" id="phaseHighlights"></div>
+
+      <div class="phase-layout">
+        <div class="phase-main" id="phaseContent"></div>
+        <aside class="phase-aside" id="phaseAside"></aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="./recipes.js" defer></script>
+  <script src="./cooking.js" defer></script>
+</body>
+</html>
