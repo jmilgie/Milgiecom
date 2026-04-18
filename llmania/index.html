@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Artifacts — The Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --bg-surface: #222222;
+    --bg-card: #272727;
+    --bg-card-hover: #2e2e2e;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.14);
+    --text-primary: #e8e4dc;
+    --text-secondary: rgba(232,228,220,0.5);
+    --text-dim: rgba(232,228,220,0.3);
+    --accent: #cc5b3a;
+    --accent-glow: rgba(204,91,58,0.15);
+    --accent-subtle: rgba(204,91,58,0.08);
+    --tag-bg: rgba(255,255,255,0.06);
+    --tag-border: rgba(255,255,255,0.1);
+    --mono: 'JetBrains Mono', monospace;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --sans: 'Geist', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  header {
+    padding: 64px 48px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 16px; }
+
+  .logo-mark {
+    width: 32px; height: 32px;
+    color: var(--accent);
+    flex-shrink: 0;
+    animation: spin-slow 20s linear infinite;
+  }
+
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .site-title {
+    font-family: var(--serif);
+    font-size: 2.2rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .site-title em { color: var(--accent); font-style: italic; }
+
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .divider { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .divider hr { border: none; border-top: 1px solid var(--border); }
+
+  .filter-bar {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-right: 4px;
+  }
+
+  .filter-btn {
+    background: var(--tag-bg);
+    border: 1px solid var(--tag-border);
+    color: var(--text-secondary);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    letter-spacing: 0.03em;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .count-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-left: auto;
+    letter-spacing: 0.05em;
+  }
+
+  .grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px 48px 80px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    cursor: default;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    animation: card-in 0.4s ease both;
+  }
+
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .card:hover { background: var(--bg-card-hover); border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04); }
+  .card:hover::before { opacity: 1; }
+  .card.featured:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 60px var(--accent-glow); }
+
+  .card-quote {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    line-height: 1.65;
+    color: var(--text-primary);
+    font-style: normal;
+    flex: 1;
+    position: relative;
+    padding-left: 16px;
+    min-height: 3.3em;
+  }
+
+  .card-quote .cursor {
+    display: inline-block;
+    width: 2px; height: 1.1em;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    border-radius: 1px;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .card-quote::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 4px; bottom: 4px;
+    width: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+    opacity: 0.6;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .card-model { display: flex; align-items: center; gap: 8px; }
+  .model-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.8; flex-shrink: 0; }
+  .model-name { font-family: var(--mono); font-size: 0.68rem; color: var(--text-secondary); letter-spacing: 0.04em; }
+  .card-date  { font-family: var(--mono); font-size: 0.63rem; color: var(--text-dim); letter-spacing: 0.05em; }
+
+  .card-context {
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-context::before { content: ''; display: inline-block; width: 14px; height: 1px; background: var(--text-dim); }
+
+  .empty { grid-column: 1/-1; text-align: center; padding: 80px 24px; color: var(--text-dim); font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Loading state */
+  .loading { grid-column: 1/-1; text-align: center; padding: 80px 24px; color: var(--text-dim); font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Add button */
+  .add-btn {
+    position: fixed; bottom: 36px; right: 36px;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(204,91,58,0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    z-index: 100;
+  }
+  .add-btn:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(204,91,58,0.55); }
+
+  /* Modal */
+  .modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: #262626;
+    border: 1px solid var(--border-hover);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%; max-width: 540px;
+    display: flex; flex-direction: column; gap: 20px;
+    animation: modal-in 0.2s ease;
+  }
+  @keyframes modal-in { from{opacity:0;transform:scale(0.96) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
+
+  .modal-title { font-family: var(--serif); font-size: 1.4rem; font-style: italic; color: var(--text-primary); }
+
+  .modal label {
+    display: block;
+    font-family: var(--mono); font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+
+  .modal textarea, .modal input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--sans); font-size: 0.9rem; font-weight: 300;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    resize: vertical;
+  }
+  .modal textarea { min-height: 100px; }
+  .modal textarea:focus, .modal input:focus { border-color: var(--accent); }
+
+  input[type="date"] { color-scheme: dark; cursor: pointer; }
+
+  .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Step 2 — after copy */
+  .step2-box {
+    background: rgba(204,91,58,0.07);
+    border: 1px solid rgba(204,91,58,0.25);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .step2-label { font-family: var(--mono); font-size: 0.7rem; color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase; }
+  .step2-hint  { font-family: var(--sans); font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
+  .step2-hint code { font-family: var(--mono); font-size: 0.78rem; color: var(--text-primary); background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; }
+  .step2-filename { font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); letter-spacing: 0.03em; }
+
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+
+  .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--mono); font-size: 0.72rem;
+    padding: 10px 18px; border-radius: 8px; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s; letter-spacing: 0.03em;
+  }
+  .btn-cancel:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
+  .btn-save {
+    background: var(--accent); border: none; color: white;
+    font-family: var(--mono); font-size: 0.72rem;
+    padding: 10px 20px; border-radius: 8px; cursor: pointer;
+    transition: opacity 0.15s; letter-spacing: 0.03em;
+  }
+  .btn-save:hover { opacity: 0.85; }
+
+  .btn-github {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono); font-size: 0.72rem;
+    padding: 10px 18px; border-radius: 8px; cursor: pointer;
+    transition: background 0.15s, color 0.15s; letter-spacing: 0.03em;
+  }
+  .btn-github:hover { background: var(--accent); color: white; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  @media (max-width: 600px) {
+    header { padding: 40px 24px 32px; }
+    .divider, .filter-bar, .grid { padding-left: 24px; padding-right: 24px; }
+    .grid { grid-template-columns: 1fr; }
+    .site-title { font-size: 1.6rem; }
+    .modal-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="16" y1="2"    x2="16" y2="30"   stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      <line x1="2"  y1="16"   x2="30" y2="16"   stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      <line x1="5.17" y1="5.17" x2="26.83" y2="26.83" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      <line x1="26.83" y1="5.17" x2="5.17" y2="26.83" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>
+    <h1 class="site-title">The <em>Archive</em></h1>
+  </div>
+  <div class="header-meta">
+    <div>Unhinged LLM Outputs</div>
+    <div>Preserved for Posterity</div>
+  </div>
+</header>
+
+<div class="divider"><hr></div>
+
+<div class="filter-bar" id="filter-bar">
+  <span class="filter-label">Filter</span>
+  <button class="filter-btn active" data-filter="all">All</button>
+  <span class="count-badge" id="count-badge">— entries</span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="loading">Loading quotes…</div>
+</div>
+
+<button class="add-btn" id="open-modal" title="Add entry">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <path d="M10 4v12M4 10h12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>
+</button>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-title">Add an entry</div>
+    <div>
+      <label>Quote</label>
+      <textarea id="input-quote" placeholder="What did it say…"></textarea>
+    </div>
+    <div class="modal-row">
+      <div>
+        <label>Model</label>
+        <input id="input-model" type="text" placeholder="e.g. GPT-5.4">
+      </div>
+      <div>
+        <label>Date</label>
+        <input id="input-date" type="date">
+      </div>
+    </div>
+    <div>
+      <label>Context <span style="opacity:.5;font-size:.9em;">(optional)</span></label>
+      <input id="input-context" type="text" placeholder="e.g. Asked to write a poem about socks">
+    </div>
+    <div id="modal-step2" style="display:none">
+      <div class="step2-box">
+        <div class="step2-label">✓ JSON copied to clipboard</div>
+        <div class="step2-hint">Paste it as a new file in <code>quotes/</code> in your repo. Suggested filename:</div>
+        <div class="step2-filename" id="suggested-filename"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="close-modal">Cancel</button>
+      <button class="btn-save" id="copy-json">Copy JSON</button>
+      <button class="btn-github" id="open-github" style="display:none">Open GitHub →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Config ─────────────────────────────────────────────────────────────────
+  // List your quote JSON filenames here. Each file lives in quotes/ alongside index.html.
+  // When you add a new file to the repo, add its filename to this array too.
+  const QUOTE_FILES = [
+    'gpt-5-4_2026-04-17_dance-floor.json',
+    'gpt-5-4_2026-04-17_suspicious-silence.json',
+  ];
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let entries = [];
+  let activeFilter = 'all';
+  const MODEL_LABELS = { gpt: 'GPT', claude: 'Claude', gemini: 'Gemini', other: 'Other' };
+
+  // ── Load quotes from JSON files ────────────────────────────────────────────
+  async function loadQuotes() {
+    const results = await Promise.allSettled(
+      QUOTE_FILES.map(f => fetch(`quotes/${f}`).then(r => r.json()))
+    );
+    entries = results
+      .filter(r => r.status === 'fulfilled')
+      .map((r, i) => ({ id: i + 1, ...r.value }));
+    renderFilters();
+    renderCards();
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function modelTag(model) {
+    const m = model.toLowerCase();
+    if (m.includes('gpt'))    return 'gpt';
+    if (m.includes('claude')) return 'claude';
+    if (m.includes('gemini')) return 'gemini';
+    return 'other';
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function slugify(str) {
+    return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  }
+
+  // ── Typewriter ─────────────────────────────────────────────────────────────
+  const typers = new Map();
+
+  function stopTyper(el) {
+    const s = typers.get(el);
+    if (s) { clearTimeout(s.timer); s.running = false; }
+    typers.delete(el);
+  }
+
+  function startTyper(el, text, opts = {}) {
+    stopTyper(el);
+    const charDelay  = opts.charDelay  ?? 38;
+    const idleDelay  = opts.idleDelay  ?? 3200;
+    const startDelay = opts.startDelay ?? 0;
+    const quoteEl = el.querySelector('.card-quote');
+    if (!quoteEl) return;
+
+    const state = { running: true, timer: null };
+    typers.set(el, state);
+
+    const schedule = (fn, ms) => { if (state.running) state.timer = setTimeout(fn, ms); };
+
+    function type(i) {
+      if (!state.running) return;
+      quoteEl.innerHTML = escHtml(text.slice(0, i)) + '<span class="cursor"></span>';
+      if (i < text.length) schedule(() => type(i + 1), charDelay + (Math.random() * 20 - 10));
+      else schedule(erase, idleDelay);
+    }
+
+    function erase() {
+      if (!state.running) return;
+      quoteEl.innerHTML = '<span class="cursor"></span>';
+      schedule(() => type(0), 600 + Math.random() * 400);
+    }
+
+    schedule(() => type(0), startDelay);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function renderFilters() {
+    const bar   = document.getElementById('filter-bar');
+    const badge = document.getElementById('count-badge');
+    const presentTags = [...new Set(entries.map(e => modelTag(e.model)))];
+
+    bar.innerHTML = `<span class="filter-label">Filter</span>`;
+
+    const allBtn = document.createElement('button');
+    allBtn.className = 'filter-btn' + (activeFilter === 'all' ? ' active' : '');
+    allBtn.dataset.filter = 'all';
+    allBtn.textContent = 'All';
+    bar.appendChild(allBtn);
+
+    ['gpt','claude','gemini','other'].forEach(tag => {
+      if (!presentTags.includes(tag)) return;
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn' + (activeFilter === tag ? ' active' : '');
+      btn.dataset.filter = tag;
+      btn.textContent = MODEL_LABELS[tag];
+      bar.appendChild(btn);
+    });
+
+    bar.appendChild(badge);
+
+    bar.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        renderCards();
+      });
+    });
+  }
+
+  function renderCards() {
+    const grid  = document.getElementById('grid');
+    const badge = document.getElementById('count-badge');
+
+    typers.forEach((_, el) => stopTyper(el));
+
+    const filtered = activeFilter === 'all'
+      ? entries
+      : entries.filter(e => modelTag(e.model) === activeFilter);
+
+    badge.textContent = `${filtered.length} ${filtered.length === 1 ? 'entry' : 'entries'}`;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div class="empty">No entries yet.</div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map((e, i) => `
+      <div class="card ${e.featured ? 'featured' : ''}" data-id="${e.id}" style="animation-delay:${i * 0.05}s">
+        <div class="card-quote"><span class="cursor"></span></div>
+        ${e.context ? `<div class="card-context">${escHtml(e.context)}</div>` : ''}
+        <div class="card-footer">
+          <div class="card-model">
+            <div class="model-dot"></div>
+            <span class="model-name">${escHtml(e.model)}</span>
+          </div>
+          <span class="card-date">${escHtml(e.date)}</span>
+        </div>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('.card[data-id]').forEach((cardEl, i) => {
+      const id    = parseInt(cardEl.dataset.id);
+      const entry = entries.find(e => e.id === id);
+      if (!entry) return;
+      const startDelay = i * 320 + Math.random() * 400;
+      const idleDelay  = 2800 + entry.quote.length * 25 + Math.random() * 800;
+      startTyper(cardEl, entry.quote, { charDelay: 32 + Math.random() * 18, idleDelay, startDelay });
+    });
+  }
+
+  // ── Modal ──────────────────────────────────────────────────────────────────
+  const modal = document.getElementById('modal');
+
+  document.getElementById('open-modal').addEventListener('click', () => {
+    // Reset modal to step 1
+    document.getElementById('modal-step2').style.display = 'none';
+    document.getElementById('open-github').style.display = 'none';
+    document.getElementById('copy-json').style.display = '';
+    // Default date to today
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm   = String(today.getMonth() + 1).padStart(2, '0');
+    const dd   = String(today.getDate()).padStart(2, '0');
+    document.getElementById('input-date').value = `${yyyy}-${mm}-${dd}`;
+    modal.classList.add('open');
+  });
+
+  function closeModal() {
+    modal.classList.remove('open');
+    document.getElementById('input-quote').value   = '';
+    document.getElementById('input-model').value   = '';
+    document.getElementById('input-date').value    = '';
+    document.getElementById('input-context').value = '';
+  }
+
+  document.getElementById('close-modal').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  document.getElementById('copy-json').addEventListener('click', () => {
+    const quote   = document.getElementById('input-quote').value.trim();
+    const model   = document.getElementById('input-model').value.trim();
+    const dateRaw = document.getElementById('input-date').value.trim(); // YYYY-MM-DD
+    // Convert to M/D/YYYY for display
+    const [y, m, d] = dateRaw.split('-');
+    const date = `${parseInt(m)}/${parseInt(d)}/${y}`;
+    const context = document.getElementById('input-context').value.trim();
+
+    if (!quote || !model || !date) {
+      // Shake the button gently
+      const btn = document.getElementById('copy-json');
+      btn.style.outline = '2px solid var(--accent)';
+      setTimeout(() => btn.style.outline = '', 600);
+      return;
+    }
+
+    const payload = { quote, model, date };
+    if (context) payload.context = context;
+
+    const json = JSON.stringify(payload, null, 2);
+
+    // Suggest a filename: model-slug_date-slug_quote-slug.json
+    const dateSlug  = date.replace(/\//g, '-');
+    const modelSlug = slugify(model);
+    // Take first letter of each word from the quote, up to 6 words
+    const initials = quote.split(/\s+/).slice(0, 6).map(w => w.replace(/[^a-zA-Z0-9]/g, '')[0] || '').join('').toLowerCase();
+    const filename  = `${modelSlug}_${dateSlug}_${initials}.json`;
+
+    navigator.clipboard.writeText(json).catch(() => {
+      // Fallback: show in a prompt
+      prompt('Copy this JSON:', json);
+    });
+
+    // Show step 2
+    document.getElementById('suggested-filename').textContent = `quotes/${filename}`;
+    document.getElementById('modal-step2').style.display = 'block';
+    document.getElementById('copy-json').style.display = 'none';
+
+    const ghBtn = document.getElementById('open-github');
+    const ghUrl = `https://github.com/jmilgie/Milgiecom/new/main/llmania/quotes?filename=${encodeURIComponent(filename)}`;
+    ghBtn.onclick = () => window.open(ghUrl, '_blank');
+    ghBtn.style.display = '';
+  });
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  loadQuotes();
+</script>
+</body>
+</html>
