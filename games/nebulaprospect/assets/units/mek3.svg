@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0a1a28"/>
+      <stop offset="1" stop-color="#03080e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".4" r=".5">
+      <stop offset="0" stop-color="#00cfff" stop-opacity=".4"/>
+      <stop offset="1" stop-color="#00cfff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="120" height="120" fill="url(#bg)"/>
+  <circle cx="60" cy="50" r="32" fill="url(#glow)"/>
+  <polygon points="60,34 74,50 60,66 46,50" fill="none" stroke="#00cfff" stroke-width="1.2"/>
+  <circle cx="60" cy="50" r="4" fill="#00cfff"/>
+  <text x="60" y="95" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas" font-size="9" font-weight="800" fill="#00cfff" letter-spacing="1.5">NEBULA</text>
+  <text x="60" y="107" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas" font-size="7" font-weight="700" fill="#6a92b0" letter-spacing="1.5">PROSPECT</text>
+</svg>

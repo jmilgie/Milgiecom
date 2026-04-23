@@ -143,6 +143,12 @@
       background-image: url('./assets/catalog/emberhollow.png');
       background-position: center top;
     }
+
+    /* Nebula Prospect */
+    .gameTile.nebula-prospect::before {
+      background-image: url('./assets/catalog/nebula-prospect.png'), url('./assets/catalog/nebula-prospect.svg');
+      background-position: center center;
+    }
   </style>
   <script>
     (function(){
@@ -166,7 +172,7 @@
   <div class="status-bar-header" aria-hidden="true">
     <div class="wrap">
       <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
-      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 7 ACTIVE</span>
+      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 8 ACTIVE</span>
       <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
       <span class="sbh-spacer"></span>
       <span class="sbh-time" id="sys-time">--:--:--</span>
@@ -216,7 +222,7 @@
             Browser-based games &amp; interactive experiences.
           </p>
         </div>
-        <span class="section-badge">7 Active Â· 1 Incoming</span>
+        <span class="section-badge">8 Active Â· 1 Incoming</span>
       </div>
 
       <!-- Filter bar -->
@@ -484,6 +490,45 @@
               <div class="classified-sub">Access Restricted</div>
             </div>
           </div>
+
+          <!-- Nebula Prospect -->
+          <a class="gameTile nebula-prospect" href="./nebulaprospect/" aria-label="Play Nebula Prospect">
+            <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Online</span>
+                <span class="status-sep" aria-hidden="true">·</span>
+                <span class="status-type">Strategy / Management Sim</span>
+              </div>
+              <h3>Nebula Prospect</h3>
+              <p>Oversee a deep-space mining consortium. Manage nine station modules, dispatch specialist crew on operations, fight pirate raids, and push the Quantum Yield to 25M before signal integrity collapses.</p>
+              <div class="game-stats">
+                <div class="game-stat">
+                  <span class="game-stat-label">Type</span>
+                  <span class="game-stat-val">Management Sim</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Scope</span>
+                  <span class="game-stat-val">9 Modules · 10 Units</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Status</span>
+                  <span class="game-stat-val" style="color:#00ff88">New</span>
+                </div>
+              </div>
+              <div class="chipRow">
+                <span class="chip">Strategy</span>
+                <span class="chip">Sim</span>
+                <span class="chip">Sci-Fi</span>
+                <span class="chip">Free</span>
+              </div>
+              <div style="margin-top:16px">
+                <span class="playBtn">
+                  Assume Command ▶
+                </span>
+              </div>
+            </div>
+          </a>
 
           <!-- Neon Frontier -->
           <a class="gameTile neon-frontier" href="./neonfrontier/" aria-label="Play Neon Frontier">
