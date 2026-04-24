@@ -11,6 +11,55 @@
    ============================================================ */
 
 window.NP_CODEX = [
+  /* ---- INTRO ENTRIES (auto-unlocked on new game) ---- */
+  {
+    id: 'c_welcome', title: 'Overseer Charter', category: 'Station Records',
+    body: `Welcome, Overseer.
+
+You have been seconded to Nebula Prospect, the Consortium's deepest outpost in Orion-South, on a provisional six-cycle charter. The station, its crew, and the sector's quarterly yield are now your concern — in that order, officially, and in the reverse order, informally.
+
+Your prior performance reviews have been described, in Consortium idiom, as "emphatically competent." Please do not read further into this.
+
+The prior Overseer's desk plants are in the Habitat Ring. They would appreciate water.`
+  },
+  {
+    id: 'c_station', title: 'Nebula Prospect Station', category: 'Station Records',
+    body: `Prospect is a nine-module deep-space installation anchored 400 AU coreward of the Orion-South ore lanes. Commissioned 2171. Current crew complement: 38 (humans, drones, and one entity whose classification remains under review).
+
+Station modules — Fabrication Bay, Sensor Array, Data Core, Supply Depot, Command Spire, Habitat Ring, Fusion Reactor, Deployment Hangar, Astro Refinery — are individually upgradable. Each upgrade returns roughly 15-20% in its pipeline stage, and roughly 0% in anyone's patience with the requisition process.
+
+The view from the Command Spire viewport is, per crew survey, "among the reasons people stay."`
+  },
+  {
+    id: 'c_overseer_manual', title: 'Overseer Field Manual (Ch. 1)', category: 'Station Records',
+    body: `1. Operations appear on the Ops board as the Sensor Array finds them. Assign a crew member to dispatch. The op runs in-background; the completion notice drops to the Feed.
+
+2. Crew fatigue accrues with each op. Assign fresh units where possible. The Medbay unlocks Dr. Halden Zeke, who reduces fatigue meaningfully.
+
+3. Research is your compounding lever. Spend Research Points early — the tree rewards depth over breadth.
+
+4. Factions remember. A small kindness now is often worth a very large one later. The reverse is also, regrettably, true.
+
+5. The Hollow is not listed in this manual. Ask the Oracle, if you ever meet them.`
+  },
+  {
+    id: 'c_crew_intro', title: 'Standing Crew, First Day', category: 'Persons of Interest',
+    body: `The ten souls who showed up on Day One:
+
+KX-47 "Scaler" — Engineer. Wrench-forward. Do not feed reactor scraps; he gets ideas.
+Dr. Veyra Sol — Xeno-Analyst. Talks to artifacts. Sometimes they answer.
+Swarm Cluster B-12 — Drone Swarm. Hums at middle C. Do not interrupt the humming.
+Rook — Security. Has a sidearm and a filing system. You want both on your side.
+Pilot Jace Durn — Novastar lineage. Owns one jacket, wears it always.
+ECHO-7 — Automation AI. Gives probabilistic advice. Takes none.
+Kira Lenz — Systems Tech. Has tuned a phased array with a guitar pick. Don't ask auditors.
+Nix "Signal" Ortega — Signal Tech. Ran pirate radio for a decade. Still has the voice for it.
+Hauler Mek-3 — Recovery. Large. Slow. Sentimental about ore density.
+Scout Vel Raz — Explorer. Lives for the uncharted. Names everything.
+
+The rest unlock as you play. Some will surprise you.`
+  },
+
   {
     id: 'c_axiom_loop', title: 'The Axiom Loop', category: 'Phenomena',
     body: `Periodic interference pattern observed on long-range comm bands since at least 2183.
