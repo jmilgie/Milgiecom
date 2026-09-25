@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — Music Lab B (Wreck / Horizon)</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#07060f; --panel:#110f22; --line:#2a2548; --ink:#dfe8f7; --dim:#8d8aa8; --acc:#39e0ff; --gold:#ffc94a; --bad:#ff4d7a; --ok:#57f2a0; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  h1 { font-size:16px; margin:0; letter-spacing:.08em; color:var(--acc); }
+  main { padding:12px 16px 48px; display:grid; gap:14px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0; }
+  h2 { margin:0 0 8px; font-size:12px; letter-spacing:.12em; color:var(--dim); text-transform:uppercase; }
+  button, select, input[type=number] { font:inherit; color:var(--ink); background:#1b1834; border:1px solid var(--line); border-radius:6px; padding:8px 12px; min-height:44px; }
+  button { cursor:pointer; }
+  button.on { background:#0d3b47; border-color:var(--acc); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .stat { color:var(--dim); }
+  .stat b { color:var(--ink); font-weight:600; }
+  .good { color:var(--ok); } .bad { color:var(--bad); } .warn { color:var(--gold); }
+  canvas { display:block; background:#05040b; border:1px solid var(--line); border-radius:4px; }
+  .scroll { overflow-x:auto; max-width:100%; }
+  pre { white-space:pre-wrap; margin:0; font-size:12px; color:var(--dim); max-height:300px; overflow:auto; }
+  input[type=range] { width:180px; max-width:100%; }
+  table { border-collapse:collapse; font-size:12px; }
+  td, th { padding:2px 10px 2px 0; text-align:left; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MUSIC LAB B · WRECK / HORIZON</h1>
+  <button id="unlock">Unlock audio + init</button>
+  <span class="stat" id="status">idle</span>
+</header>
+<main>
+  <section>
+    <h2>Live playback</h2>
+    <div class="row" id="tracks"></div>
+    <div class="row" style="margin-top:8px">
+      <label class="stat">from <select id="lsec"><option value="">(beginning)</option></select></label>
+      <button id="stop">Stop</button>
+      <label class="stat">intensity <input id="int" type="range" min="0" max="1" step="0.05" value="0.5"> <b id="intv">0.50</b></label>
+      <button id="stg">stinger: stage_clear</button>
+    </div>
+    <div class="stat" id="live" style="margin-top:8px"></div>
+  </section>
+
+  <section>
+    <h2>Offline render + analysis</h2>
+    <div class="row">
+      <select id="atrack"></select>
+      <label class="stat">seconds <input id="asec" type="number" value="40" min="2" max="240" style="width:80px"></label>
+      <label class="stat">intensity <input id="aint" type="number" value="0.5" min="0" max="1" step="0.1" style="width:70px"></label>
+      <label class="stat">from <select id="asecname"><option value="">(beginning)</option></select></label>
+      <button id="render">Render + analyze</button>
+      <button id="full">Full song + loop check</button>
+      <button id="chlv">Channel levels</button>
+      <button id="playbuf" disabled>play render</button>
+    </div>
+    <div class="stat" id="summary" style="margin-top:8px"></div>
+    <div id="chtable" style="margin-top:8px"></div>
+  </section>
+
+  <section><h2>Level (peak / RMS per 100 ms, dBFS) · short-term loudness</h2><div class="scroll"><canvas id="lvl" width="1200" height="180"></canvas></div></section>
+  <section><h2>Piano roll (notes · sections · chords)</h2><div class="scroll"><canvas id="roll" width="1200" height="520"></canvas></div><div class="row" id="legend" style="margin-top:6px"></div></section>
+  <section><h2>Harmony check</h2><div id="harm"></div></section>
+  <section><h2>Loop check</h2><pre id="loop">—</pre></section>
+  <section><h2>Compile warnings</h2><pre id="warn">—</pre></section>
+</main>
+
+<script type="module">
+import { AudioSys } from '../js/audio/audio.js';
+import { Music, SCALES, chordPcs, pitchClass, noteName } from '../js/audio/music.js';
+
+const $ = (id) => document.getElementById(id);
+const MINE = ['wreck', 'horizon'];
+const REF = ['aurora', 'title'];
+let lastBuf = null;
+let last = null;   // { log, song, secs, buf } of the latest analysis (for windowed piano rolls)
+
+// ─────────────────────────── live ───────────────────────────
+$('unlock').onclick = async () => {
+  AudioSys.init(); AudioSys.unlock();
+  $('status').textContent = 'rendering instruments…';
+  const t = performance.now();
+  await Music.init((p) => { $('status').textContent = `rendering… ${Math.round(p * 100)}%`; });
+  $('status').textContent = `ready in ${Math.round(performance.now() - t)} ms`;
+};
+for (const t of [...MINE, ...REF]) {
+  const b = document.createElement('button');
+  b.textContent = t; b.dataset.t = t;
+  b.onclick = () => {
+    AudioSys.init(); AudioSys.unlock();
+    Music.play(t, { fade: 1, restart: true, section: $('lsec').value || undefined });
+    for (const x of $('tracks').children) x.classList.toggle('on', x === b);
+    fillSections($('lsec'), t);
+  };
+  $('tracks').appendChild(b);
+}
+$('stop').onclick = () => { Music.stop(1); for (const x of $('tracks').children) x.classList.remove('on'); };
+$('int').oninput = () => { Music.setIntensity(+$('int').value); $('intv').textContent = (+$('int').value).toFixed(2); };
+$('stg').onclick = () => Music.stinger('stage_clear');
+setInterval(() => {
+  if (!AudioSys.ctx) return;
+  const s = Music.stats();
+  $('live').textContent = `ctx ${AudioSys.ctx.state} · t=${AudioSys.ctx.currentTime.toFixed(1)} s · current=${Music.current} · voices ${s.voices} · bank ${s.bankMB} MB`;
+}, 300);
+
+async function fillSections(sel, track) {
+  const song = await Music.inspect(track).catch(() => null);
+  if (!song) return;
+  sel.innerHTML = '<option value="">(beginning)</option>' + Object.keys(song.sections).map((n) => `<option>${n}</option>`).join('');
+}
+for (const t of [...MINE, ...REF]) { const o = document.createElement('option'); o.value = o.textContent = t; $('atrack').appendChild(o); }
+$('atrack').onchange = () => fillSections($('asecname'), $('atrack').value);
+fillSections($('asecname'), $('atrack').value);
+$('render').onclick = () => analyze($('atrack').value, +$('asec').value, { intensity: +$('aint').value, section: $('asecname').value || undefined });
+$('full').onclick = () => fullReport($('atrack').value, { intensity: +$('aint').value });
+$('chlv').onclick = () => channelLevels($('atrack').value, Math.min(30, +$('asec').value), { intensity: +$('aint').value, section: $('asecname').value || undefined });
+$('playbuf').onclick = () => {
+  if (!lastBuf) return;
+  AudioSys.init(); AudioSys.unlock();
+  const s = AudioSys.ctx.createBufferSource(); s.buffer = lastBuf; s.connect(AudioSys.master); s.start();
+};
+
+// ─────────────────────────── metering ───────────────────────────
+const db = (x) => 20 * Math.log10(Math.max(1e-9, x));
+
+function levels(buf, win = 0.1) {
+  const sr = buf.sampleRate, n = Math.floor(win * sr), L = buf.getChannelData(0), R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L;
+  const frames = [];
+  let peak = 0, sum = 0, clips = 0;
+  for (let i = 0; i + n <= L.length; i += n) {
+    let pk = 0, s = 0;
+    for (let j = i; j < i + n; j++) {
+      const a = Math.abs(L[j]), b = Math.abs(R[j]), m = a > b ? a : b;
+      if (m > pk) pk = m;
+      if (m >= 0.999) clips++;
+      s += (L[j] * L[j] + R[j] * R[j]) / 2;
+    }
+    frames.push({ pk, rms: Math.sqrt(s / n) });
+    if (pk > peak) peak = pk;
+    sum += s;
+  }
+  return { frames, peak, rms: Math.sqrt(sum / Math.max(1, frames.length * n)), clips };
+}
+
+// BS.1770 K-weighting (RBJ biquads: +4 dB high shelf @1.5 kHz, 2nd-order HP @38 Hz) + gated loudness.
+function biquad(type, f0, Q, gainDb, sr) {
+  const A = Math.pow(10, gainDb / 40), w = (2 * Math.PI * f0) / sr, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q);
+  let b0, b1, b2, a0, a1, a2;
+  if (type === 'hs') {
+    const sq = 2 * Math.sqrt(A) * al;
+    b0 = A * ((A + 1) + (A - 1) * c + sq); b1 = -2 * A * ((A - 1) + (A + 1) * c); b2 = A * ((A + 1) + (A - 1) * c - sq);
+    a0 = (A + 1) - (A - 1) * c + sq; a1 = 2 * ((A - 1) - (A + 1) * c); a2 = (A + 1) - (A - 1) * c - sq;
+  } else {
+    b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2; a0 = 1 + al; a1 = -2 * c; a2 = 1 - al;
+  }
+  return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0];
+}
+function kweight(x, sr) {
+  const out = Float32Array.from(x);   // two biquads applied in place, in cascade
+  for (const [b0, b1, b2, a1, a2] of [biquad('hs', 1681.97, 0.7072, 3.9998, sr), biquad('hp', 38.135, 0.5003, 0, sr)]) {
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let i = 0; i < out.length; i++) {
+      const xi = out[i], y = b0 * xi + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+      x2 = x1; x1 = xi; y2 = y1; y1 = y; out[i] = y;
+    }
+  }
+  return out;
+}
+function loudness(buf) {
+  const sr = buf.sampleRate;
+  const ch = [];
+  for (let c = 0; c < Math.min(2, buf.numberOfChannels); c++) ch.push(kweight(buf.getChannelData(c), sr));
+  const blk = Math.round(0.4 * sr), hop = Math.round(0.1 * sr);
+  const z = [];
+  for (let i = 0; i + blk <= ch[0].length; i += hop) {
+    let s = 0;
+    for (const d of ch) for (let j = i; j < i + blk; j++) s += d[j] * d[j];
+    z.push(s / blk);
+  }
+  const L = (m) => -0.691 + 10 * Math.log10(Math.max(1e-12, m));
+  const abs = z.filter((m) => L(m) > -70);
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+  const rel = L(mean(abs)) - 10;
+  const gated = abs.filter((m) => L(m) > rel);
+  // short-term (3 s) loudness curve
+  const st = [];
+  for (let k = 0; k + 27 <= z.length; k += 5) st.push(L(mean(z.slice(k, k + 27))));
+  return { integrated: +L(mean(gated)).toFixed(2), maxShort: +Math.max(...st).toFixed(2), minShort: +Math.min(...st.filter((v) => v > -70)).toFixed(2), short: st };
+}
+
+// ─────────────────────────── harmony checker ───────────────────────────
+// Categories (per sounding note on melodic channels; drums / FX excluded):
+//   chromatic  : pitch neither in the (transposed) scale nor in the current chord  → error
+//   clash      : two different channels sounding a minor 2nd / minor 9th for ≥ 1 beat (major 7th
+//                only if ≥ 2 beats and not both chord tones)                        → error
+//   bassNCT    : bass / sub / reese note that is not a chord tone, on a strong beat, ≥ 1 beat → error
+//   strongNCT  : non-chord scale tone ≥ 1 beat starting on beat 1 or 3 (appoggiatura) → warning
+function harmony(log, song) {
+  const scale = SCALES[song.scale] || SCALES.major, tonic = pitchClass(song.key) || 0;
+  const barDur = (60 / song.bpm) * (song.bar / song.spb), beat = 60 / song.bpm;
+  const secs = log.filter((e) => e.sec);
+  const at = (t) => { let s = null; for (const x of secs) if (x.t <= t + 1e-4) s = x; return s; };
+  const BASS = new Set(['bass', 'sub', 'reese', 'drone', 'bass2']);
+  const res = { total: 0, chord: 0, scale: 0, chromatic: [], strongNCT: [], clashes: [], bassNCT: [], perChan: {} };
+  const info = [];
+  for (const e of log) {
+    if (!e.c || !e.n || song.channels[e.c].fixed) continue;
+    const s = at(e.t);
+    if (!s) continue;
+    const tr = s.tr || 0, rel = e.t - s.t, bar = Math.floor(rel / barDur + 1e-6);
+    let cp = null, sym = null;
+    if (s.chords) {
+      const bc = s.chords[bar % s.chords.length];
+      const part = Math.min(bc.length - 1, Math.floor(((rel - bar * barDur) / barDur) * bc.length + 1e-6));
+      sym = bc[part];
+      if (sym && sym !== '-') cp = chordPcs(sym).map((p) => (p + tr + 120) % 12);
+    }
+    const sp = scale.map((p) => (p + tonic + tr + 120) % 12);
+    const pos = rel - bar * barDur;
+    const strong = Math.abs(pos) < 0.02 || Math.abs(pos - barDur / 2) < 0.02;
+    const pc0 = (res.perChan[e.c] = res.perChan[e.c] || { n: 0, chord: 0, scale: 0, chrom: 0 });
+    for (const m of e.n) {
+      const pc = ((m % 12) + 12) % 12, ct = !!(cp && cp.includes(pc));
+      res.total++; pc0.n++;
+      const where = `${s.sec}#${s.i} bar ${bar + 1} ${noteName(m)} (${e.c}) over ${sym || '?'}${tr ? ` [tr ${tr}]` : ''} @${e.t.toFixed(2)}s`;
+      if (ct) { res.chord++; pc0.chord++; }
+      else if (sp.includes(pc)) {
+        res.scale++; pc0.scale++;
+        if (strong && e.d >= beat * 0.99 && cp) res.strongNCT.push(where);
+        if (BASS.has(e.c) && strong && e.d >= beat * 0.99 && cp) res.bassNCT.push(where);
+      } else { pc0.chrom++; res.chromatic.push(where); }
+      info.push({ t: e.t, end: e.t + e.d, m, c: e.c, ct });
+    }
+  }
+  info.sort((a, b) => a.t - b.t);
+  const active = [];
+  for (const n of info) {
+    for (let i = active.length - 1; i >= 0; i--) if (active[i].end <= n.t + 1e-3) active.splice(i, 1);
+    if (n.end - n.t >= beat * 0.99) for (const a of active) {
+      if (a.c === n.c || a.end - a.t < beat * 0.99) continue;
+      const ov = Math.min(a.end, n.end) - n.t, d = Math.abs(a.m - n.m);
+      if (ov >= beat * 0.99 && (d === 1 || d === 13 || (d === 11 && ov >= beat * 1.99 && !(a.ct && n.ct)))) res.clashes.push(`${noteName(a.m)} (${a.c}) vs ${noteName(n.m)} (${n.c}) @${n.t.toFixed(2)}s`);
+    }
+    active.push(n);
+  }
+  for (const k of ['chromatic', 'strongNCT', 'clashes', 'bassNCT']) res[k] = [...new Set(res[k])];
+  return res;
+}
+
+function showHarmony(h) {
+  const pct = (x) => ((100 * x) / Math.max(1, h.total)).toFixed(1) + '%';
+  let html = `<div class="stat">notes <b>${h.total}</b> · chord tones <b class="good">${pct(h.chord)}</b> · scale <b>${pct(h.scale)}</b> · chromatic <b class="${h.chromatic.length ? 'bad' : 'good'}">${h.chromatic.length}</b> · clashes <b class="${h.clashes.length ? 'bad' : 'good'}">${h.clashes.length}</b> · bass non-chord <b class="${h.bassNCT.length ? 'bad' : 'good'}">${h.bassNCT.length}</b> · strong-beat NCT (warn) <b class="${h.strongNCT.length ? 'warn' : 'good'}">${h.strongNCT.length}</b></div>`;
+  html += '<table><tr><th>channel</th><th>notes</th><th>chord</th><th>scale</th><th>chromatic</th></tr>' + Object.entries(h.perChan).map(([c, v]) => `<tr><td>${c}</td><td>${v.n}</td><td>${v.chord}</td><td>${v.scale}</td><td class="${v.chrom ? 'bad' : ''}">${v.chrom}</td></tr>`).join('') + '</table>';
+  const list = (t, a, cls) => (a.length ? `<div class="${cls}" style="margin-top:6px">${t}</div><pre>${a.slice(0, 60).join('\n')}</pre>` : '');
+  html += list('chromatic:', h.chromatic, 'bad') + list('clashes:', h.clashes, 'bad') + list('bass non-chord tones:', h.bassNCT, 'bad') + list('strong-beat non-chord tones (warn):', h.strongNCT, 'warn');
+  $('harm').innerHTML = html;
+}
+
+// ─────────────────────────── drawing ───────────────────────────
+function drawLevels(lv, secs, lu) {
+  const c = $('lvl'), W = (c.width = Math.min(6000, Math.max(1200, Math.round(secs * 20)))), H = c.height, g = c.getContext('2d');
+  g.fillStyle = '#05040b'; g.fillRect(0, 0, W, H);
+  const y = (d) => H - ((Math.max(-60, d) + 60) / 60) * H;
+  g.strokeStyle = '#2a2548'; g.fillStyle = '#8d8aa8'; g.font = '10px monospace';
+  for (let d = 0; d >= -60; d -= 12) { g.beginPath(); g.moveTo(0, y(d)); g.lineTo(W, y(d)); g.stroke(); g.fillText(d + ' dB', 2, y(d) - 2); }
+  g.strokeStyle = '#ff4d7a'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, y(-1)); g.lineTo(W, y(-1)); g.stroke(); g.setLineDash([]);
+  const n = lv.frames.length, dx = W / n;
+  g.fillStyle = 'rgba(57,224,255,.35)';
+  lv.frames.forEach((f, i) => { const yy = y(db(f.pk)); g.fillRect(i * dx, yy, Math.max(1, dx), H - yy); });
+  g.strokeStyle = '#ffc94a'; g.beginPath();
+  lv.frames.forEach((f, i) => { const yy = y(db(f.rms)); i ? g.lineTo(i * dx, yy) : g.moveTo(0, yy); });
+  g.stroke();
+  if (lu) {
+    g.strokeStyle = '#57f2a0'; g.beginPath();
+    lu.short.forEach((v, i) => { const xx = (i * 0.5 + 1.5) / secs * W, yy = y(v); i ? g.lineTo(xx, yy) : g.moveTo(xx, yy); });
+    g.stroke();
+  }
+  g.fillStyle = '#8d8aa8';
+  for (let s = 0; s < secs; s += 10) g.fillText(s + 's', (s / secs) * W + 2, H - 3);
+}
+
+const PALETTE = ['#39e0ff', '#ffc94a', '#ff5fd2', '#57f2a0', '#a98bff', '#ff8a3d', '#6fa8ff', '#f2f25f', '#ff4d7a', '#4dffea', '#c7ff6b', '#ffa6c9', '#9ee6ff', '#d3a4ff'];
+function drawRoll(log, song, secs, t0 = 0, t1 = secs) {
+  const c = $('roll'), span = t1 - t0, W = (c.width = Math.min(8000, Math.max(1200, Math.round(span * 40)))), H = c.height, g = c.getContext('2d');
+  g.fillStyle = '#05040b'; g.fillRect(0, 0, W, H);
+  const inWin = (e) => e.t >= t0 - 4 && e.t <= t1;
+  const notes = log.filter((e) => e.c && e.n && !song.channels[e.c].fixed && inWin(e));
+  const drums = log.filter((e) => e.c && (!e.n || song.channels[e.c].fixed) && inWin(e));
+  let lo = 127, hi = 0;
+  for (const e of notes) for (const m of e.n) { lo = Math.min(lo, m); hi = Math.max(hi, m); }
+  if (lo > hi) { lo = 36; hi = 84; }
+  lo -= 1; hi += 1;
+  const drumChans = [...new Set(drums.map((e) => e.c))];
+  const dh = drumChans.length * 8 + 6, rollH = H - dh - 28;
+  const X = (t) => ((t - t0) / span) * W, Y = (m) => 28 + rollH - ((m - lo + 1) / (hi - lo + 1)) * rollH;
+  const rowH = rollH / (hi - lo + 1);
+  for (let m = lo; m <= hi; m++) {
+    if ([1, 3, 6, 8, 10].includes(((m % 12) + 12) % 12)) { g.fillStyle = '#0a0916'; g.fillRect(0, Y(m), W, rowH); }
+    if (m % 12 === 0) { g.fillStyle = '#8d8aa8'; g.font = '10px monospace'; g.fillText(noteName(m), 2, Y(m) + rowH - 1); }
+  }
+  const chans = Object.keys(song.channels);
+  const color = (cn) => PALETTE[chans.indexOf(cn) % PALETTE.length];
+  const barDur = (60 / song.bpm) * (song.bar / song.spb);
+  for (const s of log.filter((e) => e.sec && e.t <= t1 && e.t + e.bars * barDur >= t0)) {
+    g.strokeStyle = '#39e0ff88'; g.beginPath(); g.moveTo(X(s.t), 0); g.lineTo(X(s.t), H); g.stroke();
+    g.fillStyle = '#39e0ff'; g.font = 'bold 11px monospace'; g.fillText(s.sec + (s.tr ? ` (${s.tr > 0 ? '+' : ''}${s.tr})` : ''), X(s.t) + 3, 11);
+    if (s.chords) for (let b = 0; b < s.bars; b++) {
+      g.strokeStyle = '#2a2548'; g.beginPath(); g.moveTo(X(s.t + b * barDur), 14); g.lineTo(X(s.t + b * barDur), 28 + rollH); g.stroke();
+      g.fillStyle = '#ffc94a'; g.font = '10px monospace'; g.fillText(s.chords[b % s.chords.length].join(','), X(s.t + b * barDur) + 2, 24);
+    }
+  }
+  for (const e of notes) {
+    g.fillStyle = color(e.c); g.globalAlpha = 0.35 + 0.65 * Math.min(1, e.v);
+    for (const m of e.n) g.fillRect(X(e.t), Y(m) + 0.5, Math.max(2, (e.d / span) * W - 1), Math.max(2, rowH - 1));
+  }
+  g.globalAlpha = 1;
+  drumChans.forEach((cn, i) => {
+    const yy = H - dh + i * 8;
+    g.fillStyle = '#8d8aa8'; g.font = '8px monospace'; g.fillText(cn, 2, yy + 7);
+    g.fillStyle = color(cn);
+    for (const e of drums) if (e.c === cn) { g.globalAlpha = 0.3 + 0.7 * Math.min(1, e.v); g.fillRect(X(e.t), yy + 1, 2, 6); }
+    g.globalAlpha = 1;
+  });
+  $('legend').innerHTML = chans.map((cn) => `<span style="color:${color(cn)}">■ ${cn}</span>`).join(' ');
+}
+
+// ─────────────────────────── analysis entry points ───────────────────────────
+async function render(track, secs, opt = {}) {
+  AudioSys.init();
+  await Music.init();
+  return Music.renderOffline(track, secs, opt);
+}
+
+function songLength(song) {
+  const barDur = (60 / song.bpm) * (song.bar / song.spb);
+  let bars = 0, loopBars = 0;
+  song.arr.forEach((e, i) => { bars += e.sec.bars; if (i >= song.loop) loopBars += e.sec.bars; });
+  return { bars, loopBars, secs: bars * barDur, loopSecs: loopBars * barDur, barDur, loopAt: (bars - loopBars) * barDur };
+}
+
+// integrated (ungated) K-weighted loudness of every section instance in a render
+function sectionLoudness(buf, log) {
+  const sr = buf.sampleRate, ch = [];
+  for (let c = 0; c < Math.min(2, buf.numberOfChannels); c++) ch.push(kweight(buf.getChannelData(c), sr));
+  const marks = log.filter((e) => e.sec);
+  return marks.map((m, i) => {
+    const a = Math.floor(m.t * sr), b = Math.min(ch[0].length, Math.floor((marks[i + 1] ? marks[i + 1].t : buf.duration) * sr));
+    let s = 0;
+    for (const d of ch) for (let j = a; j < b; j++) s += d[j] * d[j];
+    return `${m.sec}${m.tr ? '(' + m.tr + ')' : ''} ${(-0.691 + 10 * Math.log10(Math.max(1e-12, s / Math.max(1, b - a)))).toFixed(1)}`;
+  });
+}
+
+async function analyze(track, secs = 40, opt = {}) {
+  $('summary').textContent = 'rendering…';
+  const t0 = performance.now();
+  const buf = await render(track, secs, opt);
+  const ms = performance.now() - t0;
+  lastBuf = buf; $('playbuf').disabled = false;
+  const song = await Music.inspect(track);
+  const log = buf.notes || [];
+  const lv = levels(buf), lu = loudness(buf);
+  last = { log, song, secs, buf };
+  drawLevels(lv, secs, lu);
+  drawRoll(log, song, secs, opt.rollFrom ?? 0, opt.rollTo ?? secs);
+  const h = harmony(log, song);
+  showHarmony(h);
+  const warns = await Music.validate(track);
+  $('warn').textContent = warns.length ? warns.join('\n') : 'none';
+  const r = {
+    track, secs, intensity: opt.intensity, section: opt.section, peakDb: +db(lv.peak).toFixed(2), rmsDb: +db(lv.rms).toFixed(2), clips: lv.clips,
+    lufs: lu.integrated, maxShort: lu.maxShort, minShort: lu.minShort, renderMs: Math.round(ms), events: log.filter((e) => e.c).length,
+    sections: log.filter((e) => e.sec).map((e) => `${e.sec}${e.tr ? '(' + e.tr + ')' : ''}@${e.t.toFixed(1)}`).join(' '),
+    harmony: { total: h.total, chordPct: +((100 * h.chord) / Math.max(1, h.total)).toFixed(1), chromatic: h.chromatic, clashes: h.clashes, bassNCT: h.bassNCT, strongNCT: h.strongNCT },
+    warnings: warns, len: songLength(song), perSection: sectionLoudness(buf, log),
+  };
+  $('summary').innerHTML = `peak <b class="${r.peakDb <= -1 ? 'good' : 'bad'}">${r.peakDb} dBFS</b> · RMS <b>${r.rmsDb}</b> · integrated <b>${r.lufs} LUFS</b> (short-term ${r.minShort}…${r.maxShort}) · clipped <b class="${lv.clips ? 'bad' : 'good'}">${lv.clips}</b> · ${r.events} events · render ${r.renderMs} ms`;
+  return r;
+}
+
+// Loop verification: (1) the whole arrangement + 12 s plays sections in order and wraps to the loop
+// section exactly at the end; (2) notes scheduled after the wrap are identical (time-shifted) to a
+// render that starts at the loop section; (3) no level cliff across the seam.
+async function loopCheck(track, opt = {}) {
+  const song = await Music.inspect(track);
+  const L = songLength(song);
+  const lastName = song.arr[song.arr.length - 1].sec.name, loopName = song.arr[song.loop].sec.name;
+  const lastBars = song.arr[song.arr.length - 1].sec.bars;
+  const pre = lastBars * L.barDur, post = 14;
+  const a = await render(track, pre + post, { ...opt, section: lastName });
+  const b = await render(track, post, { ...opt, section: loopName });
+  const secA = a.notes.filter((e) => e.sec).map((e) => [e.sec, +e.t.toFixed(3)]);
+  const off = 0.02;   // deck start time in renderOffline
+  const seam = pre + off;
+  // greedy match (channel + pitches + duration, onset within 12 ms: tolerates humanize jitter)
+  const na = a.notes.filter((e) => e.c && e.t >= seam - 0.015 && e.t < seam + post - 2).map((e) => ({ ...e, t: e.t - pre }));
+  const nb = b.notes.filter((e) => e.c && e.t < off + post - 2 - 0.015);
+  const used = new Set();
+  let unmatched = 0;
+  for (const e of nb) {
+    const k = na.findIndex((x, i) => !used.has(i) && x.c === e.c && Math.abs(x.t - e.t) < 0.012 && Math.abs(x.d - e.d) < 0.002 && String(x.n) === String(e.n));
+    if (k < 0) unmatched++; else used.add(k);
+  }
+  const sameNotes = unmatched === 0 && Math.abs(na.length - nb.length) <= 2;
+  const la = levels(a, 0.5);
+  const i0 = Math.floor(seam / 0.5);
+  const before = la.frames.slice(i0 - 4, i0).map((f) => +db(f.rms).toFixed(1)), after = la.frames.slice(i0, i0 + 4).map((f) => +db(f.rms).toFixed(1));
+  // sample discontinuity at the seam (largest one-sample jump within ±50 ms vs. typical)
+  const d = a.getChannelData(0), s0 = Math.round(seam * a.sampleRate);
+  let jump = 0;
+  for (let i = s0 - 2205; i < s0 + 2205; i++) jump = Math.max(jump, Math.abs(d[i] - d[i - 1]));
+  const res = {
+    arrangementBars: L.bars, secs: +L.secs.toFixed(1), loopBars: L.loopBars, loopSecs: +L.loopSecs.toFixed(1), loopTo: loopName,
+    seamSections: secA, wrapsAt: secA[1] && secA[1][1], expected: +(seam).toFixed(3), wrapOK: !!secA[1] && secA[1][0] === loopName && Math.abs(secA[1][1] - seam) < 0.002,
+    sameNotesAfterWrap: sameNotes, notesCompared: nb.length, unmatched, rmsBefore: before, rmsAfter: after, maxSampleJumpNearSeam: +jump.toFixed(3),
+  };
+  $('loop').textContent = JSON.stringify(res, null, 1);
+  return res;
+}
+
+async function fullReport(track, opt = {}) {
+  const song = await Music.inspect(track);
+  const L = songLength(song);
+  const r = await analyze(track, Math.ceil(L.secs + 3), { ...opt });
+  r.loop = await loopCheck(track, opt);
+  return r;
+}
+
+// Per-channel levels (each channel rendered solo through the full master chain).
+async function channelLevels(track, secs, opt = {}) {
+  const song = await Music.inspect(track);
+  const meas = (buf) => {
+    const Lc = buf.getChannelData(0), R = buf.getChannelData(1);
+    let pk = 0, s = 0;
+    for (let i = 0; i < Lc.length; i++) { const m = (Lc[i] + R[i]) / 2; pk = Math.max(pk, Math.abs(Lc[i]), Math.abs(R[i])); s += m * m; }
+    return { rms: +(10 * Math.log10(s / Lc.length + 1e-12)).toFixed(1), peak: +(20 * Math.log10(pk + 1e-9)).toFixed(1) };
+  };
+  const rows = [['ALL', meas(await render(track, secs, opt))]];
+  for (const ch of opt.only || Object.keys(song.channels)) {
+    $('chtable').textContent = 'rendering ' + ch + '…';
+    rows.push([ch, meas(await render(track, secs, { ...opt, solo: [ch] }))]);
+  }
+  rows.sort((x, y) => y[1].rms - x[1].rms);
+  $('chtable').innerHTML = '<table><tr><th>channel</th><th>RMS dBFS</th><th>peak dBFS</th></tr>' +
+    rows.map(([c, v]) => `<tr><td>${c}</td><td>${v.rms < -100 ? 'silent' : v.rms}</td><td>${v.peak < -100 ? '' : v.peak}</td></tr>`).join('') + '</table>';
+  return rows;
+}
+
+// redraw the piano roll of the latest analysis for a time window (seconds)
+function roll(t0, t1) { if (last) drawRoll(last.log, last.song, last.secs, t0, t1); return !!last; }
+window.MB = { roll, render, analyze, loopCheck, fullReport, channelLevels, harmony, levels, loudness, songLength, drawRoll };
+window.Music = Music;
+window.AudioSys = AudioSys;
+</script>
+</body>
+</html>

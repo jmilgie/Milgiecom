@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — SFX Lab</title>
+<style>
+  :root { --bg:#07060f; --panel:#100e22; --line:#252050; --ink:#dfe8f7; --dim:#7c8fb3; --acc:#27c2ea; --warn:#ffab4f; --bad:#ff5a7a; --ok:#6fd23f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  header { position:sticky; top:0; z-index:5; background:rgba(7,6,15,.94); border-bottom:1px solid var(--line); padding:10px 16px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; }
+  @media (max-width: 600px) { header { position:static; gap:8px 12px; } }
+  h1 { font-size:15px; margin:0; letter-spacing:.08em; color:var(--acc); }
+  button { font:inherit; color:var(--ink); background:#1a1638; border:1px solid #3f2388; border-radius:6px; padding:6px 10px; cursor:pointer; min-height:32px; }
+  button:hover { border-color:var(--acc); }
+  button.on { background:#0b4f7e; border-color:var(--acc); }
+  button.null { background:#5a0f24; border-color:var(--bad); }
+  .stat { color:var(--dim); } .stat b { color:var(--ink); font-weight:600; }
+  #bar { width:160px; height:6px; background:#1a1638; border-radius:3px; overflow:hidden; } #bar i { display:block; height:100%; width:0; background:var(--acc); }
+  main { padding:14px 16px 40px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; min-width:0; }
+  .card table { display:block; overflow-x:auto; }
+  .card h3 { margin:0 0 6px; font-size:13px; display:flex; justify-content:space-between; gap:8px; }
+  .card h3 small { color:var(--dim); font-weight:400; }
+  .btns { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; } .btns button { padding:4px 8px; min-height:28px; }
+  canvas.spec { width:100%; height:auto; display:block; border-radius:4px; background:#000; image-rendering:pixelated; }
+  table { border-collapse:collapse; width:100%; margin-top:6px; } td, th { padding:1px 4px; text-align:right; white-space:nowrap; } th { color:var(--dim); font-weight:400; } td:first-child, th:first-child { text-align:left; }
+  .bad { color:var(--bad); } .warn { color:var(--warn); } .ok { color:var(--ok); }
+  #summary { margin:0 0 14px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; overflow-x:auto; }
+  label { color:var(--dim); display:flex; gap:6px; align-items:center; }
+  .layers { margin-top:4px; color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>NOVA LANCERS · SFX LAB</h1>
+  <button id="unlock">Enable audio</button>
+  <div id="bar"><i></i></div>
+  <span class="stat">build <b id="buildMs">…</b> · all <b id="allMs">…</b></span>
+  <span class="stat">buffers <b id="nBufs">–</b> · <b id="totDur">–</b> s · <b id="mem">–</b> MB</span>
+  <span class="stat">voices <b id="nVoices">0</b></span>
+  <label>pan x <input id="panX" type="range" min="0" max="240" value="120" /></label>
+  <label>vol <input id="vol" type="range" min="0" max="150" value="100" /></label>
+  <button id="stress">Stress: 4 ships auto-fire</button>
+  <button id="coop">Co-op: staggered fire</button>
+  <button id="layersAll">Analyze layers</button>
+</header>
+<main>
+  <div id="summary">Rendering…</div>
+  <div class="grid" id="grid"></div>
+</main>
+<script type="module">
+import { AudioSys } from '../js/audio/audio.js';
+import { buildSfx, sfx, sfxLoop, _sfxDebug, fft } from '../js/audio/sfx.js';
+
+const REQUIRED = ['shot_aurora','shot_tempest_loop','shot_seraph','shot_valkyrie','shot_option','hit_enemy','hit_armor',
+  'explode_small','explode_medium','explode_large','explode_boss','enemy_shot','enemy_shot_heavy','enemy_laser_charge',
+  'enemy_laser_fire','player_hit','player_explode','shield_up','respawn','pickup_power','pickup_bomb','pickup_gem',
+  'pickup_life','pickup_overdrive','powerup_max','nova','overdrive_on','overdrive_off','graze','chain_up','warning',
+  'boss_roar','boss_phase','warp_in','revive','beacon_ping','player_join','player_leave','ui_move','ui_select','ui_back',
+  'ui_start','ui_error','countdown','stage_clear_whoosh'];
+
+const $ = (id) => document.getElementById(id);
+const dB = (x) => 20 * Math.log10(Math.max(1e-9, x));
+const f1 = (x) => (isFinite(x) ? x.toFixed(1) : '-∞');
+const opt = () => ({ x: +$('panX').value, vol: +$('vol').value / 100 });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const bench = location.search.includes('bench');
+
+AudioSys.init();
+if (bench) _sfxDebug.keepWorkers = true;
+if (location.search.includes('noworkers')) _sfxDebug.noWorkers = true;
+
+// a play button turns red for a moment when sfx() refuses the request (returns null)
+const flash = (btn, ok) => { if (ok) return; btn.classList.add('null'); setTimeout(() => btn.classList.remove('null'), 350); };
+$('unlock').onclick = () => AudioSys.unlock();   // replaced once the page is built
+
+const t0 = performance.now();
+await buildSfx((p) => { $('bar').firstElementChild.style.width = (p * 100).toFixed(1) + '%'; });
+const buildMs = performance.now() - t0;
+$('buildMs').textContent = buildMs.toFixed(0) + ' ms';
+await _sfxDebug.allDone();
+const allMs = performance.now() - t0;
+$('allMs').textContent = allMs.toFixed(0) + ' ms';
+window.BUILD = { buildMs, allMs, workers: _sfxDebug.stats.workers, offloaded: _sfxDebug.stats.offloaded, inline: _sfxDebug.stats.inline };
+
+// ---------- analysis
+function analyze(buf, loopStart, fadeSec) {
+  const chs = [...Array(buf.numberOfChannels)].map((_, c) => buf.getChannelData(c));
+  const n = buf.length, sr = buf.sampleRate, l0 = loopStart ? Math.round(loopStart * sr) : 0;   // loops: DC of the looped body
+  let pk = 0, ss = 0, sum = 0;
+  for (const d of chs) for (let i = 0; i < n; i++) { const x = d[i]; const a = Math.abs(x); if (a > pk) pk = a; ss += x * x; if (i >= l0) sum += x; }
+  const rms = Math.sqrt(ss / (n * chs.length)), dc = sum / ((n - l0) * chs.length);
+  // onset: first sample above -20 dB of peak;  tail: RMS of the last 5% relative to peak
+  let on = 0; const thr = pk * 0.1;
+  outer: for (let i = 0; i < n; i++) for (const d of chs) if (Math.abs(d[i]) > thr) { on = i; break outer; }
+  const t0 = Math.floor(n * 0.95); let ts = 0;
+  for (const d of chs) for (let i = t0; i < n; i++) ts += d[i] * d[i];
+  const tail = Math.sqrt(ts / ((n - t0) * chs.length)) / (pk || 1);
+  // level where the end fade starts, relative to the loudest 10 ms (a tail still ringing there gets chopped)
+  const w = Math.round(0.01 * sr), rmsAt = (i0) => { let e = 0, c = 0; for (const d of chs) for (let i = Math.max(0, i0); i < Math.min(n, i0 + w); i++) { e += d[i] * d[i]; c++; } return Math.sqrt(e / Math.max(1, c)); };
+  let pk10 = 0; for (let i = 0; i + w <= n; i += w >> 1) pk10 = Math.max(pk10, rmsAt(i));
+  const fadeDb = loopStart ? -Infinity : dB(rmsAt(n - Math.round(fadeSec * sr) - w) / (pk10 || 1));
+  // end sample (click check) and NaN check
+  let last = 0, nan = false;
+  for (const d of chs) { last = Math.max(last, Math.abs(d[n - 1])); if (!isFinite(d[0]) || !isFinite(d[n >> 1])) nan = true; }
+  let hd = 0; for (const d of chs) for (let i = 1; i < n; i++) { const e = d[i] - d[i - 1]; hd += e * e; }
+  return { dur: n / sr, sr, ch: chs.length, peakDb: dB(pk), rmsDb: dB(rms), dc, onsetMs: on / sr * 1000, tailDb: dB(tail), fadeDb, lastDb: dB(last / (pk || 1)), nan, brightDb: dB(Math.sqrt(hd / (n * chs.length)) / (rms || 1)) };
+}
+
+const cmap = (() => { // inferno-ish
+  const stops = [[0,0,0,4],[.15,40,11,84],[.35,120,28,109],[.55,187,55,84],[.72,237,105,37],[.87,251,180,26],[1,252,255,164]];
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let i = 0; i < 256; i++) { const t = i / 255; let k = 0; while (k < stops.length - 2 && t > stops[k + 1][0]) k++;
+    const a = stops[k], b = stops[k + 1], u = (t - a[0]) / (b[0] - a[0]);
+    for (let c = 0; c < 3; c++) lut[i * 3 + c] = a[c + 1] + (b[c + 1] - a[c + 1]) * u; }
+  return lut;
+})();
+
+function drawBuffer(canvas, buf, label) {
+  const W = canvas.width, H = canvas.height, WH = 34, SH = H - WH, g = canvas.getContext('2d');
+  const sr = buf.sampleRate, n = buf.length, chs = [...Array(buf.numberOfChannels)].map((_, c) => buf.getChannelData(c));
+  const mono = new Float32Array(n); for (const d of chs) for (let i = 0; i < n; i++) mono[i] += d[i] / chs.length;
+  g.fillStyle = '#05040c'; g.fillRect(0, 0, W, H);
+  // waveform (min/max per column, per channel)
+  chs.forEach((d, c) => {
+    g.fillStyle = c ? 'rgba(255,111,180,.8)' : 'rgba(121,236,255,.85)';
+    for (let x = 0; x < W; x++) { const a = Math.floor(x * n / W), b = Math.max(a + 1, Math.floor((x + 1) * n / W)); let lo = 1, hi = -1;
+      for (let i = a; i < b; i++) { const v = d[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+      const y0 = WH / 2 - hi * WH / 2, y1 = WH / 2 - lo * WH / 2; g.fillRect(x, y0, 1, Math.max(1, y1 - y0)); }
+  });
+  // spectrogram: STFT, Hann, log-frequency rows 40 Hz .. Nyquist, -96..0 dB
+  const N = n / sr < 0.35 ? 512 : 1024, re = new Float64Array(N), im = new Float64Array(N), win = new Float64Array(N);
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+  const img = g.createImageData(W, SH), ny = sr / 2, fmin = 40, norm = 4 / N;
+  const rowBins = []; for (let y = 0; y <= SH; y++) rowBins.push(fmin * Math.pow(ny / fmin, 1 - y / SH) / (sr / N));
+  const mag = new Float64Array(N / 2);
+  for (let x = 0; x < W; x++) {
+    const c = Math.floor((x / (W - 1)) * Math.max(0, n - N / 2)) - N / 2;
+    for (let i = 0; i < N; i++) { const j = c + i; re[i] = (j >= 0 && j < n ? mono[j] : 0) * win[i]; im[i] = 0; }
+    fft(re, im, false);
+    for (let k = 0; k < N / 2; k++) mag[k] = Math.hypot(re[k], im[k]) * norm;
+    for (let y = 0; y < SH; y++) {
+      const b0 = rowBins[y + 1], b1 = rowBins[y]; let m = 0;
+      const k0 = Math.max(1, Math.floor(b0)), k1 = Math.min(N / 2 - 1, Math.max(k0, Math.floor(b1)));
+      for (let k = k0; k <= k1; k++) if (mag[k] > m) m = mag[k];
+      const v = Math.max(0, Math.min(255, Math.round((dB(m) + 84) / 80 * 255))), o = (y * W + x) * 4;
+      img.data[o] = cmap[v * 3]; img.data[o + 1] = cmap[v * 3 + 1]; img.data[o + 2] = cmap[v * 3 + 2]; img.data[o + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, WH);
+  g.fillStyle = 'rgba(223,232,247,.55)'; g.font = '9px monospace';
+  for (const f of [100, 1000, 10000]) { if (f > ny) continue; const y = WH + SH * (1 - Math.log(f / fmin) / Math.log(ny / fmin)); g.fillRect(0, y, 4, 1); g.fillText(f >= 1000 ? f / 1000 + 'k' : f, 6, y + 3); }
+  g.fillText(label, W - g.measureText(label).width - 4, WH + 10);
+}
+
+// ---------- page
+function main() {
+  const names = Object.keys(_sfxDebug.defs);
+  const missing = REQUIRED.filter((n) => !_sfxDebug.bank.has(n));
+  const extra = names.filter((n) => !REQUIRED.includes(n));
+  const report = { buildMs, allMs, jobs: _sfxDebug.stats.jobs, missing, extra, sounds: {} };
+  let totDur = 0, totBytes = 0, nBufs = 0;
+  const loops = {};
+
+  for (const name of names) {
+    const s = _sfxDebug.bank.get(name);
+    const card = document.createElement('div'); card.className = 'card'; card.id = 'card-' + name;
+    const d = _sfxDebug.defs[name];
+    card.innerHTML = `<h3><span>${name}</span><small>${d.sr / 1000}k ${d.st ? 'stereo' : 'mono'} · ${d.n}v · db ${d.db}${d.rv ? ' · rv ' + d.rv.join('/') : ''}${_sfxDebug.late.includes(name) ? ' · late' : ''}</small></h3><div class="btns"></div><canvas class="spec" width="360" height="150"></canvas><table></table><div class="layers"></div>`;
+    $('grid').appendChild(card);
+    if (!s) { card.querySelector('table').innerHTML = '<tr><td class="bad">NOT RENDERED</td></tr>'; continue; }
+    const btns = card.querySelector('.btns'), canvas = card.querySelector('canvas');
+    const mk = (txt, fn) => { const b = document.createElement('button'); b.textContent = txt; b.onclick = () => fn(b); btns.appendChild(b); return b; };
+    mk('▶ play', (b) => flash(b, sfx(name, opt())));
+    s.bufs.forEach((buf, i) => mk(String(i + 1), (b) => { flash(b, sfx(name, { ...opt(), variant: i })); drawBuffer(canvas, buf, `v${i + 1}`); }));
+    const lb = mk('⟳ loop', () => {
+      if (loops[name]) { loops[name].stop(0.25); loops[name] = null; lb.classList.remove('on'); }
+      else { const h = sfxLoop(name, opt()); flash(lb, h.playing); if (h.playing) { loops[name] = h; lb.classList.add('on'); } }
+    });
+    mk('layers', () => layerReport(name, card));
+    drawBuffer(canvas, s.bufs[0], 'v1');
+    const rows = s.bufs.map((buf, i) => {
+      const a = analyze(buf, d.loop != null ? s.loopStart : 0, _sfxDebug.fadeLen(d)); totDur += a.dur; totBytes += buf.length * buf.numberOfChannels * 4; nBufs++;
+      const gainDb = dB(s.gains[i]), eff = s.loud[i] + gainDb;
+      Object.assign(a, { loud: s.loud[i], gainDb, eff });
+      return a;
+    });
+    report.sounds[name] = { db: d.db, variants: rows };
+    const cls = (bad, warn) => (bad ? 'bad' : warn ? 'warn' : '');
+    card.querySelector('table').innerHTML = '<tr><th>v</th><th>dur</th><th>peak</th><th>rms</th><th>dc</th><th>L</th><th>gain</th><th>eff</th><th>fade</th><th>on ms</th></tr>' +
+      rows.map((a, i) => `<tr><td>${i + 1}</td><td>${a.dur.toFixed(2)}</td><td class="${cls(a.peakDb > -0.99 || a.nan)}">${f1(a.peakDb)}</td><td>${f1(a.rmsDb)}</td>` +
+        `<td class="${cls(Math.abs(a.dc) > 1e-3)}">${a.dc.toExponential(0)}</td><td>${f1(a.loud)}</td><td class="${cls(a.gainDb > 0.01, a.gainDb > -1)}">${f1(a.gainDb)}</td>` +
+        `<td>${f1(a.eff)}</td><td class="${cls(false, a.fadeDb > -30)}">${f1(a.fadeDb)}</td><td>${a.onsetMs.toFixed(0)}</td></tr>`).join('');
+  }
+  $('nBufs').textContent = nBufs; $('totDur').textContent = totDur.toFixed(1); $('mem').textContent = (totBytes / 1048576).toFixed(1);
+
+  // summary: build jobs + loudness ranking + checks
+  const jobs = [..._sfxDebug.stats.jobs];
+  const sum = (k) => jobs.reduce((a, j) => a + j[k], 0);
+  const ranked = Object.entries(report.sounds).map(([n, r]) => [n, r.variants.reduce((a, v) => a + v.eff, 0) / r.variants.length, r.db]).sort((a, b) => b[1] - a[1]);
+  const issues = [];
+  for (const [n, r] of Object.entries(report.sounds)) r.variants.forEach((a, i) => {
+    if (a.peakDb > -0.99) issues.push(`${n}#${i + 1} peak ${f1(a.peakDb)}`);
+    if (Math.abs(a.dc) > 1e-3) issues.push(`${n}#${i + 1} dc ${a.dc.toExponential(1)}`);
+    if (a.nan) issues.push(`${n}#${i + 1} NaN`);
+    if (Math.abs(a.eff - r.db) > 1.2) issues.push(`${n}#${i + 1} eff ${f1(a.eff)} vs ${r.db}`);
+    if (a.fadeDb > -30) issues.push(`${n}#${i + 1} tail ${f1(a.fadeDb)} dB at fade`);
+  });
+  if (_sfxDebug.stats.inline) issues.push(`${_sfxDebug.stats.inline} jobs post-processed on the main thread (worker failure?)`);
+  report.issues = issues;
+  const renderSummary = () => {
+    const pt = report.playTest;
+    const play = !pt ? '<span class="stat">enable audio to run it</span>' : pt.fail.length ? `<span class="bad">${pt.fail.join(', ')} returned null</span>` : `<span class="ok">all ${pt.ok} names + ${pt.loops} loops play</span>`;
+    $('summary').innerHTML = `<div><b>buildSfx ${buildMs.toFixed(0)} ms</b> (core set) · everything ${allMs.toFixed(0)} ms · graph ${sum('graphMs').toFixed(0)} ms · render (sum of parallel jobs) ${sum('renderMs').toFixed(0)} ms · post ${sum('postMs').toFixed(0)} ms · ` +
+      `missing: <span class="${missing.length ? 'bad' : 'ok'}">${missing.join(', ') || 'none'}</span> · play test: ${play} · issues: <span class="${issues.length ? 'warn' : 'ok'}">${issues.join(' · ') || 'none'}</span></div>` +
+      `<div style="margin-top:6px;color:var(--dim)">loudness ladder (eff dB): ${ranked.map(([n, e]) => `${n} <b style="color:var(--ink)">${e.toFixed(0)}</b>`).join(' · ')}</div>`;
+  };
+  renderSummary();
+  window.REPORT = report;
+
+  // every name must play through sfx() (and every loop through sfxLoop()): silent, stopped at once
+  async function playTest() {
+    for (let k = 0; k < 40 && AudioSys.ctx.state !== 'running'; k++) await sleep(25);
+    const res = { ok: 0, loops: 0, fail: [] };
+    for (const n of REQUIRED) { const h = sfx(n, { vol: 0, x: 120 }); if (h) { res.ok++; h.stop(0.005); } else res.fail.push(n); }
+    for (const n of names.filter((k) => _sfxDebug.defs[k].loop != null)) { const h = sfxLoop(n, { vol: 0 }); if (h.playing) { res.loops++; h.stop(0.005); } else res.fail.push(n + ' (loop)'); }
+    report.playTest = res;
+    renderSummary();
+    return res;
+  }
+  $('unlock').onclick = () => {
+    AudioSys.unlock(); $('unlock').classList.add('on'); $('unlock').textContent = 'Audio on';
+    if (!report.playTest) window.PLAYTEST = playTest();
+  };
+  window.unlockAudio = () => $('unlock').onclick();
+
+  // procedural impulse responses (rendered at half rate)
+  for (const kind of ['hangar', 'void']) {
+    const ir = _sfxDebug.ir(kind, 32000), buf = new AudioBuffer({ numberOfChannels: 2, length: ir.chans[0].length, sampleRate: ir.rate });
+    ir.chans.forEach((d, c) => buf.getChannelData(c).set(d));
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h3><span>IR · ${kind}</span><small>${ir.rate / 1000}k stereo · ${buf.duration.toFixed(2)} s</small></h3><canvas class="spec" width="360" height="150"></canvas>`;
+    $('grid').appendChild(card);
+    drawBuffer(card.querySelector('canvas'), buf, kind);
+  }
+
+  // ---------- layer analysis: render each layer solo (variant 1, dry, before reverb/normalization)
+  async function layerReport(name, card) {
+    const first = await _sfxDebug.renderLayer(name, 0, 0);
+    const out = [];
+    for (let k = 0; k < first.layers; k++) {
+      const r = k === 0 ? first : await _sfxDebug.renderLayer(name, 0, k);
+      let pk = 0, ss = 0, n = 0;
+      for (const d of r.chans) for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; ss += d[i] * d[i]; n++; }
+      out.push({ k, peakDb: dB(pk), rmsDb: dB(Math.sqrt(ss / n)) });
+    }
+    if (card) card.querySelector('.layers').textContent = 'layers (peak/rms dB): ' + out.map((o) => `#${o.k} ${f1(o.peakDb)}/${f1(o.rmsDb)}`).join('  ');
+    return out;
+  }
+  window.layerReport = layerReport;
+  $('layersAll').onclick = async () => { const all = {}; for (const n of names) all[n] = await layerReport(n, $('card-' + n)); window.LAYERS = all; };
+
+  // ---------- stress: 4 ships firing + hits + explosions for 3 s; records the max voice count
+  $('stress').onclick = () => {
+    let max = 0, calls = 0, played = 0; const t0 = performance.now();
+    const id = setInterval(() => {
+      for (let p = 0; p < 4; p++) { calls++; if (sfx('shot_aurora', { x: 40 + p * 50 })) played++; }
+      for (let k = 0; k < 3; k++) { calls++; if (sfx('hit_enemy', { x: Math.random() * 240 })) played++; }
+      if (Math.random() < 0.3) { calls++; if (sfx('explode_small', { x: Math.random() * 240 })) played++; }
+      calls++; if (sfx('enemy_shot', { x: Math.random() * 240 })) played++;
+      max = Math.max(max, _sfxDebug.voices());
+      if (performance.now() - t0 > 3000) { clearInterval(id); window.STRESS = { calls, played, maxVoices: max }; $('stress').textContent = `stress: ${played}/${calls} played, max ${max} voices`; }
+    }, 16);
+  };
+
+  // ---------- co-op: 4 pilots on the sim's staggered fire ticks ((tick + slot) % N), the local
+  // pilot at a louder vol than teammates, like player.js does; the local pilot must stay audible
+  $('coop').onclick = () => {
+    // slot 2 fires one tick before the local pilot (slot 1), slot 0 one tick after
+    const ships = [['shot_aurora', 10, 0.75, 0.3], ['shot_aurora', 10, 0.75, 0.3], ['shot_aurora', 10, 0.75, 0.3], ['shot_valkyrie', 9, 0.8, 0.3]];
+    const localSlot = 1, res = { local: 0, localPlayed: 0, remote: 0, remotePlayed: 0 };
+    let tick = 0;
+    const id = setInterval(() => {
+      tick++;
+      for (let slot = 0; slot < 4; slot++) {
+        const [name, N, lv, rv] = ships[slot], local = slot === localSlot;
+        if ((tick + slot) % N) continue;
+        const h = sfx(name, { x: 40 + slot * 50, vol: local ? lv : rv });
+        if (local) { res.local++; if (h) res.localPlayed++; } else { res.remote++; if (h) res.remotePlayed++; }
+      }
+      if (tick >= 300) { clearInterval(id); window.COOP = res; $('coop').textContent = `co-op: local ${res.localPlayed}/${res.local}, team ${res.remotePlayed}/${res.remote}`; }
+    }, 1000 / 60);
+  };
+  setInterval(() => { $('nVoices').textContent = _sfxDebug.voices(); }, 100);
+  document.title = 'SFX ready';
+}
+
+if (bench) document.title = 'SFX built';
+else main();
+</script>
+</body>
+</html>

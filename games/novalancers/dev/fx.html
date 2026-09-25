@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>Nova Lancers — FX lab</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #screen { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #hud { position: fixed; left: 4px; top: 4px; color: #9fe; font: 11px/1.3 monospace; pointer-events: none; white-space: pre; text-shadow: 0 0 2px #000; }
+  #bar { position: fixed; right: 4px; bottom: 4px; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 60vw; }
+  #bar button { font: 11px monospace; background: #1a1638; color: #9fe; border: 1px solid #36425f; padding: 6px 8px; }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<div id="hud"></div>
+<div id="bar"></div>
+<script type="module">
+import { createFX, buildFX, _fxArt } from '../js/fx/particles.js';
+import { createPost } from '../js/fx/post.js';
+import { RAMPS } from '../js/art/palette.js';
+
+// Test harness for js/fx: a stand-in scene, a scripted 16 s loop that fires every effect,
+// and hooks for deterministic capture (window.fxDev: step(n), goto(sec), stress(frames)).
+// URL params:
+//   ?t=SEC        step deterministically to SEC and freeze    ?manual=1   no auto-run (Playwright)
+//   ?nopost=1     2D composite instead of post.js              ?q=high|medium|low|auto
+//   ?stress=1     keep ~1500 particles alive, time update+draw  ?lens=S     black-hole lensing test
+//                 ({x, y, shadow: 20, strength: S}, S = 0.4..0.8 like the horizon background)
+//   ?nofield=1    no field rect (post effects over the HUD strip too)
+//   ?illum=X / ?bloom=X   override post bloom illumination / additive bloom intensity
+//   ?atlas=ex|sp|glow&p=N&z=Z&sx=&sy=  inspect atlases (with ?nopost=1)
+//   stress tuning: ?nolight=1 / ?nomain=1 (draw one layer), ?flush=1 (force raster in timing)
+const qs = new URLSearchParams(location.search);
+const screen = document.getElementById('screen');
+const hud = document.getElementById('hud');
+
+const cssW = window.innerWidth, cssH = window.innerHeight, dpr = window.devicePixelRatio || 1;
+const W = 250, H = Math.ceil(cssH / (cssW / W));
+const FX0 = 5, FY0 = Math.floor((H - 400) / 2);
+const main = Object.assign(document.createElement('canvas'), { width: W, height: H });
+const light = Object.assign(document.createElement('canvas'), { width: W, height: H });
+const ctx = main.getContext('2d', { alpha: false });
+const lctx = light.getContext('2d', { alpha: false });
+
+const t0 = performance.now();
+if (qs.get('async')) await buildFX();
+const fx = createFX();
+const buildMs = performance.now() - t0;
+const post = qs.get('nopost') ? null : createPost(screen);
+let ctx2 = null;
+if (post) post.resize(cssW, cssH, dpr, W, H, cssW / W);
+else {
+  screen.width = Math.round(cssW * Math.min(2, dpr)); screen.height = Math.round(cssH * Math.min(2, dpr));
+  ctx2 = screen.getContext('2d');
+}
+const quality = qs.get('q') === 'auto' ? undefined : qs.get('q') || 'high';
+
+// ---------- stand-in scene ----------
+let seed = 7;
+const rand = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296; };
+const stars = Array.from({ length: 170 }, () => ({ x: rand() * W, y: rand() * H, z: rand(), c: rand() }));
+const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+{
+  const g = bg.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, '#05040c'); gr.addColorStop(0.55, '#0e0b22'); gr.addColorStop(1, '#1a1235');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  // dithered nebula blob
+  const img = g.getImageData(0, 0, W, H);
+  const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const d = Math.hypot((x - 170) / 110, (y - 180) / 80), v = Math.max(0, 1 - d) * 0.55 + Math.sin(x * 0.07 + y * 0.03) * 0.05;
+    if (v * 16 > B[(y & 3) * 4 + (x & 3)] + 3) { const o = (y * W + x) * 4; img.data[o] += 22; img.data[o + 1] += 8; img.data[o + 2] += 34; }
+  }
+  g.putImageData(img, 0, 0);
+}
+function px(g, c, x, y, w = 1, h = 1) { g.fillStyle = c; g.fillRect(x, y, w, h); }
+function drawShip(g, l, x, y, team) {
+  const S = RAMPS.steel, T = [RAMPS.cyan, RAMPS.gold, RAMPS.lime, RAMPS.violet][team];
+  x = Math.round(x); y = Math.round(y);
+  px(g, '#05040c', x - 10, y - 3, 21, 8); px(g, '#05040c', x - 2, y - 12, 5, 22);
+  px(g, S[3], x - 9, y - 2, 19, 5); px(g, S[4], x - 9, y - 2, 19, 2);
+  px(g, S[4], x - 1, y - 11, 3, 20); px(g, S[6], x - 1, y - 11, 1, 18);
+  px(g, T[3], x - 8, y + 1, 4, 1); px(g, T[3], x + 5, y + 1, 4, 1);
+  px(g, T[4], x, y - 6, 1, 3); px(g, T[2], x - 3, y + 6, 7, 2);
+  const f = (frame >> 1) & 1;
+  px(g, T[4], x - 1, y + 9, 3, 3 + f); px(g, '#fff', x, y + 9, 1, 2);
+  l.fillStyle = T[3]; l.globalAlpha = 0.8; l.fillRect(x - 2, y + 9, 5, 5 + f); l.globalAlpha = 1;
+}
+function drawEnemy(g, l, x, y, k) {
+  const K = RAMPS.carapace, M = RAMPS.magenta;
+  x = Math.round(x); y = Math.round(y);
+  px(g, '#05040c', x - 7, y - 5, 15, 11); px(g, K[3], x - 6, y - 4, 13, 9); px(g, K[5], x - 6, y - 4, 13, 2);
+  px(g, K[2], x - 9, y - 2, 3, 6); px(g, K[2], x + 7, y - 2, 3, 6);
+  px(g, M[3], x - 1, y - 1, 3, 3); px(g, M[5], x, y, 1, 1);
+  l.fillStyle = M[3]; l.fillRect(x - 1, y - 1, 3, 3);
+}
+function drawBoss(g, l, x, y) {
+  const K = RAMPS.carapace, M = RAMPS.magenta;
+  x = Math.round(x); y = Math.round(y);
+  px(g, '#05040c', x - 45, y - 20, 91, 41);
+  px(g, K[2], x - 44, y - 19, 89, 39); px(g, K[4], x - 44, y - 19, 89, 4); px(g, K[1], x - 44, y + 12, 89, 7);
+  for (let i = -3; i <= 3; i++) { px(g, K[3], x + i * 12 - 3, y - 12, 7, 18); px(g, M[2], x + i * 12, y + 4, 1, 4); }
+  px(g, M[3], x - 5, y - 5, 11, 11); px(g, M[4], x - 3, y - 3, 7, 7); px(g, M[5], x - 1, y - 1, 3, 3);
+  l.fillStyle = M[3]; l.globalAlpha = 0.9; l.fillRect(x - 5, y - 5, 11, 11); l.globalAlpha = 1;
+}
+
+// ---------- scripted loop ----------
+const LOOP = 16;
+const once = [
+  [0.3, () => fx.explode(40, 110, 'tiny', { palette: 'magenta' })],
+  [0.5, () => fx.explode(80, 150, 'small', { palette: 'fire' })],
+  [0.8, () => fx.explode(172, 120, 'medium', { palette: 'crystal' })],
+  [1.2, () => fx.explode(120, 215, 'large', { palette: 'fire' })],
+  [1.8, () => fx.explode(60, 260, 'medium', { palette: 'plasma' })],
+  [2.2, () => fx.explode(190, 245, 'small', { palette: 'ember' })],
+  [2.8, () => fx.explode(120, 165, 'huge', { palette: 'magenta' })],
+  [7.2, () => fx.nova(120, 330, 0)],
+  [8.8, () => fx.overdrive(120, 330, 1)],
+  [9.4, () => fx.warp(50, 100, 'magenta')],
+  [9.5, () => fx.warp(120, 80, 'crystal')],
+  [9.6, () => fx.warp(190, 100, 'plasma')],
+  [9.8, () => { fx.pickup(60, 300, 'emerald'); fx.pickup(120, 280, 'gold'); fx.pickup(180, 300, 'sapphire'); }],
+  [9.85, () => { fx.text(120, 262, '12800', '#ffd966'); fx.text(60, 285, 'x8', '#79ecff'); fx.text(180, 285, '1UP', '#b8ff6e'); }],
+  [10.4, () => { fx.shockwave(60, 200, 50, 'crystal'); fx.shockwave(180, 200, 30, 'fire'); fx.debris(120, 200, 8, 'ember'); }],
+  [10.6, () => { fx.spark(120, 230, -Math.PI / 2, 'gold', 10); fx.spark(120, 230, Math.PI / 2, 'cyan', 10); }],
+  [11.0, () => fx.explode(120, 90, 'boss', { palette: 'magenta' })],
+  [14.2, () => fx.explode(70, 300, 'large', { palette: 'cyan' })],
+  [14.5, () => fx.explode(180, 150, 'medium', { palette: 'ember' })],
+  [14.8, () => fx.explode(90, 180, 'large', { palette: 'plasma' })],
+];
+let tick = 0, frame = 0, loopBase = 0, nextOnce = 0;
+const beams = () => {
+  const t = (tick - loopBase) / 60;
+  const out = [];
+  if (t > 4.0 && t < 6.4) out.push({ x1: 60, y1: 58, x2: 60, y2: 400, w: 9, phase: t < 4.8 ? 'warn' : 'fire', pal: 'magenta' });
+  if (t > 4.2 && t < 6.4) out.push({ x1: 206, y1: 48, x2: 140, y2: 400, w: 7, phase: t < 5.0 ? 'warn' : 'fire', pal: 'plasma' });
+  if (t > 4.4 && t < 6.4) out.push({ x1: 20, y1: 190, x2: 150, y2: 320, w: 5, phase: t < 5.1 ? 'warn' : 'fire', pal: 'crystal' });
+  if (t > 4.6 && t < 6.4) out.push({ x1: 236, y1: 250, x2: 10, y2: 205, w: 3, phase: t < 5.2 ? 'warn' : 'fire', pal: 'ember' });
+  return out;
+};
+function sim() {
+  const t = (tick - loopBase) / 60;
+  while (nextOnce < once.length && once[nextOnce][0] <= t) once[nextOnce++][1]();
+  // continuous stuff
+  if (t < 11 || t > 14) {
+    if (tick % 6 === 0) { fx.muzzle(116, 318, 0); fx.muzzle(124, 318, 0); }
+    if (tick % 9 === 0 && !(t > 3.6 && t < 6.4)) fx.hit(120 + Math.sin(tick) * 6, 64, 'magenta');
+  }
+  for (let m = 0; m < 3; m++) {
+    const a = tick * 0.03 + m * 2.1;
+    fx.trail(120 + Math.sin(a) * 70, 330 - ((tick * 2 + m * 90) % 300), m === 1 ? 'ember' : 'fire', 1 + (m % 3));
+  }
+  if (tick % 40 === 20) fx.graze(132, 322);
+  fx.update(1 / 60);
+  tick++;
+  if (tick - loopBase >= LOOP * 60 && !qs.get('noloop')) { loopBase = tick; nextOnce = 0; }
+}
+
+// ---------- render ----------
+const LENS_RS = 20;   // painted shadow radius (art px)
+const LENS = !qs.get('lens') ? null : qs.get('lensr')   // ?lensr=R: legacy {x, y, r, strength} shape
+  ? { x: FX0 + 120, y: FY0 + 150, r: +qs.get('lensr'), strength: +qs.get('lens') }
+  : { x: FX0 + 120, y: FY0 + 150, shadow: LENS_RS, strength: +qs.get('lens') };
+const FIELD = qs.get('nofield') ? null : { x: FX0, y: FY0, w: 240, h: 400 };
+const wavesInt = Array.from({ length: 8 }, () => ({ x: 0, y: 0, r: 0, strength: 0 }));
+const pstate = { waves: [], flash: 0, flashColor: [1, 1, 1], chroma: 0, grade: { tint: [1, 0.97, 1.04], lift: [0.01, 0, 0.02], sat: 1.05, contrast: 1.04 }, lensing: null, time: 0, quality, scanlines: true, field: FIELD };
+if (qs.get('illum')) pstate.illum = +qs.get('illum');
+if (qs.get('bloom')) pstate.bloom = +qs.get('bloom');
+// stand-in HUD strip above/below the field: must never move or colour-fringe
+function drawHudStandIn(g, l) {
+  const y0 = Math.max(2, FY0 - 16);
+  g.fillStyle = '#05040c'; g.fillRect(0, 0, W, Math.max(0, FY0));
+  g.fillStyle = '#dfe8f7';
+  for (let i = 0; i < 7; i++) { g.fillRect(90 + i * 8, y0, 5, 7); g.fillStyle = i & 1 ? '#dfe8f7' : '#79ecff'; }
+  g.fillStyle = '#7c8fb3'; for (let i = 0; i < 3; i++) g.fillRect(6 + i * 11, y0 + 1, 7, 5);
+  g.fillStyle = '#ffd966'; g.fillRect(190, y0, 50, 7);
+  g.fillStyle = '#05040c'; g.fillRect(0, FY0 + 400, W, H - FY0 - 400);
+  g.fillStyle = '#36425f'; g.fillRect(40, FY0 + 410, 170, 3); g.fillStyle = '#27c2ea'; g.fillRect(40, FY0 + 410, 60, 3);
+  l.fillStyle = '#0b4f7e'; l.fillRect(40, FY0 + 410, 60, 3);
+}
+function renderFrame() {
+  frame++;
+  const t = (tick - loopBase) / 60;
+  ctx.drawImage(bg, 0, 0);
+  lctx.globalCompositeOperation = 'source-over'; lctx.fillStyle = '#000'; lctx.fillRect(0, 0, W, H);
+  for (const s of stars) {
+    const y = Math.floor((s.y + tick * (6 + s.z * 30) / 60) % H);
+    const c = s.z > 0.93 ? '#dfe8f7' : s.z > 0.6 ? '#7c8fb3' : '#36425f';
+    ctx.fillStyle = c; ctx.fillRect(Math.floor(s.x), y, 1, 1);
+    if (s.z > 0.93 && ((frame + s.c * 60) | 0) % 50 < 40) { lctx.fillStyle = '#526283'; lctx.fillRect(Math.floor(s.x), y, 1, 1); }
+  }
+  if (LENS) {   // stand-in black hole + accretion disk + a grid to read the warp against
+    const g = ctx, hx = LENS.x, hy = LENS.y, rs = LENS_RS;
+    g.fillStyle = '#252050';
+    for (let x = FX0; x < FX0 + 240; x += 12) g.fillRect(x, FY0, 1, 400);
+    for (let y = FY0; y < FY0 + 400; y += 12) g.fillRect(FX0, y, 240, 1);
+    g.fillStyle = '#ff9466'; g.fillRect(hx - 80, hy - 1, 160, 3); lctx.fillStyle = '#e0565b'; lctx.fillRect(hx - 80, hy - 1, 160, 3);
+    g.fillStyle = '#fff4d6'; g.beginPath(); g.arc(hx, hy, rs + 2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#000'; g.beginPath(); g.arc(hx, hy, rs, 0, Math.PI * 2); g.fill();
+  }
+  drawHudStandIn(ctx, lctx);
+  ctx.save(); lctx.save();
+  ctx.translate(FX0, FY0); lctx.translate(FX0, FY0);
+  ctx.beginPath(); ctx.rect(0, 0, 240, 400); ctx.clip();
+  lctx.beginPath(); lctx.rect(0, 0, 240, 400); lctx.clip();
+  if (t < 13.3) drawBoss(ctx, lctx, 120, 90 + Math.sin(tick * 0.02) * 3);
+  drawEnemy(ctx, lctx, 40, 150, 0); drawEnemy(ctx, lctx, 200, 170, 0);
+  drawShip(ctx, lctx, 120, 330, 0);
+  fx.draw(ctx, lctx);
+  if (t > 3.6 && t < 6.2) fx.drawPlayerBeam(ctx, lctx, 120, 318, 70, 7, 0, tick / 60);
+  for (const b of beams()) fx.drawBeam(ctx, lctx, b.x1, b.y1, b.x2, b.y2, b.w, b.phase, tick / 60, b.pal);
+  ctx.restore(); lctx.restore();
+  // a stand-in enemy bullet stream (must stay the most readable thing)
+  for (let i = 0; i < 12; i++) {
+    const bx = FX0 + 120 + Math.cos(i * 0.52 + tick * 0.01) * (40 + (tick % 120)), by = FY0 + 90 + Math.sin(i * 0.52 + tick * 0.01) * (40 + (tick % 120));
+    ctx.fillStyle = '#05040c'; ctx.fillRect(Math.round(bx) - 2, Math.round(by) - 2, 5, 5);
+    ctx.fillStyle = '#ff6fb4'; ctx.fillRect(Math.round(bx) - 1, Math.round(by) - 1, 3, 3);
+    ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(bx), Math.round(by), 1, 1);
+    lctx.fillStyle = '#b3175f'; lctx.fillRect(Math.round(bx) - 1, Math.round(by) - 1, 3, 3);
+  }
+  const ps = fx.postState();
+  pstate.waves.length = 0;
+  for (let i = 0; i < ps.waves.length; i++) {
+    const w = ps.waves[i], o = wavesInt[i];
+    o.x = w.x + FX0; o.y = w.y + FY0; o.r = w.r; o.strength = w.strength;
+    pstate.waves.push(o);
+  }
+  pstate.lensing = LENS;
+  pstate.flash = ps.flash; pstate.flashColor = ps.flashColor; pstate.chroma = ps.chroma; pstate.time = tick / 60;
+  if (post) post.render(main, light, pstate);
+  else {
+    ctx2.imageSmoothingEnabled = false;
+    ctx2.globalCompositeOperation = 'source-over';
+    ctx2.drawImage(main, 0, 0, screen.width, screen.width * H / W);
+    ctx2.globalCompositeOperation = 'lighter'; ctx2.imageSmoothingEnabled = true;
+    ctx2.drawImage(light, 0, 0, screen.width, screen.width * H / W);
+  }
+}
+
+// ---------- stress ----------
+const nullMain = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d');
+const stats = { frames: 0, upd: 0, drw: 0, maxCount: 0, samples: [] };
+function stressStep() {
+  const pal = ['fire', 'magenta', 'crystal', 'ember', 'plasma'];
+  const sizes = ['small', 'medium', 'large'];
+  if (fx.count < 1420) fx.explode(20 + rand() * 200, 30 + rand() * 340, sizes[(rand() * 3) | 0], { palette: pal[(rand() * 5) | 0] });
+  for (let k = 0; k < 6; k++) fx.trail(rand() * 240, rand() * 400, 'fire', 2);
+  const a = performance.now();
+  fx.update(1 / 60);
+  const b = performance.now();
+  ctx.drawImage(bg, 0, 0);
+  lctx.fillStyle = '#000'; lctx.fillRect(0, 0, W, H);
+  ctx.save(); lctx.save(); ctx.translate(FX0, FY0); lctx.translate(FX0, FY0);
+  fx.draw(qs.get('nomain') ? nullMain : ctx, qs.get('nolight') ? null : lctx);
+  ctx.restore(); lctx.restore();
+  if (qs.get('flush')) { ctx.getImageData(0, 0, 1, 1); lctx.getImageData(0, 0, 1, 1); }   // force raster inside the timing
+  const c = performance.now();
+  tick++;
+  if (tick > 120) { stats.frames++; stats.upd += b - a; stats.drw += c - b; stats.maxCount = Math.max(stats.maxCount, fx.count); stats.samples.push(fx.count); }
+  const ps = fx.postState();
+  pstate.waves.length = 0;
+  if (post) post.render(main, light, pstate);
+}
+
+// ---------- atlas viewer ----------
+function showAtlas() {
+  const A = _fxArt();
+  const c = screen; c.width = cssW * 2; c.height = cssH * 2;
+  const g = post ? null : ctx2;
+  if (!g) return;
+  g.imageSmoothingEnabled = false; g.fillStyle = '#222'; g.fillRect(0, 0, c.width, c.height);
+  const which = qs.get('atlas');
+  const img = which === 'glow' ? A.glow : which === 'sp' ? A.sp[+(qs.get('p') || 0)] : A.ex[+(qs.get('p') || 0)] || A.ex[0];
+  const z = +(qs.get('z') || 2);
+  g.drawImage(img, +(qs.get('sx') || 0), +(qs.get('sy') || 0), c.width / z, c.height / z, 0, 0, c.width, c.height);
+}
+
+// ---------- drive ----------
+// Heavy co-op load (critique scenario): 4 engine trails, 60 trailing bullets calling trail()
+// every 2 ticks, 6 kills/s, a boss chain, a nova and 3 firing beams. Returns pool stats.
+function coopStress(sec) {
+  const bul = Array.from({ length: 60 }, (_, i) => ({ x: (i * 37) % 240, y: (i * 53) % 400, vx: Math.sin(i) * 60, vy: 70 + (i % 7) * 10 }));
+  const pal = ['fire', 'magenta', 'crystal', 'ember', 'plasma'];
+  let boss = false, nova = false, maxN = 0;
+  for (let f = 0; f < sec * 60; f++) {
+    const t = f / 60;
+    for (let p = 0; p < 4; p++) if ((f & 3) === p) fx.trail(40 + p * 50, 360, p, 1);
+    for (const b of bul) {
+      b.x = (b.x + b.vx / 60 + 240) % 240; b.y = (b.y + b.vy / 60) % 400;
+      if ((f & 1) === 0) fx.trail(b.x, b.y - 3, 'ember', 1);
+    }
+    if (f % 10 === 0) fx.explode(20 + rand() * 200, 30 + rand() * 300, ['small', 'medium', 'large'][(rand() * 3) | 0], { palette: pal[(rand() * 5) | 0] });
+    if (!boss && t > 1) { boss = true; fx.explode(120, 100, 'boss', { palette: 'magenta' }); }
+    if (!nova && t > 3.2) { nova = true; fx.nova(120, 330, 0); }
+    fx.update(1 / 60);
+    ctx.save(); lctx.save(); ctx.translate(FX0, FY0); lctx.translate(FX0, FY0);
+    fx.draw(ctx, lctx);
+    fx.drawBeam(ctx, lctx, 60, 20, 60, 400, 9, 'fire', t, 'magenta');
+    fx.drawBeam(ctx, lctx, 200, 20, 120, 400, 7, 'fire', t, 'plasma');
+    fx.drawPlayerBeam(ctx, lctx, 150, 330, 40, 7, 1, t);
+    ctx.restore(); lctx.restore();
+    maxN = Math.max(maxN, fx.count);
+  }
+  return { maxN, pools: fx._stats() };
+}
+
+// Auto-quality simulation: drives post.render() on a timer with a synthetic cadence.
+// pattern: 'load' (loading-screen jank 30-200 ms for 4 s, then 60 fps), 'cap30' (steady 33.3 ms),
+// 'slow' (post-bound 28 ms that improves 40 % per level), 'fill' (only 'low' helps),
+// 'cpu' (28 ms regardless of level)
+async function autoSim(pattern, ms) {
+  post.setQuality('high');
+  pstate.quality = undefined;
+  const log = [];
+  const t0 = performance.now();
+  let fakeT = 0;
+  const realNow = performance.now.bind(performance);
+  const lvl = () => ({ high: 0, medium: 1, low: 2 })[post.quality];
+  performance.now = () => fakeT;
+  try {
+    let q0 = '';
+    while (fakeT < ms) {
+      let d;
+      if (pattern === 'load') d = fakeT < 4000 ? 30 + rand() * 170 : 16.7 + (rand() - 0.5) * 2;
+      else if (pattern === 'cap30') d = 33.3 + (rand() - 0.5) * 1.5;
+      else if (pattern === 'slow') d = 28 * Math.pow(0.6, lvl()) + rand() * 3;
+      else if (pattern === 'fill') d = (lvl() < 2 ? 26 : 16) + rand() * 2;     // only 'low' (DPR 1.5) helps
+      else d = 28 + rand() * 3;
+      fakeT += d;
+      post.render(main, light, pstate);
+      if (post.quality !== q0) { log.push(`${(fakeT / 1000).toFixed(1)}s:${post.quality}`); q0 = post.quality; }
+    }
+  } finally { performance.now = realNow; }
+  return { log: log.join(' '), final: post.quality, auto: post.autoQuality, wallMs: Math.round(realNow() - t0) };
+}
+
+window.fxDev = {
+  fx, post, stats, buildMs, ctx, lctx, main, light, coopStress, autoSim,
+  step(n = 1) { for (let i = 0; i < n; i++) sim(); renderFrame(); return fx.count; },
+  // beams record their sparks when drawn, so render the last few steps of a jump
+  goto(sec) { while ((tick - loopBase) / 60 < sec - 0.2) sim(); while ((tick - loopBase) / 60 < sec) { sim(); renderFrame(); } renderFrame(); return fx.count; },
+  render: renderFrame,
+  get tick() { return tick; },
+  stress(n) { for (let i = 0; i < n; i++) stressStep(); return { frames: stats.frames, updMs: stats.upd / stats.frames, drawMs: stats.drw / stats.frames, maxCount: stats.maxCount, avgCount: stats.samples.reduce((a, b) => a + b, 0) / stats.samples.length }; },
+};
+
+if (qs.get('atlas')) showAtlas();
+else if (qs.get('t')) window.fxDev.goto(+qs.get('t'));
+else if (!qs.get('manual')) {
+  let last = performance.now(), acc = 0, fpsE = 60;
+  const loop = (now) => {
+    const d = Math.min(100, now - last); last = now; fpsE += (1000 / Math.max(1, d) - fpsE) * 0.05;
+    if (qs.get('stress')) stressStep();
+    else { acc += d / 1000; let n = 0; while (acc >= 1 / 60 && n < 4) { sim(); acc -= 1 / 60; n++; } renderFrame(); }
+    hud.textContent = `fps ${fpsE.toFixed(0)}  particles ${fx.count}\npost ${post ? post.quality : 'off (2D)'}  build ${buildMs.toFixed(0)}ms\nt ${((tick - loopBase) / 60).toFixed(1)}s` +
+      (qs.get('stress') && stats.frames ? `\nupd ${(stats.upd / stats.frames).toFixed(2)}ms draw ${(stats.drw / stats.frames).toFixed(2)}ms` : '');
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+  const bar = document.getElementById('bar');
+  const btn = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; bar.appendChild(b); };
+  btn('boom', () => fx.explode(120, 200, ['small', 'medium', 'large', 'huge'][(Math.random() * 4) | 0], { palette: ['fire', 'magenta', 'crystal', 'ember', 'plasma'][(Math.random() * 5) | 0] }));
+  btn('boss', () => fx.explode(120, 100, 'boss', { palette: 'magenta' }));
+  btn('nova', () => fx.nova(120, 330, (Math.random() * 4) | 0));
+  btn('q', () => post && post.setQuality({ high: 'medium', medium: 'low', low: 'high' }[post.quality]));
+}
+</script>
+</body>
+</html>

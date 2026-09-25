@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>Nova Lancers — Co-op Pixel Starfighter · Milgie.com</title>
+  <meta name="description" content="Nova Lancers: a co-op pixel-art sci-fi shooter. Five sectors, four Lancer ships, epic bosses, synthesized soundtrack. Play solo or with up to 4 friends online — right in your phone's browser." />
+  <meta name="theme-color" content="#05040c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Nova Lancers" />
+  <meta property="og:title" content="Nova Lancers — Co-op Pixel Starfighter" />
+  <meta property="og:description" content="Squad up with friends and punch through five sectors of the Choir. Plays in your browser." />
+  <meta property="og:image" content="https://milgie.com/games/assets/catalog/nova-lancers.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./assets/icon-192.png" />
+  <link rel="apple-touch-icon" href="./assets/icon-180.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <!-- On-screen display. WebGL (post-fx) when available, 2D fallback otherwise. -->
+  <canvas id="screen" aria-label="Nova Lancers game view"></canvas>
+
+  <!-- In-game touch controls (styled by css, wired by js/engine/input.js) -->
+  <div id="touchControls" class="hidden" aria-hidden="true">
+    <button id="btnNova" class="tbtn" type="button" aria-label="Nova bomb">
+      <span class="tbtn-ring"></span>
+      <span class="tbtn-icon">✸</span>
+      <span class="tbtn-label">NOVA</span>
+      <span class="tbtn-count" id="novaCount">2</span>
+    </button>
+    <button id="btnOver" class="tbtn" type="button" aria-label="Overdrive">
+      <span class="tbtn-ring"></span>
+      <span class="tbtn-icon">⚡</span>
+      <span class="tbtn-label">OVERDRIVE</span>
+    </button>
+    <button id="btnPause" class="tbtn-small" type="button" aria-label="Pause">❚❚</button>
+  </div>
+
+  <!-- HTML overlay screens (js/ui/screens.js) -->
+  <div id="ui"></div>
+
+  <noscript>
+    <div style="position:fixed;inset:0;display:grid;place-items:center;color:#dfe8f7;font-family:monospace;background:#05040c">
+      Nova Lancers needs JavaScript enabled.
+    </div>
+  </noscript>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

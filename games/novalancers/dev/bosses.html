@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — boss art lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #07060f; color: #cfd6ea; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  header { padding: 10px 14px; border-bottom: 1px solid #1d1a33; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  header a { color: #79ecff; }
+  h2 { margin: 18px 14px 6px; font-size: 14px; color: #ff6fb4; letter-spacing: 1px; }
+  h3 { margin: 10px 14px 4px; font-size: 11px; color: #7c8fb3; font-weight: normal; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 14px; align-items: flex-start; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; max-width: 100%; height: auto; }
+  .row > div { max-width: 100%; }
+  .cap { color: #7c8fb3; font-size: 10px; margin-top: 2px; }
+  .sheet { background: #0c0a18; outline: 1px solid #1d1a33; }
+  #stat { color: #b8ff6e; }
+  #lint { padding: 4px 14px; color: #ffab4f; white-space: pre-wrap; }
+  #lint.ok { color: #6fd23f; }
+</style>
+</head>
+<body>
+<header>
+  <b>BOSS ART LAB</b>
+  <span id="stat">generating…</span>
+  <span>
+    <a href="?">all</a> · <a href="?boss=warden">warden</a> · <a href="?boss=wyrm">wyrm</a> ·
+    <a href="?boss=prism">prism</a> · <a href="?boss=dread">dread</a> · <a href="?boss=heart">heart</a>
+  </span>
+  <label><input type="checkbox" id="anim" checked /> animate</label>
+  <a href="?meta=1">BOSS_META overlay</a> · <a href="?bullets=1">with enemy bullets</a> · <a href="?lens=0">no lensing</a>
+</header>
+<div id="lint"></div>
+<div id="out"></div>
+<script type="module">
+// Boss art lab. Views per boss:
+//   1x / 3x  — assembled boss over a plain starfield (true pixels)
+//   in game  — the boss over its REAL sector background, composited by the REAL post.js
+//              (main + light + bloom, grade, lensing) at 3x; falls back to a 2D emulation of
+//              the same maths when WebGL / the other modules are unavailable
+//   sheets   — every frame / direction, color + emissive layers
+// Query: ?boss=<name> ?t=<seconds> (freeze) ?meta=1 ?bullets=1 ?lens=0 ?show=scene,x3,game,sheets
+import { makeBossArt, BOSS_META } from '../js/art/bossart.js';
+
+const Q = new URLSearchParams(location.search);
+const ONLY = Q.get('boss');
+const FIXED_T = Q.has('t') ? parseFloat(Q.get('t')) : null;
+const SHOW = (Q.get('show') || 'scene,x3,game,sheets').split(',');
+const META = Q.has('meta');
+const BULLETS = Q.get('bullets') === '1';
+const LENS = Q.get('lens') !== '0';
+const out = document.getElementById('out');
+
+const t0 = performance.now();
+const prog = [], lint = [];
+const S = await makeBossArt((p) => prog.push(p), { lint, bosses: ONLY ? [ONLY] : undefined });
+const ms = performance.now() - t0;
+let nCanvas = 0;
+for (const k in S) nCanvas += S[k].frames.length + (S[k].emissive ? S[k].emissive.length : 0);
+document.getElementById('stat').textContent =
+  `generated ${Object.keys(S).length} sprites / ${nCanvas} canvases in ${ms.toFixed(0)} ms · ${prog.length} progress steps`;
+const lintEl = document.getElementById('lint');
+lintEl.textContent = lint.length ? 'LINT\n' + lint.join('\n') : 'lint: every frame outlined inside its border, every loop closes';
+lintEl.className = lint.length ? '' : 'ok';
+window.__bossStats = { ms, sprites: Object.keys(S).length, canvases: nCanvas, prog, lint };
+
+// ---- optional real modules (owned by other agents; used read-only for in-game previews)
+const tryImport = async (p) => { try { return await import(p); } catch (e) { return null; } };
+let BG = null, PO = null, SPR = null, gameMods = null;
+function loadGameMods() {
+  return gameMods || (gameMods = (async () => {
+    [BG, PO, SPR] = await Promise.all([tryImport('../js/art/backgrounds.js'), tryImport('../js/fx/post.js'), BULLETS ? tryImport('../js/art/sprites.js') : null]);
+    if (SPR?.buildSprites) {
+      try { await SPR.buildSprites(() => {}); } catch (e) { console.error('sprites.js build failed (bullet preview off):', e.message); SPR = null; }
+    }
+  })());
+}
+const SECTOR = { warden: 'aurora', wyrm: 'cinder', prism: 'veil', dread: 'wreck', heart: 'horizon' };
+const BULLET_SET = { warden: ['eb_orb_p', 'eb_small_v', 'eb_small_p'], wyrm: ['eb_orb_o', 'eb_small_o', 'eb_star_o'],
+  prism: ['eb_orb_c', 'eb_needle_c', 'eb_small_v'], dread: ['eb_orb_o', 'eb_small_p', 'eb_big_o'], heart: ['eb_orb_p', 'eb_big_p', 'eb_small_v'] };
+
+// ---- sprite drawing (mirrors sprites.js semantics: x,y = center, dir radians 0 = up, clockwise)
+function dirIndex(def, dir) {
+  if (def.dirs <= 1) return 0;
+  const step = (Math.PI * 2) / def.dirs;
+  return ((Math.round(dir / step) % def.dirs) + def.dirs) % def.dirs;
+}
+function frameCanvas(def, frame, dir, em) {
+  const f = ((frame % def.frameCount) + def.frameCount) % def.frameCount;
+  const idx = dirIndex(def, dir || 0) * def.frameCount + f;
+  return em ? (def.emissive ? def.emissive[idx] : null) : def.frames[idx];
+}
+function draw(ctx, name, frame, x, y, o = {}) {
+  const def = S[name]; if (!def) return;
+  const cv = frameCanvas(def, frame, o.dir, o.em);
+  if (!cv) return;
+  const px = Math.round(x) - (def.w >> 1), py = Math.round(y) - (def.h >> 1);
+  ctx.save();
+  if (o.alpha !== undefined) ctx.globalAlpha *= o.alpha;
+  if (o.flipX) { ctx.translate(px + def.w, py); ctx.scale(-1, 1); ctx.drawImage(cv, 0, 0); }
+  else ctx.drawImage(cv, px, py);
+  ctx.restore();
+}
+const aim = (x, y, tx, ty) => Math.atan2(tx - x, -(ty - y));
+// debug overlay of BOSS_META points / collision shapes (only on the color pass)
+function mark(ctx, em, x, y, color, r = 0) {
+  if (!META || em) return;
+  ctx.save(); ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 1;
+  ctx.fillRect(Math.round(x) - 1, Math.round(y), 3, 1); ctx.fillRect(Math.round(x), Math.round(y) - 1, 1, 3);
+  if (r) { ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(Math.round(x) + 0.5, Math.round(y) + 0.5, r, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.restore();
+}
+function rects(ctx, em, x, y, list, color = 'rgba(80,255,120,0.8)') {
+  if (!META || em || !list) return;
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1;
+  for (const [rx, ry, rw, rh] of list) ctx.strokeRect(Math.round(x + rx) + 0.5, Math.round(y + ry) + 0.5, rw, rh);
+  ctx.restore();
+}
+function capsule(ctx, em, x1, y1, x2, y2, r) {
+  if (!META || em) return;
+  ctx.save(); ctx.strokeStyle = 'rgba(80,255,120,0.8)'; ctx.lineWidth = r * 2; ctx.globalAlpha = 0.3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore();
+}
+
+// ---- starfield backdrop
+function starfield(ctx, W, H, seed = 7) {
+  let s = seed;
+  const R = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const gr = ctx.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, '#0a0818'); gr.addColorStop(1, '#05040c');
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  for (let k = 0; k < W * H / 90; k++) {
+    const b = R();
+    ctx.fillStyle = b > 0.97 ? '#dfe8f7' : b > 0.85 ? '#7c8fb3' : '#322c6a';
+    ctx.fillRect((R() * W) | 0, (R() * H) | 0, 1, 1);
+  }
+}
+
+// ---- assembled scenes: fn(ctx, t, em) draws the boss (em = emissive pass); returns the
+// point enemy bullets fan out from (for the ?bullets=1 preview)
+const player = { x: 150, y: 330 };
+const SCENES = {
+  warden: { h: 250, parts: ['boss_warden', 'boss_warden_arm', 'boss_warden_arm_r', 'boss_warden_turret', 'boss_warden_core', 'boss_warden_hatch'], fn(ctx, t, em) {
+    const M = BOSS_META.warden;
+    const hx = 120, hy = 70 + Math.round(Math.sin(t * 0.8) * 2);
+    draw(ctx, 'boss_warden', Math.floor(t * 3), hx, hy, { em });
+    const sw = Math.round(Math.sin(t * 1.3) * 3);
+    const [lx, ly] = [hx + M.armL[0] - M.armPivot[0], hy + M.armL[1] - M.armPivot[1] + sw];
+    const [rx, ry] = [hx + M.armR[0] + M.armPivot[0], hy + M.armR[1] - M.armPivot[1] - sw];
+    draw(ctx, 'boss_warden_arm', 0, lx, ly, { em });
+    // right arm: the pre-mirrored sprite keeps top-left lighting (fallback: flipX of the left)
+    if (S[M.armRSprite]) draw(ctx, M.armRSprite, 0, rx, ry, { em });
+    else draw(ctx, 'boss_warden_arm', 0, rx, ry, { em, flipX: true });
+    for (const [x, y] of M.turrets) draw(ctx, 'boss_warden_turret', 0, hx + x, hy + y, { em, dir: aim(hx + x, hy + y, player.x, player.y) });
+    draw(ctx, 'boss_warden_core', Math.floor(t * 8), hx + M.core[0], hy + M.core[1], { em });
+    // bay doors cycle shut -> open -> shut every 4 s (frame = round(open * 4))
+    if (M.hatch) draw(ctx, M.hatch.sprite, Math.round(4 * Math.min(1, Math.max(0, 1.5 - Math.abs(((t / 4) % 1) * 4 - 2)))), hx + M.core[0], hy + M.core[1], { em });
+    rects(ctx, em, hx, hy, M.rects);
+    mark(ctx, em, hx + M.core[0], hy + M.core[1], '#0ff', M.coreR);
+    mark(ctx, em, hx + M.bay[0], hy + M.bay[1], '#ff0');
+    mark(ctx, em, hx + M.armL[0], hy + M.armL[1], '#f80'); mark(ctx, em, hx + M.armR[0], hy + M.armR[1], '#f80');
+    const c = M.armCapsule;
+    capsule(ctx, em, lx + c.from[0], ly + c.from[1], lx + c.to[0], ly + c.to[1], c.r);
+    capsule(ctx, em, rx - c.from[0], ry + c.from[1], rx - c.to[0], ry + c.to[1], c.r);
+    mark(ctx, em, lx + M.armTip[0], ly + M.armTip[1], '#f0f', 3);
+    for (const [x, y] of M.turrets) {
+      const a = aim(hx + x, hy + y, player.x, player.y);
+      mark(ctx, em, hx + x, hy + y, '#fff');
+      mark(ctx, em, hx + x + Math.sin(a) * M.turretMuzzle, hy + y - Math.cos(a) * M.turretMuzzle, '#ff0');
+    }
+    return [hx + M.core[0], hy + M.core[1]];
+  } },
+  wyrm: { h: 300, parts: ['boss_wyrm_head', 'boss_wyrm_seg', ...(BOSS_META.wyrm.segVariants || []).slice(1), 'boss_wyrm_tail'], fn(ctx, t, em) {
+    const M = BOSS_META.wyrm;
+    // sample a winding path by arc length so segments sit exactly segSpacing apart
+    const n = 9, pts = [];
+    const path = (s) => [120 + Math.sin(s * 0.03 - t * 1.4) * 55, 262 - s * 0.82];
+    let s = 0, prev = path(0); pts.push(prev);
+    while (pts.length < n + 2) {
+      s += 0.25; const p = path(s);
+      if (Math.hypot(p[0] - prev[0], p[1] - prev[1]) >= (pts.length === n + 1 ? M.tailSpacing : M.segSpacing)) { pts.push(p); prev = p; }
+    }
+    // tail at the end, head at pts[0] -> draw tail first
+    const last = pts[n + 1], pre = pts[n];
+    draw(ctx, 'boss_wyrm_tail', 0, last[0], last[1], { em, dir: aim(pre[0], pre[1], last[0], last[1]) });
+    const V = M.segVariants || ['boss_wyrm_seg'];
+    for (let k = n; k >= 1; k--) {
+      // segment dir = body tangent, pointing toward the head
+      const dir = aim(pts[k + 1][0], pts[k + 1][1], pts[k - 1][0], pts[k - 1][1]);
+      draw(ctx, V[k % V.length], (k === 4 || k === 5) ? 1 : 0, pts[k][0], pts[k][1], { em, dir });
+    }
+    const hd = aim(pts[1][0], pts[1][1], pts[0][0], pts[0][1]);
+    const open = Math.floor(t * 1.5) % 2;
+    draw(ctx, 'boss_wyrm_head', open, pts[0][0], pts[0][1], { em, dir: hd });
+    const c = Math.cos(hd), sn = Math.sin(hd), rot = ([mx, my]) => [pts[0][0] + mx * c - my * sn, pts[0][1] + mx * sn + my * c];
+    if (META && !em) {
+      for (let k = 1; k <= n; k++) mark(ctx, em, pts[k][0], pts[k][1], '#0f8', M.segR);
+      mark(ctx, em, last[0], last[1], '#0f8', M.tailR);
+      mark(ctx, em, pts[0][0], pts[0][1], '#0ff', M.headR);
+      const [mx, my] = rot(M.mouth); mark(ctx, em, mx, my, '#f0f', 2);
+      for (const e of M.eyes) { const [ex, ey] = rot(e); mark(ctx, em, ex, ey, '#ff0'); }
+    }
+    return rot(M.mouth);
+  } },
+  prism: { h: 230, parts: ['boss_prism', 'boss_prism_shard'], fn(ctx, t, em) {
+    const M = BOSS_META.prism;
+    const cx = 120, cy = 100;
+    const shards = 6;
+    const behind = [], front = [];
+    for (let k = 0; k < shards; k++) {
+      const a = t * 0.6 + (k / shards) * Math.PI * 2;
+      const x = cx + Math.sin(a) * M.shardOrbitR, y = cy - Math.cos(a) * M.shardOrbitR * 0.55;
+      (Math.cos(a) > 0 ? behind : front).push([x, y, a]);
+    }
+    for (const [x, y, a] of behind) draw(ctx, 'boss_prism_shard', 0, x, y, { em, dir: a });
+    draw(ctx, 'boss_prism', Math.floor(t * 8), cx, cy, { em });
+    for (const [x, y, a] of front) draw(ctx, 'boss_prism_shard', 0, x, y, { em, dir: a });
+    if (META && !em) {
+      mark(ctx, em, cx + M.eye[0], cy + M.eye[1], '#f0f', M.coreR);
+      ctx.save(); ctx.strokeStyle = 'rgba(80,255,120,0.8)'; ctx.beginPath(); ctx.ellipse(cx + 0.5, cy + 0.5, M.bodyRx, M.bodyRy, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      for (const [x, y, a] of [...behind, ...front]) capsule(ctx, em, x - Math.sin(a) * M.shardLen / 2, y + Math.cos(a) * M.shardLen / 2, x + Math.sin(a) * M.shardLen / 2, y - Math.cos(a) * M.shardLen / 2, M.shardR);
+    }
+    return [cx + M.eye[0], cy + M.eye[1]];
+  } },
+  dread: { h: 250, parts: ['boss_dread', 'boss_dread_shadow', 'boss_dread_cannon', 'boss_dread_turret', 'boss_dread_hatch', 'boss_dread_shutter'], fn(ctx, t, em) {
+    const M = BOSS_META.dread;
+    const hx = 120, hy = 80;
+    if (!em && M.shadow && S[M.shadow.sprite]) draw(ctx, M.shadow.sprite, 0, hx + M.shadow.dx, hy + M.shadow.dy);
+    draw(ctx, 'boss_dread', Math.floor(t * 2), hx, hy, { em });
+    M.hatches.forEach(([x, y], k) => draw(ctx, 'boss_dread_hatch', (Math.floor(t) + k) % 2, hx + x, hy + y, { em }));
+    draw(ctx, 'boss_dread_cannon', Math.floor(t * 3) % 4, hx + M.cannon[0], hy + M.cannon[1], { em });
+    if (M.shutter) draw(ctx, M.shutter.sprite, Math.round(4 * Math.min(1, Math.max(0, 1.5 - Math.abs(((t / 4) % 1) * 4 - 2)))), hx + M.shutter.at[0], hy + M.shutter.at[1], { em });
+    for (const [x, y] of M.turrets) draw(ctx, 'boss_dread_turret', 0, hx + x, hy + y, { em, dir: aim(hx + x, hy + y, player.x, player.y) });
+    rects(ctx, em, hx, hy, M.rects);
+    mark(ctx, em, hx + M.bridge[0], hy + M.bridge[1], '#f0f', M.bridgeR);
+    mark(ctx, em, hx + M.cannon[0] + M.cannonMuzzle[0], hy + M.cannon[1] + M.cannonMuzzle[1], '#ff0', 2);
+    for (const [x, y] of M.hatches) mark(ctx, em, hx + x, hy + y, '#0ff');
+    for (const [x, y] of M.turrets) {
+      const a = aim(hx + x, hy + y, player.x, player.y);
+      mark(ctx, em, hx + x + Math.sin(a) * M.turretMuzzle, hy + y - Math.cos(a) * M.turretMuzzle, '#ff0');
+    }
+    return [hx + M.cannon[0] + M.cannonMuzzle[0], hy + M.cannon[1] + M.cannonMuzzle[1]];
+  } },
+  heart: { h: 300, parts: ['boss_heart', 'boss_heart_halo', 'boss_heart_petal', 'boss_heart_core2'], fn(ctx, t, em) {
+    const M = BOSS_META.heart;
+    const cx = 120, cy = 110;
+    const n = 8;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + Math.sin(t * 0.7) * 0.15 + Math.PI / n;
+      draw(ctx, 'boss_heart_petal', 0, cx + Math.sin(a) * M.petalR, cy - Math.cos(a) * M.petalR, { em, dir: a });
+      if (META && !em) mark(ctx, em, cx + Math.sin(a) * (M.petalR + M.petalTip), cy - Math.cos(a) * (M.petalR + M.petalTip), '#ff0');
+    }
+    draw(ctx, 'boss_heart_halo', Math.floor(t * 8), cx, cy, { em });
+    draw(ctx, 'boss_heart', Math.floor(t * 6) % 4, cx, cy, { em });
+    draw(ctx, 'boss_heart_core2', Math.floor(t * 8), 196, 250, { em });
+    draw(ctx, 'boss_heart', 4 + (Math.floor(t) & 1), 40, 262, { em });
+    if (META && !em) {
+      mark(ctx, em, cx + M.iris[0], cy + M.iris[1], '#f0f', M.coreR);
+      mark(ctx, em, cx, cy, '#0f8', M.haloR - M.haloBand); mark(ctx, em, cx, cy, '#0f8', M.haloR + M.haloBand);
+      mark(ctx, em, cx, cy, '#ff0', M.petalR);
+      mark(ctx, em, 196, 250, '#f0f', M.core2R);
+    }
+    return [cx + M.iris[0], cy + M.iris[1]];
+  } },
+};
+
+// ---- in-game preview: real background + real post (or a 2D emulation of its maths)
+const bgs = {};
+async function background(key) {
+  if (!BG?.createBackground) return null;
+  if (!bgs[key]) {
+    try {
+      if (BG.prewarmBackground) await BG.prewarmBackground(key);
+      bgs[key] = BG.createBackground(key);
+    } catch (e) { console.error(e); bgs[key] = null; }
+  }
+  return bgs[key];
+}
+let post = null, postCanvas = null;
+function getPost(W, H, k) {
+  if (!PO?.createPost) return null;
+  if (!postCanvas) { postCanvas = document.createElement('canvas'); post = PO.createPost(postCanvas); }
+  if (!post) return null;
+  if (postCanvas.width !== W * k || postCanvas.height !== H * k) {
+    postCanvas.width = W * k; postCanvas.height = H * k;
+    postCanvas.style.width = W * k + 'px'; postCanvas.style.height = H * k + 'px';
+    post.resize(W * k, H * k, 1, W, H);
+  }
+  return post;
+}
+function bulletFan(d, name, x0, y0, t) {
+  if (!SPR?.drawSprite) return;
+  const set = BULLET_SET[name];
+  let k = 0;
+  for (let r = 16; r < 170; r += 16) for (let a = -1.2; a <= 1.21; a += 0.4) {
+    const b = set[k++ % set.length];
+    const aa = a + Math.sin(r * 0.05 + t) * 0.05;
+    d(b, k, x0 + Math.sin(aa) * r, y0 + Math.cos(aa) * r, { dir: aa + Math.PI });
+  }
+}
+// renders one in-game frame into `dst` (a 2D canvas of size W*k x H*k)
+async function renderGame(name, t, dst, k = 3) {
+  await loadGameMods();
+  const sc = SCENES[name], W = 240, H = sc.h;
+  const main = document.createElement('canvas'); main.width = W; main.height = H;
+  const light = document.createElement('canvas'); light.width = W; light.height = H;
+  const ctx = main.getContext('2d'), lctx = light.getContext('2d');
+  lctx.fillStyle = '#000'; lctx.fillRect(0, 0, W, H);
+  const bg = await background(SECTOR[name]);
+  if (bg) {
+    bg.resize(W, H, 0, 0);
+    bg.update(1 / 60);
+    bg.draw(ctx, lctx, 900 + t * (bg.scrollSpeed || 20), t);
+  } else starfield(ctx, W, H, 11);
+  const [bx, by] = sc.fn(ctx, t, false);
+  sc.fn(lctx, t, true);
+  if (SPR?.drawSprite) {
+    const d = (n, f, x, y, o = {}) => { SPR.drawSprite(ctx, n, f, x, y, o); SPR.drawSpriteEmissive(lctx, n, f, x, y, o); };
+    bulletFan(d, name, bx, by, t);
+    d('ship_aurora', 2, player.x, player.y, { team: 0 });
+  }
+  const o = dst.getContext('2d');
+  const p = getPost(W, H, k);
+  if (p) {
+    p.render(main, light, { grade: bg?.grade || { tint: [1, 1, 1], lift: [0, 0, 0], sat: 1, contrast: 1 }, waves: [], flash: 0, flashColor: [1, 1, 1],
+      chroma: 0, lensing: LENS && bg?.lensing ? bg.lensing(W, H) : null, time: t, quality: 'high', scanlines: false });
+    o.drawImage(postCanvas, 0, 0);
+    return 'post.js';
+  }
+  // 2D emulation of post: main + light + bloom(light) (bloom ~ 0.9 * blurred light)
+  o.imageSmoothingEnabled = false; o.globalCompositeOperation = 'source-over'; o.globalAlpha = 1;
+  o.drawImage(main, 0, 0, W * k, H * k);
+  o.globalCompositeOperation = 'lighter';
+  o.drawImage(light, 0, 0, W * k, H * k);
+  o.imageSmoothingEnabled = true;
+  o.filter = `blur(${3 * k}px)`; o.globalAlpha = 0.6; o.drawImage(light, 0, 0, W * k, H * k);
+  o.filter = `blur(${1.2 * k}px)`; o.globalAlpha = 0.45; o.drawImage(light, 0, 0, W * k, H * k);
+  o.filter = 'none'; o.globalAlpha = 1; o.globalCompositeOperation = 'source-over';
+  return '2D emulation';
+}
+
+function section(name) {
+  const sc = SCENES[name];
+  if (!sc.parts.some((p) => S[p])) return null;
+  const wrap = document.createElement('section');
+  wrap.innerHTML = `<h2>${name.toUpperCase()}</h2>`;
+  const row = document.createElement('div'); row.className = 'row'; wrap.appendChild(row);
+  const W = 240, H = sc.h;
+  const mk = (w, h, scale, cap) => {
+    const d = document.createElement('div');
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.style.width = w * scale + 'px';
+    d.appendChild(c);
+    const p = document.createElement('div'); p.className = 'cap'; p.textContent = cap; d.appendChild(p);
+    row.appendChild(d);
+    return [c, p];
+  };
+  const views = [];
+  const base = document.createElement('canvas'); base.width = W; base.height = H;
+  if (SHOW.includes('scene')) views.push(['1x', mk(W, H, 1, '1x (true pixels)')[0]]);
+  if (SHOW.includes('x3')) views.push(['3x', mk(W, H, 3, '3x nearest')[0]]);
+  let game = null;
+  if (SHOW.includes('game')) game = mk(W * 3, H * 3, 1, `in game: ${SECTOR[name]} background + post (3x)`);
+  let busy = false;
+  const render = async (t) => {
+    const b = base.getContext('2d'); starfield(b, W, H, 11); sc.fn(b, t, false);
+    for (const [kind, c] of views) {
+      const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(base, 0, 0);
+    }
+    if (game && !busy) {
+      busy = true;
+      const how = await renderGame(name, t, game[0], 3);
+      game[1].textContent = `in game: ${SECTOR[name]} background, composited by ${how} (3x)`;
+      busy = false;
+    }
+  };
+  if (SHOW.includes('sheets')) {
+    for (const p of sc.parts) {
+      const def = S[p]; if (!def) continue;
+      const h3 = document.createElement('h3');
+      h3.textContent = `${p} — ${def.w}×${def.h} · frames ${def.frameCount} · dirs ${def.dirs} · fps ${def.fps} · emissive ${def.emissive ? 'yes' : 'no'}`;
+      wrap.appendChild(h3);
+      const n = def.frames.length, cols = Math.min(n, Math.max(1, Math.floor(1100 / ((def.w + 2) * 2)))), rows = Math.ceil(n / cols);
+      const r2 = document.createElement('div'); r2.className = 'row'; wrap.appendChild(r2);
+      for (const em of [false, true]) {
+        if (em && !def.emissive) continue;
+        const c = document.createElement('canvas'); c.className = 'sheet';
+        c.width = cols * (def.w + 2); c.height = rows * (def.h + 2);
+        const sc2 = n > 16 ? 2 : 3;
+        c.style.width = c.width * sc2 + 'px';
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = em ? '#000' : '#141225'; ctx.fillRect(0, 0, c.width, c.height);
+        for (let k = 0; k < n; k++) ctx.drawImage(em ? def.emissive[k] : def.frames[k], (k % cols) * (def.w + 2) + 1, Math.floor(k / cols) * (def.h + 2) + 1);
+        r2.appendChild(c);
+      }
+    }
+  }
+  return { wrap, render };
+}
+
+const renders = [];
+for (const name of Object.keys(SCENES)) {
+  if (ONLY && ONLY !== name) continue;
+  const r = section(name);
+  if (r) { out.appendChild(r.wrap); renders.push(r.render); }
+}
+const animBox = document.getElementById('anim');
+const start = performance.now();
+let lastDraw = -1e9;
+async function loop(now = performance.now()) {
+  // ~12 fps is plenty for sprite animation and keeps the in-game previews cheap
+  if (FIXED_T !== null || now - lastDraw > 80) {
+    lastDraw = now;
+    const t = FIXED_T ?? (now - start) / 1000;
+    for (const r of renders) await r(t);
+  }
+  if (FIXED_T === null && animBox.checked) requestAnimationFrame(loop);
+}
+animBox.onchange = () => animBox.checked && requestAnimationFrame(loop);
+await loop();
+
+// ---- export hooks for automated screenshots
+function scaled(src, scale) {
+  const c = document.createElement('canvas'); c.width = src.width * scale; c.height = src.height * scale;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+window.__scene = (name, t, scale = 1, crop = null) => {
+  const sc = SCENES[name], W = 240, H = sc.h;
+  const b = document.createElement('canvas'); b.width = W; b.height = H;
+  const bx = b.getContext('2d'); starfield(bx, W, H, 11); sc.fn(bx, t, false);
+  let src = b;
+  if (crop) { const c = document.createElement('canvas'); c.width = crop[2]; c.height = crop[3]; c.getContext('2d').drawImage(b, -crop[0], -crop[1]); src = c; }
+  return scaled(src, scale).toDataURL();
+};
+// in-game composite (real background + post) at 3x, optional crop [x, y, w, h] in art px
+window.__game = async (name, t, crop = null, zoom = 1) => {
+  const sc = SCENES[name];
+  const c = document.createElement('canvas'); c.width = 240 * 3; c.height = sc.h * 3;
+  await renderGame(name, t, c, 3);
+  if (!crop) return c.toDataURL();
+  const o = document.createElement('canvas'); o.width = crop[2] * 3 * zoom; o.height = crop[3] * 3 * zoom;
+  const x = o.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.drawImage(c, crop[0] * 3, crop[1] * 3, crop[2] * 3, crop[3] * 3, 0, 0, o.width, o.height);
+  return o.toDataURL();
+};
+window.__sheet = (name, scale = 4, em = false, cols = 0, bg = '#141225') => {
+  const def = S[name], n = def.frames.length; cols = cols || n;
+  const rows = Math.ceil(n / cols);
+  const c = document.createElement('canvas'); c.width = cols * (def.w + 2); c.height = rows * (def.h + 2);
+  const x = c.getContext('2d'); x.fillStyle = em ? '#000' : bg; x.fillRect(0, 0, c.width, c.height);
+  for (let k = 0; k < n; k++) x.drawImage(em ? def.emissive[k] : def.frames[k], (k % cols) * (def.w + 2) + 1, Math.floor(k / cols) * (def.h + 2) + 1);
+  return scaled(c, scale).toDataURL();
+};
+window.__ready = true;
+</script>
+</body>
+</html>

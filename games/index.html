@@ -144,6 +144,12 @@
       background-position: center top;
     }
 
+    /* Nova Lancers */
+    .gameTile.nova-lancers::before {
+      background-image: url('./assets/catalog/nova-lancers.png');
+      background-position: center 30%;
+    }
+
     /* Nebula Prospect */
     .gameTile.nebula-prospect::before {
       background-image: url('./assets/catalog/nebula-prospect.png'), url('./assets/catalog/nebula-prospect.svg');
@@ -172,7 +178,7 @@
   <div class="status-bar-header" aria-hidden="true">
     <div class="wrap">
       <span class="sbh-item"><span class="sbh-dot green"></span>NETWORK ONLINE</span>
-      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 8 ACTIVE</span>
+      <span class="sbh-item"><span class="sbh-dot amber"></span>GAMES: 9 ACTIVE</span>
       <span class="sbh-item"><span class="sbh-dot blue"></span>SYS v2.0</span>
       <span class="sbh-spacer"></span>
       <span class="sbh-time" id="sys-time">--:--:--</span>
@@ -222,7 +228,7 @@
             Browser-based games &amp; interactive experiences.
           </p>
         </div>
-        <span class="section-badge">8 Active Â· 1 Incoming</span>
+        <span class="section-badge">9 Active Â· 1 Incoming</span>
       </div>
 
       <!-- Filter bar -->
@@ -239,8 +245,48 @@
       <section class="card portal" aria-label="Games catalog">
         <div class="gamesGrid">
 
-          <!-- FEATURED: Emberhollow -->
-          <a class="gameTile emberhollow featured" href="./emberhollow/" aria-label="Play Emberhollow">
+          <!-- FEATURED: Nova Lancers -->
+          <a class="gameTile nova-lancers featured" href="./novalancers/" aria-label="Play Nova Lancers">
+            <div class="content">
+              <div class="status-bar">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Online</span>
+                <span class="status-sep" aria-hidden="true">·</span>
+                <span class="status-type">Shooter / Co-op / Pixel Art</span>
+              </div>
+              <h3>Nova Lancers</h3>
+              <p>A co-op pixel-art starfighter built for your phone. Pick one of four Lancer ships, squad up with up to three friends from a share link, and blast through five hand-crafted sectors of the Choir &mdash; an orbital shipyard, a molten asteroid belt, a crystal nebula, a derelict dreadnought, and the edge of a black hole.</p>
+              <div class="game-stats">
+                <div class="game-stat">
+                  <span class="game-stat-label">Type</span>
+                  <span class="game-stat-val">Co-op Shmup</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Players</span>
+                  <span class="game-stat-val">1&ndash;4 Online</span>
+                </div>
+                <div class="game-stat">
+                  <span class="game-stat-label">Status</span>
+                  <span class="game-stat-val" style="color:#00ff88">New</span>
+                </div>
+              </div>
+              <div class="chipRow">
+                <span class="chip">Shooter</span>
+                <span class="chip">Co-op</span>
+                <span class="chip">Pixel Art</span>
+                <span class="chip">Mobile</span>
+                <span class="chip">Free</span>
+              </div>
+              <div style="margin-top:16px">
+                <span class="playBtn">
+                  Launch Sortie &#9654;
+                </span>
+              </div>
+            </div>
+          </a>
+
+          <!-- Emberhollow -->
+          <a class="gameTile emberhollow" href="./emberhollow/" aria-label="Play Emberhollow">
             <div class="content">
               <div class="status-bar">
                 <span class="status-dot" aria-hidden="true"></span>

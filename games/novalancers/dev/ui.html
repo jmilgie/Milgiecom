@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>Nova Lancers — UI test bench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* bench-only chrome */
+    #devbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100; display: none; gap: 4px; flex-wrap: wrap; padding: 6px; background: rgba(0,0,0,.8); font: 11px monospace; }
+    #devbar.on { display: flex; }
+    #devbar button { font: 11px monospace; padding: 4px 6px; background: #1a1638; color: #dfe8f7; border: 1px solid #322c6a; }
+    body.hudmode { overflow: auto; position: static; touch-action: auto; background: #0a0818; }
+    body.hudmode #screen, body.hudmode #ui { display: none; }
+    #hudwrap { display: none; padding: 12px; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    body.hudmode #hudwrap { display: flex; }
+    .hv { display: flex; flex-direction: column; gap: 4px; font: 11px monospace; color: #7c8fb3; }
+    .hv canvas { image-rendering: pixelated; display: block; box-shadow: 0 0 0 1px #322c6a; }
+  </style>
+</head>
+<body>
+  <canvas id="screen"></canvas>
+  <div id="touchControls" class="hidden" aria-hidden="true">
+    <button id="btnNova" class="tbtn" type="button" aria-label="Nova bomb">
+      <span class="tbtn-ring"></span>
+      <span class="tbtn-icon">✸</span>
+      <span class="tbtn-label">NOVA</span>
+      <span class="tbtn-count" id="novaCount">2</span>
+    </button>
+    <button id="btnOver" class="tbtn" type="button" aria-label="Overdrive">
+      <span class="tbtn-ring"></span>
+      <span class="tbtn-icon">⚡</span>
+      <span class="tbtn-label">OVERDRIVE</span>
+    </button>
+    <button id="btnPause" class="tbtn-small" type="button" aria-label="Pause">❚❚</button>
+  </div>
+  <div id="ui"></div>
+  <div id="hudwrap"></div>
+  <div id="devbar"></div>
+
+<script type="module">
+// Bench: mounts the real UI with mock handlers and fake data.
+//   ?screen=<name>          show a screen (title, menu, hangar, coop, join, lobby, pause, gameover, results, victory, settings, howto, credits, loading, none)
+//   &host=0 &coop=1 &online=1 &room=CODE &unlocked=3 &mode=solo   variants
+//   ?banner=1  ?toast=1  ?touch=1 (touch buttons)  ?hud=1 (HUD sheet)  ?font=1 (font specimen)  ?tools=1 (screen switcher)
+import { UI } from '../js/ui/screens.js';
+import { drawHUD, takeHudToasts } from '../js/ui/hud.js';
+import { drawText, measureText, fontGlyphs } from '../js/art/font.js';
+import { SECTORS, DEFAULT_SETTINGS, FIELD_W, FIELD_H, HUD_TOP, HUD_BOTTOM } from '../js/config.js';
+
+let q = new URLSearchParams(location.search);
+const $ = (s) => document.querySelector(s);
+const tryImport = (p) => import(p).catch(() => null);
+
+// ---------------------------------------------------------------- art (optional)
+const sprites = await tryImport('../js/art/sprites.js');
+if (sprites?.buildSprites) { try { await sprites.buildSprites(() => {}); } catch (e) { console.warn('sprites', e); } }
+const bgMod = await tryImport('../js/art/backgrounds.js');
+let bg = null;
+if (bgMod?.createBackground) {
+  try { if (bgMod.buildBackgrounds) await bgMod.buildBackgrounds(() => {}, ['title']); bg = bgMod.createBackground(q.get('bg') || 'title'); } catch (e) { console.warn('bg', e); }
+}
+
+// ---------------------------------------------------------------- mock state
+const settings = Object.assign({}, DEFAULT_SETTINGS, { name: q.get('name') ?? 'MAVERICK' });
+const profile = { name: settings.name, ship: q.get('ship') || 'aurora', bestScore: 1234500, unlockedSector: +(q.get('unlocked') ?? 2), stats: {}, room: q.get('room') || null };
+const log = (...a) => console.log('[handler]', ...a);
+const handlers = {
+  onTitleTap() { log('onTitleTap'); UI.show('menu'); },
+  onSolo(o) { log('onSolo', o); UI.toast('SOLO LAUNCH: ' + o.ship + ' / S' + ((o.sector | 0) + 1)); },
+  onSectorSelect(n) { log('onSectorSelect', n); },
+  onHost(o) { log('onHost', o); setTimeout(() => showLobby(true), 900); },
+  onJoin(o) { log('onJoin', o); setTimeout(() => (o.code === 'ZZZZZ' ? (UI.toast('Squad not found. Check the code.'), UI.show('join', { code: o.code })) : showLobby(false)), 900); },
+  onQuickMatch(o) { log('onQuickMatch', o); setTimeout(() => showLobby(false), 900); },
+  onLobbyReady(r) { log('onLobbyReady', r); },
+  onLobbyShip(s) { log('onLobbyShip', s); },
+  onLaunch() { log('onLaunch'); setTimeout(() => { UI.show('none'); UI.banner('SECTOR 1 — AURORA RING', 'Orbital Shipyard · Kepler-442', 3200); }, 700); },
+  onLeaveLobby() { log('onLeaveLobby'); UI.show('menu'); },
+  onResume() { log('onResume'); UI.show('none'); },
+  onQuitToMenu() { log('onQuitToMenu'); UI.show('menu'); },
+  onRetry() { log('onRetry'); UI.show('none'); },
+  onContinue() { log('onContinue'); UI.show('none'); },
+  onNext() { log('onNext'); UI.show('none'); },
+  onShip(s) { log('onShip', s); profile.ship = s; },
+  onSettings(s) { log('onSettings', JSON.stringify(s)); Object.assign(settings, s); profile.name = settings.name; },
+  onShare(code) { log('onShare', code); UI.toast('Invite link copied!', 2000); },
+  onFullscreen() { log('onFullscreen'); },
+  getSettings() { return Object.assign({}, settings); },
+  getProfile() { return Object.assign({}, profile, { name: settings.name }); },
+};
+
+function fakeSession(isHost) {
+  const listeners = {};
+  const players = [
+    { slot: 0, name: isHost ? settings.name : 'NOVA_QUEEN', ship: isHost ? profile.ship : 'valkyrie', ready: !isHost, connected: true, ping: 0 },
+    { slot: 1, name: isHost ? 'BLAZE' : settings.name, ship: isHost ? 'tempest' : profile.ship, ready: isHost, connected: true, ping: 48 },
+    { slot: 2, name: 'ORBITAL-7', ship: 'seraph', ready: false, connected: true, ping: 131 },
+  ];
+  if (q.get('full')) players.push({ slot: 3, name: 'VIOLET', ship: 'valkyrie', ready: true, connected: true, ping: 212 });
+  return {
+    isHost, code: 'K7M2Q', isPublic: q.get('public') === '1', selfSlot: isHost ? 0 : 1,
+    transportKind: 'p2p',
+    lobby: { players, started: false },
+    on(ev, fn) { (listeners[ev] ||= []).push(fn); }, off() {},
+    ping() { return 42; }, _emit(ev, a) { (listeners[ev] || []).forEach((f) => f(a)); },
+  };
+}
+function showLobby(isHost) {
+  const s = fakeSession(isHost);
+  window.__session = s;
+  UI.show('lobby', { session: s, lobby: s.lobby });
+  UI.updateLobby(s.lobby, s);
+  setTimeout(() => s._emit('transport', { slot: 2, kind: 'relay' }), 300);
+}
+
+const fakeStats = (n) => [
+  { slot: 0, name: settings.name, ship: 'aurora', kills: 214, grazes: 57, deaths: 1, bombs: 2, accuracy: 78, gems: 64, revives: 1 },
+  { slot: 1, name: 'BLAZE', ship: 'tempest', kills: 188, grazes: 91, deaths: 2, bombs: 1, accuracy: 91, gems: 40, revives: 0 },
+  { slot: 2, name: 'ORBITAL-7', ship: 'seraph', kills: 240, grazes: 12, deaths: 3, bombs: 3, accuracy: 64, gems: 71, revives: 2 },
+  { slot: 3, name: 'VIOLET', ship: 'valkyrie', kills: 131, grazes: 33, deaths: 0, bombs: 0, accuracy: 70, gems: 22, revives: 1 },
+].slice(0, n);
+
+const DATA = {
+  title: () => Object.assign({ version: '1.0.0', best: profile.bestScore, room: profile.room }, q.get('logo') === '0' ? { logoFallback: true } : {}),
+  hangar: () => ({ mode: q.get('mode') || 'solo', back: 'menu' }),
+  pause: () => ({ online: q.get('online') === '1' }),
+  gameover: () => ({ score: 482150, solo: q.get('coop') !== '1', isHost: q.get('host') !== '0', best: +(q.get('best') ?? 1234500) }),
+  results: () => ({ stats: fakeStats(q.get('coop') === '1' ? 4 : 1), score: 1482150, bonus: 20000, sector: SECTORS[1], maxChain: 12, isHost: q.get('host') !== '0', online: q.get('coop') === '1' }),
+  victory: () => ({ stats: fakeStats(q.get('coop') === '1' ? 3 : 1), score: 8812400 }),
+  join: () => ({ code: q.get('code') || '' }),
+};
+
+// ---------------------------------------------------------------- background canvas (renderer-like layout)
+const screenCv = $('#screen');
+const main = document.createElement('canvas'), light = document.createElement('canvas');
+const R = { W: 240, H: 400, fx: 0, fy: 0, scale: 1, safeArt: { top: 0, bottom: 0 } };
+function layout() {
+  const cssW = innerWidth, cssH = innerHeight;
+  let s = Math.min(cssW / FIELD_W, cssH / (FIELD_H + HUD_TOP + HUD_BOTTOM));
+  const sf = Math.min(cssW / FIELD_W, cssH / FIELD_H);
+  if (s < sf * 0.86) s = sf * 0.86;
+  R.scale = s;
+  R.W = Math.ceil(cssW / s); R.H = Math.ceil(cssH / s);
+  R.fx = Math.floor((R.W - FIELD_W) / 2);
+  const free = R.H - FIELD_H;
+  R.fy = free >= HUD_TOP + HUD_BOTTOM ? HUD_TOP + Math.floor((free - HUD_TOP - HUD_BOTTOM) * 0.35) : free > 0 ? Math.floor(free * HUD_TOP / (HUD_TOP + HUD_BOTTOM)) : 0;
+  main.width = light.width = R.W; main.height = light.height = R.H;
+  // same custom properties main.js publishes for the touch buttons
+  const tc = $('#touchControls');
+  const fb = (R.fy + FIELD_H) * s;
+  tc.style.setProperty('--field-bottom', fb + 'px');
+  tc.style.setProperty('--field-left', R.fx * s + 'px');
+  tc.style.setProperty('--field-right', (cssW - (R.fx + FIELD_W) * s) + 'px');
+  tc.style.setProperty('--below-field', Math.max(0, cssH - fb) + 'px');
+  screenCv.width = Math.round(cssW * Math.min(2, devicePixelRatio)); screenCv.height = Math.round(cssH * Math.min(2, devicePixelRatio));
+  screenCv.style.width = cssW + 'px'; screenCv.style.height = cssH + 'px';
+  bg?.resize?.(R.W, R.H, R.fx, R.fy);
+}
+layout();
+addEventListener('resize', layout);
+let t0 = performance.now();
+const stars = Array.from({ length: 160 }, () => ({ x: Math.random(), y: Math.random(), l: Math.random() }));
+function frame(now) {
+  requestAnimationFrame(frame);
+  const t = (now - t0) / 1000;
+  const ctx = main.getContext('2d'), lctx = light.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  lctx.fillStyle = '#000'; lctx.fillRect(0, 0, R.W, R.H);
+  if (bg) { try { bg.update?.(1 / 60); bg.draw(ctx, lctx, t * 6, t); } catch { ctx.fillStyle = '#05040c'; ctx.fillRect(0, 0, R.W, R.H); } }
+  else {
+    const g = ctx.createLinearGradient(0, 0, 0, R.H); g.addColorStop(0, '#05040c'); g.addColorStop(1, '#1a1638');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, R.W, R.H);
+    for (const s of stars) { ctx.fillStyle = s.l > .8 ? '#dfe8f7' : '#526283'; ctx.fillRect((s.x * R.W) | 0, ((s.y * R.H + t * 8 * s.l) % R.H) | 0, 1, 1); }
+  }
+  const scr = UI.current;
+  if (sprites?.hasSprite?.('logo') && (scr === 'title' || scr === 'menu' || scr === 'loading') && q.get('logo') !== '0') {
+    const s = sprites.spr('logo');
+    const y = Math.max(46, Math.round(R.H * (scr === 'menu' ? 0.13 : 0.24)));
+    const fr = Math.floor(t * 10) % 40;
+    sprites.drawSprite(ctx, 'logo', fr < 8 ? fr : 0, R.W >> 1, y);
+    sprites.drawSpriteEmissive(lctx, 'logo', fr < 8 ? fr : 0, R.W >> 1, y);
+    if (sprites.hasSprite('logo_sub')) { sprites.drawSprite(ctx, 'logo_sub', 0, R.W >> 1, y + (s.h >> 1) + 8); sprites.drawSpriteEmissive(lctx, 'logo_sub', 0, R.W >> 1, y + (s.h >> 1) + 8); }
+  }
+  if (q.get('game') === '1' || scr === 'none') drawHUD(ctx, lctx, fakeHud(t, q.get('coop') === '1' ? 4 : 1, q.get('boss') === '1'), R);
+  const out = screenCv.getContext('2d');
+  out.imageSmoothingEnabled = false;
+  out.globalCompositeOperation = 'source-over';
+  out.drawImage(main, 0, 0, screenCv.width, screenCv.height);
+  out.globalCompositeOperation = 'lighter';
+  out.drawImage(light, 0, 0, screenCv.width, screenCv.height);
+  out.globalCompositeOperation = 'source-over';
+}
+
+// ---------------------------------------------------------------- fake HUD state
+function fakeHud(t, n, boss) {
+  const players = [
+    { slot: 0, name: settings.name, ship: 'aurora', lives: 3, alive: true, beacon: false, power: 5, ping: 0, isLocal: true },
+    { slot: 1, name: 'BLAZE', ship: 'tempest', lives: 1, alive: true, beacon: false, power: 5, ping: 48 },
+    { slot: 2, name: 'ORBITAL-7', ship: 'seraph', lives: 0, alive: false, beacon: true, power: 5, ping: 131 },
+    { slot: 3, name: 'VIOLET', ship: 'valkyrie', lives: 2, alive: true, beacon: false, power: 5, ping: 212 },
+  ].slice(0, n);
+  const chainK = (t % 3) / 3;
+  return {
+    score: 48215 + Math.floor(t * 1234), hiScore: 1234500,
+    chain: 23, chainMult: 1 + Math.floor((t * 2) % 16), chainTimer: 1 - chainK,
+    players, bombs: 2 + (Math.floor(t / 3) % 3), power: 1 + Math.floor(t) % 8, powerMax: 8,
+    overdrive: Math.min(1, (t % 8) / 5), overdriveActive: (t % 12) > 9,
+    boss: boss ? { name: 'WARDEN OF THE RING', hp: 0.5 + 0.5 * Math.cos(t * 0.3), phase: 1 } : null,
+    sector: 2, sectorName: 'CINDER BELT', fps: q.get('fps') ? 60 : 0,
+    warning: q.get('warn') === '1' ? 1 - ((t % 3) / 3) : 0,
+    net: n > 1 ? { kind: 'p2p', ping: 42 } : null,
+    downed: q.get('downed') === '1',
+  };
+}
+
+// ---------------------------------------------------------------- HUD sheet (?hud=1)
+function hudSheet() {
+  document.body.classList.add('hudmode');
+  const wrap = $('#hudwrap');
+  const variants = [
+    ['phone 390×844 · solo', 390, 844, 1, false, 0, 0],
+    ['phone 390×844 · 4P + boss', 390, 844, 4, true, 0, 0],
+    ['iPhone PWA 393×852 (safe 59/34) · 2P', 393, 852, 2, true, 59, 34],
+    ['phone short 360×640 · solo + boss', 360, 640, 1, true, 0, 0],
+    ['landscape 844×390 · 4P + boss', 844, 390, 4, true, 0, 0],
+    ['desktop 1280×800 · solo', 1280, 800, 1, false, 0, 0],
+    ['desktop 1280×800 · 3P + boss', 1280, 800, 3, true, 0, 0],
+    ['forced overlay (no strips) · 3P + boss', 384, 640, 3, true, 0, 0, { W: 240, H: 400, fx: 0, fy: 0, scale: 1.6, safeArt: { top: 0, bottom: 0 }, touchUI: true }],
+  ].filter((v, i) => !q.get('v') || q.get('v').split(',').includes(String(i)));
+  const zoom = +(q.get('z') || 3);
+  const items = variants.map(([label, cssW, cssH, n, boss, sT, sB, forced]) => {
+    let s = Math.min(cssW / FIELD_W, (cssH - sT - sB) / (FIELD_H + HUD_TOP + HUD_BOTTOM));
+    const sf = Math.min(cssW / FIELD_W, (cssH - sT - sB) / FIELD_H);
+    if (s < sf * 0.86) s = sf * 0.86;
+    const r = { W: Math.ceil(cssW / s), H: Math.ceil(cssH / s), scale: s, safeArt: { top: Math.ceil(sT / s), bottom: Math.ceil(sB / s) }, touchUI: q.get('touchui') !== '0' && cssW < 1000 };
+    r.fx = Math.floor((r.W - FIELD_W) / 2);
+    const free = r.H - r.safeArt.top - r.safeArt.bottom - FIELD_H;
+    if (forced) { Object.assign(r, forced); s = r.scale; }
+    else r.fy = free >= HUD_TOP + HUD_BOTTOM ? r.safeArt.top + HUD_TOP + Math.floor((free - HUD_TOP - HUD_BOTTOM) * 0.35) : free > 0 ? r.safeArt.top + Math.floor(free * HUD_TOP / (HUD_TOP + HUD_BOTTOM)) : Math.max(0, Math.floor((r.H - FIELD_H) / 2));
+    const z = Math.max(1, Math.round(zoom * (r.W > 400 ? 0.5 : 1)));
+    const box = document.createElement('div'); box.className = 'hv';
+    box.innerHTML = `<span>${label} — internal ${r.W}×${r.H}, field @(${r.fx},${r.fy}) scale ${s.toFixed(2)}</span>`;
+    const cv = document.createElement('canvas'); cv.width = r.W * z; cv.height = r.H * z; box.appendChild(cv); wrap.appendChild(box);
+    const m = document.createElement('canvas'); m.width = r.W; m.height = r.H;
+    const l = document.createElement('canvas'); l.width = r.W; l.height = r.H;
+    const b = document.createElement('canvas'); b.width = r.W >> 2; b.height = r.H >> 2;
+    return { r, n, boss, cv, m, l, b, z };
+  });
+  const bgStars = Array.from({ length: 300 }, () => ({ x: Math.random(), y: Math.random(), l: Math.random() }));
+  const loop = (now) => {
+    requestAnimationFrame(loop);
+    const t = (now - t0) / 1000 + (+q.get('t') || 0);
+    for (const it of items) {
+      const { r, m, l, cv, b } = it;
+      const ctx = m.getContext('2d'), lctx = l.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const g = ctx.createLinearGradient(0, 0, 0, r.H); g.addColorStop(0, '#0a0f2a'); g.addColorStop(1, '#1b1040');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, r.W, r.H);
+      for (const s of bgStars) { ctx.fillStyle = s.l > .85 ? '#dfe8f7' : s.l > .5 ? '#526283' : '#322c6a'; ctx.fillRect((s.x * r.W) | 0, ((s.y * r.H + t * 10 * s.l) % r.H) | 0, 1, 1); }
+      // field + fake playfield contents
+      ctx.fillStyle = 'rgba(5,4,12,0.55)';
+      if (r.fx > 0) { ctx.fillRect(0, 0, r.fx, r.H); ctx.fillRect(r.fx + FIELD_W, 0, r.W - r.fx - FIELD_W, r.H); }
+      ctx.fillStyle = 'rgba(5,4,12,0.35)'; ctx.fillRect(r.fx, 0, FIELD_W, r.fy); ctx.fillRect(r.fx, r.fy + FIELD_H, FIELD_W, r.H - r.fy - FIELD_H);
+      ctx.fillStyle = 'rgba(121,236,255,0.18)'; if (r.fx > 0) { ctx.fillRect(r.fx - 1, r.fy, 1, FIELD_H); ctx.fillRect(r.fx + FIELD_W, r.fy, 1, FIELD_H); }
+      lctx.fillStyle = '#000'; lctx.fillRect(0, 0, r.W, r.H);
+      if (sprites?.hasSprite?.('ship_aurora')) {
+        sprites.drawSprite(ctx, 'ship_aurora', 2, r.fx + 120, r.fy + 330, { team: 0 }); sprites.drawSpriteEmissive(lctx, 'ship_aurora', 2, r.fx + 120, r.fy + 330, { team: 0 });
+        for (let i = 0; i < 14; i++) { const x = r.fx + 30 + ((i * 53 + t * 20) % 180), y = r.fy + 60 + ((i * 97 + t * 40) % 240); sprites.drawSprite(ctx, 'eb_small_p', 0, x | 0, y | 0); sprites.drawSpriteEmissive(lctx, 'eb_small_p', 0, x | 0, y | 0); }
+      }
+      drawHUD(ctx, lctx, fakeHud(t, it.n, it.boss), r);
+      const o = cv.getContext('2d');
+      o.imageSmoothingEnabled = false;
+      o.globalCompositeOperation = 'source-over';
+      o.drawImage(m, 0, 0, cv.width, cv.height);
+      o.globalCompositeOperation = 'lighter';
+      o.drawImage(l, 0, 0, cv.width, cv.height);
+      const bg2 = b.getContext('2d'); bg2.clearRect(0, 0, b.width, b.height); bg2.drawImage(l, 0, 0, b.width, b.height);
+      o.imageSmoothingEnabled = true; o.globalAlpha = 0.8; o.drawImage(b, 0, 0, cv.width, cv.height); o.globalAlpha = 1;
+      o.globalCompositeOperation = 'source-over';
+    }
+  };
+  requestAnimationFrame(loop);
+}
+
+// ---------------------------------------------------------------- font specimen (?font=1)
+function fontSheet() {
+  document.body.classList.add('hudmode');
+  const wrap = $('#hudwrap');
+  const z = +(q.get('z') || 4);
+  const cv = document.createElement('canvas');
+  const W = 300, H = 170;
+  cv.width = W * z; cv.height = H * z;
+  wrap.appendChild(cv);
+  const m = document.createElement('canvas'); m.width = W; m.height = H;
+  const l = document.createElement('canvas'); l.width = W; l.height = H;
+  const ctx = m.getContext('2d'), lctx = l.getContext('2d');
+  ctx.fillStyle = '#0a0818'; ctx.fillRect(0, 0, W, H);
+  lctx.fillStyle = '#000'; lctx.fillRect(0, 0, W, H);
+  let y = 4;
+  for (const f of ['tiny', 'small', 'big']) {
+    const all = fontGlyphs(f);
+    const per = f === 'big' ? 30 : f === 'small' ? 40 : 60;
+    for (let i = 0; i < all.length; i += per) { drawText(ctx, all.slice(i, i + per), 4, y, { font: f, color: '#dfe8f7' }); y += f === 'big' ? 13 : f === 'small' ? 10 : 8; }
+    y += 3;
+  }
+  drawText(ctx, 'NOVA LANCERS ★ ×16 CHAIN', 4, y, { font: 'big', color: '#ffd966', shadow: '#05040c', lctx, glow: '#f0a92a' }); y += 14;
+  drawText(ctx, 'Outline test: 0123456', 4, y, { font: 'small', color: '#ffffff', outline: '#ec2f86' });
+  drawText(ctx, 'RIGHT', W - 4, y, { font: 'small', color: '#79ecff', align: 'right' });
+  drawText(ctx, 'CENTER', W / 2, y + 10, { font: 'small', size: 2, color: '#b8ff6e', align: 'center', shadow: '#05040c' });
+  drawText(ctx, 'w=' + measureText('SCORE 0123456', { font: 'small' }), 4, H - 10, { font: 'tiny', color: '#7c8fb3' });
+  const o = cv.getContext('2d'); o.imageSmoothingEnabled = false;
+  o.drawImage(m, 0, 0, cv.width, cv.height); o.globalCompositeOperation = 'lighter'; o.drawImage(l, 0, 0, cv.width, cv.height);
+}
+
+// ---------------------------------------------------------------- boot
+UI.init($('#ui'), handlers);
+if (q.get('hud')) hudSheet();
+else if (q.get('font')) fontSheet();
+else {
+  requestAnimationFrame(frame);
+  go(location.search);
+}
+
+// Apply a bench query in-page (used by the screenshot script to avoid reloads).
+function go(search) {
+  q = new URLSearchParams(search);
+  settings.name = q.get('name') ?? 'MAVERICK';
+  profile.unlockedSector = +(q.get('unlocked') ?? 2);
+  profile.room = q.get('room') || null;
+  $('#touchControls').className = 'hidden';
+  for (const b of document.querySelectorAll('.tbtn')) b.className = 'tbtn';
+  const scr = q.get('screen') || 'title';
+  if (scr === 'loading') { UI.show('loading'); UI.setLoading(+(q.get('p') ?? 0.62), 'Painting the stars'); }
+  else if (scr === 'lobby') showLobby(q.get('host') !== '0');
+  else UI.show(scr, DATA[scr] ? DATA[scr]() : {});
+  if (q.get('touch')) {
+    $('#touchControls').classList.remove('hidden');
+    const nova = $('#btnNova'), over = $('#btnOver');
+    nova.classList.add(q.get('nova') || 'ready');
+    over.classList.add(q.get('od') || 'disabled');
+    over.style.setProperty('--charge', q.get('charge') || '0.62');
+    $('#novaCount').textContent = q.get('bombs') || '2';
+  }
+  if (q.get('banner')) setTimeout(() => UI.banner(q.get('banner') === 'warn' ? 'WARNING' : 'SECTOR 2 — CINDER BELT', q.get('banner') === 'warn' ? 'WYRM APPROACHING' : 'Mining Belt · Red Giant Hadar', 60000), 50);
+  if (q.get('toast')) {
+    if (UI.current === 'none') { UI.toast('POWER 4', 60000); UI.toast('ORBITAL-7 REVIVED', 60000); UI.toast('BLAZE joined', 60000); }
+    else { UI.toast('Squad not found. Check the code.', 60000); UI.toast('BLAZE joined', 60000); }
+  }
+  if (q.get('tools') && !$('#devbar').classList.contains('on')) {
+    const bar = $('#devbar'); bar.classList.add('on');
+    for (const n of ['title', 'menu', 'hangar', 'coop', 'join', 'lobby', 'pause', 'gameover', 'results', 'victory', 'settings', 'howto', 'credits', 'loading', 'none']) {
+      const b = document.createElement('button'); b.textContent = n;
+      b.onclick = () => (n === 'lobby' ? showLobby(true) : n === 'loading' ? (UI.show('loading'), UI.setLoading(0.5, 'Tuning reactors')) : UI.show(n, DATA[n] ? DATA[n]() : {}));
+      bar.appendChild(b);
+    }
+    const bb = document.createElement('button'); bb.textContent = 'banner'; bb.onclick = () => UI.banner('SECTOR 3 — VEIL NEBULA', 'Stellar Nursery · Deep Veil', 3200); bar.appendChild(bb);
+    const bw = document.createElement('button'); bw.textContent = 'warn'; bw.onclick = () => UI.banner('WARNING', 'PRISM APPROACHING', 2800); bar.appendChild(bw);
+    const bt = document.createElement('button'); bt.textContent = 'toast'; bt.onclick = () => UI.toast('Connecting…'); bar.appendChild(bt);
+  }
+}
+window.UI = UI;
+window.bench = { go, clearToasts: () => { document.querySelectorAll('.toast').forEach((t) => t.remove()); takeHudToasts(); }, clearBanner: () => document.querySelector('.ui-banner').classList.remove('show', 'hide') };
+</script>
+</body>
+</html>

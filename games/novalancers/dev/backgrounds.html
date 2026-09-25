@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — background lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #020207; color: #cfd8ef; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  header { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; position: sticky; top: 0; background: #07060fe6; z-index: 2; }
+  button, select, input { font: inherit; background: #151329; color: #cfd8ef; border: 1px solid #322c6a; border-radius: 4px; padding: 4px 8px; }
+  button.on { background: #322c6a; color: #fff; }
+  #views { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px; align-items: flex-start; }
+  figure { margin: 0; }
+  figcaption { opacity: .7; padding: 2px 0 4px; }
+  canvas.disp { image-rendering: pixelated; image-rendering: crisp-edges; display: block; background: #000; }
+  #stats { white-space: pre; opacity: .85; width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <span id="keys"></span>
+  <button id="flash">flash()</button>
+  <button id="pause">pause</button>
+  <label>speed <input id="speed" type="range" min="0" max="12" step="0.5" value="1" style="width:90px"></label>
+  <label title="real WebGL post pass (js/fx/post.js) with the stage grade + lensing"><input id="post" type="checkbox" checked> real post</label>
+  <label title="cheap CSS-blur bloom preview (only without real post)"><input id="bloom" type="checkbox" checked> css bloom</label>
+  <label title="enemy bullets / ships / Choir enemies from sprites.js"><input id="sprites" type="checkbox" checked> bullets+ships</label>
+  <label title="main.js drawFieldFrame(): darkening outside the field"><input id="frame" type="checkbox" checked> field frame</label>
+  <label><input id="field" type="checkbox"> field rect</label>
+  <label><input id="light" type="checkbox"> light only</label>
+  <button id="jump">+2000px</button>
+  <div id="stats"></div>
+</header>
+<div id="views"></div>
+<script type="module">
+import { createBackground, buildBackgrounds, prewarmBackground, BG_KEYS, _bgDebug } from '../js/art/backgrounds.js';
+
+// Test page for js/art/backgrounds.js. URL params:
+//   bg=<key>  view=phone,desk,land,tall,narrow,d720  scroll=<px>  t=<s>  speed=<x>
+//   freeze (no rAF loop)  nopost  nosprites  ps=<phone scale>  ds=<desktop scale>  pw/ph=<phone size>
+const qs = new URLSearchParams(location.search);
+let key = qs.get('bg') || 'title';
+const views = (qs.get('view') || 'phone,desk').split(',');
+const PS = +(qs.get('ps') || 3), DS = +(qs.get('ds') || 1);
+const freeze = qs.has('freeze');
+let scroll = +(qs.get('scroll') || 0);
+let tNow = +(qs.get('t') || 0);
+let speedMul = +(qs.get('speed') || 1);
+let paused = freeze;
+if (qs.has('nopost')) document.getElementById('post').checked = false;
+if (qs.has('nosprites')) document.getElementById('sprites').checked = false;
+
+const FW = 240, FH = 400, HUD_TOP = 22, HUD_BOTTOM = 40;
+// Internal canvas sizes the renderer actually produces (see engine/renderer.js resize()).
+const VIEW_DEFS = {
+  phone: { W: +(qs.get('pw') || 240), H: +(qs.get('ph') || 520), s: PS, label: 'phone' },
+  tall: { W: 270, H: 560, s: PS, label: 'tall phone' },
+  narrow: { W: 240, H: 460, s: PS, label: 'short phone' },
+  land: { W: 1005, H: 465, s: DS, label: 'landscape phone' },
+  desk: { W: 821, H: 462, s: DS, label: '1080p desktop' },
+  d720: { W: 720, H: 405, s: DS * 1.25, label: 'desktop 720' },
+};
+const fieldOrigin = (W, H) => {
+  const fx = Math.floor((W - FW) / 2), free = H - FH;
+  let fy;
+  if (free >= HUD_TOP + HUD_BOTTOM) fy = HUD_TOP + Math.floor((free - HUD_TOP - HUD_BOTTOM) * 0.35);
+  else if (free > 0) fy = Math.floor(free * (HUD_TOP / (HUD_TOP + HUD_BOTTOM)));
+  else fy = Math.max(0, Math.floor((H - FH) / 2));
+  return [fx, fy];
+};
+
+function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+
+let createPost = null;
+try { createPost = (await import('../js/fx/post.js')).createPost; } catch (e) { console.warn('post.js unavailable', e); }
+let SP = null;   // sprites module once built
+const spritesReady = (async () => {
+  try { const m = await import('../js/art/sprites.js'); await m.buildSprites(); SP = m; } catch (e) { console.warn('sprites unavailable', e); }
+})();
+
+const V = [];
+for (const name of views) {
+  const d = VIEW_DEFS[name]; if (!d) continue;
+  const main = mk(d.W, d.H), light = mk(d.W, d.H);
+  const disp = mk(Math.round(d.W * d.s), Math.round(d.H * d.s)); disp.className = 'disp';
+  const gl = mk(1, 1); gl.className = 'disp'; gl.style.display = 'none';
+  const fig = document.createElement('figure');
+  const cap = document.createElement('figcaption');
+  cap.textContent = `${d.label} ${d.W}×${d.H} @${d.s}x`;
+  fig.append(cap, disp, gl);
+  document.getElementById('views').append(fig);
+  const [fx, fy] = fieldOrigin(d.W, d.H);
+  V.push({ name, d, main, light, disp, gl, post: undefined, fx, fy, ctx: main.getContext('2d', { alpha: false }), lctx: light.getContext('2d', { alpha: false }),
+    dctx: disp.getContext('2d'), bg: null, ms: [], layoutMs: 0 });
+}
+const blurC = mk(1, 1), bctx = blurC.getContext('2d');
+const opt = (id) => document.getElementById(id).checked;
+
+const assetMs = {};
+let memMB = '0';
+async function setBg(k) {
+  key = k;
+  if (assetMs[k] === undefined) { const t0 = performance.now(); await buildBackgrounds(null, [k]); assetMs[k] = performance.now() - t0; }
+  for (const v of V) {
+    // like main.js: dispose + create in the same frame (the module dissolves between them)
+    if (v.bg) v.bg.dispose();
+    const t0 = performance.now();
+    v.bg = createBackground(key);
+    v.bg.resize(v.d.W, v.d.H, v.fx, v.fy);
+    v.layoutMs = performance.now() - t0;
+    // async layouts (title, relayouts) complete in time slices: wait for them
+    const t1 = performance.now();
+    while ((!v.bg.S || v.bg.want) && performance.now() - t1 < 60000) await new Promise((r) => setTimeout(r, 16));
+    v.layoutAsyncMs = performance.now() - t1;
+    v.ms = [];
+  }
+  memMB = V.map((v) => (v.bg.memory ? (v.bg.memory() / 1048576).toFixed(1) : '?')).join('/');
+  document.querySelectorAll('#keys button').forEach((b) => b.classList.toggle('on', b.textContent === key));
+  const u = new URL(location); u.searchParams.set('bg', key); history.replaceState(null, '', u);
+}
+
+const keysEl = document.getElementById('keys');
+for (const k of BG_KEYS) {
+  const b = document.createElement('button'); b.textContent = k; b.onclick = () => setBg(k); keysEl.append(b);
+}
+document.getElementById('flash').onclick = () => V.forEach((v) => v.bg.flash());
+document.getElementById('pause').onclick = (e) => { paused = !paused; e.target.classList.toggle('on', paused); };
+document.getElementById('jump').onclick = () => { scroll += 2000; };
+const speedEl = document.getElementById('speed'); speedEl.value = speedMul; speedEl.oninput = () => { speedMul = +speedEl.value; };
+
+// ---- gameplay overlay: an enemy-bullet grid, Choir enemies and ships (field coords) ----
+const EB = ['eb_small_p', 'eb_small_o', 'eb_small_v', 'eb_small_c', 'eb_orb_p', 'eb_orb_o', 'eb_orb_v', 'eb_orb_c', 'eb_needle_p', 'eb_needle_o', 'eb_needle_c', 'eb_big_o', 'eb_star_o', 'eb_ring_v'];
+const OVER = [];
+for (let r = 0; r < 10; r++) for (let c = 0; c < 7; c++) OVER.push([EB[(r * 7 + c * 3) % EB.length], 14 + c * 35 + (r % 2) * 8, 48 + r * 30]);
+const ENEM = [['en_carapace', 44, 358], ['en_weaver', 196, 40], ['en_dart', 84, 20], ['en_eye', 150, 20], ['en_lancet', 214, 330]];
+const SHIPS = [['ship_aurora', 70, 372, 0], ['ship_tempest', 120, 360, 1], ['ship_seraph', 172, 376, 2]];
+function drawOverlay(v, t) {
+  if (!SP || !opt('sprites')) return;
+  const { ctx, lctx } = v;
+  for (const c of [ctx, lctx]) { c.save(); c.translate(v.fx, v.fy); c.beginPath(); c.rect(0, 0, FW, FH); c.clip(); }
+  const fr = Math.floor(t * 8);
+  for (const [n, x, y] of ENEM) { if (!SP.hasSprite(n)) continue; SP.drawSprite(ctx, n, fr, x, y, { dir: Math.PI }); SP.drawSpriteEmissive(lctx, n, fr, x, y, { dir: Math.PI }); }
+  for (const [n, x, y, team] of SHIPS) { if (!SP.hasSprite(n)) continue; SP.drawSprite(ctx, n, 2, x, y, { team }); SP.drawSpriteEmissive(lctx, n, 2, x, y, { team }); }
+  for (const [n, x, y] of OVER) { SP.drawSprite(ctx, n, fr, x, y, { dir: Math.PI }); SP.drawSpriteEmissive(lctx, n, fr, x, y, { dir: Math.PI }); }
+  ctx.restore(); lctx.restore();
+}
+// main.js drawFieldFrame(): dims everything outside the field (main layer only)
+function drawFieldFrame(v) {
+  const { ctx, d } = v, x = v.fx, y = v.fy;
+  ctx.fillStyle = 'rgba(5,4,12,0.55)';
+  if (x > 0) { ctx.fillRect(0, 0, x, d.H); ctx.fillRect(x + FW, 0, d.W - x - FW, d.H); }
+  ctx.fillStyle = 'rgba(5,4,12,0.35)';
+  if (y > 0) ctx.fillRect(x, 0, FW, y);
+  if (y + FH < d.H) ctx.fillRect(x, y + FH, FW, d.H - y - FH);
+  ctx.fillStyle = 'rgba(121,236,255,0.18)';
+  if (x > 0) { ctx.fillRect(x - 1, y, 1, FH); ctx.fillRect(x + FW, y, 1, FH); }
+}
+
+function drawLayers(v) {
+  const { ctx, lctx, d } = v;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); lctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.imageSmoothingEnabled = false; lctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#05040c'; ctx.fillRect(0, 0, d.W, d.H);
+  lctx.globalAlpha = 1; lctx.globalCompositeOperation = 'source-over'; lctx.fillStyle = '#000'; lctx.fillRect(0, 0, d.W, d.H);
+  lctx.globalCompositeOperation = 'lighter';
+  const t0 = performance.now();
+  v.bg.draw(ctx, lctx, scroll, tNow);
+  const dt = performance.now() - t0;
+  v.ms.push(dt); if (v.ms.length > 120) v.ms.shift();
+  v.endState = [ctx.globalCompositeOperation, ctx.globalAlpha, lctx.globalCompositeOperation, lctx.globalAlpha].join('/');
+  drawOverlay(v, tNow);
+  if (opt('frame') && key !== 'title') drawFieldFrame(v);     // main.js frames the field in game only
+}
+
+function renderView(v) {
+  const { d } = v;
+  drawLayers(v);
+  const s = d.s;
+  const g = v.bg.grade, lz = v.bg.lensing ? v.bg.lensing(d.W, d.H) : null;
+  if (opt('post') && createPost && !opt('light')) {
+    if (v.post === undefined) { v.post = createPost(v.gl); if (v.post) v.post.resize(Math.round(d.W * s), Math.round(d.H * s), 1, d.W, d.H, s); }
+    if (v.post) {
+      v.gl.style.display = ''; v.disp.style.display = 'none';
+      v.post.render(v.main, v.light, { grade: g, waves: [], flash: 0, flashColor: [1, 1, 1], chroma: 0, lensing: lz, time: tNow, quality: 'high', scanlines: false });
+      return;
+    }
+  }
+  v.gl.style.display = 'none'; v.disp.style.display = '';
+  // CSS preview: main + light + blurred light
+  const dc = v.dctx;
+  dc.imageSmoothingEnabled = false;
+  dc.globalCompositeOperation = 'source-over'; dc.globalAlpha = 1; dc.filter = 'none';
+  if (opt('light')) { dc.fillStyle = '#000'; dc.fillRect(0, 0, d.W * s, d.H * s); }
+  else dc.drawImage(v.main, 0, 0, d.W * s, d.H * s);
+  dc.globalCompositeOperation = 'lighter';
+  dc.drawImage(v.light, 0, 0, d.W * s, d.H * s);
+  if (opt('bloom')) {
+    if (blurC.width !== (d.W >> 1) || blurC.height !== (d.H >> 1)) { blurC.width = d.W >> 1; blurC.height = d.H >> 1; }
+    bctx.globalCompositeOperation = 'copy'; bctx.filter = 'blur(3px)'; bctx.imageSmoothingEnabled = true;
+    bctx.drawImage(v.light, 0, 0, blurC.width, blurC.height);
+    bctx.filter = 'none';
+    dc.imageSmoothingEnabled = true;
+    dc.globalAlpha = 0.9; dc.drawImage(blurC, 0, 0, d.W * s, d.H * s);
+    dc.filter = 'blur(10px)'; dc.globalAlpha = 0.5; dc.drawImage(blurC, 0, 0, d.W * s, d.H * s);
+    dc.filter = 'none'; dc.globalAlpha = 1;
+    dc.imageSmoothingEnabled = false;
+  }
+  dc.globalCompositeOperation = 'source-over';
+  if (opt('field')) {
+    dc.strokeStyle = 'rgba(255,255,255,0.18)'; dc.lineWidth = 1;
+    dc.strokeRect(v.fx * s + 0.5, v.fy * s + 0.5, FW * s - 1, FH * s - 1);
+    if (lz) { dc.strokeStyle = 'rgba(255,90,200,0.45)'; dc.beginPath(); dc.arc(lz.x * s, lz.y * s, lz.r * s, 0, Math.PI * 2); dc.stroke(); }
+  }
+}
+
+function statsLine() {
+  const st = V.map((v) => `${v.name}: layout ${v.layoutMs.toFixed(0)} ms (+${(v.layoutAsyncMs || 0).toFixed(0)} sliced), draw ${(v.ms.reduce((a, b) => a + b, 0) / Math.max(1, v.ms.length)).toFixed(3)} ms`).join('   ');
+  return `${key}  scroll ${scroll.toFixed(0)}  t ${tNow.toFixed(1)}  assets ${assetMs[key] !== undefined ? assetMs[key].toFixed(0) : '-'} ms  mem ${memMB} MB   ${st}`;
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!paused && V[0]?.bg) {
+    tNow += dt;
+    for (const v of V) v.bg.update(dt);
+    scroll += dt * (V[0].bg.scrollSpeed || 30) * speedMul;
+  }
+  if (V[0]?.bg) for (const v of V) renderView(v);
+  document.getElementById('stats').textContent = statsLine();
+  if (!freeze) requestAnimationFrame(frame);
+}
+
+// Luminance statistics of (main + light) inside the field, as the player sees it before post.
+function fieldLuma(v) {
+  drawLayers(v);
+  const a = v.ctx.getImageData(v.fx, v.fy, FW, Math.min(FH, v.d.H - v.fy)).data, b = v.lctx.getImageData(v.fx, v.fy, FW, Math.min(FH, v.d.H - v.fy)).data;
+  const n = a.length / 4, L = new Float32Array(n);
+  let sum = 0, g5 = 0, g7 = 0, lightSum = 0;
+  for (let i = 0; i < n; i++) {
+    const r = Math.min(255, a[i * 4] + b[i * 4]), g = Math.min(255, a[i * 4 + 1] + b[i * 4 + 1]), bl = Math.min(255, a[i * 4 + 2] + b[i * 4 + 2]);
+    const l = (0.299 * r + 0.587 * g + 0.114 * bl) / 255;
+    L[i] = l; sum += l; if (l > 0.5) g5++; if (l > 0.7) g7++;
+    lightSum += (b[i * 4] + b[i * 4 + 1] + b[i * 4 + 2]) / 765;
+  }
+  L.sort();
+  return { mean: +(sum / n).toFixed(3), p90: +L[Math.floor(n * 0.9)].toFixed(3), gt5: +(g5 / n * 100).toFixed(1), gt7: +(g7 / n * 100).toFixed(1), light: +(lightSum / n).toFixed(3) };
+}
+
+// Hooks for automated testing
+window.__bg = {
+  keys: BG_KEYS,
+  views: V.map((v) => v.name),
+  async set(k) { await setBg(k); return { assetMs: assetMs[k], layoutMs: V.map((v) => v.layoutMs), asyncMs: V.map((v) => v.layoutAsyncMs), mem: memMB }; },
+  state(o) { if (o.scroll !== undefined) scroll = o.scroll; if (o.t !== undefined) tNow = o.t; },
+  opts(o) { for (const k in o) { const el = document.getElementById(k); if (el) el.checked = !!o[k]; } },
+  step(dt, n = 1) { for (let i = 0; i < n; i++) { tNow += dt; for (const v of V) v.bg.update(dt); scroll += dt * V[0].bg.scrollSpeed * speedMul; } for (const v of V) renderView(v); },
+  flash() { V.forEach((v) => v.bg.flash()); },
+  render() { for (const v of V) renderView(v); return true; },
+  endState() { return V.map((v) => v.endState); },
+  lensing() { return V.map((v) => v.bg.lensing ? v.bg.lensing(v.d.W, v.d.H) : null); },
+  grade() { return V[0].bg.grade; },
+  luma(i = 0) { return fieldLuma(V[i]); },
+  bench(n = 200) {
+    const out = {};
+    for (const v of V) {
+      const t0 = performance.now();
+      for (let i = 0; i < n; i++) { v.bg.update(1 / 60); v.bg.draw(v.ctx, v.lctx, scroll + i * 0.5, tNow + i / 60); }
+      out[v.name] = +((performance.now() - t0) / n).toFixed(3);
+    }
+    return out;
+  },
+  resize(i, W, H) { const v = V[i]; const [fx, fy] = fieldOrigin(W, H); v.bg.resize(W, H, fx, fy); return true; },
+  debug() { return _bgDebug(); },
+  prewarm(k) { return prewarmBackground(k); },
+  ready() { return V.every((v) => v.bg && v.bg.S && !v.bg.want); },
+  get bgs() { return V.map((v) => v.bg); },
+  get sprites() { return !!SP; },
+  spritesReady,
+};
+
+await spritesReady;
+await setBg(key);
+if (freeze) { for (const v of V) renderView(v); }
+requestAnimationFrame(frame);
+window.__ready = true;
+</script>
+</body>
+</html>
