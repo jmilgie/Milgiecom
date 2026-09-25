@@ -132,6 +132,7 @@ const env = {
   shake: (a, d) => { if (settings.shake) R.shake(a, d); },
   setSector(sector) {
     ensureBossArt(sector.boss);
+    try { Music?.preload?.([sector.music, sector.boss === 'heart' ? 'finalboss' : 'boss']); Music?.setIntensity?.(0.5); } catch { /* */ }
     setBackground(sector.key);
     env.bg = bg;
     playMusic(sector.music, { fade: 1.2 });
@@ -432,7 +433,8 @@ function onSimEvent(name, d = {}) {
       break;
     }
     case 'banner': UI.banner(d.title || '', d.sub || '', d.ms || 2800); break;
-    case 'warning': UI.banner('WARNING', d.name ? `${d.name} APPROACHING` : 'HOSTILE SIGNATURE', 2800); break;
+    case 'warning': try { Music?.setIntensity?.(1); } catch { /* */ }
+      UI.banner('WARNING', d.name ? `${d.name} APPROACHING` : 'HOSTILE SIGNATURE', 2800); break;
     case 'toast': UI.toast(d.text, 1400); break;
     case 'clear': {
       saveBest();

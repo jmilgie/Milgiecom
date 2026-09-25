@@ -125,8 +125,8 @@ export default {
     fBell: { base: 'bell', decay: 3.2, index: 2, vol: 0.4 },                                                 // the title's bell render
     fChant: { base: 'choir', a: 0.012, d: 0.12, s: 0.7, r: 0.16 },                                           // choir samples, short: chant stabs
     fToc: { base: 'organ', r: 0.08 },
-    fPad: { base: 'padDark', r: 1.0 },                                                       // shorter tails (play-time)
-    fChoir: { base: 'choir', r: 1.0 },
+    fPad: { base: 'padDark', r: 0.7 },                                                       // shorter tails (play-time)
+    fChoir: { base: 'choir', r: 0.8 },
     fLead: { base: 'leadBright', cutoff: 3600, vib: 18, vibDelay: 0.26, glide: 0.06, r: 0.3 },
     fLead2: { base: 'leadSquare', cutoff: 2000, vib: 12, r: 0.18 },
   },
@@ -141,8 +141,8 @@ export default {
     ride: { gain: 0.22, pan: -0.3, layer: { min: 0.7 } },
     crash: { gain: 0.42, reverb: 0.15, pan: -0.2 },
     tom: { gain: 0.4, reverb: 0.18 },
-    taiko: { gain: 0.26, reverb: 0.24 },
-    taiko2: { inst: 'taiko', gain: 0.26, reverb: 0.25, pan: 0.2, tune: 5, layer: { min: 0.75 } },
+    taiko: { gain: 0.26, reverb: 0.24, poly: 2 },
+    taiko2: { inst: 'taiko', gain: 0.26, reverb: 0.25, pan: 0.2, tune: 5, poly: 2, layer: { min: 0.75 } },
     impact: { gain: 0.42, reverb: 0.25 },
     rev: { inst: 'revcym', gain: 0.4 },
     riser: { gain: 0.4, reverb: 0.3 },
@@ -158,7 +158,7 @@ export default {
     oo: { inst: 'choirOo', gain: 0.28, reverb: 0.5 },
     strings: { gain: 0.38, reverb: 0.38, pan: -0.15, duck: 0.25 },
     brass: { gain: 0.42, reverb: 0.3 },
-    stab: { inst: 'brassStab', gain: 0.32, reverb: 0.22, pan: -0.12, delay: 0.1 },
+    stab: { inst: 'brassStab', gain: 0.32, reverb: 0.22, pan: -0.12, delay: 0.1, poly: 6 },
     bell: { inst: 'fBell', gain: 0.36, reverb: 0.5, delay: 0.25, pan: 0.15 },
     arp: { inst: 'fArp', gain: 0.32, delay: 0.25, reverb: 0.15, pan: -0.25, duck: 0.35, poly: 5 },
     lead: { inst: 'fLead', gain: 0.72, reverb: 0.22, delay: 0.2 },
@@ -201,7 +201,7 @@ export default {
     brassB: { len: 256, brass: chordEvents(B_H, { low: 'D3', high: 'A3', voices: 2, vel: 0.62 }) },
     tocB: { len: 256, toccata: arp(halfList(B_H, { low: 'A3', high: 'A4', voices: 3 }), { rate: 1, len: 8, order: [0, 1, 2, 1], vel: 0.58, accent: 0.14 }) },
     bassB: { len: 256, bass: bassFig(B_H, DRIVE) },
-    padB: { len: 256, pad: chordEvents(B_H, { low: 'D3', high: 'A4', voices: 4, vel: 0.6 }) },
+    padB: { len: 256, pad: chordEvents(B_H, { low: 'D3', high: 'A4', voices: 3, vel: 0.62 }) },
     beatB: { kick: 'X..xX...X..xX...', snare: '....X.......X...', clap: '....x.......x...', hat: 'xgxgxgxgxgxgxgxg', ohat: '..x...x...x...x.', taiko: 'X.....x.X.....x.' },
     fillB: { kick: 'X..xX...X..xX...', snare: '....X.......X.xx', clap: '....x.......x...', hat: 'xgxgxgxgxgxg....', taiko: 'X.....x.X.....x.', tom: '.*12 D3 A2 F2 D2' },
 

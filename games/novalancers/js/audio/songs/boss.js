@@ -144,7 +144,7 @@ export default {
     xSpic: { base: 'strings', a: 0.008, d: 0.12, s: 0.55, r: 0.09 },                       // spiccato (play-time env)
     xLead: { base: 'lead', wave: 'saw', voices: 3, detune: 13, sub: 0.18, cutoff: 2600, q: 2.5, env: 1.6, fd: 0.28, vib: 20, vibRate: 5.8, vibDelay: 0.2, glide: 0.11, r: 0.22, vol: 0.6 },
     xLead2: { base: 'leadSquare', cutoff: 1900, vib: 12, r: 0.16 },
-    xPad: { base: 'padDark', r: 1.0 },                                                      // shorter tails (play-time)
+    xPad: { base: 'padDark', r: 0.7 },                                                      // shorter tails (play-time)
     xChoir: { base: 'choir', r: 0.9 },
     xSaw: { base: 'lead', wave: 'saw', voices: 3, detune: 16, cutoff: 1700, q: 3, env: 2.2, fd: 0.12, vib: 0, a: 0.003, d: 0.1, s: 0.5, r: 0.06, vol: 0.6 },
   },
@@ -159,8 +159,8 @@ export default {
     ride: { gain: 0.22, pan: -0.3, layer: { min: 0.7 } },
     crash: { gain: 0.42, reverb: 0.15, pan: -0.2 },
     tom: { gain: 0.4, reverb: 0.16 },
-    taiko: { gain: 0.26, reverb: 0.22 },
-    taiko2: { inst: 'taiko', gain: 0.26, reverb: 0.25, pan: 0.2, tune: 5, layer: { min: 0.75 } },
+    taiko: { gain: 0.26, reverb: 0.22, poly: 2 },
+    taiko2: { inst: 'taiko', gain: 0.26, reverb: 0.25, pan: 0.2, tune: 5, poly: 2, layer: { min: 0.75 } },
     impact: { gain: 0.42, reverb: 0.25 },
     rev: { inst: 'revcym', gain: 0.4 },
     riser: { gain: 0.4, reverb: 0.3 },
@@ -173,7 +173,7 @@ export default {
     chant: { inst: 'xChoir', gain: 0.3, reverb: 0.4, duck: 0.2 },
     brass: { gain: 0.4, reverb: 0.28 },
     lowbrass: { inst: 'brass', gain: 0.36, reverb: 0.3, pan: -0.05 },
-    stab: { inst: 'brassStab', gain: 0.38, reverb: 0.22, pan: -0.12, delay: 0.1 },
+    stab: { inst: 'brassStab', gain: 0.38, reverb: 0.22, pan: -0.12, delay: 0.1, poly: 6 },
     saw: { inst: 'xSaw', gain: 0.55, pan: 0.1, reverb: 0.12, duck: 0.2 },
     arp: { inst: 'xArp', gain: 0.36, delay: 0.25, reverb: 0.15, pan: -0.25, duck: 0.35, poly: 5 },
     lead: { inst: 'xLead', gain: 0.8, reverb: 0.2, delay: 0.2 },
@@ -183,7 +183,7 @@ export default {
   patterns: {
     // ── intro ──
     introChant: { chant: CHANT_INTRO, lowbrass: LOWBRASS_INTRO, sub: 'G1*16 | G1*8 D2*8 | G1*16 | D2*16' },
-    introPad: { len: 64, pad: chordEvents(INTRO_H.replace(/\/G/g, ''), { low: 'D3', high: 'D5', voices: 4, vel: 0.6 }) },
+    introPad: { len: 64, pad: chordEvents(INTRO_H.replace(/\/G/g, ''), { low: 'D3', high: 'D5', voices: 3, vel: 0.6 }) },
     introDr: {
       taiko: 'X.......x.......|X.......x.......|X.......x...x...|X...x...X.x.xxxx',
       kick: '................|................|X.......X.......|X...X...X.X.X.XX',
@@ -201,7 +201,7 @@ export default {
     riffSaw: { len: 128, saw: bassFig(RIFF_H, RIFF_ACC.map(([s, l, v]) => [s, 0, l, v]), 24) },
     riffChant: { chant: CHANT_RIFF },
     riffStab: { len: 128, stab: hits(RIFF_H, STAB_332, { low: 'G3', high: 'F4', voices: 3 }) },
-    riffPad: { len: 128, pad: chordEvents(RIFF_H, { low: 'D3', high: 'D5', voices: 4, vel: 0.62 }) },
+    riffPad: { len: 128, pad: chordEvents(RIFF_H, { low: 'D3', high: 'D5', voices: 3, vel: 0.62 }) },
     riffBeat: { kick: 'X..X..X..X..X.x.', snare: '....X.......X...', clap: '....x.......x...', hat: 'x.xgx.xgx.xgx.xg', taiko: 'X.....x.....o...' },
     riffFill: { kick: 'X..X..X..X..X...', snare: '....X.......X.xx', clap: '....x.......x...', hat: 'x.xgx.xgx.xg....', taiko: 'X.....x.....o...', tom: '.*12 G3 D3 Bb2 G2' },
     riffFill2: { kick: 'X..X..X.X.......', snare: '....X...........', roll: '.*8 x@0.5 x@0.55 x@0.6 x@0.65 x@0.7 x@0.8 x@0.9 X', hat: 'x.xgx.xg........', taiko: 'X.....X.X.X.X.XX', tom: '.*8 G3 G3 D3 D3 Bb2 Bb2 G2 G2' },
@@ -211,8 +211,8 @@ export default {
     leadA2: { lead: HOOK_HI, lead2: transpose(HOOK_HI, -12), brass: transpose(HOOK_HI, -12) },
     bassA: { len: 128, bass: bassFig(A_H, DRIVE) },
     bassA2: { len: 128, bass: bassFig(A2_H, DRIVE) },
-    padA: { len: 128, pad: chordEvents(A_H, { low: 'D3', high: 'G4', voices: 4, vel: 0.66 }) },
-    padA2: { len: 128, pad: chordEvents(A2_H, { low: 'D3', high: 'G4', voices: 4, vel: 0.7 }) },
+    padA: { len: 128, pad: chordEvents(A_H, { low: 'D3', high: 'G4', voices: 3, vel: 0.66 }) },
+    padA2: { len: 128, pad: chordEvents(A2_H, { low: 'D3', high: 'G4', voices: 3, vel: 0.7 }) },
     spicA: { len: 128, spic: arp(halfList(A_H, { low: 'G3', high: 'G4', voices: 3 }), { rate: 1, len: 8, continue: true, order: [0, 1, 2, 1], vel: 0.6, accent: 0.18 }) },
     spicA2: { len: 128, spic: arp(halfList(A2_H, { low: 'G3', high: 'G4', voices: 3 }), { rate: 1, len: 8, continue: true, order: [0, 1, 2, 1], vel: 0.62, accent: 0.18 }) },
     choirA2: { len: 128, choir: chordEvents(power(A2_H), { low: 'D4', high: 'D5', voices: 3, vel: 0.62 }) },
@@ -227,11 +227,11 @@ export default {
     taikoL: { taiko2: 'X.......x.x.....' },
 
     // ── B / B2 ──
-    leadB: { lead: B_LO, lead2: transpose(B_LO, -12) },
+    leadB: { lead: B_LO, lead2: B_LO },                        // (an octave down would sit inside the pads)
     leadB2: { lead: transpose(B_LO, 12), lead2: B_LO, brass: B_LO },
     bassB: { len: 128, bass: bassFig(B_H, GALLOP) },
     bassB2: { len: 128, bass: bassFig(B_H, DRIVE) },
-    padB: { len: 128, pad: chordEvents(B_TRI, { low: 'D3', high: 'Bb4', voices: 4, vel: 0.7 }) },
+    padB: { len: 128, pad: chordEvents(B_TRI, { low: 'D3', high: 'Bb4', voices: 3, vel: 0.7 }) },
     stringsB: { len: 128, strings: chordEvents(B_TRI, { low: 'G3', high: 'G4', voices: 3, vel: 0.62 }) },
     arpB: { len: 128, arp: arp(halfList(B_H, { low: 'G3', high: 'G4', voices: 3 }), { rate: 1, len: 8, continue: true, oct: 2, order: [0, 1, 2, 3, 4, 5, 4, 3, 1, 2, 3, 4, 5, 3, 2, 1], vel: 0.66, accent: 0.16 }) },
     choirB2: { len: 128, choir: chordEvents(power(B_H), { low: 'D4', high: 'D5', voices: 3, vel: 0.62 }) },
@@ -263,7 +263,7 @@ export default {
     // ── turn ──
     turnChant: { chant: 'G3+D4+G4*8 Ab3+Eb4+Ab4*8 | G3+D4+G4*8 D3+A3+D4*8', lowbrass: 'G2+D3*8 C3+Eb3*8 | G2+D3*8 D2+A2+D3*8', sub: 'G1*16 | G1*8 D2*8' },
     turnBass: { len: 32, bass: bassFig('Gm,Ab/G Gm,D', GALLOP) },
-    turnPad: { len: 32, pad: chordEvents('Gm,Ab Gm,D', { low: 'D3', high: 'D5', voices: 4, vel: 0.62 }) },
+    turnPad: { len: 32, pad: chordEvents('Gm,Ab Gm,D', { low: 'D3', high: 'D5', voices: 3, vel: 0.62 }) },
     turnDr: {
       kick: 'X.......X.......|X.......X...X.X.',
       taiko: 'X.......X.......|X.......X.X.XXXX',

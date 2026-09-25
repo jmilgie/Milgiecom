@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — Boss Music Check</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#09050c; --panel:#150b1a; --line:#35203d; --ink:#f3e6f5; --dim:#a08ba8; --acc:#ff3fa4; --acc2:#ffc94a; --bad:#ff4d6a; --ok:#57f2a0; --warn:#ffc94a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  h1 { font-size:15px; margin:0; letter-spacing:.08em; color:var(--acc); }
+  main { padding:12px 16px 48px; display:grid; gap:14px; max-width:1400px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0; }
+  h2 { margin:0 0 8px; font-size:12px; letter-spacing:.12em; color:var(--dim); text-transform:uppercase; }
+  button, select, input[type=number] { font:inherit; color:var(--ink); background:#241329; border:1px solid var(--line); border-radius:6px; padding:8px 12px; min-height:44px; }
+  button { cursor:pointer; }
+  button.on { background:#4a0f2e; border-color:var(--acc); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .stat { color:var(--dim); }
+  .stat b { color:var(--ink); font-weight:600; }
+  .good { color:var(--ok) !important; } .bad { color:var(--bad) !important; } .warn { color:var(--warn) !important; }
+  canvas { display:block; background:#05030a; border:1px solid var(--line); border-radius:4px; }
+  .scroll { overflow-x:auto; max-width:100%; }
+  pre { white-space:pre-wrap; margin:0; font-size:12px; color:var(--dim); max-height:300px; overflow:auto; }
+  table { border-collapse:collapse; font-size:12px; }
+  td, th { padding:2px 12px 2px 0; text-align:left; white-space:nowrap; }
+  input[type=range] { width:180px; max-width:100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>BOSS MUSIC CHECK · CHOIR ASSAULT / HEART OF THE CHOIR</h1>
+  <button id="unlock">▶ Unlock audio</button>
+  <span class="stat" id="status">idle</span>
+</header>
+<main>
+  <section>
+    <h2>Listen</h2>
+    <div class="row" id="tracks"></div>
+    <div class="row" style="margin-top:8px">
+      <label class="stat">from <select id="lsec"><option value="">(start)</option></select></label>
+      <button id="stop">■ Stop</button>
+      <label class="stat">intensity <input id="int" type="range" min="0" max="1" step="0.05" value="0.5"> <b id="intv">0.50</b></label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="warnBoss">⚠ WARNING → boss (as in game)</button>
+      <button id="warnFinal">⚠ WARNING → finalboss</button>
+      <button id="defeat">★ boss_defeated</button>
+    </div>
+    <div class="stat" id="live" style="margin-top:8px"></div>
+  </section>
+
+  <section>
+    <h2>Offline check</h2>
+    <div class="row">
+      <select id="atrack"><option>boss</option><option>finalboss</option><option>aurora</option><option>title</option><option>horizon</option></select>
+      <label class="stat">seconds <input id="asec" type="number" value="100" min="2" max="320" style="width:80px"></label>
+      <label class="stat">intensity <input id="aint" type="number" value="0.5" min="0" max="1" step="0.1" style="width:70px"></label>
+      <label class="stat">from <select id="asecname"><option value="">(start)</option></select></label>
+      <button id="render">Render &amp; check</button>
+      <button id="loop">Loop check</button>
+      <button id="chlv">Channel levels (20 s)</button>
+      <button id="playbuf" disabled>▶ play render</button>
+    </div>
+    <div class="stat" id="summary" style="margin-top:8px"></div>
+    <pre id="loopres" style="margin-top:8px"></pre>
+    <div id="chtable" style="margin-top:8px"></div>
+  </section>
+
+  <section><h2>Level (peak / RMS per 100 ms, dBFS; red = −1 dBFS)</h2><div class="scroll"><canvas id="lvl" width="1200" height="160"></canvas></div></section>
+  <section><h2>Piano roll (sections · chords · drums)</h2><div class="scroll"><canvas id="roll" width="1200" height="520"></canvas></div><div class="row" id="legend" style="margin-top:6px"></div></section>
+  <section><h2>Harmony check (per-section key/scale aware)</h2><div id="harm"></div></section>
+  <section><h2>Compile warnings</h2><pre id="warns">—</pre></section>
+</main>
+
+<script type="module">
+import { AudioSys } from '../js/audio/audio.js';
+import { Music, SCALES, chordPcs, pitchClass, noteName } from '../js/audio/music.js';
+
+const $ = (id) => document.getElementById(id);
+const db = (x) => 20 * Math.log10(Math.max(1e-9, x));
+let lastBuf = null;
+
+// ─── live ────────────────────────────────────────────────────────────────────────────
+function unlock() { AudioSys.init(); AudioSys.unlock(); }
+$('unlock').onclick = async () => {
+  unlock();
+  const t = performance.now();
+  await Music.init((p) => { $('status').textContent = `rendering instruments… ${Math.round(p * 100)}%`; });
+  $('status').textContent = `ready in ${Math.round(performance.now() - t)} ms`;
+};
+for (const t of ['boss', 'finalboss', 'aurora', 'horizon', 'title']) {
+  const b = document.createElement('button');
+  b.textContent = t; b.dataset.t = t;
+  b.onclick = () => { unlock(); Music.play(t, { fade: 1, restart: true, section: $('lsec').value || undefined }); marks(); fillSections($('lsec'), t); };
+  $('tracks').appendChild(b);
+}
+function marks() { for (const b of $('tracks').children) b.classList.toggle('on', b.dataset.t === Music.current); }
+async function fillSections(sel, track) {
+  const song = await Music.inspect(track).catch(() => null);
+  if (!song) return;
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">(start)</option>' + Object.keys(song.sections).map((n) => `<option>${n}</option>`).join('');
+  if (song.sections[keep]) sel.value = keep;
+}
+$('stop').onclick = () => { Music.stop(1); marks(); };
+$('int').oninput = () => { Music.setIntensity(+$('int').value); $('intv').textContent = (+$('int').value).toFixed(2); };
+$('defeat').onclick = () => { unlock(); Music.stinger('boss_defeated'); };
+
+// The game fires the siren and Music.play(track, { fade: 1.5 }) on the same frame (sim.js 'warning').
+let sfxMod = null;
+async function warning(track) {
+  unlock();
+  await Music.init();
+  try {
+    if (!sfxMod) { sfxMod = await import('../js/audio/sfx.js'); await sfxMod.buildSfx(() => {}); }
+    sfxMod.sfx('warning');
+  } catch (e) { $('status').textContent = 'sfx unavailable: ' + e.message; }
+  Music.play(track, { fade: 1.5 });
+  marks();
+}
+$('warnBoss').onclick = () => warning('boss');
+$('warnFinal').onclick = () => warning('finalboss');
+setInterval(() => {
+  if (!AudioSys.ctx) return;
+  const s = Music.stats();
+  $('live').textContent = `ctx ${AudioSys.ctx.state} · current=${Music.current} · decks ${s.decks} · voices ${s.voices} · bank ${s.bankMB} MB`;
+}, 300);
+
+// ─── analysis helpers ────────────────────────────────────────────────────────────────
+function levels(buf, win = 0.1) {
+  const sr = buf.sampleRate, n = Math.floor(win * sr), L = buf.getChannelData(0), R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L;
+  const frames = [];
+  let peak = 0, sum = 0, clips = 0;
+  for (let i = 0; i + n <= L.length; i += n) {
+    let pk = 0, s = 0;
+    for (let j = i; j < i + n; j++) {
+      const a = Math.abs(L[j]), b = Math.abs(R[j]), m = a > b ? a : b;
+      if (m > pk) pk = m;
+      if (m >= 0.999) clips++;
+      s += (L[j] * L[j] + R[j] * R[j]) / 2;
+    }
+    frames.push({ pk, rms: Math.sqrt(s / n) });
+    if (pk > peak) peak = pk;
+    sum += s;
+  }
+  return { frames, peak, rms: Math.sqrt(sum / Math.max(1, frames.length * n)), clips };
+}
+// crude loudness: RMS of 400 ms blocks, gated at −50 dBFS (ignores silence / tails)
+function loudness(lv) {
+  const blocks = [];
+  for (let i = 0; i + 4 <= lv.frames.length; i += 4) {
+    let s = 0; for (let k = 0; k < 4; k++) s += lv.frames[i + k].rms ** 2;
+    blocks.push(Math.sqrt(s / 4));
+  }
+  const g = blocks.filter((b) => db(b) > -50);
+  return g.length ? db(Math.sqrt(g.reduce((a, b) => a + b * b, 0) / g.length)) : -120;
+}
+function drawLevels(lv, secs, log) {
+  const c = $('lvl'), W = (c.width = Math.max(1200, Math.round(secs * 20))), H = c.height, g = c.getContext('2d');
+  g.fillStyle = '#05030a'; g.fillRect(0, 0, W, H);
+  const y = (d) => H - ((Math.max(-60, d) + 60) / 60) * H;
+  g.strokeStyle = '#35203d'; g.fillStyle = '#a08ba8'; g.font = '10px monospace';
+  for (let d = 0; d >= -60; d -= 12) { g.beginPath(); g.moveTo(0, y(d)); g.lineTo(W, y(d)); g.stroke(); g.fillText(d + ' dB', 2, y(d) - 2); }
+  g.strokeStyle = '#ff4d6a'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, y(-1)); g.lineTo(W, y(-1)); g.stroke(); g.setLineDash([]);
+  const dx = W / lv.frames.length;
+  g.fillStyle = 'rgba(255,63,164,.35)';
+  lv.frames.forEach((f, i) => { const yy = y(db(f.pk)); g.fillRect(i * dx, yy, Math.max(1, dx), H - yy); });
+  g.strokeStyle = '#ffc94a'; g.beginPath();
+  lv.frames.forEach((f, i) => { const yy = y(db(f.rms)); i ? g.lineTo(i * dx, yy) : g.moveTo(0, yy); });
+  g.stroke();
+  g.fillStyle = '#4dffea';
+  for (const s of (log || []).filter((e) => e.sec)) g.fillText(s.sec, (s.t / secs) * W + 2, 11);
+}
+
+const PAL = ['#ff3fa4', '#ffc94a', '#4dffea', '#57f2a0', '#a98bff', '#ff8a3d', '#6fa8ff', '#f2f25f', '#ff4d6a', '#c7ff6b', '#ffa6c9', '#9ee6ff', '#d3a4ff', '#ffe0a0'];
+function drawRoll(log, song, secs) {
+  const c = $('roll'), W = (c.width = Math.max(1200, Math.round(secs * 40))), H = c.height, g = c.getContext('2d');
+  g.fillStyle = '#05030a'; g.fillRect(0, 0, W, H);
+  const notes = log.filter((e) => e.c && e.n && song.channels[e.c] && !song.channels[e.c].fixed);
+  const drums = log.filter((e) => e.c && song.channels[e.c] && (!e.n || song.channels[e.c].fixed));
+  let lo = 127, hi = 0;
+  for (const e of notes) for (const m of e.n) { lo = Math.min(lo, m); hi = Math.max(hi, m); }
+  if (lo > hi) { lo = 36; hi = 84; }
+  lo -= 2; hi += 2;
+  const dch = [...new Set(drums.map((e) => e.c))];
+  const dh = dch.length * 8 + 6, rh = H - dh - 28;
+  const X = (t) => (t / secs) * W, Y = (m) => 28 + rh - ((m - lo + 1) / (hi - lo + 1)) * rh, row = rh / (hi - lo + 1);
+  for (let m = lo; m <= hi; m++) {
+    if ([1, 3, 6, 8, 10].includes(((m % 12) + 12) % 12)) { g.fillStyle = '#0c0712'; g.fillRect(0, Y(m), W, row); }
+    if (m % 12 === 0) { g.fillStyle = '#a08ba8'; g.font = '10px monospace'; g.fillText(noteName(m), 2, Y(m) + row - 1); }
+  }
+  const chans = Object.keys(song.channels), col = (cn) => PAL[chans.indexOf(cn) % PAL.length];
+  const barDur = (60 / song.bpm) * (song.bar / song.spb);
+  for (const s of log.filter((e) => e.sec)) {
+    g.strokeStyle = '#4dffea99'; g.beginPath(); g.moveTo(X(s.t), 0); g.lineTo(X(s.t), H); g.stroke();
+    g.fillStyle = '#4dffea'; g.font = 'bold 11px monospace'; g.fillText(s.sec + (s.tr ? ` (${s.tr > 0 ? '+' : ''}${s.tr})` : ''), X(s.t) + 3, 11);
+    if (s.chords) for (let b = 0; b < s.bars; b++) {
+      g.strokeStyle = '#35203d'; g.beginPath(); g.moveTo(X(s.t + b * barDur), 14); g.lineTo(X(s.t + b * barDur), 28 + rh); g.stroke();
+      g.fillStyle = '#ffc94a'; g.font = '10px monospace'; g.fillText(s.chords[b % s.chords.length].join(','), X(s.t + b * barDur) + 2, 24);
+    }
+  }
+  for (const e of notes) {
+    g.fillStyle = col(e.c); g.globalAlpha = 0.35 + 0.65 * Math.min(1, e.v);
+    for (const m of e.n) g.fillRect(X(e.t), Y(m) + 0.5, Math.max(2, X(e.d) - 1), Math.max(2, row - 1));
+  }
+  g.globalAlpha = 1;
+  dch.forEach((cn, i) => {
+    const yy = H - dh + i * 8;
+    g.fillStyle = '#a08ba8'; g.font = '8px monospace'; g.fillText(cn, 2, yy + 7);
+    g.fillStyle = col(cn);
+    for (const e of drums) if (e.c === cn) { g.globalAlpha = 0.3 + 0.7 * Math.min(1, e.v); g.fillRect(X(e.t), yy + 1, 2, 6); }
+    g.globalAlpha = 1;
+  });
+  $('legend').innerHTML = chans.map((cn) => `<span style="color:${col(cn)}">■ ${cn}</span>`).join(' ');
+}
+
+// Harmony checker. Like dev/music.html, plus: a section may carry analysis-only `key` / `scale`
+// fields (ignored by the engine) for passages in another mode, e.g. the finale's D-major reprise.
+//   chromatic : note in neither the (section) scale nor the current chord
+//   strongNCT : non-chord tone ≥ 1 beat long on a strong beat (beat 1 / 3) — warning only
+//   clashes   : two channels sustaining a minor 2nd / minor 9th (≥ 1 beat together), or a major
+//               7th for ≥ 2 beats where one of them is not a chord tone
+//   bassNCT   : bass-register notes (< C3) ≥ 1 beat long that are not chord tones
+function harmony(log, song) {
+  const beat = 60 / song.bpm, barDur = beat * (song.bar / song.spb);
+  const secs = log.filter((e) => e.sec);
+  const at = (t) => { let s = null; for (const x of secs) if (x.t <= t + 1e-4) s = x; return s; };
+  const res = { total: 0, chord: 0, scale: 0, chromatic: [], strongNCT: [], clashes: [], bassNCT: [], perChan: {} };
+  const info = [];
+  for (const e of log.filter((x) => x.c && x.n && song.channels[x.c] && !song.channels[x.c].fixed)) {
+    const s = at(e.t);
+    if (!s) continue;
+    const src = (song.src.sections || {})[s.sec] || {};
+    const tr = s.tr || 0;
+    const tonic = pitchClass(src.key || song.key) || 0, scale = SCALES[src.scale || song.scale] || SCALES.minor;
+    const rel = e.t - s.t, bar = Math.floor(rel / barDur + 1e-6);
+    let cp = null, sym = null;
+    if (s.chords) {
+      const bc = s.chords[bar % s.chords.length], part = Math.min(bc.length - 1, Math.floor(((rel - bar * barDur) / barDur) * bc.length + 1e-6));
+      sym = bc[part];
+      if (sym && sym !== '-') cp = chordPcs(sym).map((p) => (p + tr + 120) % 12);
+    }
+    const sp = scale.map((p) => (p + tonic + tr + 120) % 12);
+    const pos = rel - bar * barDur;
+    const strong = Math.abs(pos) < 0.02 || Math.abs(pos - barDur / 2) < 0.02;
+    const pc0 = (res.perChan[e.c] = res.perChan[e.c] || { n: 0, chord: 0, scale: 0, chrom: 0 });
+    for (const m of e.n) {
+      const pc = ((m % 12) + 12) % 12;
+      res.total++; pc0.n++;
+      const where = `${s.sec} bar ${bar + 1} ${noteName(m)} (${e.c}) over ${sym || '?'} @${e.t.toFixed(2)}s`;
+      const ct = !!(cp && cp.includes(pc));
+      if (ct) { res.chord++; pc0.chord++; }
+      else if (sp.includes(pc)) { res.scale++; pc0.scale++; if (strong && e.d >= beat * 0.99 && cp) res.strongNCT.push(where); }
+      else { pc0.chrom++; res.chromatic.push(where); }
+      if (!ct && cp && m < 48 && e.d >= beat * 0.99) res.bassNCT.push(where);
+      info.push({ t: e.t, end: e.t + e.d, m, c: e.c, ct });
+    }
+  }
+  info.sort((a, b) => a.t - b.t);
+  const active = [];
+  for (const n of info) {
+    for (let i = active.length - 1; i >= 0; i--) if (active[i].end <= n.t + 1e-3) active.splice(i, 1);
+    if (n.end - n.t >= beat * 0.99) for (const a of active) {
+      if (a.c === n.c || a.end - a.t < beat * 0.99) continue;
+      const ov = Math.min(a.end, n.end) - n.t, d = Math.abs(a.m - n.m);
+      if (ov >= beat * 0.99 && (d === 1 || d === 13 || (d === 11 && ov >= beat * 1.99 && !(a.ct && n.ct)))) res.clashes.push(`${noteName(a.m)} (${a.c}) vs ${noteName(n.m)} (${n.c}) @${n.t.toFixed(2)}s`);
+    }
+    active.push(n);
+  }
+  return res;
+}
+function showHarmony(h) {
+  const pct = (x) => ((100 * x) / Math.max(1, h.total)).toFixed(1) + '%';
+  const uniq = (a) => [...new Set(a)];
+  let html = `<div class="stat">notes <b>${h.total}</b> · chord tones <b class="good">${pct(h.chord)}</b> · scale <b>${pct(h.scale)}</b> · chromatic <b class="${h.chromatic.length ? 'bad' : 'good'}">${h.chromatic.length}</b> · strong-beat NCT <b class="${h.strongNCT.length ? 'warn' : 'good'}">${h.strongNCT.length}</b> · clashes <b class="${h.clashes.length ? 'bad' : 'good'}">${h.clashes.length}</b> · bass NCT <b class="${h.bassNCT.length ? 'warn' : 'good'}">${h.bassNCT.length}</b></div>`;
+  html += '<table><tr><th>channel</th><th>notes</th><th>chord</th><th>scale</th><th>chromatic</th></tr>' + Object.entries(h.perChan).map(([c, v]) => `<tr><td>${c}</td><td>${v.n}</td><td>${v.chord}</td><td>${v.scale}</td><td class="${v.chrom ? 'bad' : ''}">${v.chrom}</td></tr>`).join('') + '</table>';
+  const list = (t, a, cls) => (a.length ? `<div class="${cls}" style="margin-top:6px">${t}</div><pre>${uniq(a).slice(0, 80).join('\n')}</pre>` : '');
+  html += list('chromatic:', h.chromatic, 'bad') + list('sustained semitone clashes:', h.clashes, 'bad') + list('strong-beat non-chord tones:', h.strongNCT, 'warn') + list('bass non-chord tones:', h.bassNCT, 'warn');
+  $('harm').innerHTML = html;
+}
+
+// Concurrent-voice estimate from the note log (the engine cuts the OLDEST voice once a deck has
+// more than 56 sounding, which would chop long pads/choirs). Each note is modelled with its
+// instrument's real tail (sustained: note + release·1.6; one-shots: the rendered sample length;
+// gated one-shots: note + release) and the per-channel poly limit.
+function voices(log, song) {
+  const spans = [];
+  const perCh = {};
+  for (const e of log) {
+    if (!e.c || !song.channels[e.c]) continue;
+    const c = song.channels[e.c], T = c.T, p = c.patch;
+    const notes = e.n && e.n.length ? e.n : [null];
+    for (const m of notes) {
+      let end;
+      if (T.kind === 'live') end = e.t + e.d + (p.r || 0.2) * 1.6 + 0.03;
+      else if (T.sustain) end = e.t + Math.max(e.d, 0.01) + (p.r || 0.1) * 1.6 + 0.02;
+      else {
+        const f = m == null ? 261.6 : 440 * Math.pow(2, (m - 69) / 12);
+        const len = T.len ? T.len(p, f) : 1;
+        end = e.t + (p.gate ? Math.min(len, e.d + (p.r || 0.1) * 1.6) : len);
+      }
+      const list = (perCh[e.c] = perCh[e.c] || []);
+      for (let i = list.length - 1; i >= 0; i--) if (list[i].end <= e.t) list.splice(i, 1);
+      while (list.length >= c.poly) { const v = list.shift(); v.end = Math.min(v.end, e.t + 0.05); }
+      const v = { t: e.t, end, c: e.c };
+      list.push(v); spans.push(v);
+    }
+  }
+  const pts = [];
+  for (const v of spans) pts.push([v.t, 1, v], [v.end, -1, v]);
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let cur = 0, max = 0, at = 0, over = 0, last = 0;
+  for (const [t, d] of pts) {
+    if (cur > 56) over += t - last;
+    last = t; cur += d;
+    if (cur > max) { max = cur; at = t; }
+  }
+  const byCh = {};
+  for (const v of spans) if (v.t <= at && v.end > at) byCh[v.c] = (byCh[v.c] || 0) + 1;
+  return { max, at: +at.toFixed(2), secondsOver56: +over.toFixed(2), atPeak: byCh };
+}
+
+// ─── public checks (also driven headlessly) ──────────────────────────────────────────
+async function check(track, secs = 100, opt = {}) {
+  AudioSys.init();
+  await Music.init();
+  const t0 = performance.now();
+  const buf = await Music.renderOffline(track, secs, { intensity: opt.intensity ?? 0.5, section: opt.section, solo: opt.solo, mute: opt.mute });
+  const renderMs = Math.round(performance.now() - t0);
+  lastBuf = buf; $('playbuf').disabled = false;
+  const log = buf.notes || [];
+  const song = await Music.inspect(track);
+  const lv = levels(buf);
+  if (!opt.quiet) { drawLevels(lv, secs, log); drawRoll(log, song, secs); }
+  const h = harmony(log, song);
+  if (!opt.quiet) showHarmony(h);
+  const warns = await Music.validate(track);
+  $('warns').textContent = warns.length ? warns.join('\n') : 'none';
+  // silent stretches after the first second (a gap would mean a broken section / loop)
+  let gap = 0, maxGap = 0;
+  for (const f of lv.frames.slice(10)) { if (db(f.rms) < -45) { gap++; maxGap = Math.max(maxGap, gap); } else gap = 0; }
+  const uniq = (a) => [...new Set(a)];
+  const sum = {
+    track, secs, intensity: opt.intensity ?? 0.5, peakDb: +db(lv.peak).toFixed(2), rmsDb: +db(lv.rms).toFixed(2), loud: +loudness(lv).toFixed(2), clips: lv.clips,
+    maxSilentGapS: +(maxGap * 0.1).toFixed(1), events: log.filter((e) => e.c).length, renderMs,
+    sections: log.filter((e) => e.sec).map((e) => `${e.sec}@${e.t.toFixed(1)}`).join(' '),
+    harmony: { total: h.total, chordPct: +((100 * h.chord) / Math.max(1, h.total)).toFixed(1), chromatic: uniq(h.chromatic), clashes: uniq(h.clashes), strongNCT: uniq(h.strongNCT), bassNCT: uniq(h.bassNCT) },
+    warnings: warns, bankMB: Music.stats().bankMB, voices: voices(log, song),
+  };
+  $('summary').innerHTML = `peak <b class="${sum.peakDb <= -1 ? 'good' : 'bad'}">${sum.peakDb} dBFS</b> · RMS <b>${sum.rmsDb}</b> · gated loudness <b>${sum.loud}</b> · clipped <b class="${lv.clips ? 'bad' : 'good'}">${lv.clips}</b> · longest silence <b>${sum.maxSilentGapS} s</b> · ${sum.events} events · render ${renderMs} ms`;
+  return sum;
+}
+
+// Loop check: render from the LAST arrangement entry across the loop point and verify that the
+// engine jumps to the loop section on the bar line, with no silence and no level jump.
+async function loopCheck(track, opt = {}) {
+  AudioSys.init();
+  await Music.init();
+  const song = await Music.inspect(track);
+  const arr = song.arr, last = arr[arr.length - 1], loopE = arr[song.loop];
+  const spbar = (60 / song.bpm) * (song.bar / song.spb);
+  const lastDur = last.sec.bars * spbar;
+  const secs = lastDur + (opt.after ?? 10);
+  const buf = await Music.renderOffline(track, secs, { intensity: opt.intensity ?? 0.5, section: last.sec.name });
+  const log = buf.notes || [];
+  const marks = log.filter((e) => e.sec);
+  const jump = marks[1];
+  const lv = levels(buf);
+  const win = (a, b) => { const f = lv.frames.slice(Math.round(a * 10), Math.round(b * 10)); return db(Math.sqrt(f.reduce((s, x) => s + x.rms * x.rms, 0) / Math.max(1, f.length))); };
+  const jt = jump ? jump.t : NaN;
+  let total = 0; for (const e of arr) total += e.sec.bars;
+  let intro = 0; for (let i = 0; i < song.loop; i++) intro += arr[i].sec.bars;
+  const res = {
+    track, lastSection: last.sec.name, loopTo: loopE.sec.name, jumpedTo: jump && jump.sec, expectedAt: +(0.02 + lastDur).toFixed(3), jumpAt: +jt.toFixed(3),
+    rmsBefore: +win(jt - 3, jt).toFixed(1), rmsAfter: +win(jt, jt + 3).toFixed(1), minRmsAround: +Math.min(...lv.frames.slice(Math.round((jt - 1) * 10), Math.round((jt + 2) * 10)).map((f) => db(f.rms))).toFixed(1),
+    peakDb: +db(lv.peak).toFixed(2), totalBars: total, introBars: intro, loopBars: total - intro,
+    loopSeconds: +((total - intro) * spbar).toFixed(1), firstPassSeconds: +(total * spbar).toFixed(1),
+  };
+  res.ok = res.jumpedTo === res.loopTo && Math.abs(res.jumpAt - res.expectedAt) < 0.01 && res.minRmsAround > -40;
+  $('loopres').textContent = JSON.stringify(res, null, 1);
+  return res;
+}
+
+// Per-channel levels: each channel rendered solo (same section/intensity).
+async function channelLevels(track, secs = 20, opt = {}) {
+  AudioSys.init(); await Music.init();
+  const song = await Music.inspect(track);
+  const meas = (buf) => {
+    const L = buf.getChannelData(0), R = buf.getChannelData(1);
+    let pk = 0, s = 0;
+    for (let i = 0; i < L.length; i++) { const m = (L[i] + R[i]) / 2; pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i])); s += m * m; }
+    return { rms: +(10 * Math.log10(s / L.length + 1e-12)).toFixed(1), peak: +db(pk).toFixed(1) };
+  };
+  const chans = opt.chans || Object.keys(song.channels);
+  const rows = [['ALL', meas(await Music.renderOffline(track, secs, { section: opt.section, intensity: opt.intensity ?? 0.5 }))]];
+  for (const ch of chans) {
+    $('chtable').textContent = 'rendering ' + ch + '…';
+    rows.push([ch, meas(await Music.renderOffline(track, secs, { section: opt.section, intensity: opt.intensity ?? 0.5, solo: [ch] }))]);
+  }
+  rows.sort((a, b) => b[1].rms - a[1].rms);
+  $('chtable').innerHTML = '<table><tr><th>channel</th><th>RMS</th><th>peak</th></tr>' + rows.map(([c, v]) => `<tr><td>${c}</td><td>${v.rms < -100 ? 'silent' : v.rms}</td><td>${v.peak < -100 ? '' : v.peak}</td></tr>`).join('') + '</table>';
+  return rows;
+}
+
+$('atrack').onchange = () => fillSections($('asecname'), $('atrack').value);
+fillSections($('asecname'), 'boss');
+$('render').onclick = () => check($('atrack').value, +$('asec').value, { intensity: +$('aint').value, section: $('asecname').value || undefined });
+$('loop').onclick = () => loopCheck($('atrack').value, { intensity: +$('aint').value });
+$('chlv').onclick = () => channelLevels($('atrack').value, 20, { section: $('asecname').value || undefined, intensity: +$('aint').value });
+$('playbuf').onclick = () => {
+  if (!lastBuf) return;
+  unlock();
+  const s = AudioSys.ctx.createBufferSource(); s.buffer = lastBuf; s.connect(AudioSys.master); s.start();
+};
+Object.assign(window, { check, loopCheck, channelLevels, Music, AudioSys });
+</script>
+</body>
+</html>
