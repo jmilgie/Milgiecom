@@ -29,7 +29,7 @@ const INTRO_H = 'Em Em Em Em Em Em C B';
 const A_H = 'Em Em D D C C B B';
 const B_H = 'C D G Em C D Bsus4 B';
 const BRK_H = 'Em Em C C Am Am B B';
-const TAG_H = 'C B';
+const TAG_H = 'C B7';
 
 const BAR = 16;
 // flatten 'Am,G' style bars into [symbol, startStep, lenSteps]
@@ -116,7 +116,7 @@ export default {
 
   instruments: {
     // distorted reese: three detuned saws phasing, pushed hard into the waveshaper
-    cReese: { base: 'reese', detune: 22, cutoff: 760, q: 2, sub: 0.15, drive: 0.75, range: [29, 53] },
+    cReese: { base: 'reese', detune: 24, cutoff: 1300, q: 3, sub: 0.1, drive: 0.85, range: [29, 53] },
     // gritty mid-bass for the pedal riff: resonant filter pluck, heavy drive
     cRiff: { base: 'bass', square: 0.5, sub: 0.15, cutoff: 620, kt: 0.6, env: 2.7, fd: 0.14, q: 6, drive: 0.75, d: 0.12, s: 0.5, r: 0.05, range: [41, 71] },
     // ominous saw lead (live): dark filter, slow vibrato
@@ -127,14 +127,14 @@ export default {
     // metallic percussion
     cKick: { base: 'kickHard', f0: 240, f1: 48, decay: 0.42, drive: 0.7 },
     cHat: { base: 'hat', tone: 1.3, metal: 0.95, decay: 0.045, hp: 6500 },
-    clank: { type: 'hat', decay: 0.13, hp: 1500, metal: 1, noise: 0.14, tone: 0.5, vol: 0.8 },
-    ping: { type: 'cymbal', decay: 0.8, hp: 2400, metal: 0.55, stick: 0.7, ping: 1.3, pingF: 830, bright: 0.85, vol: 0.62 },
+    clank: { type: 'cymbal', decay: 0.3, hp: 3500, metal: 0.7, stick: 0.9, ping: 1.6, pingF: 494, bright: 0.8, vol: 0.7 },   // struck pipe, rings on B
+    ping: { type: 'cymbal', decay: 0.8, hp: 2400, metal: 0.55, stick: 0.7, ping: 1.3, pingF: 988, bright: 0.85, vol: 0.62 },    // metal bar, rings on B
     anvil: { type: 'fm', ratio: 1.41, index: 4.2, isus: 0.06, idecay: 0.16, decay: 1.1, detune: 7, c2: 2.76, m2: 1.53, i2: 1.8, d2: 0.22, l2: 0.55, range: [53, 83], vol: 0.72 },
   },
 
   channels: {
     kick: { inst: 'cKick', gain: 0.44, sidechain: true, layer: { min: 0.15 } },
-    snare: { inst: 'snareBig', gain: 0.5, reverb: 0.26, drive: 0.25, layer: { min: 0.15 } },
+    snare: { inst: 'snareBig', gain: 0.22, reverb: 0.26, drive: 0.25, layer: { min: 0.15 } },
     clap: { gain: 0.3, reverb: 0.22, pan: 0.1, layer: { min: 0.15 } },
     hat: { inst: 'cHat', gain: 0.36, pan: 0.22, choke: ['ohat'], human: { t: 0.002, v: 0.12 } },
     ohat: { gain: 0.26, pan: 0.28 },
@@ -143,24 +143,24 @@ export default {
     clank: { gain: 0.34, pan: -0.32, reverb: 0.18, delay: 0.1, human: { t: 0.002, v: 0.1 } },
     ping: { gain: 0.26, pan: 0.36, reverb: 0.3 },
     rim: { gain: 0.28, pan: 0.15, reverb: 0.2 },
-    anvil: { gain: 0.34, reverb: 0.35, delay: 0.18, pan: 0.18 },
+    anvil: { gain: 0.45, reverb: 0.35, delay: 0.18, pan: 0.18 },
     crash: { gain: 0.4, reverb: 0.15, pan: -0.2 },
-    tom: { gain: 0.4, reverb: 0.2, drive: 0.2 },
+    tom: { gain: 0.3, reverb: 0.2, drive: 0.2 },
     taiko: { gain: 0.46, reverb: 0.22, layer: { min: 0.75 } },
     boom: { inst: 'taiko', gain: 0.46, reverb: 0.25 },
     rev: { inst: 'revcym', gain: 0.4 },
     riser: { gain: 0.4, reverb: 0.3 },
     down: { inst: 'downlifter', gain: 0.34, reverb: 0.3 },
     impact: { gain: 0.44, reverb: 0.25 },
-    reese: { inst: 'cReese', gain: 0.58, duck: 0.6, drive: 0.25, lpf: 1800 },
-    riff: { inst: 'cRiff', gain: 0.5, duck: 0.35, lpf: 20000, pan: 0.04 },
-    pad: { inst: 'padDark', gain: 0.3, duck: 0.55, reverb: 0.3, lpf: 2600 },
-    strings: { gain: 0.34, reverb: 0.35, duck: 0.25, pan: -0.15, lpf: 3200 },
+    reese: { inst: 'cReese', gain: 0.25, duck: 0.6, drive: 0.3, lpf: 2400 },
+    riff: { inst: 'cRiff', gain: 1.4, duck: 0.35, lpf: 20000, pan: 0.04 },
+    pad: { inst: 'padDark', gain: 0.27, duck: 0.55, reverb: 0.3, lpf: 2600 },
+    strings: { gain: 0.42, reverb: 0.35, duck: 0.25, pan: -0.15, lpf: 3200 },
     choir: { gain: 0.24, reverb: 0.45, duck: 0.25 },
     stab: { inst: 'brassStab', gain: 0.26, reverb: 0.22, drive: 0.35, pan: 0.12, delay: 0.1, duck: 0.3 },
     brass: { gain: 0.36, reverb: 0.3, pan: -0.06 },
-    hook: { inst: 'cHook', gain: 0.62, reverb: 0.24, delay: 0.2, drive: 0.3 },
-    lead: { inst: 'cHero', gain: 0.66, reverb: 0.22, delay: 0.22 },
+    hook: { inst: 'cHook', gain: 0.38, reverb: 0.24, delay: 0.2, drive: 0.3 },
+    lead: { inst: 'cHero', gain: 0.8, reverb: 0.22, delay: 0.22 },
     lead2: { inst: 'cOct', gain: 0.34, reverb: 0.2, pan: 0.1, layer: { min: 0.8 } },
   },
 
@@ -260,7 +260,7 @@ export default {
     intro: {
       bars: 8, chords: INTRO_H,
       play: [{ p: 'machine', until: 4 }, { p: 'machine2', at: 4 }, 'introDrone', 'introPad', 'introChoir', 'introAnvil', { p: 'introRiff', at: 4 }, 'introFx', { p: 'introKick', at: 6 }],
-      auto: { 'reese.lpf': [[0, 220], [6, 900], [8, 1800]], 'riff.lpf': [[4, 260], [8, 5000]], 'pad.lpf': [[0, 500], [8, 2600]] },
+      auto: { 'reese.lpf': [[0, 220], [6, 900], [8, 2400]], 'riff.lpf': [[4, 260], [8, 5000]], 'pad.lpf': [[0, 500], [8, 2600]], 'pad.vol': [[0, 0.45], [6, 1]] },
     },
     A: {
       bars: 8, chords: A_H,
@@ -282,7 +282,7 @@ export default {
       bars: 8, chords: BRK_H,
       play: ['reeseBrk', 'padBrk', 'choirBrk', 'anvilBrk', 'callBrk', 'brkFx', { p: 'machine', until: 6 }, { p: 'riffBrk', at: 6 },
         [null, null, 'heart', 'heart', 'heart', 'heart2', 'bu1', 'bu2']],
-      auto: { 'reese.lpf': [[0, 500], [6, 700], [8, 2000]], 'pad.lpf': [[0, 900], [6, 1500], [8, 3000]], 'riff.lpf': [[6, 400], [8, 4000]] },
+      auto: { 'reese.lpf': [[0, 500], [6, 700], [8, 2400]], 'reese.vol': [[0, 0.6], [6, 0.6], [8, 1]], 'pad.lpf': [[0, 900], [6, 1500], [8, 3000]], 'riff.lpf': [[6, 400], [8, 4000]] },
     },
     climax: {
       bars: 8, chords: A_H,

@@ -275,10 +275,11 @@ export function drawPlayer(sim, p, ctx, lctx, tick) {
   const opt = S.teamOpt(p.slot);
 
   // engine flames (under the ship)
-  const engines = (meta && meta.engines) || [[0, 10]];
+  const engines = (meta && ((meta.enginesByFrame && meta.enginesByFrame[frame]) || meta.engines)) || [[0, 10]];
+  const perFrame = !!(meta && meta.enginesByFrame);
   for (const [ex, ey] of engines) {
     const fl = (tick >> 1) + p.slot;
-    const bx = ex * (1 - Math.abs(p.bank) * 0.08);
+    const bx = perFrame ? ex : ex * (1 - Math.abs(p.bank) * 0.08);
     S.draw(ctx, 'flame_s', fl, p.x + bx, p.y + ey + 4, opt);
     S.drawE(lctx, 'flame_s', fl, p.x + bx, p.y + ey + 4, opt);
     if ((tick & 3) === 0) fx.trail(p.x + bx, p.y + ey + 8, p.odT > 0 ? 'ember' : ['cyan', 'gold', 'lime', 'violet'][p.slot], 1);

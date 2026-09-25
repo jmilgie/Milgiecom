@@ -50,6 +50,52 @@ function prof(label) {
   const now = performance.now(); if (label) P.push([label, +(now - _pt).toFixed(1)]); _pt = now;
 }
 
+// ---------------------------------------------------------------------------
+// Time-sliced job runner. All generation is written as generators that yield every few
+// milliseconds of work; jobs run in short slices between frames so building the next
+// sector (or re-laying out after a resize) never freezes the game or starves the music
+// scheduler. A job can also be finished synchronously (drain) when its result is needed now.
+// ---------------------------------------------------------------------------
+
+function runGen(it) { let r; do { r = it.next(); } while (!r.done); return r.value; }
+
+const JOBS = [];
+let pumping = false;
+const nowMs = () => performance.now();
+// Dev hook: globalThis.__BG_SLICES = [] collects the duration of every slice.
+function pump() {
+  const t0 = nowMs();
+  while (JOBS.length) {
+    const j = JOBS[0];
+    if (j.state !== 'run') { JOBS.shift(); continue; }
+    let r;
+    try { r = j.it.next(); } catch (e) { JOBS.shift(); j.state = 'error'; j.reject(e); continue; }
+    if (r.done) { JOBS.shift(); j.state = 'done'; j.value = r.value; j.resolve(r.value); }
+    if (nowMs() - t0 >= j.budget) break;
+  }
+  if (globalThis.__BG_SLICES) globalThis.__BG_SLICES.push(+(nowMs() - t0).toFixed(2));
+  if (JOBS.length) setTimeout(pump, 0); else pumping = false;
+}
+// pri: higher runs first; budget: ms per slice
+function startJob(it, pri = 0, budget = 4) {
+  const j = { it, pri, budget, state: 'run', value: undefined, resolve: null, reject: null };
+  j.promise = new Promise((res, rej) => { j.resolve = res; j.reject = rej; });
+  j.promise.catch(() => {});
+  let i = JOBS.length; while (i > 0 && JOBS[i - 1].pri < pri) i--;
+  JOBS.splice(i, 0, j);
+  if (!pumping) { pumping = true; setTimeout(pump, 0); }
+  return j;
+}
+function cancelJob(j) { if (j && j.state === 'run') { j.state = 'cancelled'; j.resolve(undefined); } }
+// finish a running job right now (its remaining steps run synchronously)
+function drainJob(j) {
+  if (!j) return undefined;
+  if (j.state === 'run') { j.state = 'done'; j.value = runGen(j.it); j.resolve(j.value); }
+  return j.value;
+}
+// yield inside a row loop every `n` rows
+const every = (y, n) => (y % n) === n - 1;
+
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -81,6 +127,15 @@ function qi(v, x, y, n) {
   if (v >= n - 1) return n - 1;
   const i = v | 0;
   return v - i > bay(x, y) ? i + 1 : i;
+}
+// Like qi, but flat bands with dithering only in a narrow window (width w, in ramp steps)
+// around each band edge: large surfaces read as clean colour areas instead of a
+// checkerboard "screen door", and scrolling surfaces don't shimmer.
+function qe(v, x, y, n, w = 0.3) {
+  if (v <= 0) return 0;
+  if (v >= n - 1) return n - 1;
+  const i = v | 0, p = (v - i - 0.5) / w + 0.5;
+  return p > bay(x, y) ? i + 1 : i;
 }
 
 // RGB -> palette quantiser with a lazily filled 18-bit lookup table and ordered dithering.
@@ -387,8 +442,10 @@ function drawStrip(ctx, img, x, oy, H) {
 // A mostly transparent tile stored as cropped horizontal bands (saves memory for sparse
 // layers such as emissive maps, rock fields and structures). Drawn like a canvas tile.
 class BandTile {
-  constructor(r, bandH = 48) {
-    this.width = r.w; this.height = r.h; this.bands = [];
+  constructor(w, h) { this.width = w; this.height = h; this.bands = []; }
+  // generator: crops raster r into bands (yields per band)
+  static *from(r, bandH = 48) {
+    const t = new BandTile(r.w, r.h);
     const { w, h, d } = r;
     for (let y0 = 0; y0 < h; y0 += bandH) {
       const y1 = Math.min(h, y0 + bandH);
@@ -399,8 +456,10 @@ class BandTile {
       if (maxX < 0) continue;
       const bw = maxX - minX + 1, bh = maxY - minY + 1, sub = new Raster(bw, bh);
       for (let y = 0; y < bh; y++) sub.d.set(d.subarray((minY + y) * w + minX, (minY + y) * w + minX + bw), y * bw);
-      this.bands.push({ x: minX, y: minY, w: bw, h: bh, c: sub.toCanvas() });
+      t.bands.push({ x: minX, y: minY, w: bw, h: bh, c: sub.toCanvas() });
+      yield;
     }
+    return t;
   }
   draw(ctx, ax, oy, W, H, shift, strip = false) {
     const tw = this.width, th = this.height, B = this.bands;
@@ -421,7 +480,18 @@ class BandTile {
 }
 // draw a canvas or BandTile once at (x, y)
 const blit = (ctx, img, x, y) => { if (img.bands) img.blit(ctx, x, y); else ctx.drawImage(img, x, y); };
-const banded = (r) => new BandTile(r);
+const banded = (r) => runGen(BandTile.from(r));
+const bandedG = (r) => BandTile.from(r);
+// Erase the light layer behind an opaque layer that is about to be drawn in front of it
+// (so far emissive layers don't shine through near structures). lctx is opaque, so
+// 'destination-out' leaves black; with an alpha-enabled light canvas it leaves
+// transparent pixels, which the post pass reads as black too (premultiplied upload).
+function occlude(lctx, fn) {
+  const op = lctx.globalCompositeOperation, a = lctx.globalAlpha;
+  lctx.globalCompositeOperation = 'destination-out'; lctx.globalAlpha = 1;
+  fn(lctx);
+  lctx.globalCompositeOperation = op; lctx.globalAlpha = a;
+}
 
 const colShift = (sx, x, ax, w, shift, h) => (shift ? Math.round(Math.round((sx - x - ax) / w) * shift * h) : 0);
 
@@ -507,6 +577,64 @@ class Twinkles {
   }
 }
 
+// Ordered-dither dissolve between two baked frames (canvas or BandTile) of the same size.
+// Instead of an alpha crossfade (off-palette ghost blends), a Bayer mask picks each pixel
+// from one frame or the other. prep() builds the masked frames once; put() draws them on
+// any number of layers.
+let DPATS = null;
+function dissolvePattern(cx, level) {
+  if (!DPATS) {
+    DPATS = [];
+    for (let l = 0; l <= 16; l++) {
+      const c = makeCanvas(4, 4), x = c.getContext('2d'), id = x.createImageData(4, 4);
+      for (let i = 0; i < 16; i++) id.data[i * 4 + 3] = BAYER4[i] < l / 16 ? 255 : 0;
+      x.putImageData(id, 0, 0);
+      DPATS.push(c);
+    }
+  }
+  return cx.createPattern(DPATS[level], 'repeat');
+}
+class Dissolve {
+  constructor(w, h) { this.w = w; this.h = h; this.ca = null; this.cb = null; this.L = 0; this.A = null; this.B = null; this.pats = {}; }
+  pat(cx, l) { return this.pats[l] || (this.pats[l] = dissolvePattern(cx, l)); }
+  prep(A, B, k, additive = false) {
+    const L = Math.round(clamp01(k) * 16);
+    this.L = L; this.A = A; this.B = B; this.add = additive;
+    if (L === 0 || L === 16) return;
+    if (!this.cb) { this.cb = makeCanvas(this.w, this.h); this.bx = ctx2d(this.cb); this.ca = makeCanvas(this.w, this.h); this.ax = ctx2d(this.ca); }
+    const { bx, ax, w, h } = this;
+    bx.clearRect(0, 0, w, h); blit(bx, B, 0, 0);
+    bx.globalCompositeOperation = 'destination-in'; bx.fillStyle = this.pat(bx, L); bx.fillRect(0, 0, w, h);
+    bx.globalCompositeOperation = 'source-over';
+    if (additive) {        // additive frames: A must be masked out where B is chosen
+      ax.clearRect(0, 0, w, h); blit(ax, A, 0, 0);
+      ax.globalCompositeOperation = 'destination-out'; ax.fillStyle = this.pat(ax, L); ax.fillRect(0, 0, w, h);
+      ax.globalCompositeOperation = 'source-over';
+    }
+  }
+  put(ctx, x, y) {
+    const L = this.L;
+    if (L === 0) { blit(ctx, this.A, x, y); return; }
+    if (L === 16) { blit(ctx, this.B, x, y); return; }
+    if (this.add) ctx.drawImage(this.ca, x, y); else blit(ctx, this.A, x, y);
+    ctx.drawImage(this.cb, x, y);
+  }
+  free() { freeCanvas(this.ca); freeCanvas(this.cb); this.ca = this.cb = null; }
+}
+
+// 1-px pixel ellipse outline (no anti-aliasing): one horizontal run per row and quadrant.
+function pixelRing(ctx, cx, cy, rx, ry) {
+  cx = Math.round(cx); cy = Math.round(cy);
+  const R = Math.round(ry);
+  for (let y = 0; y <= R; y++) {
+    const xa = Math.round(rx * Math.sqrt(Math.max(0, 1 - ((y + 0.5) / ry) ** 2)));
+    const xb = Math.max(xa, Math.round(rx * Math.sqrt(Math.max(0, 1 - ((y - 0.5) / ry) ** 2))));
+    const w = xb - xa + 1;
+    ctx.fillRect(cx + xa, cy + y, w, 1); ctx.fillRect(cx - xb, cy + y, w, 1);
+    if (y) { ctx.fillRect(cx + xa, cy - y, w, 1); ctx.fillRect(cx - xb, cy - y, w, 1); }
+  }
+}
+
 // Additive light sprite from an intensity function: f(dx, dy) -> 0..1, coloured through ramp.
 function glowSprite(w, h, ramp, f, levels = 0) {
   const r = new Raster(w, h, false);
@@ -527,116 +655,164 @@ function glowSprite(w, h, ramp, f, levels = 0) {
 // Stage base
 // ---------------------------------------------------------------------------
 
+// Approximate bytes held by canvases reachable from v (canvases, BandTiles, arrays, plain objects).
+function bytesOf(v, seen = new Set()) {
+  if (!v || typeof v !== 'object' || seen.has(v)) return 0;
+  seen.add(v);
+  if (Array.isArray(v)) { let n = 0; for (const x of v) n += bytesOf(x, seen); return n; }
+  if (v.bands) { let n = 0; for (const b of v.bands) n += b.w * b.h * 4; return n; }
+  if (v.getContext) return (v.width * v.height * 4) || 0;
+  if (v.constructor !== Object) return 0;
+  let n = 0; for (const k in v) n += bytesOf(v[k], seen); return n;
+}
+function freeAll(v) {
+  if (!v || typeof v !== 'object') return;
+  if (Array.isArray(v)) { v.forEach(freeAll); return; }
+  if (v.bands || v.getContext) { freeCanvas(v); return; }
+  if (v.constructor === Object) for (const k in v) freeAll(v[k]);
+}
+
+let lastVP = null;           // last viewport any background was sized to (used to prebuild layouts)
+
+// A layout can be kept when only the height wobbles (mobile URL bar) or fy shifts slightly.
+const layoutFits = (S, W, H, fx, fy) => S && S.W === W && S.fx === fx && H <= S.LH && H >= S.LH - 120 && Math.abs(fy - S.fy) <= 24;
+
 class Stage {
   constructor(key, assets) {
     this.key = key; this.A = assets;
-    this.W = 0; this.H = 0; this.fx = 0; this.fy = 0;
-    this.LH = 0;                 // layout height (H plus slack so small height changes need no re-render)
+    // Size of the current layout. H and fy follow the viewport while the layout still fits.
+    this.W = 0; this.H = 0; this.fx = 0; this.fy = 0; this.LH = 0;
+    this.S = null;               // current layout: size-dependent canvases + derived geometry
+    this.want = null;            // viewport waiting for an async relayout ({ W, H, fx, fy })
+    this.rjob = null; this._rt = 0;
     this.time = 0; this.flashT = 0;
-    this.S = {};                 // size-dependent canvases (rebuilt by layout)
-    this.WD = {}; this.wideTW = 0;   // wide-screen variants of noise tiles (desktop only)
     this.scrollSpeed = 30;
     this.grade = { tint: [1, 1, 1], lift: [0, 0, 0], sat: 1, contrast: 1 };
-    this._lay = null;
   }
   resize(W, H, fx = Math.floor((W - FIELD_W) / 2), fy = Math.floor((H - FIELD_H) / 2)) {
     W |= 0; H |= 0; fx |= 0; fy |= 0;
     if (!this.A || W <= 0 || H <= 0) return;
-    this.W = W; this.H = H; this.fx = fx; this.fy = fy;
-    // Mobile browsers nudge the viewport height (URL bar); only re-render when it matters.
-    const L = this._lay;
-    if (L && L.W === W && L.fx === fx && H <= L.LH && H >= L.LH - 120 && Math.abs(fy - L.fy) <= 24) return;
-    this.LH = H + 48;
-    this._lay = { W, fx, fy, LH: this.LH };
-    this.freeSized();
-    this.layout();
-    // wide screens: regenerate horizontally repeating noise tiles at the viewport width
-    const tw = W > TW ? Math.ceil(W / 64) * 64 : 0;
-    if (tw !== this.wideTW) {
-      this.freeWide();
-      this.wideTW = tw;
-      if (tw) {
-        const specs = this.wide();
-        for (const k in specs) {
-          const v = specs[k](tw);
-          if (v && v.getContext) this.WD[k] = v; else Object.assign(this.WD, v);
-        }
-      }
+    lastVP = { W, H, fx, fy };
+    if (W > TW) wideTiles(this.key);
+    if (layoutFits(this.S, W, H, fx, fy)) {      // cheap path: keep the layout, follow the field
+      this.cancelRelayout(); this.want = null;
+      this.H = H; this.fy = fy;
+      return;
     }
-    if (!this._warmed) { warm(this.A); this._warmed = true; }
-    warm(this.S); warm(this.WD);
+    if (!this.S && !this.asyncFirst) { this.applyLayout(runGen(this.buildLayout(W, H, fx, fy))); return; }
+    // Keep drawing the previous layout (translated to follow the field) and rebuild in time
+    // slices once the viewport has been stable for a moment (rotations, window drags).
+    this.want = { W, H, fx, fy };
+    this.cancelRelayout();
+    this._rt = setTimeout(() => this.relayout(), this.S ? 200 : 0);
   }
+  relayout() {
+    const w = this.want; this._rt = 0;
+    if (!w || !this.A) return;
+    // bigger slices while the old layout leaves part of the screen uncovered
+    const cover = this.S ? Math.min(1, this.W / w.W) * Math.min(1, this.LH / w.H) : 0;
+    const j = this.rjob = startJob(this.buildLayout(w.W, w.H, w.fx, w.fy), 3, cover > 0.95 ? 5 : 10);
+    j.promise.then((S) => {
+      if (this.rjob !== j || j.state !== 'done' || !this.A) { if (S) freeAll(S); return; }
+      this.rjob = null; this.want = null;
+      this.applyLayout(S);
+    });
+  }
+  cancelRelayout() {
+    if (this._rt) { clearTimeout(this._rt); this._rt = 0; }
+    if (this.rjob) { cancelJob(this.rjob); this.rjob = null; }
+  }
+  *buildLayout(W, H, fx, fy) {
+    const S = { W, H0: H, LH: H + 48, fx, fy, ax: Math.round(fx + FIELD_W / 2 - TW / 2) };
+    yield* this.layout(S);
+    yield;
+    warm(S);
+    return S;
+  }
+  applyLayout(S) {
+    freeAll(this.S);
+    this.S = S;
+    this.W = S.W; this.H = S.H0; this.LH = S.LH; this.fx = S.fx; this.fy = S.fy;
+    if (!this._warmed) { warm(this.A); this._warmed = true; }
+  }
+  // reset transient state when a pooled instance is reused
+  revive() { this.time = 0; this.flashT = 0; }
   get cx() { return this.fx + FIELD_W / 2; }
   // tile origin that centres a tile of width w on the field
   axw(w) { return Math.round(this.fx + FIELD_W / 2 - w / 2); }
   get ax() { return this.axw(TW); }
-  // a noise layer: the wide variant when present, otherwise the shared phone-width tile
-  L(name) { return this.WD[name] || this.A[name]; }
+  // a noise layer: the shared wide variant on wide screens once built, else the phone tile
+  L(name) {
+    if (this.W > TW) { const wd = CACHE.get(this.key)?.wide; if (wd && wd[name]) return wd[name]; }
+    return this.A[name];
+  }
   // draw a (possibly wide) tile layer centred on the field
   tile(ctx, img, oy, shift = 0, dx = 0) { drawTiled(ctx, img, this.axw(img.width) + dx, oy, this.W, this.H, shift); }
-  layout() {}
-  wide() { return {}; }
+  *layout() {}
   update(dt) {
     if (!this.A) return;
     this.time += dt;
     if (this.flashT > 0) this.flashT = Math.max(0, this.flashT - dt);
-    this.step(dt);
+    if (this.S) this.step(dt);
   }
   step() {}
   draw(ctx, lctx, scrollY, t) {
-    if (!this.A || !this._lay) return;
-    this.render(ctx, lctx, scrollY || 0, t || 0);
+    if (!this.A) return;
+    const S = this.S;
+    if (!S) { if (this.want) this.placeholder(ctx, lctx, t || 0); return; }
+    let dx = 0, dy = 0;
+    if (this.want) { dx = this.want.fx - this.fx; dy = this.want.fy - this.fy; }
+    if (dx || dy) { ctx.save(); lctx.save(); ctx.translate(dx, dy); lctx.translate(dx, dy); }
+    this.render(ctx, lctx, scrollY || 0, t || 0, S);
+    if (dx || dy) { ctx.restore(); lctx.restore(); }
   }
+  placeholder() {}
   render() {}
   lensing() { return null; }
   flash() { this.flashT = 1; }
-  freeSized() {
-    for (const k in this.S) { const v = this.S[k]; if (Array.isArray(v)) v.forEach(freeCanvas); else freeCanvas(v); }
-    this.S = {};
-  }
-  freeWide() {
-    for (const k in this.WD) { const v = this.WD[k]; if (Array.isArray(v)) v.forEach(freeCanvas); else freeCanvas(v); }
-    this.WD = {}; this.wideTW = 0;
-  }
   // Approximate bytes held by this stage's canvases (shared assets + size-dependent ones).
-  memory() {
-    let n = 0;
-    const add = (v) => {
-      if (!v) return;
-      if (Array.isArray(v)) v.forEach(add);
-      else if (typeof v === 'object' && v.bands) v.bands.forEach((b) => { n += b.w * b.h * 4; });
-      else if (typeof v === 'object' && v.getContext && v.width) n += v.width * v.height * 4;
-      else if (typeof v === 'object' && !v.getContext && v.constructor === Object) for (const k in v) add(v[k]);
-    };
-    add(this.A); add(this.S); add(this.WD); add(this.hole);
-    return n;
-  }
+  memory() { return bytesOf(this.A) + this.layoutBytes(); }
+  layoutBytes() { return bytesOf(this.S); }
+  // back to the pool: keeps the layout so the next createBackground(key) is instant
   dispose() {
-    this.freeSized(); this.freeWide();
-    this._lay = null;
-    if (this.A) { release(this.key); this.A = null; }
+    if (!this.A || this.pooled) return;
+    this.cancelRelayout();
+    this.pooled = true;
+    poolAdd(this);
+  }
+  // really free the size-dependent canvases (pool eviction)
+  destroy() {
+    this.cancelRelayout();
+    freeAll(this.S); this.S = null;
+    this.A = null;
   }
 }
 
 // Additive nebula tile (periodic in x and y). Returns an opaque-black canvas meant for
 // 'lighter' compositing. dens(x, y, v) can reshape the noise value v -> 0..1 density.
-function nebulaTile(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 0.45, contrast = 2.2, profile = null, step = 2, ridged = 0, levels = 0 }) {
+function nebulaTile(...a) { return runGen(nebulaTileG(...a)); }
+function* nebulaTileG(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 0.45, contrast = 2.2, profile = null, step = 2, ridged = 0, levels = 0 }) {
   const f = new Fbm(rng, w, h, cell, oct, 0.52);
   const wx = new Fbm(rng, w, h, cell * 1.3, 3, 0.5).field(4);
   const wy = new Fbm(rng, w, h, cell * 1.3, 3, 0.5).field(4);
   const rf = ridged ? new Fbm(rng, w, h, cell * 0.7, 4, 0.55) : null;
   const cw = Math.ceil(w / step), ch = Math.ceil(h / step);
   const coarse = new Float32Array(cw * ch);
-  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
-    const px = x * step, py = y * step, i = py * w + px;
-    const ox = (wx[i] - 0.5) * warp * 2, oy = (wy[i] - 0.5) * warp * 2;
-    let v = f.at(px + ox, py + oy);
-    if (rf) v = lerp(v, rf.ridge(px + ox * 0.5, py + oy * 0.5), ridged);
-    coarse[y * cw + x] = v;
+  yield;
+  for (let y = 0; y < ch; y++) {
+    if (every(y, 12)) yield;
+    for (let x = 0; x < cw; x++) {
+      const px = x * step, py = y * step, i = py * w + px;
+      const ox = (wx[i] - 0.5) * warp * 2, oy = (wy[i] - 0.5) * warp * 2;
+      let v = f.at(px + ox, py + oy);
+      if (rf) v = lerp(v, rf.ridge(px + ox * 0.5, py + oy * 0.5), ridged);
+      coarse[y * cw + x] = v;
+    }
   }
   const r = new Raster(w, h, true);
   const cols = packRamp(ramp), n = cols.length;
   for (let y = 0; y < h; y++) {
+    if (every(y, 64)) yield;
     const fy = y / step, y0 = Math.floor(fy), ty = fy - y0, y1 = (y0 + 1) % ch;
     const pr = profile ? profile(y) : 1;
     for (let x = 0; x < w; x++) {
@@ -655,22 +831,29 @@ function nebulaTile(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 0.
 
 // Two-colour emission nebula (additive, opaque black background), quantised to palette q.
 // Density fields A and B are warped fbm; `fil` adds ridged filaments; colours mix in RGB.
-function nebula2Tile(rng, w, h, q, { cell = 150, oct = 5, warp = 60, colA, colB, biasA = 0.5, biasB = 0.55, gainA = 1, gainB = 1, fil = 0.4, filCol = null, spread = 14, step = 2, hot = null, hotAt = 0.8 }) {
+function* nebula2TileG(rng, w, h, q, { cell = 150, oct = 5, warp = 60, colA, colB, biasA = 0.5, biasB = 0.55, gainA = 1, gainB = 1, fil = 0.4, filCol = null, spread = 14, step = 2, hot = null, hotAt = 0.8 }) {
   const fa = new Fbm(rng, w, h, cell, oct, 0.52), fb = new Fbm(rng, w, h, cell * 1.2, 4, 0.5);
   const fr = new Fbm(rng, w, h, cell * 0.55, 3, 0.55);
-  const wx = new Fbm(rng, w, h, cell * 1.4, 3, 0.5).field(4), wy = new Fbm(rng, w, h, cell * 1.4, 3, 0.5).field(4);
+  const wx = new Fbm(rng, w, h, cell * 1.4, 3, 0.5).field(4);
+  yield;
+  const wy = new Fbm(rng, w, h, cell * 1.4, 3, 0.5).field(4);
+  yield;
   const cw = Math.ceil(w / step), ch = Math.ceil(h / step), K = 3;
   const co = new Float32Array(cw * ch * K);
-  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
-    const px = x * step, py = y * step, i = py * w + px;
-    const ox = (wx[i] - 0.5) * warp * 2, oy = (wy[i] - 0.5) * warp * 2, j = (y * cw + x) * K;
-    co[j] = fa.at(px + ox, py + oy);
-    co[j + 1] = fb.at(px - oy * 0.7, py + ox * 0.7);
-    co[j + 2] = fr.ridge(px + ox * 0.6, py + oy * 0.6);
+  for (let y = 0; y < ch; y++) {
+    if (every(y, 8)) yield;
+    for (let x = 0; x < cw; x++) {
+      const px = x * step, py = y * step, i = py * w + px;
+      const ox = (wx[i] - 0.5) * warp * 2, oy = (wy[i] - 0.5) * warp * 2, j = (y * cw + x) * K;
+      co[j] = fa.at(px + ox, py + oy);
+      co[j + 1] = fb.at(px - oy * 0.7, py + ox * 0.7);
+      co[j + 2] = fr.ridge(px + ox * 0.6, py + oy * 0.6);
+    }
   }
   const A = hexToRgb(colA), B = hexToRgb(colB), F = hexToRgb(filCol || colA), HT = hot ? hexToRgb(hot) : null;
   const r = new Raster(w, h, true), v = new Float32Array(K);
   for (let y = 0; y < h; y++) {
+    if (every(y, 48)) yield;
     const fy = y / step, y0 = Math.floor(fy), ty = fy - y0, y1 = (y0 + 1) % ch, uy = 1 - ty;
     for (let x = 0; x < w; x++) {
       const fx = x / step, x0 = Math.floor(fx), tx = fx - x0, x1 = (x0 + 1) % cw;
@@ -740,6 +923,7 @@ const PAL_DAWN = [
   '#27c2ea', '#79ecff', '#d6fcff', ...RAMPS.steel.slice(0, 7), '#3a0822', '#700f40', '#240a3f', '#461575',
   '#ffd966', '#fff5c9', '#ffffff', '#081a33', '#0d2342', '#13294f', '#1b3a66', '#0b1530',
   '#7a430b', '#bf7412', '#f0a92a', '#3d2106', '#0f1d2e', '#16283d', '#1f3550', '#6a3a22', '#a8602e', '#d98c48',
+  '#1a0c26', '#2a1030', '#3a1640', '#4a1a4c', '#5a2458', '#7a2442', '#9a3050', '#b8465a',
 ];
 const FLARE_RAMP = ['#000000', '#1a0a14', '#3d1430', '#7a2442', '#c4474f', '#f08a5c', '#ffc98a', '#fff1d0', '#ffffff'];
 const STREAK_RAMP = ['#000000', '#06182c', '#0b3558', '#13658f', '#3aa7d0', '#9fe6ff', '#ffffff'];
@@ -767,21 +951,33 @@ class TitleStage extends Stage {
     super('title', A);
     this.scrollSpeed = 12;
     this.grade = { tint: [1.0, 0.98, 1.03], lift: [0.012, 0.004, 0.03], sat: 1.12, contrast: 1.06 };
+    this.asyncFirst = true;      // menu backdrop: lay out in time slices, stars meanwhile
+    this.dis = null;
   }
 
-  layout() {
-    const W = this.W, H = this.LH, A = this.A, q = A.q;
-    const S = this.S;
+  // shown while the first layout is being built (boot)
+  placeholder(ctx, lctx, t) {
+    const w = this.want, A = this.A;
+    ctx.fillStyle = '#05040c'; ctx.fillRect(0, 0, w.W, w.H);
+    ctx.globalCompositeOperation = 'lighter';
+    const ax = Math.round(w.fx + FIELD_W / 2 - TW / 2);
+    drawTiled(ctx, A.starsFar, ax + Math.round(-t * 0.35), 0, w.W, w.H);
+    drawTiled(ctx, A.starsMid, ax + Math.round(-t * 0.7), 0, w.W, w.H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  *layout(S) {
+    const { W, LH: H } = S, A = this.A, q = A.q;
     prof();
     const portrait = H >= W * 1.2;
     const R = portrait ? Math.max(W * 1.0, 230) : Math.max(W * 0.95, H * 1.2);
     const top = Math.round(portrait ? H * 0.66 : H * 0.6);
     const pcx = W * (portrait ? 0.58 : 0.55), pcy = top + R;
-    this.geo = { R, top, pcx, pcy };
+    S.geo = { R, top, pcx, pcy };
     // Flare point on the limb, left of centre.
     const fxp = W * (portrait ? 0.2 : 0.3);
     const fyp = pcy - Math.sqrt(Math.max(0, R * R - (fxp - pcx) ** 2));
-    this.flarePos = [Math.round(fxp), Math.round(fyp) - 1];
+    S.flarePos = [Math.round(fxp), Math.round(fyp) - 1];
     // Sun: behind the planet, to the left -> a lit crescent along the limb, night elsewhere.
     let L = [-0.8, -0.3, -0.5]; const ll = Math.hypot(...L); L = L.map((v) => v / ll);
     const s2l = Math.hypot(L[0], L[1]), s2x = L[0] / s2l, s2y = L[1] / s2l;
@@ -801,11 +997,13 @@ class TitleStage extends Stage {
     });
     const nv = new Float32Array(4);
     prof('title noise');
+    yield;
 
     const sky = new Raster(W, H), pl = new Raster(W, H), em = new Raster(W, H);
     const cityR = hexToRgb('#f0a92a'), cityW = hexToRgb('#fff1c9');
     const gk1 = 1 / (Math.max(W, H) * 0.3), gk2 = 1 / (W * 0.05);
     for (let y = 0; y < H; y++) {
+      if (every(y, 24)) yield;
       const ty = y / H;
       for (let x = 0; x < W; x++) {
         const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d2 = dx * dx + dy * dy;
@@ -826,7 +1024,8 @@ class TitleStage extends Stage {
           r += (60 + 195 * warm) * a1 + (30 + 150 * warm) * a2 + 26 * a3;
           g += (170 + 50 * warm) * a1 + (100 + 20 * warm) * a2 + 36 * a3;
           b += (255 - 110 * warm) * a1 + (230 - 150 * warm) * a2 + 90 * a3;
-          sky.d[y * W + x] = q.dq(r, g, b, x, y, 20);
+          // wide dither spread where the flare glow ramps (avoids a flat magenta plateau)
+          sky.d[y * W + x] = q.dq(r, g, b, x, y, 20 + 26 * g1);
           if (a1 > 0.05) em.d[y * W + x] = pack(r * 0.25 * a1, g * 0.25 * a1, b * 0.25 * a1);
           continue;
         }
@@ -859,16 +1058,19 @@ class TitleStage extends Stage {
         R0 += 14 * limb * (1 - sdot); B0 += 36 * limb * (1 - sdot);
         // flare bloom spilling over the planet
         R0 += 70 * g2; G0 += 50 * g2; B0 += 30 * g2;
-        // city lights: clustered speckles on islands in the dark
+        // city lights: strung along coastlines across the whole night side, clustered into
+        // metropolitan areas (nv[3]) with dim suburbs between them; none under thick cloud
         const dark = 1 - smooth(0.02, 0.25, lit);
-        if (dark > 0 && isl > 0.4 && cloud < 0.5) {
-          const dens = smooth(0.45, 0.75, nv[3]) * dark * (1 - cloud * 2);
+        if (dark > 0 && nv[2] > 0.6 && cloud < 0.7) {
+          const coast = 1 - smooth(0.64, 0.74, nv[2]);               // 1 near the shore, 0 inland
+          const metro = smooth(0.4, 0.72, nv[3]);
+          const dens = dark * (1 - cloud / 0.7) * smooth(0.6, 0.64, nv[2]) * (0.15 + 0.85 * coast) * (0.25 + 0.75 * metro);
           const hsh = hash3(x, y, 7, 3);
-          if (hsh < dens * 0.5) {
-            const hot = hsh < dens * 0.12;
-            const c = hot ? cityW : cityR, k = (hot ? 0.95 : 0.55) * dark;
+          if (hsh < dens * 0.3) {
+            const hot = hsh < dens * 0.05 * (0.4 + metro);
+            const c = hot ? cityW : cityR, k = (hot ? 0.95 : 0.4 + 0.3 * metro) * dark;
             R0 = lerp(R0, c[0], k); G0 = lerp(G0, c[1], k); B0 = lerp(B0, c[2], k);
-            em.d[y * W + x] = pack(c[0] * k * 0.55, c[1] * k * 0.5, c[2] * k * 0.4);
+            em.d[y * W + x] = pack(c[0] * k * 0.5, c[1] * k * 0.45, c[2] * k * 0.35);
           }
         }
         pl.d[y * W + x] = q.dq(R0, G0, B0, x, y, 18);
@@ -886,46 +1088,51 @@ class TitleStage extends Stage {
       }
     }
     prof('title pixels');
+    yield;
     S.sky = sky.toCanvas();
-    S.planet = banded(pl);
-    S.em = banded(em);
+    S.planet = yield* bandedG(pl);
+    S.em = yield* bandedG(em);
     prof('title toCanvas');
 
-    // Nebula wisps above the planet, periodic in x; calm band where the logo sits.
-    const nh = Math.max(64, top);
+    // Nebula wisps above the planet, periodic in x; calm band where the logo sits. The tile
+    // reaches down to the lowest visible limb point and fades out before its bottom edge,
+    // so no hard horizontal edge shows beside the planet.
+    const limbAt = (x) => (Math.abs(x - pcx) < R ? pcy - Math.sqrt(R * R - (x - pcx) ** 2) : H);
+    const nh = Math.min(H, Math.max(64, Math.ceil(Math.max(limbAt(0), limbAt(W - 1))) + 4));
     const nprof = (y) => {
       const v = y / H;
       const calm = 1 - 0.92 * Math.exp(-(((v - 0.25) / 0.13) ** 2));
-      return calm * (0.55 + 0.45 * smooth(0, 0.12, v)) * (1 - 0.5 * smooth(top * 0.8, top, y));
+      return calm * (0.55 + 0.45 * smooth(0, 0.12, v)) * (1 - 0.5 * smooth(top * 0.8, top, y)) * (1 - smooth(nh - 40, nh - 2, y));
     };
     const nrng = new Rng(0xabc1);
     const ntw = W > TW ? Math.ceil(W / 64) * 64 : TW;
-    S.nebFar = nebulaTile(nrng, ntw, nh, { cell: 110, oct: 5, warp: 34, bias: 0.5, contrast: 2.4, step: 3, profile: nprof,
+    S.nebFar = yield* nebulaTileG(nrng, ntw, nh, { cell: 110, oct: 5, warp: 34, bias: 0.5, contrast: 2.4, step: 3, profile: nprof,
       ramp: ['#000000', '#050414', '#0a0822', '#100c34', '#18124a', '#231a60'] });
-    S.nebNear = nebulaTile(nrng, ntw, nh, { cell: 70, oct: 5, warp: 26, bias: 0.57, contrast: 3.0, ridged: 0.55, profile: nprof,
+    S.nebNear = yield* nebulaTileG(nrng, ntw, nh, { cell: 70, oct: 5, warp: 26, bias: 0.57, contrast: 3.0, ridged: 0.55, profile: nprof,
       ramp: ['#000000', '#0c0412', '#1a071e', '#2c0b2a', '#441434', '#5e1e3c'] });
 
     prof('title nebula');
     // Aurora curtains along the night-side limb: 8 looping frames.
-    this.buildAurora(R, pcx, pcy, s2x, s2y);
+    yield* this.buildAurora(S, R, pcx, pcy, s2x, s2y);
     prof('title aurora');
-    this.buildRing(portrait);
+    this.buildRing(S, portrait);
     prof('title ring');
+    yield;
     // Flare sprites
     S.flare = flareSprite(portrait ? 71 : 91, FLARE_RAMP, { rays: 6, rot: 0.35 });
     S.streak = streakSprite(Math.round(W * 1.4), STREAK_RAMP, W * 0.24);
     // Traffic from the station down toward the planet
-    const [rx, ry] = this.ring.c;
-    this.traffic = new Traffic([
+    const [rx, ry] = S.ring.c;
+    S.traffic = new Traffic([
       { x0: rx - 4, y0: ry + 2, x1: rx - W * 0.45, y1: top + 30, period: 26, phase: 0, col: '#aebfdc', eng: '#79ecff' },
       { x0: rx + 6, y0: ry - 3, x1: W + 10, y1: ry - H * 0.2, period: 34, phase: 13, col: '#aebfdc', eng: '#ffab4f' },
       { x0: -10, y0: top - H * 0.08, x1: rx - 8, y1: ry, period: 40, phase: 22, col: '#7c8fb3', eng: '#79ecff' },
     ]);
   }
 
-  buildAurora(R, pcx, pcy, s2x, s2y) {
-    const W = this.W, H = this.LH;
-    const x0 = Math.floor(pcx), x1 = W, y0 = Math.max(0, Math.floor(this.geo.top - 26)), y1 = Math.min(H, Math.floor(this.geo.top + 60));
+  *buildAurora(S, R, pcx, pcy, s2x, s2y) {
+    const W = S.W, H = S.LH;
+    const x0 = Math.floor(pcx), x1 = W, y0 = Math.max(0, Math.floor(S.geo.top - 26)), y1 = Math.min(H, Math.floor(S.geo.top + 60));
     const w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
     const cols = AURORA_RAMP.map(hexToRgb), n = cols.length, top = hexToRgb('#6a3fd0');
     const frames = [];
@@ -953,18 +1160,20 @@ class TitleStage extends Stage {
         r.d[y * w + x] = pack(lerp(c[0], top[0] * v, tp), lerp(c[1], top[1] * v * 0.4, tp), lerp(c[2], top[2] * v, tp));
       }
       frames.push(r.toCanvas());
+      yield;
     }
-    this.S.aurora = frames;
-    this.auroraPos = [x0, y0];
+    S.aurora = frames;
+    S.auroraPos = [x0, y0];
   }
 
   // Aurora Station: a tilted torus of habitat segments with spokes, hub and solar wings,
   // backlit by the sun on the left. Windows glow on the light layer.
-  buildRing(portrait) {
-    const W = this.W, H = this.LH, top = this.geo.top;
+  buildRing(S, portrait) {
+    const W = S.W, H = S.LH, top = S.geo.top;
     const a = Math.round(portrait ? W * 0.24 : H * 0.26), b = Math.round(a * 0.36);
-    const cx = Math.round(W * (portrait ? 0.7 : 0.72)), cy = Math.round(portrait ? top - H * 0.15 : top - H * 0.25);
-    this.ring = { c: [cx, cy], a, b };
+    // landscape: keep the ring right of and below the logo + subtitle
+    const cx = Math.round(W * (portrait ? 0.7 : 0.78)), cy = Math.round(portrait ? top - H * 0.15 : top - H * 0.2);
+    S.ring = { c: [cx, cy], a, b };
     const pad = 16, w = a * 2 + pad * 2, h = b * 2 + pad * 2 + 20;
     const ox = cx - w / 2, oy = cy - h / 2 - 6;
     const r = new Raster(w, h), e = new Raster(w, h);
@@ -1041,16 +1250,15 @@ class TitleStage extends Stage {
     for (let k = 0; k < 3; k++) { r.set(hx + 1, hy - 5 + k * 2, winC); e.set(hx + 1, hy - 5 + k * 2, winC); }
     spokes(true);
     tube(true);
-    this.S.ring = outlined(r, packHex('#05040c', 210)).toCanvas();
-    this.S.ringE = e.toCanvas();
-    this.ringPos = [Math.round(ox), Math.round(oy)];
+    S.ringC = outlined(r, packHex('#05040c', 210)).toCanvas();
+    S.ringE = e.toCanvas();
+    S.ringPos = [Math.round(ox), Math.round(oy)];
     const tipL = P(Math.PI), tipR = P(0);
-    this.beacons = [[hx + ox, hy - 14 + oy, 0], [tipL[0] + ox - 2, tipL[1] + oy, 1.3], [tipR[0] + ox + 2, tipR[1] + oy, 2.1]].map((p) => [Math.round(p[0]), Math.round(p[1]), p[2]]);
+    S.beacons = [[hx + ox, hy - 14 + oy, 0], [tipL[0] + ox - 2, tipL[1] + oy, 1.3], [tipR[0] + ox + 2, tipR[1] + oy, 2.1]].map((p) => [Math.round(p[0]), Math.round(p[1]), p[2]]);
   }
 
-  render(ctx, lctx, scrollY, t) {
-    const { W, H, S, A } = this;
-    if (!S.sky) return;
+  render(ctx, lctx, scrollY, t, S) {
+    const { W, H, A } = this;
     const lop = lctx.globalCompositeOperation;
     ctx.drawImage(S.sky, 0, 0);
     const vy = Math.round(scrollY * 0.02);
@@ -1060,33 +1268,35 @@ class TitleStage extends Stage {
     drawTiled(ctx, A.starsMid, Math.round(-t * 0.7), vy * 2, W, H);
     drawTiled(ctx, S.nebNear, Math.round(-t * 1.6), 0, W, S.nebNear.height);
     ctx.globalCompositeOperation = 'source-over';
-    A.tw.draw(ctx, lctx, Math.round(-t * 0.7), vy * 2, W, this.geo.top - 4, t);
+    A.tw.draw(ctx, lctx, Math.round(-t * 0.7), vy * 2, W, S.geo.top - 4, t);
     blit(ctx, S.planet, 0, 0);
-    // aurora curtains (crossfade between baked frames)
+    // aurora curtains: Bayer dissolve between baked frames (no off-palette alpha ghosts)
     const af = (t * 1.6) % 8, i0 = Math.floor(af), i1 = (i0 + 1) % 8, k = af - i0;
-    const [ax0, ay0] = this.auroraPos;
+    const [ax0, ay0] = S.auroraPos;
+    const dis = this.dis && this.dis.w === S.aurora[0].width && this.dis.h === S.aurora[0].height ? this.dis
+      : (this.dis = new Dissolve(S.aurora[0].width, S.aurora[0].height));
+    dis.prep(S.aurora[i0], S.aurora[i1], k, true);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 1 - k; ctx.drawImage(S.aurora[i0], ax0, ay0);
-    ctx.globalAlpha = k; ctx.drawImage(S.aurora[i1], ax0, ay0);
+    dis.put(ctx, ax0, ay0);
     lctx.globalCompositeOperation = 'lighter';
-    lctx.globalAlpha = 0.5 * (1 - k); lctx.drawImage(S.aurora[i0], ax0, ay0);
-    lctx.globalAlpha = 0.5 * k; lctx.drawImage(S.aurora[i1], ax0, ay0);
+    lctx.globalAlpha = 0.5; dis.put(lctx, ax0, ay0);
     lctx.globalAlpha = 0.9; blit(lctx, S.em, 0, 0);
-    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    // station
-    const [rx, ry] = this.ringPos;
-    ctx.drawImage(S.ring, rx, ry);
+    // station (occludes the light behind it)
+    const [rx, ry] = S.ringPos;
+    ctx.drawImage(S.ringC, rx, ry);
+    occlude(lctx, (l) => l.drawImage(S.ringC, rx, ry));
     lctx.globalAlpha = 0.8; lctx.drawImage(S.ringE, rx, ry);
-    for (let i = 0; i < this.beacons.length; i++) {
-      const bx = this.beacons[i][0], by = this.beacons[i][1];
-      if (fract(t * 0.7 + this.beacons[i][2]) >= 0.12) continue;
+    const bc = S.beacons;
+    for (let i = 0; i < bc.length; i++) {
+      const bx = bc[i][0], by = bc[i][1];
+      if (fract(t * 0.7 + bc[i][2]) >= 0.12) continue;
       ctx.fillStyle = '#ff5a5a'; ctx.fillRect(bx, by, 1, 1);
       lctx.globalAlpha = 1; lctx.fillStyle = '#ff5a5a'; lctx.fillRect(bx - 1, by, 3, 1); lctx.fillRect(bx, by - 1, 1, 3);
     }
-    this.traffic.draw(ctx, lctx, t);
+    S.traffic.draw(ctx, lctx, t);
     // sun flare + anamorphic streak + ghosts
-    const [fx, fy] = this.flarePos;
+    const [fx, fy] = S.flarePos;
     const breathe = 0.85 + 0.15 * Math.sin(t * 0.7) + this.flashT * 0.8;
     // (canvas ignores globalAlpha > 1, so extra flash brightness is a second additive pass)
     ctx.globalCompositeOperation = 'lighter';
@@ -1110,6 +1320,7 @@ class TitleStage extends Stage {
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     lctx.globalAlpha = 1; lctx.globalCompositeOperation = lop;
   }
+  destroy() { if (this.dis) this.dis.free(); this.dis = null; super.destroy(); }
 }
 
 // ---------------------------------------------------------------------------

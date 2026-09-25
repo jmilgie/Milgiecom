@@ -42,6 +42,7 @@ function chordEvents(harm, opt) {
   return voiceLead(S.map((x) => x.c), opt).map((n, i) => [S[i].s, n, S[i].l * (opt.legato ?? 1), opt.vel ?? 0.7]);
 }
 const barList = (harm) => harm.split(' ').map((b) => b.split(',').pop());   // one chord per bar (last of a split bar)
+const halves = (harm) => harm.split(' ').flatMap((b) => { const c = b.split(','); return [c[0], c[c.length - 1]]; });   // two per bar
 // bass roots between F1 and E2
 const root = (sym) => 29 + ((chordInfo(sym).root - 5 + 12) % 12);
 // apply a one-bar bass figure [[step, octave, len, vel]] to every chord segment
@@ -83,7 +84,7 @@ const sos = (at, note, vel = 0.75) => SOS.map(([s, l]) => [at + s, note, l * 0.8
 // The Leviathan theme. Its head is a dark mirror of the Lancers call: instead of tonic → up a
 // 5th, the tonic FALLS a 4th and creeps up a semitone onto the new chord (C – G – Ab).
 const THEME = 'C5 - - G4 - Ab4 - - | - - - G4 Ab4 C5 Eb5 - | F5 - - C5 - Ab4 - - | G4 - - - - - B4 D5 | ' +
-  'G5 - - D5 - Eb5 - - | - - - C5 Eb5 F5 G5 - | Ab5 - - F5 - Db5 - - | C5 - - - B4 - - -';
+  'G5 - - D5 - Eb5 - - | - - - C5 Eb5 F5 - G5 | Ab5 - - F5 - Db5 - - | C5 - - - B4 - - -';
 // B2 descant (quarters) — echoes the creep (G→Ab) at the top of the texture
 const DESCANT = 'G5 - Ab5 - | C6 - - - | Ab5 - F5 - | G5 - - - | G5 - Ab5 - | C6 - Ab5 - | F5 - Ab5 - | G5 - - -';
 // climax2: the melody climbs with the bVI–bVII–i roots, then arpeggios and a 4–3 over the dominant
@@ -110,7 +111,7 @@ export default {
 
   channels: {
     kick: { inst: 'kickHard', gain: 0.4, sidechain: true, layer: { min: 0.15 } },
-    snare: { inst: 'snareBig', gain: 0.42, reverb: 0.26, layer: { min: 0.15 } },
+    snare: { inst: 'snareBig', gain: 0.5, reverb: 0.26, layer: { min: 0.15 } },
     hat: { gain: 0.34, pan: 0.24, choke: ['ohat'], human: { t: 0.002, v: 0.1 }, layer: { min: 0.15 } },
     ohat: { gain: 0.26, pan: 0.28, layer: { min: 0.15 } },
     rim: { gain: 0.3, pan: -0.22, delay: 0.12 },
@@ -118,9 +119,9 @@ export default {
     ride: { gain: 0.2, pan: -0.3 },
     crash: { gain: 0.4, reverb: 0.15, pan: -0.18 },
     tom: { gain: 0.34, reverb: 0.16 },
-    taiko: { gain: 0.5, reverb: 0.24, tune: -2 },
-    tkm: { inst: 'taiko', gain: 0.36, reverb: 0.2, pan: 0.12 },
-    tk2: { inst: 'taiko', gain: 0.32, reverb: 0.22, pan: -0.16, layer: { min: 0.75 } },
+    taiko: { gain: 0.2, reverb: 0.24, tune: -2 },
+    tkm: { inst: 'taiko', gain: 0.25, reverb: 0.2, pan: 0.12 },
+    tk2: { inst: 'taiko', gain: 0.22, reverb: 0.22, pan: -0.16, layer: { min: 0.75 } },
     rev: { inst: 'revcym', gain: 0.42 },
     riser: { gain: 0.4, reverb: 0.3 },
     down: { inst: 'downlifter', gain: 0.38, reverb: 0.35 },
@@ -130,9 +131,10 @@ export default {
     bass: { inst: 'wBass', gain: 0.74, duck: 0.35, lpf: 20000 },
     pad: { inst: 'padDark', gain: 0.3, duck: 0.45, reverb: 0.35, lpf: 20000 },
     spicc: { inst: 'wSpicc', gain: 0.4, reverb: 0.22, pan: 0.2, duck: 0.25 },
-    cello: { inst: 'stringsDark', gain: 0.46, reverb: 0.3, pan: -0.12 },
+    cello: { inst: 'stringsDark', gain: 0.5, reverb: 0.3, pan: -0.12 },
     brass: { gain: 0.4, reverb: 0.3 },
-    stab: { inst: 'brassStab', gain: 0.34, reverb: 0.24, pan: -0.08, delay: 0.1 },
+    stab: { inst: 'brassStab', gain: 0.42, reverb: 0.24, pan: -0.08, delay: 0.1 },
+    horn: { inst: 'brass', gain: 0.78, reverb: 0.3, pan: 0.06 },
     choir: { inst: 'choirOh', gain: 0.24, reverb: 0.5, duck: 0.2 },
     arp: { inst: 'wArp', gain: 0.3, delay: 0.32, reverb: 0.15, pan: -0.3, duck: 0.3 },
     beacon: { inst: 'wBeep', gain: 0.3, reverb: 0.5, delay: 0.45, pan: 0.35 },
@@ -178,11 +180,13 @@ export default {
 
     // ── B: the theme ──
     themeB: { step: 2, lead: THEME, lead2: transpose(THEME, -12) },
-    pickup: { len: 16, lead: [[14, 'G4', 2, 0.75]], lead2: [[14, 'G3', 2, 0.75]] },
+    pickup: { len: 16, lead: [[14, 'G4', 2, 0.75]], lead2: [[14, 'G3', 2, 0.75]] },       // into the theme (lead)
+    pickupBr: { len: 16, horn: [[14, 'G3', 2, 0.75]], cello: [[14, 'G3', 2, 0.7]] },       // into the theme (low brass)
+    pickupC: { len: 16, lead: [[14, 'Ab4', 2, 0.8]], lead2: [[14, 'Ab3', 2, 0.8]] },      // Ab = G#: 5th of the climax key
     brassB: { len: 128, brass: chordEvents(T_H, { low: 'C3', high: 'C4', voices: 3, vel: 0.5, legato: 0.96 }) },
     ostB: { len: 128, bass: bassFig(T_H, OST) },
     padB: { len: 128, pad: chordEvents(T_H, { low: 'C3', high: 'Bb4', voices: 4, vel: 0.62 }) },
-    spB: { len: 128, spicc: arp(voiceLead(segs(T_H).map((x) => x.c), { low: 'G4', high: 'G5', voices: 3 }).flatMap((v, i, a) => (segs(T_H)[i].l === 8 ? [v] : [v, v])), { rate: 2, len: 8, order: [0, 1, 0, 2], gate: 0.7, vel: 0.62, accent: 0.14 }) },
+    spB: { len: 128, spicc: arp(voiceLead(halves(T_H), { low: 'G4', high: 'G5', voices: 3 }), { rate: 2, len: 8, order: [0, 1, 0, 2], gate: 0.7, vel: 0.62, accent: 0.14 }) },
     stabB: { len: 128, stab: stabs(T_H, [[[0, 1.5, 1], [3, 1.5, 0.78]], [[8, 1.5, 0.9], [11, 1.5, 0.75], [14, 1.5, 0.85]]]) },
     grB: { kick: 'X.....x.X..x....', snare: '....X.......X...', hat: 'xgxgxgxgxgxgxgxg', ohat: '..............x.', rim: '...x..x....x..x.' },
     fillB: { kick: 'X.....x.X..x....', snare: '....X.......X.Xx', hat: 'xgxgxgxgxgxg....', rim: '...x..x.........', tom: '.*13 Eb3 C3 G2' },
@@ -195,10 +199,10 @@ export default {
     tk2B: { tk2: '. . C2 . . Eb2 . . . . C2 . G2 . Eb2 C2' },
 
     // ── B2: theme in the low brass, descant above ──
-    themeB2: { step: 2, brass: transpose(THEME, -12), cello: transpose(THEME, -12) },
+    themeB2: { step: 2, horn: transpose(THEME, -12), cello: transpose(THEME, -12) },
     descB2: { step: 4, lead: DESCANT, vel: 0.78 },
     choirB2: { len: 128, choir: chordEvents(T_H, { low: 'G4', high: 'Eb5', voices: 3, rootless: true, vel: 0.62 }) },
-    arpB2: { len: 128, arp: arp(voiceLead(barList(T_H), { low: 'C5', high: 'C6', voices: 3 }), { rate: 1, order: [0, 1, 2, 1, 0, 2, 1, 2], gate: 0.6, vel: 0.56, accent: 0.2 }) },
+    arpB2: { len: 128, arp: arp(voiceLead(halves(T_H), { low: 'C5', high: 'C6', voices: 3 }), { rate: 1, len: 8, continue: true, order: [0, 1, 2, 1, 0, 2, 1, 2], gate: 0.6, vel: 0.56, accent: 0.2 }) },
     rideB2: { ride: 'x.x.x.x.x.x.x.x.' },
 
     // ── BREAK: into the belly ──
@@ -222,9 +226,9 @@ export default {
     bldFx: { len: 64, riser: [[0, 'x', 64, 0.85]], rev: [[48, 'x', 16, 0.9]] },
 
     // ── CLIMAX (played a semitone up) ──
-    themeC: { step: 2, lead: THEME, lead2: transpose(THEME, -12), brass: transpose(THEME, -12) },
+    themeC: { step: 2, lead: THEME, lead2: transpose(THEME, -12), horn: transpose(THEME, -12) },
     choirC: { len: 128, choir: chordEvents(T_H, { low: 'G4', high: 'Eb5', voices: 3, rootless: true, vel: 0.66 }) },
-    spC: { len: 128, spicc: arp(voiceLead(barList(T_H), { low: 'G4', high: 'G5', voices: 3 }), { rate: 1, order: [0, 1, 2, 1], gate: 0.65, vel: 0.6, accent: 0.18 }) },
+    spC: { len: 128, spicc: arp(voiceLead(halves(T_H), { low: 'G4', high: 'G5', voices: 3 }), { rate: 1, len: 8, order: [0, 1, 2, 1], gate: 0.65, vel: 0.6, accent: 0.18 }) },
     galC: { len: 128, bass: bassFig(T_H, GALLOP) },
     stabC: { len: 128, stab: stabs(T_H, [[[0, 1.5, 1]], S332B]) },
     grC: { kick: 'X...X...X...X...', snare: '....X.......X...', hat: 'xgxgxgxgxgxgxgxg', ohat: '..x...x...x...x.', rim: '...x..x....x..x.' },
@@ -275,23 +279,24 @@ export default {
     A2: {
       bars: 8, chords: A2_H,
       play: ['ostA2', 'padA2', 'stabA2', 'spA2', 'celloA2', { p: 'arpA2', at: 4 }, 'fxA2', ['crash1', null, null, null, null, null, null, null],
-        ['grA2', 'grA2', 'grA2', 'fillA', 'grA2', 'grA2', 'grA2', 'fillA2'], ['tkA', 'tkA2']],
+        ['grA2', 'grA2', 'grA2', 'fillA', 'grA2', 'grA2', 'grA2', 'fillA2'], ['tkA', 'tkA2'], { p: 'pickup', at: 7 }],
       auto: { 'arp.lpf': [[0, 900], [4, 5000]] },
     },
     B: {
       bars: 8, chords: T_H,
       play: ['themeB', 'brassB', 'ostB', 'padB', 'spB', 'stabB', ['crash1', null, null, null, null, null, null, null],
-        ['grB', 'grB', 'grB', 'fillB', 'grB', 'grB', 'grB', 'fillB2'], 'tkB', 'tk2B', { p: 'pickup', at: 7 }],
+        ['grB', 'grB', 'grB', 'fillB', 'grB', 'grB', 'grB', 'fillB2'], 'tkB', 'tk2B', { p: 'pickupBr', at: 7 }],
     },
     B2: {
       bars: 8, chords: T_H,
       play: ['themeB2', 'descB2', 'choirB2', 'ostB', 'padB', 'arpB2', 'stabB', 'rideB2', ['crash1', null, null, null, 'crash1', null, null, null],
         ['grB', 'grB', 'grB', 'fillB', 'grB', 'grB', 'grB', 'fillB2'], 'tkB', 'tk2B'],
+      auto: { 'lead.vol': [[0, 0.62]], 'pad.vol': [[0, 0.7]], 'pad.lpf': [[0, 1800]] },
     },
     break: {
       bars: 8, chords: BRK_H,
       play: ['brkPad', { p: 'brkDrone', once: true }, 'brkCello', { p: 'brkChoir', once: true }, { p: 'brkBeacon', once: true }, { p: 'brkTick', until: 4 },
-        { p: 'bldBass', at: 4 }, { p: 'bldBrass', at: 4 }, { p: 'bldSpicc', at: 6 }, { p: 'bldStab', at: 4 }, { p: 'bldDrums', at: 4 }, { p: 'bldFx', at: 4 }],
+        { p: 'bldBass', at: 4 }, { p: 'bldBrass', at: 4 }, { p: 'bldSpicc', at: 6 }, { p: 'bldStab', at: 4 }, { p: 'bldDrums', at: 4 }, { p: 'bldFx', at: 4 }, { p: 'pickupC', at: 7 }],
       auto: { 'pad.lpf': [[0, 700], [4, 1200], [8, 4000]], 'bass.lpf': [[4, 300], [8, 3200]], 'reese.lpf': [[0, 400], [2, 1400], [4, 500]] },
     },
     climax: {

@@ -79,6 +79,7 @@ const $ = (id) => document.getElementById(id);
 const MINE = ['wreck', 'horizon'];
 const REF = ['aurora', 'title'];
 let lastBuf = null;
+let last = null;   // { log, song, secs, buf } of the latest analysis (for windowed piano rolls)
 
 // ─────────────────────────── live ───────────────────────────
 $('unlock').onclick = async () => {
@@ -343,6 +344,19 @@ function songLength(song) {
   return { bars, loopBars, secs: bars * barDur, loopSecs: loopBars * barDur, barDur, loopAt: (bars - loopBars) * barDur };
 }
 
+// integrated (ungated) K-weighted loudness of every section instance in a render
+function sectionLoudness(buf, log) {
+  const sr = buf.sampleRate, ch = [];
+  for (let c = 0; c < Math.min(2, buf.numberOfChannels); c++) ch.push(kweight(buf.getChannelData(c), sr));
+  const marks = log.filter((e) => e.sec);
+  return marks.map((m, i) => {
+    const a = Math.floor(m.t * sr), b = Math.min(ch[0].length, Math.floor((marks[i + 1] ? marks[i + 1].t : buf.duration) * sr));
+    let s = 0;
+    for (const d of ch) for (let j = a; j < b; j++) s += d[j] * d[j];
+    return `${m.sec}${m.tr ? '(' + m.tr + ')' : ''} ${(-0.691 + 10 * Math.log10(Math.max(1e-12, s / Math.max(1, b - a)))).toFixed(1)}`;
+  });
+}
+
 async function analyze(track, secs = 40, opt = {}) {
   $('summary').textContent = 'rendering…';
   const t0 = performance.now();
@@ -352,6 +366,7 @@ async function analyze(track, secs = 40, opt = {}) {
   const song = await Music.inspect(track);
   const log = buf.notes || [];
   const lv = levels(buf), lu = loudness(buf);
+  last = { log, song, secs, buf };
   drawLevels(lv, secs, lu);
   drawRoll(log, song, secs, opt.rollFrom ?? 0, opt.rollTo ?? secs);
   const h = harmony(log, song);
@@ -363,7 +378,7 @@ async function analyze(track, secs = 40, opt = {}) {
     lufs: lu.integrated, maxShort: lu.maxShort, minShort: lu.minShort, renderMs: Math.round(ms), events: log.filter((e) => e.c).length,
     sections: log.filter((e) => e.sec).map((e) => `${e.sec}${e.tr ? '(' + e.tr + ')' : ''}@${e.t.toFixed(1)}`).join(' '),
     harmony: { total: h.total, chordPct: +((100 * h.chord) / Math.max(1, h.total)).toFixed(1), chromatic: h.chromatic, clashes: h.clashes, bassNCT: h.bassNCT, strongNCT: h.strongNCT },
-    warnings: warns, len: songLength(song),
+    warnings: warns, len: songLength(song), perSection: sectionLoudness(buf, log),
   };
   $('summary').innerHTML = `peak <b class="${r.peakDb <= -1 ? 'good' : 'bad'}">${r.peakDb} dBFS</b> · RMS <b>${r.rmsDb}</b> · integrated <b>${r.lufs} LUFS</b> (short-term ${r.minShort}…${r.maxShort}) · clipped <b class="${lv.clips ? 'bad' : 'good'}">${lv.clips}</b> · ${r.events} events · render ${r.renderMs} ms`;
   return r;
@@ -437,7 +452,9 @@ async function channelLevels(track, secs, opt = {}) {
   return rows;
 }
 
-window.MB = { render, analyze, loopCheck, fullReport, channelLevels, harmony, levels, loudness, songLength, drawRoll };
+// redraw the piano roll of the latest analysis for a time window (seconds)
+function roll(t0, t1) { if (last) drawRoll(last.log, last.song, last.secs, t0, t1); return !!last; }
+window.MB = { roll, render, analyze, loopCheck, fullReport, channelLevels, harmony, levels, loudness, songLength, drawRoll };
 window.Music = Music;
 window.AudioSys = AudioSys;
 </script>

@@ -824,7 +824,7 @@ function boom(v, t, s, o = {}) {
   // the sweep stops at ≥ 38 Hz: lower is inaudible on phones and laptops and only eats headroom
   thump(v, t, { f0: r.jit(L(150, 80), 0.1), f1: L(56, 38), sweep: L(0.1, 0.7), tau: L(0.06, 0.34), lvl: L(0.6, 0.45) * k, drive: 2.6, pan });
   if (o.lite) return;   // secondary blasts: the main blast supplies rumble and debris
-  const rt = L(0.15, 1.0) * r.range(0.85, 1.2), t2 = t + L(0.008, 0.03), rd = rt * 4.5 + 0.1;
+  const rt = (0.15 + 0.85 * s ** 1.4) * r.range(0.85, 1.2), t2 = t + L(0.008, 0.03), rd = rt * 4.5 + 0.1;   // long rolls are for the big ones
   const rum = nz(v, t2, rd, { color: 'brown', type: 'lowpass', f: [L(1100, 750), rt * 2, L(220, 70)], q: 0.7, env: [0, L(0.03, 0.14), 1, 'x', rt], lvl: 0.6 * k, rev: 0.25, pan, route: s < 0.5 });
   if (s >= 0.5) {
     // big blasts "roll": slow random amplitude undulation, like echoes off distant hulls
@@ -1081,7 +1081,7 @@ const S = {
   },
 
   shield_up: {
-    dur: 1.55, n: 3, sr: LO, rv: [0.4, 0.6], db: -19, max: 2, cd: 0.2, pj: 0.5, pri: 2,
+    dur: 1.62, n: 3, sr: LO, rv: [0.4, 0.6], db: -19, max: 2, cd: 0.2, pj: 0.5, pri: 2,
     fn(v, r) {
       const k = semiToRate(r.pick([0, 1, -1]));
       const sw = saws(v, 0, 0.95, { f: [220 * k, 0.35, 880 * k], n: 2, spread: 10 });
@@ -1366,7 +1366,7 @@ const S = {
   },
 
   player_join: {
-    dur: 1.3, n: 3, sr: LO, rv: [0.45, 0.55], db: -17, max: 2, cd: 0.2, pj: 0, pri: 2,
+    dur: 1.38, n: 3, sr: LO, rv: [0.45, 0.55], db: -17, max: 2, cd: 0.2, pj: 0, pri: 2,
     fn(v, r) {
       blips(v, 0, { n: 6, gap: 0.018, len: 0.011, lvl: 0.07 });
       fmTone(v, 0.1, 0.2, { f: 784, ratio: 2, index: [r.range(1.1, 1.5), 0.1, 0.2], env: [0, 0.003, 1, 0.08, 0.6, 'x', 0.03], lvl: 0.3, rev: 0.3 });
@@ -1412,7 +1412,7 @@ const S = {
   },
 
   ui_start: {
-    dur: 1.7, n: 3, sr: LO, rv: [0.4, 0.6], db: -14, max: 1, cd: 0.3, pj: 0, pri: 3, sat: 1.4,
+    dur: 1.8, n: 3, sr: LO, rv: [0.4, 0.6], db: -14, max: 1, cd: 0.3, pj: 0, pri: 3, sat: 1.4,
     fn(v, r, i) {
       const T = r.range(0.23, 0.29);
       const [notes, tops] = [[[293.7, 440, 587.3, 740], [1174.7, 1760]], [[293.7, 370, 440, 587.3], [1480, 2217.5]], [[293.7, 440, 554.4, 740], [1174.7, 1480]]][i % 3];
@@ -1906,7 +1906,7 @@ function start(name, opt, asLoop) {
   const s = bank.get(name);
   if (!s) return null;
   const d = s.def, now = ctx.currentTime;
-  const t = Math.max(now, +opt.when || 0);
+  const t = clamp(+opt.when || 0, now, now + 10);
   const vol = opt.vol == null ? 1 : clamp(+opt.vol || 0, 0, 1.5);
   if (!admit(s, d, t, now, vol, asLoop)) return null;
   const nb = s.bufs.length;
@@ -1914,7 +1914,7 @@ function start(name, opt, asLoop) {
   if (!(vi >= 0 && vi < nb)) vi = nb < 2 ? 0 : s.last < 0 ? Math.floor(Math.random() * nb) : (s.last + 1 + Math.floor(Math.random() * (nb - 1))) % nb;
   s.last = vi;
   const buf = s.bufs[vi];
-  const rate = semiToRate((+opt.pitch || 0) + (d.pj ? (Math.random() * 2 - 1) * d.pj : 0));
+  const rate = semiToRate(clamp(+opt.pitch || 0, -36, 36) + (d.pj ? (Math.random() * 2 - 1) * d.pj : 0));
   const src = ctx.createBufferSource(), g = ctx.createGain(), bus = busFor(ctx, d.pri);
   src.buffer = buf;
   src.playbackRate.value = rate;
@@ -1990,7 +1990,7 @@ export function sfxLoop(name, opt) {
       vc.vol = clamp(+v || 0, 0, 1.5);
       try { vc.g.gain.setTargetAtTime(vc.unit * vc.vol, at(), 0.03); } catch { /* ignore */ }
     },
-    setPitch(semi) { if (!vc.stopping) try { vc.src.playbackRate.setTargetAtTime(semiToRate(+semi || 0), at(), 0.03); } catch { /* ignore */ } },
+    setPitch(semi) { if (!vc.stopping) try { vc.src.playbackRate.setTargetAtTime(semiToRate(clamp(+semi || 0, -36, 36)), at(), 0.03); } catch { /* ignore */ } },
     setX(x) { if (!vc.stopping && vc.p) try { vc.p.pan.setTargetAtTime(panFor(x), at(), 0.03); } catch { /* ignore */ } },
   };
 }

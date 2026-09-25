@@ -10,7 +10,7 @@
 
 import { RAMPS, TEAM, C } from './palette.js';
 import {
-  TAU, LIGHT, makeCanvas, packHex, withAlpha, scaleRGB, newArt, cloneArt, plot, blit, whiteOf,
+  TAU, makeCanvas, packHex, withAlpha, scaleRGB, newArt, cloneArt, plot, blit, whiteOf,
   parseMap, legend, makeRampShifter, recolorMap, outline, rimLight,
   remapColumns, shiftWhere, rng, vnoise, fbm, ditherIndex, sphereLight, lambert,
   pointInPoly, forEachPixel, emissiveFrom, R_, G_, B_,
@@ -638,27 +638,32 @@ const cyP = CY.map(P);                       // team ramp (packed), recolored pe
 const stP = ST.map(P);
 const emi = (p, k = 1) => (k === 1 ? p : scaleRGB(p, k));
 
-// All-emissive team legend for flames / energy (a-f team, '*' white-hot).
-const L_GLOW = legend(['a', CY, true], ['A', CY, 0.75], SPECIAL);
+
+// Team-colored glow rule: the light layer is ADDED to the color layer, so a pixel whose glow
+// equals its own color clips to white and loses its team. Only the white-hot base glows at
+// full strength; the plume/ring glows at ~40% so P1..P4 stay cyan / gold / lime / violet.
+const TEAM_GLOW = { hot: (i) => emi(cyP[i], 0.8), body: (i) => emi(cyP[i], 0.42) };
 
 function flameFrames() {
-  // teardrop plume; the top row hides under the nozzle. The plume stays 7-9 rows long and
-  // flickers through small core offsets and tail alpha rather than big length jumps.
+  // teardrop plume; the top rows hide under the nozzle. White-hot base, saturated team
+  // body, dark tail; 7-9 rows long, flickering through core offsets and tail alpha.
   const F = [
-    ['.e*e.', '.f*f.', '.efe.', '.dfd.', '.ded.', '..d..', '..c..', '..b..', '.....'],
-    ['.e*e.', '.f*f.', '.fff.', '.efe.', '.ded.', '..d..', '..c..', '.....', '.....'],
-    ['.e*e.', '.f*f.', '.efe.', '.dfd.', '.ded.', '..e..', '..d..', '..c..', '..b..'],
-    ['.e*e.', '.f*f.', '.efe.', '.ded.', '.dd..', '..d..', '..c..', '..b..', '.....'],
+    ['.e*e.', '.e*e.', '.dfd.', '.ded.', '.cdc.', '..d..', '..c..', '..b..', '.....'],
+    ['.e*e.', '.e*e.', '.dfd.', '.cec.', '.cdc.', '..c..', '..b..', '.....', '.....'],
+    ['.e*e.', '.e*e.', '.dfd.', '.ded.', '.cdc.', '..d..', '..d..', '..c..', '..b..'],
+    ['.e*e.', '.e*e.', '.dfd.', '.ded.', '.dc..', '..d..', '..c..', '..b..', '.....'],
   ];
   const tail = [150, 185, 130, 165];
+  const IDX = { b: 1, c: 2, d: 3, e: 4, f: 5 };
   return F.map((rows, f) => {
-    const a = parseMap(rows, L_GLOW);
-    for (let y = 4; y < a.h; y++) {
-      for (let x = 0; x < a.w; x++) {
-        const i = y * a.w + x;
-        if (a.col[i]) a.col[i] = withAlpha(a.col[i], y >= 6 ? tail[f] : 205);
-      }
-    }
+    const a = newArt(5, 9);
+    rows.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (ch === '.') return;
+      const al = y >= 6 ? tail[f] : y >= 4 ? 215 : 255;
+      if (ch === '*') return plot(a, x, y, WHITE, TEAM_GLOW.hot(4));
+      const i = IDX[ch];
+      plot(a, x, y, withAlpha(cyP[i], al), i >= 4 ? TEAM_GLOW.body(3) : TEAM_GLOW.body(Math.max(1, i)));
+    }));
     return a;
   });
 }
@@ -671,8 +676,8 @@ function droneFrames() {
     forEachPixel(a, (x, y, dx, dy) => {
       const r = Math.hypot(dx, dy);
       const lit = r > 0 ? (-dx * 0.6 - dy * 0.8) / r : 0;
-      if (r <= 0.5) { plot(a, x, y, WHITE, cyP[5]); return; }
-      if (r <= 1.5) { plot(a, x, y, cyP[4], cyP[3]); return; }
+      if (r <= 0.5) { plot(a, x, y, WHITE, TEAM_GLOW.hot(4)); return; }
+      if (r <= 1.5) { plot(a, x, y, cyP[3], TEAM_GLOW.body(3)); return; }
       if (r <= 2.3) { plot(a, x, y, stP[lit > 0.2 ? 6 : lit > -0.4 ? 4 : 2]); return; }
       if (r > 4.1) return;
       // four rotating arms with glowing team tips (same reach in every frame)
@@ -681,7 +686,7 @@ function droneFrames() {
         const ax = Math.sin(ang), ay = -Math.cos(ang);
         const along = dx * ax + dy * ay, across = Math.abs(dx * ay - dy * ax);
         if (along > 1.5 && along < 3.75 && across < 0.72) {
-          if (along > 2.9) plot(a, x, y, cyP[3], emi(cyP[3], 0.75));
+          if (along > 2.9) plot(a, x, y, cyP[3], TEAM_GLOW.body(3));
           else plot(a, x, y, stP[lit > 0 ? 6 : 4]);
           return;
         }
@@ -703,21 +708,22 @@ function beaconFrames() {
       const r = Math.hypot(dx, dy);
       if (Math.abs(r - R) < 0.6) {
         const k = 1 - t;
-        const c = k > 0.6 ? cyP[4] : k > 0.3 ? cyP[3] : cyP[2];
-        plot(a, x, y, withAlpha(c, 110 + 145 * k | 0), emi(c, k > 0.5 ? 1 : 0.5));
+        const c = k > 0.6 ? cyP[3] : k > 0.3 ? cyP[3] : cyP[2];
+        plot(a, x, y, withAlpha(c, 110 + 145 * k | 0), emi(c, k > 0.5 ? 0.5 : 0.3));
       }
     });
     // escape pod: small steel capsule with a steady team-lit window; the center blinks
     const pod = parseMap([
-      '.....', '.656.', '65+54', '5E*E3', '45a42', '.343.', '.....',
+      '.....', '.656.', '65+54', '5d*d3', '45a42', '.343.', '.....',
     ], L_SHIP);
-    if (f >= 3) plot(pod, 2, 3, cyP[5], emi(cyP[4], 0.75));
+    plot(pod, 1, 3, cyP[3], TEAM_GLOW.body(3)); plot(pod, 3, 3, cyP[3], TEAM_GLOW.body(3));
+    plot(pod, 2, 3, f >= 3 ? cyP[4] : WHITE, f >= 3 ? TEAM_GLOW.body(3) : TEAM_GLOW.hot(4));
     outline(pod, OUT);
     blit(a, pod, 5, 4);
     // four chevrons pointing at the pod
     for (const [cx, cy] of [[7, 1], [7, 13], [1, 7], [13, 7]]) {
       const on = (f & 1) === 0;
-      plot(a, cx, cy, withAlpha(cyP[on ? 4 : 3], 200), on ? cyP[3] : 0);
+      plot(a, cx, cy, withAlpha(cyP[3], on ? 235 : 170), on ? TEAM_GLOW.body(3) : 0);
     }
     out.push(a);
   }
@@ -1546,7 +1552,7 @@ function mineFrames() {
       plot(a, 6, 6, mgP[2], mgP[1]);
       for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) plot(a, 6 + ox, 6 + oy, mgP[1], 0);
     }
-    out.push(finish(a, { choir: true, small: true }));
+    out.push(finish(a, { choir: true }));
   }
   return out;
 }

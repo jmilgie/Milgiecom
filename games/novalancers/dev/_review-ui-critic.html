@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ui-critic scratch harness</title></head>
+<body>
+<script type="module">
+// Throwaway harness (ui-critic review): measures HUD canvas churn and draw-call counts.
+import { drawHUD } from '../js/ui/hud.js';
+import * as SPR from '../js/art/sprites.js';
+await SPR.buildSprites(() => {});
+let canvases = 0;
+const ce = document.createElement.bind(document);
+document.createElement = (t, ...a) => { if (String(t).toLowerCase() === 'canvas') canvases++; return ce(t, ...a); };
+const main = ce('canvas'); main.width = 240; main.height = 520;
+const light = ce('canvas'); light.width = 240; light.height = 520;
+const ctx = main.getContext('2d'), lctx = light.getContext('2d');
+let draws = 0, fills = 0;
+for (const c of [ctx, lctx]) {
+  const di = c.drawImage.bind(c), fr = c.fillRect.bind(c);
+  c.drawImage = (...a) => { draws++; return di(...a); };
+  c.fillRect = (...a) => { fills++; return fr(...a); };
+}
+const R = { W: 240, H: 520, fx: 0, fy: 42, scale: 1.625, safeArt: { top: 0, bottom: 0 }, touchUI: true };
+function hud(i, n, opts) {
+  const score = opts.newHi ? 2000000 + i * 137 : 48215 + i * 37;
+  return {
+    score, hiScore: Math.max(1234500, score), chainMult: 1 + (i >> 5) % 16, chainTimer: (i % 90) / 90,
+    players: [
+      { slot: 0, name: 'MAVERICK', lives: 3, alive: true, isLocal: true },
+      { slot: 1, name: 'BLAZE', lives: 2, alive: true, ping: 40 + (i % 50) },
+      { slot: 2, name: 'ORBITAL-7', lives: 0, alive: false, beacon: true, ping: 131 },
+      { slot: 3, name: 'VIOLET', lives: 1, alive: true, ping: 200 + (i % 30) },
+    ].slice(0, n),
+    bombs: 2, power: 1 + (i >> 6) % 8, powerMax: 8, overdrive: Math.min(1, i / 600), overdriveActive: false,
+    boss: opts.boss ? { name: 'WARDEN OF THE RING', hp: 1 - i / 1500, phase: 1 } : null,
+    sector: 1, sectorName: 'AURORA RING', fps: opts.fps ? 55 + (i % 7) : 0, warning: opts.warn ? 1 - (i % 180) / 180 : 0,
+    net: n > 1 ? { kind: 'p2p', ping: 40 + (i % 50) } : null,
+  };
+}
+const out = {};
+const CASES = [['solo', 1, {}], ['solo newHi', 1, { newHi: true }], ['4P boss', 4, { boss: true }], ['4P boss fps', 4, { boss: true, fps: true }], ['4P boss warn', 4, { boss: true, warn: true }]];
+const only = new URLSearchParams(location.search).get('case');
+for (const [label, n, opts] of CASES.filter((c) => !only || c[0] === only)) {
+  canvases = 0; draws = 0; fills = 0;
+  const t0 = performance.now();
+  const Rr = Object.assign({}, R);
+  for (let i = 0; i < 600; i++) drawHUD(ctx, lctx, hud(i, n, opts), Rr);
+  const ms = performance.now() - t0;
+  out[label] = { canvasesCreatedPer600Frames: canvases, drawImagePerFrame: +(draws / 600).toFixed(1), fillRectPerFrame: +(fills / 600).toFixed(1), msPerFrame: +(ms / 600).toFixed(3) };
+}
+window.__result = out;
+</script>
+</body></html>

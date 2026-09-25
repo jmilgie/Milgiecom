@@ -485,13 +485,12 @@ function makeLut(p, ex) {
   return lut;
 }
 
-function paint(idx, w, h, lut) {
-  const c = mkCanvas(w, h), g = ctx2d(c);
+// Colourise an index buffer into rows [y0, y0+h) of an existing atlas canvas.
+function paintInto(g, idx, w, h, lut, y0) {
   const img = g.createImageData(w, h);
   const px = new Uint32Array(img.data.buffer);
   for (let i = 0; i < idx.length; i++) px[i] = lut[idx[i]];
-  g.putImageData(img, 0, 0);
-  return c;
+  g.putImageData(img, 0, y0);
 }
 
 function buildGlow() {
@@ -538,20 +537,36 @@ function buildGlow() {
 }
 const STRIP_BODY_Y = GC * 2 + 2, STRIP_CORE_Y = GC * 2 + 7;
 
+// Atlases. Everything the particle pools draw on the MAIN layer comes from at most three
+// canvases, so Canvas2D can batch consecutive drawImage calls instead of switching texture
+// per particle:
+//   ART.sp  — sparks/dots/flares/ripples, all 12 palettes stacked vertically (row SPO[p])
+//   ART.exA — fireball/smoke/debris flipbooks for the 5 explosion palettes (row EXO[p])
+//   ART.exB — the same for the other 7 palettes, painted on first use or when idle
+const SPO = new Int16Array(NPAL), EXO = new Int16Array(NPAL);
+const N_EXA = P_PLA + 1;
 let ART = null;
-function buildArt() {
-  if (ART) return ART;
+let artIt = null;
+
+// Build steps; yields between the heavy parts so buildFX() can keep a loading bar moving.
+function* artSteps() {
   const fbm = makeNoise(0x5eed);
 
-  // explosion atlas: fire + smoke + debris
+  // explosion atlas layout: fire + smoke + debris
   const exB = [];
   FB.forEach(([S, F, V], si) => { for (let v = 0; v < V; v++) exB.push({ w: S * F, h: S, k: 0, si, v }); });
   SMK.forEach(([S, F, V], si) => { for (let v = 0; v < V; v++) exB.push({ w: S * F, h: S, k: 1, si, v }); });
   exB.push({ w: 72, h: 54, k: 2 });
   const exL = pack(exB, 1024);
   const exIdx = new Uint8Array(exL.w * exL.h);
-  const fireMaps = FB.map(([S, F, V], si) => (V > 2 ? [genFire(S, F, si * 2, fbm), genFire(S, F, si * 2 + 1, fbm)] : [genFire(S, F, si * 2, fbm)]));
+  const fireMaps = [];
+  for (let si = 0; si < FB.length; si++) {
+    const [S, F, V] = FB[si];
+    fireMaps.push(V > 2 ? [genFire(S, F, si * 2, fbm), genFire(S, F, si * 2 + 1, fbm)] : [genFire(S, F, si * 2, fbm)]);
+    yield;
+  }
   const smokeMaps = SMK.map(([S, F], si) => [genSmoke(S, F, si * 2, fbm), genSmoke(S, F, si * 2 + 1, fbm)]);
+  yield;
   for (const b of exB) {
     if (b.k === 0) {
       const [S, F, V] = FB[b.si];
@@ -588,25 +603,71 @@ function buildArt() {
     else if (b.k === 4) { POS.sb[0] = b.x; POS.sb[1] = b.y; writeStarburst(spIdx, spL.w, b.x, b.y); }
     else { POS.rp[0] = b.x; POS.rp[1] = b.y; writeRipple(spIdx, spL.w, b.x, b.y); }
   }
-
   FL_X[0] = POS.mz[0]; FL_Y[0] = POS.mz[1]; FL_X[1] = POS.im[0]; FL_Y[1] = POS.im[1];
   FL_X[2] = FL_X[3] = POS.sb[0]; FL_Y[2] = POS.sb[1]; FL_Y[3] = POS.sb[1] + SB;
-  const luts = RAMP8.map((_, p) => makeLut(p, false));
+  yield;
+
+  const sp = mkCanvas(spL.w, spL.h * NPAL), spg = ctx2d(sp);
+  for (let p = 0; p < NPAL; p++) { SPO[p] = p * spL.h; paintInto(spg, spIdx, spL.w, spL.h, makeLut(p, false), SPO[p]); }
   const exLuts = RAMP8.map((_, p) => makeLut(p, true));
+  for (let p = 0; p < NPAL; p++) EXO[p] = (p < N_EXA ? p : p - N_EXA) * exL.h;
+  const exA = mkCanvas(exL.w, exL.h * N_EXA), exAg = ctx2d(exA);
+  for (let p = 0; p < N_EXA; p++) paintInto(exAg, exIdx, exL.w, exL.h, exLuts[p], EXO[p]);
+  yield;
   ART = {
     exIdx, exW: exL.w, exH: exL.h, luts: exLuts,
-    ex: new Array(NPAL).fill(null),
-    sp: luts.map((lut) => paint(spIdx, spL.w, spL.h, lut)),
+    exA, exB: null, exBg: null, exReady: new Uint8Array(NPAL).fill(1, 0, N_EXA),
+    sp,
     glow: buildGlow(),
   };
-  // explosion atlases for the explosion palettes up front; others (team colours...) lazily
-  for (let p = 0; p <= P_PLA; p++) ART.ex[p] = paint(exIdx, exL.w, exL.h, exLuts[p]);
+}
+function buildArt() {
+  if (!ART) {
+    if (!artIt) artIt = artSteps();
+    while (!artIt.next().done);
+  }
   return ART;
 }
+// explosion atlas for palette p (paints the lazily-built palettes on first use)
 function exAtlas(p) {
-  let c = ART.ex[p];
-  if (!c) c = ART.ex[p] = paint(ART.exIdx, ART.exW, ART.exH, ART.luts[p]);
-  return c;
+  if (p < N_EXA) return ART.exA;
+  if (!ART.exReady[p]) paintLazy(p);
+  return ART.exB;
+}
+function paintLazy(p) {
+  if (!ART.exB) { ART.exB = mkCanvas(ART.exW, ART.exH * (NPAL - N_EXA)); ART.exBg = ctx2d(ART.exB); }
+  paintInto(ART.exBg, ART.exIdx, ART.exW, ART.exH, ART.luts[p], EXO[p]);
+  ART.exReady[p] = 1;
+}
+// Paint the remaining palettes one per idle slot after boot, so a team-coloured blast never
+// hitches mid-game.
+function prebuildLazy() {
+  if (typeof window === 'undefined') return;
+  const idle = window.requestIdleCallback ? (f) => window.requestIdleCallback(f, { timeout: 1500 }) : (f) => setTimeout(f, 120);
+  const next = () => {
+    for (let p = N_EXA; p < NPAL; p++) {
+      if (!ART.exReady[p]) { paintLazy(p); idle(next); return; }
+    }
+  };
+  idle(next);
+}
+
+/**
+ * Optional async pre-build of all FX art (chunked, yields to the event loop between the
+ * heavy steps). Call during loading; createFX() is then instant. Without it createFX()
+ * builds synchronously (~100-200 ms on a phone).
+ */
+export async function buildFX(onProgress) {
+  let n = 0;
+  if (!ART) {
+    if (!artIt) artIt = artSteps();
+    while (!artIt.next().done) {
+      n++;
+      if (onProgress) onProgress(Math.min(0.95, n / 9));
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+  if (onProgress) onProgress(1);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -672,9 +733,12 @@ function ringFill(g, cx, cy, ri, ti) {
     if (!p) { p = new Path2D(); addAnnulus(p, 0, 0, ri + 0.5, ri + 0.5 - ti, false); ringCache[key] = p; }
     g.translate(cx, cy); g.fill(p); g.translate(-cx, -cy);
   } else {
-    g.beginPath(); addAnnulus(g, cx, cy, ri + 0.5, ri + 0.5 - ti, true); g.fill();
+    // huge rings (nova, boss blast): one fillRect per run — batched rect fast path instead of
+    // a path with ~1500 subpaths going through the general path rasteriser
+    FILL_T.g = g; addAnnulus(FILL_T, cx, cy, ri + 0.5, ri + 0.5 - ti, true); FILL_T.g = null;
   }
 }
+const FILL_T = { g: null, rect(x, y, w, h) { this.g.fillRect(x, y, w, h); } };
 const thIdx = (th) => (th < 1.5 ? 1 : th < 2.5 ? 2 : th < 3.5 ? 3 : 4);
 function diskFill(g, cx, cy, r) { g.beginPath(); addAnnulus(g, cx, cy, r + 0.5, 0, false); g.fill(); }
 
@@ -706,18 +770,45 @@ function bolt(g, x0, y0, ang, len, pixel, start) {
 // ---------------------------------------------------------------------------------------
 // Particle pools (structure of arrays)
 // ---------------------------------------------------------------------------------------
+// When a pool is full, the particle nearest the end of its life is recycled for the new one
+// (the newest effects are the ones that matter). REC_SHIFT pools keep spawn order (= draw
+// order, back to front) by moving the recycled slot to the end; REC_INPLACE pools reuse it.
+const REC_NONE = 0, REC_INPLACE = 1, REC_SHIFT = 2;
+const REC_SCAN = 48;       // victims are searched among the oldest-spawned slots only
 class Pool {
-  constructor(cap) {
-    this.cap = cap; this.n = 0;
+  constructor(cap, recycle) {
+    this.cap = cap; this.n = 0; this.recycle = recycle || REC_NONE;
+    this.drops = 0; this.recycled = 0;   // dev counters
     const F = () => new Float32Array(cap), U = () => new Uint8Array(cap);
     this.x = F(); this.y = F(); this.vx = F(); this.vy = F(); this.age = F(); this.life = F();
     this.drag = F(); this.grav = F(); this.c = F(); this.a = F(); this.b = F(); this.d = F();
     this.pal = U(); this.s = U(); this.v = U(); this.f = U();
+    this.arrs = [this.x, this.y, this.vx, this.vy, this.age, this.life, this.drag, this.grav,
+      this.c, this.a, this.b, this.d, this.pal, this.s, this.v, this.f];
   }
-  // claim a slot and reset the common fields; -1 if full
+  // index of the live particle furthest through its life among the oldest slots, or -1
+  victim() {
+    const m = this.n < REC_SCAN ? this.n : REC_SCAN;
+    let best = -1, bu = 0;
+    for (let i = 0; i < m; i++) {
+      const u = this.age[i] / this.life[i];
+      if (u > bu) { bu = u; best = i; }
+    }
+    return best;
+  }
+  // claim a slot and reset the common fields; -1 if full and nothing can be recycled
   add(x, y, vx, vy, life, delay) {
-    if (this.n >= this.cap) return -1;
-    const i = this.n++;
+    let i;
+    if (this.n >= this.cap) {
+      const v = this.recycle ? this.victim() : -1;
+      if (v < 0) { this.drops++; return -1; }
+      this.recycled++;
+      if (this.recycle === REC_SHIFT) {
+        const A = this.arrs, n = this.n;
+        for (let k = 0; k < A.length; k++) A[k].copyWithin(v, v + 1, n);
+        i = n - 1;
+      } else i = v;
+    } else i = this.n++;
     this.x[i] = x; this.y[i] = y; this.vx[i] = vx; this.vy[i] = vy;
     this.age[i] = -delay; this.life[i] = life > 0.001 ? life : 0.001;
     this.drag[i] = 0; this.grav[i] = 0; this.c[i] = 0; this.a[i] = 0; this.b[i] = 0; this.d[i] = 0;
@@ -834,9 +925,11 @@ export function createFX() {
   const A = buildArt();
   const SPA = A.sp, GLOW = A.glow;
 
-  const SPK = new Pool(560), DOT = new Pool(420), FIRE = new Pool(100), SMOKE = new Pool(170),
-    DEB = new Pool(80), GLW = new Pool(100), FLR = new Pool(70);
+  const SPK = new Pool(560, REC_INPLACE), DOT = new Pool(420, REC_INPLACE), FIRE = new Pool(100, REC_SHIFT),
+    SMOKE = new Pool(170, REC_SHIFT), DEB = new Pool(80, REC_INPLACE), GLW = new Pool(100, REC_INPLACE),
+    FLR = new Pool(70, REC_INPLACE);
   const POOLS = [SPK, DOT, FIRE, SMOKE, DEB, GLW, FLR];
+  const TRAIL_BUDGET = (DOT.cap * 0.6) | 0, SMOKE_BUDGET = (SMOKE.cap * 0.7) | 0;
 
   // shockwave rings
   const RG = 48;
@@ -1096,7 +1189,7 @@ export function createFX() {
     // debris: tumble + smoke puffs from smoky chunks
     for (let i = 0; i < DEB.n; i++) {
       DEB.a[i] += DEB.b[i] * dt;
-      if (DEB.f[i] & 1 && DEB.age[i] < DEB.life[i] * 0.6 && rnd() < dt * 16) {
+      if (DEB.f[i] & 1 && DEB.age[i] < DEB.life[i] * 0.6 && SMOKE.n < SMOKE_BUDGET && rnd() < dt * 16) {
         addSmoke(DEB.x[i], DEB.y[i], 0, 0, 0, rr(0.35, 0.6), 0, DEB.pal[i]);
       }
     }
@@ -1120,7 +1213,10 @@ export function createFX() {
       if (age >= NOVA_T) continue;
       nvAge[i] = age;
       const p = nvPal[i];
-      if (age < 0.2) flashKick(0.25 * (1 - age / 0.2), LIGHT_RGB[p]);
+      // sustained tinted exposure while the nova is alive (a screen-space wash: unlike a light
+      // disc it cannot be cut off by the field clip)
+      const fk = 0.16 * Math.pow(1 - age / NOVA_T, 1.5);
+      flashKick(age < 0.2 ? Math.max(fk, 0.25 * (1 - age / 0.2)) : fk, LIGHT_RGB[p]);
       const R = novaR(age);
       if (R < 470) {
         for (let k = 0; k < 5; k++) {
@@ -1179,7 +1275,8 @@ export function createFX() {
       let f = ((age / P.life[i]) * F) | 0;
       if (f >= F) f = F - 1;
       const k = s * 4 + P.v[i], h = S >> 1;
-      ctx.drawImage(exAtlas(P.pal[i]), SMX[k] + f * S, SMY[k], S, S, ((P.x[i] + 1024.5) | 0) - 1024 - h, ((P.y[i] + 1024.5) | 0) - 1024 - h, S, S);
+      const pp = P.pal[i];
+      ctx.drawImage(exAtlas(pp), SMX[k] + f * S, SMY[k] + EXO[pp], S, S, ((P.x[i] + 1024.5) | 0) - 1024 - h, ((P.y[i] + 1024.5) | 0) - 1024 - h, S, S);
     }
   }
 
@@ -1198,9 +1295,9 @@ export function createFX() {
       const li = LEN_IDX[sp >= 7 ? 7 : (sp + 0.5) | 0], L = SPL[li], c = 2 * L + 1;
       const d = ((Math.atan2(vy, vx) * K16 + 16.5) | 0) & 15;
       const bx = ((vx * 0.02 + 1024.5) | 0) - 1024, by = ((vy * 0.02 + 1024.5) | 0) - 1024;
-      g.drawImage(SPA[tp], SPX[li] + d * c, SPY[li] + heat * c, c, c, ix - bx - L, iy - by - L, c, c);
+      g.drawImage(SPA, SPX[li] + d * c, SPY[li] + SPO[tp] + heat * c, c, c, ix - bx - L, iy - by - L, c, c);
       if (lctx) continue;
-      ctx.drawImage(exAtlas(p), dbx + ((P.a[i] | 0) & 7) * 9, dby + P.s[i] * 9, 9, 9, ix - 4, iy - 4, 9, 9);
+      ctx.drawImage(exAtlas(p), dbx + ((P.a[i] | 0) & 7) * 9, dby + EXO[p] + P.s[i] * 9, 9, 9, ix - 4, iy - 4, 9, 9);
     }
   }
 
@@ -1214,8 +1311,8 @@ export function createFX() {
       let f = (u * F) | 0;
       if (f >= F) f = F - 1;
       const k = s * 4 + P.v[i], h = S >> 1;
-      const at = exAtlas(P.pal[i]);
-      const sx = FBX[k] + f * S, sy = FBY[k], dx = ((P.x[i] + 1024.5) | 0) - 1024 - h, dy = ((P.y[i] + 1024.5) | 0) - 1024 - h;
+      const pp = P.pal[i], at = exAtlas(pp);
+      const sx = FBX[k] + f * S, sy = FBY[k] + EXO[pp], dx = ((P.x[i] + 1024.5) | 0) - 1024 - h, dy = ((P.y[i] + 1024.5) | 0) - 1024 - h;
       if (ctx) ctx.drawImage(at, sx, sy, S, S, dx, dy, S, S);
       if (lctx) {
         const a = P.a[i] * Math.pow(1 - u, 1.4);
@@ -1286,8 +1383,8 @@ export function createFX() {
         ctx.globalAlpha = 1;
       }
       if (!lctx) continue;
-      // light: interior wash, thick glowing front, bolts, core
-      glowAt(lctx, p, G_SOFT, cx, cy, R * 1.05, R * 1.05, 0.34 * Math.pow(1 - u, 1.5));
+      // light: thick glowing front, echo, bolts, core (ring-shaped only, so the field clip
+      // never shows as a hard edge; the interior wash is a sustained flash, see update())
       lctx.globalAlpha = 0.85 * fade * (1 - u * 0.4);
       lctx.strokeStyle = ramp[4]; lctx.lineWidth = th * 2.8;
       lctx.beginPath(); lctx.arc(cx + 0.5, cy + 0.5, Math.max(1, R - th * 0.5), 0, TAU); lctx.stroke();
@@ -1349,7 +1446,7 @@ export function createFX() {
       const sp = Math.sqrt(vx * vx + vy * vy) * P.b[i] * 0.024;
       const li = LEN_IDX[sp >= 7 ? 7 : (sp + 0.5) | 0], L = SPL[li], c = 2 * L + 1;
       const d = ((Math.atan2(vy, vx) * K16 + 16.5) | 0) & 15;
-      g.drawImage(SPA[P.pal[i]], SPX[li] + d * c, SPY[li] + h * c, c, c,
+      g.drawImage(SPA, SPX[li] + d * c, SPY[li] + SPO[P.pal[i]] + h * c, c, c,
         ((P.x[i] + 1024.5) | 0) - 1024 - L, ((P.y[i] + 1024.5) | 0) - 1024 - L, c, c);
     }
   }
@@ -1370,10 +1467,9 @@ export function createFX() {
         if (k < 0) k = 0;
         s = SHR[k];
       } else if (f & D_TWINKLE && s > 0 && ((frameNo + i * 3) >> 2) & 1) s = s === 5 ? 0 : s - 1;
-      const sx = ox + s * DOT_C, sy = oy + h * DOT_C, dx = ((P.x[i] + 1024.5) | 0) - 1027, dy = ((P.y[i] + 1024.5) | 0) - 1027;
-      const at = SPA[P.pal[i]];
-      if (ctx) ctx.drawImage(at, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
-      else if (f & D_GLOW && h < 3) lctx.drawImage(at, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
+      const sx = ox + s * DOT_C, sy = oy + SPO[P.pal[i]] + h * DOT_C, dx = ((P.x[i] + 1024.5) | 0) - 1027, dy = ((P.y[i] + 1024.5) | 0) - 1027;
+      if (ctx) ctx.drawImage(SPA, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
+      else if (f & D_GLOW && h < 3) lctx.drawImage(SPA, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
     }
   }
 
@@ -1385,7 +1481,7 @@ export function createFX() {
       const t = P.s[i], nf = FL_F[t], w = FL_W[t], h = FL_H[t];
       let f = ((age / P.life[i]) * nf) | 0;
       if (f >= nf) f = nf - 1;
-      g.drawImage(SPA[P.pal[i]], FL_X[t] + f * w, FL_Y[t], w, h, ((P.x[i] + 1024.5) | 0) - 1024 - FL_AX[t], ((P.y[i] + 1024.5) | 0) - 1024 - FL_AY[t], w, h);
+      g.drawImage(SPA, FL_X[t] + f * w, FL_Y[t] + SPO[P.pal[i]], w, h, ((P.x[i] + 1024.5) | 0) - 1024 - FL_AX[t], ((P.y[i] + 1024.5) | 0) - 1024 - FL_AY[t], w, h);
     }
   }
 
@@ -1591,7 +1687,7 @@ export function createFX() {
     let k = 0;
     for (let i = 0; i < nvN && k < MAX_WAVES; i++) {
       const u = nvAge[i] / NOVA_T, o = waveObjs[k++];
-      o.x = nvX[i]; o.y = nvY[i]; o.r = novaR(nvAge[i]); o.strength = 1.1 * (1 - u) * Math.min(1, nvAge[i] * 12);
+      o.x = nvX[i]; o.y = nvY[i]; o.r = novaR(nvAge[i]); o.strength = 1.6 * (1 - u * u) * Math.min(1, nvAge[i] * 12);
       ws.push(o);
     }
     for (let i = rgN - 1; i >= 0 && k < MAX_WAVES; i--) {
@@ -1647,10 +1743,13 @@ export function createFX() {
     },
 
     trail(x, y, palette, size) {
+      // trails are continuous and cosmetic: they only use the spare part of the dot/smoke pools,
+      // so embers, sparkles and nova twinkles never starve behind 60 bullet trails
+      if (DOT.n > TRAIL_BUDGET) return;
       const p = palOf(palette), s = Math.max(1, Math.min(3, (size || 1) | 0));
       const i = addDot(x + rr(-0.6, 0.6), y + rr(-0.6, 0.6), rr(-6, 6), 22 + s * 6 + rr(0, 10), rr(0.14, 0.22) + s * 0.04, 2, 0, 1, p, D_SHRINK | D_GLOW, 0);
       if (i !== undefined) DOT.v[i] = s;
-      if (s >= 2 && rnd() < 0.18 * s) addSmoke(x, y + 2, rr(-5, 5), rr(8, 20), 0, rr(0.4, 0.7), 0.06, P_FIRE);
+      if (s >= 2 && SMOKE.n < SMOKE_BUDGET && rnd() < 0.18 * s) addSmoke(x, y + 2, rr(-5, 5), rr(8, 20), 0, rr(0.4, 0.7), 0.06, P_FIRE);
     },
 
     debris(x, y, n, palette) {
