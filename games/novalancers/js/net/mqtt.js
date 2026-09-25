@@ -311,14 +311,3 @@ export class MqttClient {
     }
   }
 }
-
-/** Connect helper: resolves a connected client or null (never throws). */
-export async function connectMqtt(url, timeoutMs = 6000) {
-  const mq = new MqttClient(url);
-  try {
-    await mq.connect(timeoutMs);
-    return mq;
-  } catch {
-    return null;
-  }
-}

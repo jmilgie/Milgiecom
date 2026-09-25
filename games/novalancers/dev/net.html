@@ -24,8 +24,10 @@
   .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
   .kv b { color: var(--dim); font-weight: 400; }
   .big { font-size: 28px; letter-spacing: .25em; color: var(--gold); }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .tbl { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 4px 3px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td:nth-child(2) { max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; }
   th { color: var(--dim); font-weight: 400; }
   .t0 { color: var(--cyan); } .t1 { color: var(--gold); } .t2 { color: var(--lime); } .t3 { color: var(--violet); }
   #log, #chat { height: 150px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 12px; background: #0b0a16; border-radius: 6px; padding: 6px; }
@@ -71,7 +73,7 @@
 </div>
 
 <div class="panel">
-  <table><thead><tr><th>slot</th><th>name</th><th>ship</th><th>ready</th><th>conn</th><th>ping</th><th>net</th></tr></thead><tbody id="lobby"></tbody></table>
+  <div class="tbl"><table><thead><tr><th>#</th><th>name</th><th>ship</th><th>rdy</th><th>conn</th><th>ping</th><th>link</th></tr></thead><tbody id="lobby"></tbody></table></div>
   <div class="dim" id="vStarted"></div>
 </div>
 
@@ -125,7 +127,7 @@ function renderLobby(l) {
   for (const p of l.players) {
     const tr = document.createElement('tr');
     tr.className = 't' + p.slot;
-    for (const v of [p.slot, p.name, p.ship, p.ready ? '✓' : '·', p.connected ? 'yes' : 'LAG', p.ping, p.net]) {
+    for (const v of [p.slot, p.name, p.ship, p.ready ? '✓' : '·', p.connected ? 'yes' : 'LAG', p.ping, p.transport]) {
       const td = document.createElement('td');
       td.textContent = String(v);
       tr.appendChild(td);
@@ -172,6 +174,7 @@ function attach(sess) {
   });
   sess.on('message', (m, from) => {
     if (m.k === 'chat') {
+      if (!sess.isHost && m.s === sess.selfSlot) return; // our own line echoed back by the host
       const name = typeof m.n === 'string' ? m.n : '?';
       chat(`${name}: ${m.text}`, 't' + (m.s ?? from));
       if (sess.isHost && from > 0) sess.send({ k: 'chat', text: m.text, n: name, s: from }); // relay to everyone

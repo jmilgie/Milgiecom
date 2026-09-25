@@ -62,6 +62,8 @@ const ICONS = {
   globe: ['..###..', '.#.#.#.', '#..#..#', '#######', '#..#..#', '.#.#.#.', '..###..'],
   home: ['...#...', '..###..', '.#####.', '#######', '.#...#.', '.#.#.#.', '.#.#.#.'],
   retry: ['..####.', '.#....#', '#......', '#...###', '#....##', '.#...#.', '..###..'],
+  graze: ['.......##', '......##.', '.....##..', '.........', '..#......', '.###.....', '#####....', '#.#.#....'],
+  capsule: ['.#####.', '##...##', '#.###.#', '#.#.#.#', '#.###.#', '#.#...#', '##...##', '.#####.'],
 };
 const iconCache = new Map();
 function icon(name, cls = '') {
@@ -80,7 +82,7 @@ function icon(name, cls = '') {
     });
     iconCache.set(name, path);
   }
-  return `<svg class="ico ico-${name} ${cls}" viewBox="0 0 ${rows[0].length} ${rows.length}" width="${rows[0].length * 2}" height="${rows.length * 2}" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="${path}"/></svg>`;
+  return `<svg class="ico ico-${name} ${cls}" viewBox="0 0 ${rows[0].length} ${rows.length}" width="${rows[0].length * 2}" height="${rows.length * 2}" style="--c:${rows[0].length};--r:${rows.length}" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="${path}"/></svg>`;
 }
 
 // Ship art for mini canvases (sprites if built, else a stylised placeholder).
@@ -189,7 +191,6 @@ let H = {};
 let layer = null, bannerEl = null, toastEl = null;
 const screens = {};           // name -> { el, def }
 let curName = null;
-let lastShow = 0;
 let settingsCache = null;
 let lobbyState = { lobby: null, session: null };
 const transports = new Map(); // slot -> 'p2p'|'relay'
@@ -197,7 +198,6 @@ let transportSession = null;
 let hangarShip = null;
 let solSector = 0;
 let busyTimer = 0;
-let lastToastAt = 0;
 
 function call(name, ...args) {
   const fn = H && H[name];
@@ -240,7 +240,7 @@ function pilotName() {
 }
 
 // Busy state for network actions: the button shows a working label until the screen changes,
-// a toast arrives, or 20 s pass.
+// the handler's promise rejects, or 20 s pass.
 function setBusy(btn, label) {
   clearBusy();
   if (!btn) return;
@@ -248,7 +248,6 @@ function setBusy(btn, label) {
   btn.dataset.label = $(btn, '.btn-label')?.textContent || '';
   const l = $(btn, '.btn-label');
   if (l) l.textContent = label;
-  $$(btn.closest('.screen') || root, '[data-act]').forEach((b) => { if (b !== btn) b.dataset.wasDisabled = b.disabled ? '1' : ''; });
   busyTimer = setTimeout(clearBusy, 20000);
 }
 function clearBusy() {
@@ -359,10 +358,12 @@ DEF.menu = {
         </div>
         <div class="pc-best"><span>HI-SCORE</span><b class="score"></b></div>
       </div>
-      <nav class="menu-list stagger" aria-label="Main menu">
-        ${btn('solo', 'SOLO SORTIE', { cls: 'btn-primary btn-xl', ico: 'play', sub: '5 SECTORS · ONE PILOT', sfx: 'ui_start', attrs: 'data-autofocus' })}
-        ${btn('coop', 'CO-OP SQUAD', { cls: 'btn-gold btn-xl', ico: 'squad', sub: 'UP TO 4 PILOTS · ONLINE' })}
-        <div class="grid2">
+      <nav class="menu-list" aria-label="Main menu">
+        <div class="menu-main stagger">
+          ${btn('solo', 'SOLO SORTIE', { cls: 'btn-primary btn-xl', ico: 'play', sub: '5 SECTORS · ONE PILOT', sfx: 'ui_start', attrs: 'data-autofocus' })}
+          ${btn('coop', 'CO-OP SQUAD', { cls: 'btn-gold btn-xl', ico: 'squad', sub: 'UP TO 4 PILOTS · ONLINE' })}
+        </div>
+        <div class="grid2 stagger">
           ${btn('hangar', 'HANGAR', { ico: 'ship' })}
           ${btn('settings', 'SETTINGS', { ico: 'gear' })}
           ${btn('howto', 'HOW TO PLAY', { ico: 'help' })}
@@ -392,7 +393,7 @@ DEF.menu = {
 
 // ---------- hangar
 const hangar = { raf: 0, t: 0, last: 0, idx: 0, team: 0, stars: null, shots: [], fireT: 0, cv: null, g: null, lc: null, lg: null, b1: null, b2: null, swipe: null };
-const PREV_W = 120, PREV_H = 92;
+const PREV_W = 88, PREV_H = 80;
 
 DEF.hangar = {
   cls: 'scr-hangar',
@@ -434,8 +435,24 @@ DEF.hangar = {
     hangar.lc = mk(PREV_W, PREV_H); hangar.lg = hangar.lc.getContext('2d');
     hangar.b1 = mk(PREV_W >> 1, PREV_H >> 1);
     hangar.b2 = mk(PREV_W >> 2, PREV_H >> 2);
-    hangar.stars = Array.from({ length: 46 }, () => ({ x: Math.random() * PREV_W, y: Math.random() * PREV_H, z: Math.random() }));
+    hangar.H = PREV_H;
+    hangar.stars = Array.from({ length: 50 }, () => ({ x: Math.random() * PREV_W, y: Math.random() * 200, z: Math.random() }));
     const stage = $(el, '.hg-stage');
+    // The preview keeps 120 art px of width and grows its height to fill the stage, so the
+    // pixels stay square whatever space the layout leaves.
+    const fit = () => {
+      const r = stage.getBoundingClientRect();
+      if (r.width < 20 || r.height < 20) return;
+      const h = clamp(Math.round((PREV_W * r.height) / r.width), 64, 200);
+      if (h === hangar.H) return;
+      hangar.H = h;
+      for (const c of [hangar.cv, hangar.lc]) c.height = h;
+      hangar.b1.height = h >> 1; hangar.b2.height = h >> 2;
+      hangar.beam = null;
+    };
+    hangar.fit = fit;
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(stage);
+    else addEventListener('resize', fit);
     stage.addEventListener('pointerdown', (e) => { if (!e.target.closest('button')) hangar.swipe = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
     stage.addEventListener('pointerup', (e) => {
       const s = hangar.swipe; hangar.swipe = null;
@@ -462,6 +479,7 @@ DEF.hangar = {
     this.renderSector(el);
     $$(el, '.hg-tab canvas').forEach((c, i) => drawShipIcon(c, SHIP_ORDER[i], hangar.team));
     this.select(SHIP_ORDER.indexOf(curShip()), true);
+    requestAnimationFrame(() => hangar.fit && hangar.fit());
     this.start();
   },
   leave() { cancelAnimationFrame(hangar.raf); hangar.raf = 0; },
@@ -538,7 +556,7 @@ DEF.hangar = {
 // looping weapon demo, with a cheap two-mip bloom from a separate light canvas.
 function drawHangar(dt) {
   const { g, lg, cv, lc } = hangar;
-  const W = PREV_W, Hh = PREV_H;
+  const W = PREV_W, Hh = hangar.H || PREV_H;
   hangar.t += dt;
   hangar.swapT = Math.min(1, (hangar.swapT || 0) + dt * 3);
   const t = hangar.t;
@@ -566,17 +584,18 @@ function drawHangar(dt) {
 
   const swap = hangar.swapT;
   const ease = 1 - Math.pow(1 - swap, 3);
-  const cx = Math.round(W / 2 + (1 - ease) * 40);
-  const cy = Math.round(Hh * 0.56 + Math.sin(t * 1.6) * 2);
-  const padY = Math.round(Hh * 0.56) + 17;
+  const cx = Math.round(W / 2 + (1 - ease) * 30);
+  const cy = Math.round(Hh * 0.58 + Math.sin(t * 1.6) * 2);
+  const padY = Math.round(Hh * 0.58) + 16;
 
   // hologram pad: rotating dotted ellipse + rising beam
-  const beam = g.createLinearGradient(0, padY - 40, 0, padY);
-  beam.addColorStop(0, 'rgba(0,0,0,0)'); beam.addColorStop(1, hexA(col, 0.16));
-  g.fillStyle = beam; g.fillRect(cx - 18, padY - 40, 36, 40);
+  if (!hangar.beam || hangar.beamCol !== col) { hangar.beam = beamCanvas(col); hangar.beamCol = col; }
+  g.globalCompositeOperation = 'lighter';
+  g.drawImage(hangar.beam, cx - 22, padY - 46);
+  g.globalCompositeOperation = 'source-over';
   for (let i = 0; i < 40; i++) {
     const a = (i / 40) * Math.PI * 2 + t * 0.9;
-    const x = Math.round(cx + Math.cos(a) * 22), y = Math.round(padY + Math.sin(a) * 5);
+    const x = Math.round(cx + Math.cos(a) * 19), y = Math.round(padY + Math.sin(a) * 4);
     const front = Math.sin(a) > 0;
     if (i % 2 === 0 || front) {
       g.fillStyle = front ? col : hexA(col, 0.45);
@@ -588,7 +607,7 @@ function drawHangar(dt) {
   // bank frame: gentle weave
   const weave = Math.sin(t * 1.3);
   const bank = clamp(Math.round(2 + weave * 1.6), 0, 4);
-  const shipX = cx + Math.round(weave * 6);
+  const shipX = cx + Math.round(weave * 4);
   const haveShip = hasSpr(def.sprite);
 
   // weapon demo
@@ -703,6 +722,22 @@ function drawHangar(dt) {
   void cv;
 }
 
+// Soft light cone rising from the hologram pad (pre-rendered once per team colour).
+function beamCanvas(col) {
+  const c = document.createElement('canvas');
+  c.width = 44; c.height = 50;
+  const g = c.getContext('2d');
+  for (let x = 0; x < 44; x++) {
+    const d = Math.abs(x - 21.5) / 22;
+    const a = 0.2 * Math.pow(Math.max(0, 1 - d), 1.6);
+    const gr = g.createLinearGradient(0, 0, 0, 50);
+    gr.addColorStop(0, hexA(col, 0)); gr.addColorStop(0.75, hexA(col, a * 0.6)); gr.addColorStop(1, hexA(col, a));
+    g.fillStyle = gr;
+    g.fillRect(x, 0, 1, 50);
+  }
+  return c;
+}
+
 function hexA(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
@@ -722,23 +757,23 @@ DEF.coop = {
         <ol class="coop-steps">
           <li><b>1</b><span>CREATE A SQUAD</span></li>
           <li><b>2</b><span>SHARE THE LINK OR QR</span></li>
-          <li><b>3</b><span>FRIENDS TAP IT — THEY'RE IN</span></li>
+          <li><b>3</b><span>FRIENDS TAP · JOINED!</span></li>
         </ol>
       </div>
       <label class="field callsign">
         <span class="field-k">CALLSIGN</span>
         <input class="coop-name" type="text" maxlength="12" autocomplete="nickname" autocapitalize="characters" spellcheck="false" enterkeyhint="done" placeholder="PILOT" aria-label="Callsign">
       </label>
-      <div class="coop-list stagger">
-        ${btn('host', 'CREATE SQUAD', { cls: 'btn-primary btn-xl', ico: 'squad', sub: 'PRIVATE · INVITE FRIENDS', sfx: 'ui_start', attrs: 'data-autofocus' })}
-        ${btn('quick', 'QUICK MATCH', { cls: 'btn-gold', ico: 'globe', sub: 'JOIN ANY OPEN SQUAD' })}
-        ${btn('join', 'JOIN WITH CODE', { ico: 'link', sub: 'ENTER A 5-CHARACTER CODE' })}
-      </div>
       <button type="button" class="ship-chip" data-act="ship">
         <canvas width="29" height="29" aria-hidden="true"></canvas>
         <span class="chip-text"><span class="kicker">FLYING</span><b class="chip-ship"></b></span>
         <span class="chip-go">CHANGE ${icon('next')}</span>
       </button>
+      <div class="coop-list stagger">
+        ${btn('join', 'JOIN WITH CODE', { ico: 'link', sub: 'ENTER A 5-CHARACTER CODE' })}
+        ${btn('quick', 'QUICK MATCH', { cls: 'btn-gold', ico: 'globe', sub: 'JOIN ANY OPEN SQUAD' })}
+        ${btn('host', 'CREATE SQUAD', { cls: 'btn-primary btn-xl', ico: 'squad', sub: 'PRIVATE · INVITE FRIENDS', sfx: 'ui_start', attrs: 'data-autofocus' })}
+      </div>
     </div>`,
   build(el) {
     const inp = $(el, '.coop-name');
@@ -789,10 +824,11 @@ DEF.join = {
         <p class="join-hint">5 CHARACTERS · A PASTED INVITE LINK WORKS TOO</p>
         <p class="join-err" role="alert"></p>
       </div>
-      <div class="foot join-foot">
+      <div class="join-foot">
         ${btn('paste', 'PASTE', { cls: 'btn-sm', ico: 'paste', aria: 'Paste code from clipboard' })}
         ${btn('go', 'JOIN', { cls: 'btn-primary btn-xl', ico: 'play', sfx: 'ui_start' })}
       </div>
+      <p class="join-note">No code? Ask the squad leader to tap SHARE INVITE — or scan their QR code with your camera.</p>
     </div>`,
   build(el) {
     const inp = $(el, '.code-input');
@@ -930,7 +966,7 @@ DEF.lobby = {
       if (root.classList.contains('kbd')) $(screens.lobby.el, '.lb-qr').focus();
     } else if (a === 'lbship') {
       const id = b.dataset.ship;
-      if (me?.ready) { snd('ui_error'); UI.toast('UN-READY TO CHANGE SHIPS', 1400); return; }
+      if (me?.ready && !session?.isHost) { snd('ui_error'); UI.toast('UN-READY TO CHANGE SHIPS', 1400); return; }
       hangarShip = id;
       call('onShip', id);
       call('onLobbyShip', id);
@@ -1020,10 +1056,9 @@ function renderLobby(lobby, session) {
     } catch { /* */ }
   }
   const linkKind = (p) => {
-    if (!session) return '';
-    if (isHost) return p.slot === selfSlot ? '' : (transports.get(p.slot) || p.transport || (session.transportKind !== 'mixed' ? session.transportKind : '') || '');
-    if (p.slot === 0) return session.transportKind === 'relay' ? 'relay' : (session.transportKind || transports.get(0) || '');
-    return '';
+    if (!session || p.slot === selfSlot) return '';
+    const k = !isHost && p.slot === 0 ? session.transportKind : (transports.get(p.slot) || p.transport);
+    return k === 'relay' || k === 'p2p' ? k : '';
   };
 
   let readyCount = 0, others = 0, othersReady = 0;
@@ -1047,7 +1082,8 @@ function renderLobby(lobby, session) {
     if (p.ready) readyCount++;
     if (i !== selfSlot) { others++; if (p.ready) othersReady++; }
     const nm = String(p.name || `PILOT ${i + 1}`).toUpperCase().slice(0, 12);
-    nameEl.innerHTML = esc(nm) + (i === selfSlot ? ' <em>YOU</em>' : '') + (i === 0 ? ' <em class="hosttag">HOST</em>' : '');
+    // one tag per row: HOST wins (your own row is already highlighted)
+    nameEl.innerHTML = esc(nm) + (i === 0 ? ' <em class="hosttag">HOST</em>' : i === selfSlot ? ' <em>YOU</em>' : '');
     const ship = SHIPS[p.ship] ? p.ship : 'aurora';
     const lk = linkKind(p);
     const ping = typeof p.ping === 'number' && p.ping > 0 && i !== selfSlot ? `${Math.round(p.ping)}MS` : '';
@@ -1064,7 +1100,7 @@ function renderLobby(lobby, session) {
     const on = b.dataset.ship === myShip;
     b.setAttribute('aria-checked', on ? 'true' : 'false');
     b.classList.toggle('on', on);
-    b.disabled = !!me?.ready;
+    b.disabled = !isHost && !!me?.ready;               // the host has no READY toggle
     const c = $(b, 'canvas');
     const key = (selfSlot & 3) + ':' + (hasSpr(SHIPS[b.dataset.ship].sprite) ? 1 : 0);
     if (c.dataset.k !== key) { drawShipIcon(c, b.dataset.ship, selfSlot & 3); c.dataset.k = key; }
@@ -1404,11 +1440,11 @@ DEF.howto = {
         <h3 class="sect">RULES OF ENGAGEMENT</h3>
         <div class="rules stagger">
           ${rule('burst', 'NOVA BOMB', 'Erases every enemy bullet on screen and hits everything hard. Start with 2, carry up to 5.', 'nova')}
-          ${rule('heart', 'GRAZE', 'Only your glowing core can be hit. Skim bullets close to score and charge OVERDRIVE.', 'graze')}
+          ${rule('graze', 'GRAZE', 'Only your glowing core can be hit. Skim bullets close to score and charge OVERDRIVE.', 'graze')}
           ${rule('bolt', 'OVERDRIVE', 'When the meter is full: 6 s of double damage, bigger shots and ×2 score.', 'od')}
           ${rule('star', 'CHAIN', 'Kill again within 1.5 s to grow the chain — up to a ×16 score multiplier.', 'chain')}
           ${rule('squad', 'CO-OP REVIVE', 'Out of lives? You become a beacon. A squadmate hovering over it for 1.5 s brings you back.', 'revive')}
-          ${rule('ship', 'POWER-UPS', 'P raises weapon power (8 levels), B adds a NOVA, gems are pure score. Pickups are shared by the squad.', 'power')}
+          ${rule('capsule', 'POWER-UPS', 'P raises weapon power (8 levels), B adds a NOVA, gems are pure score. Pickups are shared by the squad.', 'power')}
         </div>
       </div>
     </div>`,
@@ -1443,27 +1479,32 @@ function rule(ico, title, text, art) {
 }
 // Inline pixel illustration: phone, relative drag, the ship offset from the finger, buttons.
 function touchIllustration() {
-  return `<svg class="touch-ill" viewBox="0 0 120 92" role="img" aria-label="Drag anywhere on the screen; the ship follows your finger with an offset" shape-rendering="crispEdges">
-    <rect x="30" y="2" width="60" height="88" fill="#0a0818" stroke="#526283" stroke-width="2"/>
-    <rect x="34" y="8" width="52" height="70" fill="#110e26"/>
-    <g fill="#322c6a">${[12, 20, 30, 44, 52, 60, 70].map((y, i) => `<rect x="${38 + ((i * 17) % 44)}" y="${y}" width="1" height="1"/>`).join('')}</g>
-    <g class="ill-ship">
+  const dots = [[40, 16], [78, 22], [52, 40], [84, 48], [44, 70], [70, 12], [36, 54]].map(([x, y]) => `<rect x="${x}" y="${y}" width="1" height="1"/>`).join('');
+  return `<svg class="touch-ill" viewBox="0 0 120 100" role="img" aria-label="Drag anywhere on the screen; the ship follows your finger with an offset. NOVA bottom left, OVERDRIVE bottom right." shape-rendering="crispEdges">
+    <rect x="31" y="1" width="58" height="98" fill="#05040c"/>
+    <rect x="32" y="2" width="56" height="96" fill="#1a1638" stroke="#526283" stroke-width="2"/>
+    <rect x="35" y="8" width="50" height="84" fill="#0a0818"/>
+    <rect x="55" y="4" width="10" height="2" fill="#322c6a"/>
+    <g fill="#526283">${dots}</g>
+    <g class="ill-move">
       <path d="M59 26h2v2h1v2h1v3h2v2h1v2h-12v-2h1v-2h2v-3h1v-2h1z" fill="#aebfdc"/>
       <rect x="59" y="30" width="2" height="2" fill="#27c2ea"/>
       <rect x="58" y="37" width="1" height="3" fill="#79ecff"/><rect x="61" y="37" width="1" height="3" fill="#79ecff"/>
+      <path d="M60 43v12" stroke="#79ecff" stroke-width="1" stroke-dasharray="1 2"/>
+      <rect x="54" y="56" width="12" height="12" fill="rgba(121,236,255,.14)"/>
+      <rect x="56" y="58" width="8" height="8" fill="rgba(121,236,255,.32)"/>
+      <rect x="58" y="60" width="4" height="4" fill="#d6fcff"/>
     </g>
-    <path d="M60 44v6" stroke="#79ecff" stroke-width="1" stroke-dasharray="1 2"/>
-    <g class="ill-finger">
-      <rect x="55" y="54" width="10" height="10" fill="rgba(121,236,255,.18)"/>
-      <rect x="57" y="56" width="6" height="6" fill="rgba(121,236,255,.45)"/>
-      <path d="M40 60h8M44 56v8" stroke="#dfe8f7" stroke-width="1"/>
-      <path d="M72 60h8M76 56v8" stroke="#dfe8f7" stroke-width="1"/>
-    </g>
-    <circle cx="40" cy="84" r="0" fill="none"/>
-    <rect x="35" y="79" width="9" height="9" fill="rgba(255,79,123,.35)" stroke="#ff4f7b"/>
-    <rect x="76" y="79" width="9" height="9" fill="rgba(240,169,42,.35)" stroke="#f0a92a"/>
-    <text x="8" y="86" fill="#ff8fab" font-size="6" font-family="Silkscreen, monospace">NOVA</text>
-    <text x="88" y="86" fill="#ffd966" font-size="6" font-family="Silkscreen, monospace">OD</text>
+    <path d="M42 62h6M42 62l2-2M42 62l2 2M78 62h-6M78 62l-2-2M78 62l-2 2" stroke="#dfe8f7" stroke-width="1"/>
+    <rect x="37" y="79" width="10" height="10" fill="rgba(255,79,123,.3)" stroke="#ff4f7b" stroke-width="1"/>
+    <rect x="41" y="81" width="2" height="6" fill="#ff8fab"/><rect x="39" y="83" width="6" height="2" fill="#ff8fab"/>
+    <rect x="73" y="79" width="10" height="10" fill="rgba(240,169,42,.3)" stroke="#f0a92a" stroke-width="1"/>
+    <path d="M79 81h-2l-1 3h2l-1 3 3-4h-2z" fill="#ffd966"/>
+    <text x="28" y="87" text-anchor="end" fill="#ff8fab" font-size="5" font-family="Silkscreen, monospace">NOVA</text>
+    <text x="92" y="87" fill="#ffd966" font-size="5" font-family="Silkscreen, monospace">OVER</text>
+    <text x="92" y="93" fill="#ffd966" font-size="5" font-family="Silkscreen, monospace">DRIVE</text>
+    <text x="28" y="64" text-anchor="end" fill="#79ecff" font-size="5" font-family="Silkscreen, monospace">DRAG</text>
+    <text x="92" y="30" fill="#aebfdc" font-size="5" font-family="Silkscreen, monospace">SHIP</text>
   </svg>`;
 }
 
@@ -1524,17 +1565,21 @@ function moveFocus(dir) {
   const r0 = cur.getBoundingClientRect();
   const c0 = { x: r0.left + r0.width / 2, y: r0.top + r0.height / 2 };
   let best = null, bestScore = Infinity;
+  // Score candidates in the pressed direction: distance along it, plus a penalty for the gap
+  // across it (0 when the two boxes overlap on that axis, so stacked rows win over diagonals).
   const pick = (wrap) => {
     for (const e of list) {
       if (e === cur) continue;
       const r = e.getBoundingClientRect();
       const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      const gapX = Math.max(0, r.left - r0.right, r0.left - r.right);
+      const gapY = Math.max(0, r.top - r0.bottom, r0.top - r.bottom);
       let primary, secondary;
-      if (dir === 'down') { if (!wrap && r.top < r0.bottom - 2) continue; primary = wrap ? c.y : c.y - c0.y; secondary = Math.abs(c.x - c0.x); }
-      else if (dir === 'up') { if (!wrap && r.bottom > r0.top + 2) continue; primary = wrap ? -c.y : c0.y - c.y; secondary = Math.abs(c.x - c0.x); }
-      else if (dir === 'right') { if (r.left < r0.right - 2 || Math.abs(c.y - c0.y) > Math.max(r0.height, r.height)) continue; primary = c.x - c0.x; secondary = Math.abs(c.y - c0.y); }
-      else { if (r.right > r0.left + 2 || Math.abs(c.y - c0.y) > Math.max(r0.height, r.height)) continue; primary = c0.x - c.x; secondary = Math.abs(c.y - c0.y); }
-      const score = primary + secondary * 2.2;
+      if (dir === 'down') { if (!wrap && r.top < r0.bottom - 2) continue; primary = wrap ? c.y : c.y - c0.y; secondary = gapX * 3 + Math.abs(c.x - c0.x) * 0.15; }
+      else if (dir === 'up') { if (!wrap && r.bottom > r0.top + 2) continue; primary = wrap ? -c.y : c0.y - c.y; secondary = gapX * 3 + Math.abs(c.x - c0.x) * 0.15; }
+      else if (dir === 'right') { if (r.left < r0.right - 2 || gapY > 8) continue; primary = c.x - c0.x; secondary = gapY * 3 + Math.abs(c.y - c0.y) * 0.3; }
+      else { if (r.right > r0.left + 2 || gapY > 8) continue; primary = c0.x - c.x; secondary = gapY * 3 + Math.abs(c.y - c0.y) * 0.3; }
+      const score = (wrap ? primary * 20 : primary) + secondary;
       if (score < bestScore) { bestScore = score; best = e; }
     }
   };
@@ -1577,7 +1622,10 @@ function onKeyDown(e) {
   if (dir || k === 'Tab') root.classList.add('kbd');
 
   if (k === 'Escape') {
-    if (isText) { t.blur(); handled = true; } else handled = goBack();
+    // Deferred so the game's own key handler sees this Escape while it is still disabled
+    // (otherwise resuming from pause would immediately re-pause).
+    if (isText) t.blur(); else if (screens[curName]?.def.back) setTimeout(goBack, 0);
+    handled = true;
   } else if (dir) {
     if ((dir === 'left' || dir === 'right') && (isText || isRange) && nav[k]) return; // native caret / slider
     if (S?.def.key && S.def.key(k)) handled = true;
@@ -1593,8 +1641,6 @@ function onKeyDown(e) {
     // focused buttons activate natively (click event)
   }
   if (handled) e.preventDefault();
-  // Keep the game's keyboard handler from also seeing menu keys (e.g. Esc toggling pause).
-  if (handled || dir || k === 'Escape' || k === 'Enter' || k === ' ') e.stopPropagation();
 }
 
 // Gamepad polling while a menu is visible (edge-detected, with auto-repeat).
@@ -1741,7 +1787,6 @@ export const UI = {
     clearBusy();
     curName = name;
     this.current = name;
-    lastShow = performance.now();
     if (!name || name === 'none' || !DEF[name]) {
       root.classList.remove('has-screen');
       root.dataset.screen = 'none';
@@ -1801,8 +1846,6 @@ export const UI = {
 
   toast(msg, ms = 2400) {
     if (!toastEl || msg == null) return;
-    clearBusy();
-    lastToastAt = performance.now();
     const t = document.createElement('div');
     t.className = 'toast';
     t.textContent = String(msg);
@@ -1846,4 +1889,3 @@ export const UI = {
 };
 
 export default UI;
-void lastShow; void lastToastAt;

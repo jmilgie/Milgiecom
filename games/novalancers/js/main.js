@@ -219,7 +219,8 @@ async function boot() {
   setBackground('title');
   const particles = await tryImport('./fx/particles.js');
   try { fx = particles?.createFX ? particles.createFX() : stubFX(); } catch (e) { console.error('fx failed', e); fx = stubFX(); }
-  if (env.text && fx.setTextRenderer) fx.setTextRenderer((ctx, str, x, y, color) => env.text(ctx, str, x, y, { color, align: 'center', font: 'small', shadow: '#05040c' }));
+  const textOpt = { color: '#fff', align: 'center', font: 'small', shadow: '#05040c' };
+  if (env.text && fx.setTextRenderer) fx.setTextRenderer((ctx, str, x, y, color) => { textOpt.color = color; env.text(ctx, str, x, y, textOpt); });
   env.fx = fx;
 
   // audio (rendered offline; no unlock needed to build)
@@ -348,6 +349,7 @@ function resumeGame() {
 
 function quitToMenu() {
   saveBest();
+  sim?.stopLoops?.();
   sim = null; paused = false;
   input.setEnabled(false);
   $('touchControls').classList.add('hidden');
@@ -411,6 +413,9 @@ function onSimEvent(name, d = {}) {
       if (nextN > profile.unlocked && nextN < SECTORS.length) { profile.unlocked = nextN; saveProfile(); }
       Music?.stinger?.('stage_clear');
       sfx('stage_clear_whoosh');
+      // build the next sector's background while players read the results
+      const nk = SECTORS[nextN]?.key;
+      if (nk && M.bg?.prewarmBackground) { try { M.bg.prewarmBackground(nk); } catch { /* */ } }
       setTimeout(() => {
         if (!sim || sim.state !== 'clear') return;
         input.setEnabled(false);
@@ -600,6 +605,7 @@ let last = performance.now();
 let acc = 0;
 let fpsT = 0, fpsN = 0, fps = 60;
 let titleT = 0;
+let lastChainMult = 1;
 let Sim = null;
 
 function frame(now) {
@@ -676,8 +682,11 @@ function render(dt) {
   if (mode === 'game' && sim) {
     sim.draw(R);
     drawFieldFrame(ctx);
+    const hudS = sim.hudState();
+    if (hudS.chainMult > lastChainMult && hudS.chainMult > 1) sfx('chain_up', { pitch: Math.min(12, hudS.chainMult - 1), vol: 0.6 });
+    lastChainMult = hudS.chainMult;
     if (M.hud?.drawHUD) {
-      const hud = sim.hudState();
+      const hud = hudS;
       hud.fps = DEBUG ? fps : 0;
       hud.net = sim.online ? { kind: session?.transportKind || 'p2p', ping: session?.ping?.() || 0 } : null;
       hud.players.forEach((p) => { p.ping = session?.lobby?.players?.find((q) => q.slot === p.slot)?.ping || 0; });

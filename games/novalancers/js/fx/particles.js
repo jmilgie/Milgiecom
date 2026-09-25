@@ -131,8 +131,9 @@ const FB_T = [0.36, 0.5, 0.66, 0.86, 1.08];              // natural lifetimes (s
 // smoke puffs
 const SMK = [[7, 10, 4], [11, 10, 4], [17, 11, 4], [25, 12, 4]];
 // spark streak lengths
-const SPL = [1, 2, 3, 4, 5, 7];
+const SPL = new Int8Array([1, 2, 3, 4, 5, 7]);
 const LEN_IDX = new Uint8Array([0, 0, 1, 2, 3, 4, 4, 5]);
+const K16 = 16 / TAU;
 const SB = 41, SB_F = 7;                                  // starburst flare
 const DOT_C = 7;                                          // dot cell size
 const GC = 66;                                            // glow atlas cell pitch
@@ -141,6 +142,10 @@ const FBX = new Int16Array(20), FBY = new Int16Array(20);
 const SMX = new Int16Array(16), SMY = new Int16Array(16);
 const SPX = new Int16Array(6), SPY = new Int16Array(6);
 const POS = { db: [0, 0], dot: [0, 0], mz: [0, 0], im: [0, 0], sb: [0, 0], rp: [0, 0] };
+// flare sprite table, indexed by flare type (muzzle, impact, starburst +, starburst x)
+const FL_X = new Int16Array(4), FL_Y = new Int16Array(4);
+const FL_W = new Int16Array([9, 7, 41, 41]), FL_H = new Int16Array([11, 7, 41, 41]);
+const FL_AX = new Int16Array([4, 3, 20, 20]), FL_AY = new Int16Array([7, 3, 20, 20]), FL_F = new Int16Array([3, 3, 7, 7]);
 
 // dot shapes (cell 7x7 around 3,3): [dx, dy, level]; level darkens the colour
 const DOTS = (() => {
@@ -177,6 +182,9 @@ const IMPACT = [
 ];
 
 function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+// Atlases are static: keep them CPU-backed so drawing them into a canvas of either kind
+// (GPU- or CPU-backed target) never forces a per-call GPU readback; GPU targets cache the upload.
+function ctx2d(c) { return c.getContext('2d', { willReadFrequently: true }) || c.getContext('2d'); }
 
 // first-fit shelf packer; sets b.x / b.y, returns atlas size
 function pack(blocks, maxW) {
@@ -193,35 +201,62 @@ function pack(blocks, maxW) {
   return { w: W, h: H };
 }
 
+// Billowy "cauliflower" structure: a few overlapping lobes; each pixel belongs to the lobe
+// with the strongest field and takes that lobe's top-left lighting, so lobes read as puffs.
+function makeLobes(seed, n, spread, rmin, rmax) {
+  let s = (Math.imul(seed + 1, 0x9e3779b1) | 0) || 1;
+  const r = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; };
+  const L = [0, 0, rmax * 1.3];
+  for (let i = 0; i < n; i++) {
+    const a = r() * TAU, d = spread * (0.35 + 0.65 * Math.sqrt(r()));
+    L.push(Math.cos(a) * d, Math.sin(a) * d, rmin + (rmax - rmin) * r());
+  }
+  return new Float32Array(L);
+}
+const LB = { q: 0, lx: 0, ly: 0 };
+function lobeAt(L, dx, dy, spread, size) {
+  let best = -9, lx = 0, ly = 0;
+  for (let i = 0; i < L.length; i += 3) {
+    const rr = L[i + 2] * size, ex = (dx - L[i] * spread) / rr, ey = (dy - L[i + 1] * spread) / rr;
+    const q = 1 - Math.sqrt(ex * ex + ey * ey);
+    if (q > best) { best = q; lx = ex; ly = ey; }
+  }
+  LB.q = best; LB.lx = lx; LB.ly = ly;
+}
+
 function genFire(S, F, k, fbm) {
   const out = new Uint8Array(S * S * F), R = S / 2;
   const ox = 3.1 + k * 19.7, oy = 7.9 + k * 11.3;
+  const lobes = makeLobes(k * 31 + S, S >= 30 ? 11 : S >= 20 ? 8 : 4, 0.5, 0.24, 0.44);
   for (let f = 0; f < F; f++) {
     const u = f / (F - 1);
-    const grow = 0.3 + 0.7 * (1 - Math.pow(1 - Math.min(1, u / 0.5), 2.2));
-    const temp = Math.pow(1 - u, 1.05);
-    const hole = u > 0.34 ? (u - 0.34) / 0.66 : 0;
+    const grow = 0.28 + 0.72 * (1 - Math.pow(1 - Math.min(1, u / 0.52), 2.2));
+    const temp = Math.pow(1 - u, 0.85);
+    const hole = u > 0.4 ? (u - 0.4) / 0.6 : 0;
+    const spread = grow * (1 + 0.3 * u);
     const fo = f * S * S;
     for (let y = 0; y < S; y++) {
       const dy = (y + 0.5 - R) / R;
       for (let x = 0; x < S; x++) {
         const dx = (x + 0.5 - R) / R;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        if (d > grow * 1.03) continue;
-        const nx = dx / grow, ny = dy / grow;
-        const n1 = st(fbm(nx * 1.7 + ox, ny * 1.7 + oy - u * 0.4));
-        const edge = grow * (0.72 + 0.31 * n1);
-        if (d >= edge) continue;
-        const rel = d / edge;
-        const n2 = st(fbm(nx * 3.2 + ox + 31, ny * 3.2 + oy + 17 + u * 0.7));
+        if (dx * dx + dy * dy > 1.02) continue;
+        lobeAt(lobes, dx, dy, spread, grow);
+        const n1 = st(fbm((dx / grow) * 2.4 + ox, (dy / grow) * 2.4 + oy - u * 0.5));
+        const q = LB.q + (n1 - 0.5) * 0.32;
+        if (q <= 0) continue;
         if (hole > 0) {
-          const n3 = st(fbm(nx * 2.3 + ox + 57, ny * 2.3 + oy + 73 + u * 0.3));
-          if (n3 * 0.78 + rel * 0.14 + 0.04 < hole * 1.02) continue;
+          const n3 = st(fbm((dx / grow) * 2.1 + ox + 57, (dy / grow) * 2.1 + oy + 73 + u * 0.3));
+          if (n3 * 0.8 + Math.min(1, q * 3) * 0.2 < hole * 1.05) continue;
         }
-        const heat = temp * (1.34 - 1.02 * rel * rel) + (n2 - 0.5) * (0.3 + 0.55 * u) - u * 0.12;
-        let id = Math.floor(heat * 7 + bay(x, y) - 0.5 + 0.5);
+        const rel = Math.sqrt(dx * dx + dy * dy) / grow;
+        const lit = -LB.lx * 0.55 - LB.ly * 0.7;
+        const rim = Math.min(1, q * 3.2);
+        const n2 = st(fbm(dx * 4.1 + ox + 31, dy * 4.1 + oy + 17));
+        const heat = temp * (0.97 - 0.55 * rel * rel) + lit * 0.3 * (0.35 + 0.65 * temp)
+          - (1 - rim) * 0.24 + (n2 - 0.5) * 0.12 - u * 0.08;
+        let id = Math.floor(heat * 7 + (bay(x, y) - 0.5) * 0.7 + 0.5);
         if (id > 7) id = 7;
-        if (id < 1) { if (u < 0.4) id = 1; else if (id < 0) continue; }
+        if (id < 1) { if (u < 0.45) id = 1; else if (id < 0) continue; else id = 0; }
         out[fo + y * S + x] = id + 1;
       }
     }
@@ -232,29 +267,28 @@ function genFire(S, F, k, fbm) {
 function genSmoke(S, F, k, fbm) {
   const out = new Uint8Array(S * S * F), R = S / 2;
   const ox = 41.3 + k * 23.9, oy = 5.1 + k * 17.7;
+  const lobes = makeLobes(k * 17 + S * 3 + 5, S >= 17 ? 6 : 4, 0.38, 0.32, 0.55);
   for (let f = 0; f < F; f++) {
     const u = f / (F - 1);
-    const grow = 0.5 + 0.5 * (1 - (1 - u) * (1 - u));
+    const grow = 0.55 + 0.45 * (1 - (1 - u) * (1 - u));
+    const spread = grow * (1 + 0.25 * u);
     const fo = f * S * S;
     for (let y = 0; y < S; y++) {
       const dy = (y + 0.5 - R) / R;
       for (let x = 0; x < S; x++) {
         const dx = (x + 0.5 - R) / R;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        if (d > grow) continue;
-        const nx = dx / grow, ny = dy / grow;
-        const n1 = st(fbm(nx * 1.9 + ox, ny * 1.9 + oy));
-        const edge = grow * (0.66 + 0.34 * n1);
-        if (d >= edge) continue;
-        const rel = d / edge;
+        if (dx * dx + dy * dy > 1.02) continue;
+        lobeAt(lobes, dx, dy, spread, grow);
+        const n1 = st(fbm((dx / grow) * 2.2 + ox, (dy / grow) * 2.2 + oy));
+        const q = LB.q + (n1 - 0.5) * 0.3;
+        if (q <= 0) continue;
         const b = bay(x, y);
-        const n3 = st(fbm(nx * 2.6 + ox + 61, ny * 2.6 + oy + 5 + u * 0.5));
-        if (n3 * 0.72 + b * 0.28 < (u - 0.16) * 1.25 + rel * rel * 0.25 * u) continue;
-        const nz = Math.sqrt(Math.max(0, 1 - rel * rel));
-        const lit = ((-dx * 0.55 - dy * 0.7) / grow) * 0.75 + nz * 0.5;    // top-left key light
-        const n2 = st(fbm(nx * 3.4 + ox + 23, ny * 3.4 + oy + 41));
-        const shade = 0.3 + 0.42 * lit + (n2 - 0.5) * 0.5 - u * 0.16;
-        let id = Math.floor(shade * 5.5 + (b - 0.5) * 0.9 + 0.5);
+        const n3 = st(fbm((dx / grow) * 2.6 + ox + 61, (dy / grow) * 2.6 + oy + 5 + u * 0.5));
+        if (n3 * 0.7 + b * 0.3 < (u - 0.2) * 1.3 + (1 - Math.min(1, q * 3)) * 0.3 * u) continue;
+        const lit = -LB.lx * 0.6 - LB.ly * 0.75;
+        const rim = Math.min(1, q * 3);
+        const shade = 0.36 + 0.3 * lit - (1 - rim) * 0.14 - u * 0.14;
+        let id = Math.floor(shade * 5.5 + (b - 0.5) * 0.6 + 0.5);
         if (id < 0) id = 0; else if (id > 5) id = 5;
         out[fo + y * S + x] = id + 1;
       }
@@ -437,10 +471,14 @@ function writeDebris(idx, W, bx, by) {     // 6 shapes x 8 rotations of 9x9
   }
 }
 
-function makeLut(p) {
+// Fireball heat -> ramp step. Fire/ember ramps are true temperature ramps; the energy
+// palettes have pastel top ends, so their billows are pushed one step deeper.
+const FIRE_SHIFT = [0, 1, 1, 2, 3, 4, 5, 7];
+function makeLut(p, ex) {
   const lut = new Uint32Array(32);
   const r8 = RAMP8[p], s6 = SMOKE6[p], d = debrisRamp(p);
-  for (let i = 0; i < 8; i++) lut[1 + i] = packHex(r8[i]);
+  const shift = ex && p !== P_FIRE && p !== P_EMB;
+  for (let i = 0; i < 8; i++) lut[1 + i] = packHex(r8[shift ? FIRE_SHIFT[i] : i]);
   for (let i = 0; i < 6; i++) lut[9 + i] = packHex(s6[i]);
   for (let i = 0; i < 5; i++) lut[16 + i] = packHex(d[i]);
   lut[21] = packHex(r8[5]);
@@ -448,7 +486,7 @@ function makeLut(p) {
 }
 
 function paint(idx, w, h, lut) {
-  const c = mkCanvas(w, h), g = c.getContext('2d');
+  const c = mkCanvas(w, h), g = ctx2d(c);
   const img = g.createImageData(w, h);
   const px = new Uint32Array(img.data.buffer);
   for (let i = 0; i < idx.length; i++) px[i] = lut[idx[i]];
@@ -458,7 +496,7 @@ function paint(idx, w, h, lut) {
 
 function buildGlow() {
   const W = NPAL * GC, H = GC * 2 + 12;
-  const c = mkCanvas(W, H), g = c.getContext('2d');
+  const c = mkCanvas(W, H), g = ctx2d(c);
   const img = g.createImageData(W, H), d = img.data;
   const put = (x, y, rgb, a) => {
     const o = (y * W + x) * 4;
@@ -534,7 +572,7 @@ function buildArt() {
 
   // spark atlas: streaks, dots, flares, beam ripples
   const spB = [];
-  SPL.forEach((L, li) => spB.push({ w: 16 * (2 * L + 1), h: 4 * (2 * L + 1), k: 0, li }));
+  Array.from(SPL).forEach((L, li) => spB.push({ w: 16 * (2 * L + 1), h: 4 * (2 * L + 1), k: 0, li }));
   spB.push({ w: DOTS.length * DOT_C, h: 4 * DOT_C, k: 1 });
   spB.push({ w: 27, h: 11, k: 2 });
   spB.push({ w: 21, h: 7, k: 3 });
@@ -551,15 +589,18 @@ function buildArt() {
     else { POS.rp[0] = b.x; POS.rp[1] = b.y; writeRipple(spIdx, spL.w, b.x, b.y); }
   }
 
-  const luts = RAMP8.map((_, p) => makeLut(p));
+  FL_X[0] = POS.mz[0]; FL_Y[0] = POS.mz[1]; FL_X[1] = POS.im[0]; FL_Y[1] = POS.im[1];
+  FL_X[2] = FL_X[3] = POS.sb[0]; FL_Y[2] = POS.sb[1]; FL_Y[3] = POS.sb[1] + SB;
+  const luts = RAMP8.map((_, p) => makeLut(p, false));
+  const exLuts = RAMP8.map((_, p) => makeLut(p, true));
   ART = {
-    exIdx, exW: exL.w, exH: exL.h, luts,
+    exIdx, exW: exL.w, exH: exL.h, luts: exLuts,
     ex: new Array(NPAL).fill(null),
     sp: luts.map((lut) => paint(spIdx, spL.w, spL.h, lut)),
     glow: buildGlow(),
   };
   // explosion atlases for the explosion palettes up front; others (team colours...) lazily
-  for (let p = 0; p <= P_PLA; p++) ART.ex[p] = paint(exIdx, exL.w, exL.h, luts[p]);
+  for (let p = 0; p <= P_PLA; p++) ART.ex[p] = paint(exIdx, exL.w, exL.h, exLuts[p]);
   return ART;
 }
 function exAtlas(p) {
@@ -602,8 +643,7 @@ function addAnnulus(t, cx, cy, ro, ri, clip) {
     else { if (Rh) emitRect(t, cx + Rx, cy + Ry, Rw, Rh, clip); Rx = rx; Rw = rw; Ry = j; Rh = rw ? 1 : 0; }
   }
 }
-function addPixLine(t, x0, y0, x1, y1) {
-  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+function addPixLine(t, x0, y0, x1, y1) {   // integer endpoints
   const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
   if (dx >= dy) {
     let e = dx >> 1, y = y0, rs = x0;
@@ -624,34 +664,38 @@ function addPixLine(t, x0, y0, x1, y1) {
 // cached ring paths for small radii (key: radius*4 + thickness)
 const RING_MAX = 100;
 const ringCache = new Array((RING_MAX + 1) * 4).fill(null);
-function ringFill(g, cx, cy, r, th) {
-  const ri = Math.round(r), ti = th < 1.5 ? 1 : th < 2.5 ? 2 : th < 3.5 ? 3 : 4;
+// ri: integer radius, ti: integer thickness 1..4 (ints keep V8 from boxing per call)
+function ringFill(g, cx, cy, ri, ti) {
   if (ri <= RING_MAX && typeof Path2D !== 'undefined') {
     const key = ri * 4 + ti - 1;
     let p = ringCache[key];
     if (!p) { p = new Path2D(); addAnnulus(p, 0, 0, ri + 0.5, ri + 0.5 - ti, false); ringCache[key] = p; }
     g.translate(cx, cy); g.fill(p); g.translate(-cx, -cy);
   } else {
-    g.beginPath(); addAnnulus(g, cx, cy, r + 0.5, r + 0.5 - th, true); g.fill();
+    g.beginPath(); addAnnulus(g, cx, cy, ri + 0.5, ri + 0.5 - ti, true); g.fill();
   }
 }
+const thIdx = (th) => (th < 1.5 ? 1 : th < 2.5 ? 2 : th < 3.5 ? 3 : 4);
 function diskFill(g, cx, cy, r) { g.beginPath(); addAnnulus(g, cx, cy, r + 0.5, 0, false); g.fill(); }
 
 // jagged lightning bolt from (x0,y0) outward; pixel=true appends pixel runs, else a polyline
-function bolt(g, x0, y0, ang, len, pixel) {
-  const segs = Math.max(3, Math.min(14, (len / 11) | 0));
-  const ca = Math.cos(ang), sa = Math.sin(ang), jag = 2.5 + len * 0.035;
-  let px = x0 + ca * 3, py = y0 + sa * 3;
+function bolt(g, x0, y0, ang, len, pixel, start) {
+  const r0 = start || 3, span = len - r0;
+  if (span < 2) return;
+  const segs = Math.max(3, Math.min(14, (span / 11) | 0));
+  const ca = Math.cos(ang), sa = Math.sin(ang), jag = 2.5 + span * 0.035;
+  let px = ((x0 + ca * r0 + 1024.5) | 0) - 1024, py = ((y0 + sa * r0 + 1024.5) | 0) - 1024;
   if (!pixel) g.moveTo(px, py);
   const branchAt = 1 + ((brnd() * (segs - 1)) | 0);
   for (let k = 1; k <= segs; k++) {
-    const t = k / segs, off = (brnd() - 0.5) * 2 * jag;
-    const nx = x0 + ca * len * t - sa * off, ny = y0 + sa * len * t + ca * off;
+    const t = r0 + (k / segs) * span, off = (brnd() - 0.5) * 2 * jag;
+    const nx = ((x0 + ca * t - sa * off + 1024.5) | 0) - 1024, ny = ((y0 + sa * t + ca * off + 1024.5) | 0) - 1024;
     if (pixel) addPixLine(g, px, py, nx, ny); else g.lineTo(nx, ny);
     if (k === branchAt) {
-      const ba = ang + (brnd() < 0.5 ? -0.7 : 0.7), bl = len * 0.18;
-      const bx = nx + Math.cos(ba) * bl, by = ny + Math.sin(ba) * bl;
-      const bx2 = bx + Math.cos(ba + (brnd() - 0.5)) * bl * 0.7, by2 = by + Math.sin(ba + (brnd() - 0.5)) * bl * 0.7;
+      const ba = ang + (brnd() < 0.5 ? -0.7 : 0.7), bl = span * 0.18;
+      const bx = ((nx + Math.cos(ba) * bl + 1024.5) | 0) - 1024, by = ((ny + Math.sin(ba) * bl + 1024.5) | 0) - 1024;
+      const b2 = ba + (brnd() - 0.5);
+      const bx2 = ((bx + Math.cos(b2) * bl * 0.7 + 1024.5) | 0) - 1024, by2 = ((by + Math.sin(b2) * bl * 0.7 + 1024.5) | 0) - 1024;
       if (pixel) { addPixLine(g, nx, ny, bx, by); addPixLine(g, bx, by, bx2, by2); }
       else { g.moveTo(nx, ny); g.lineTo(bx, by); g.lineTo(bx2, by2); g.moveTo(nx, ny); }
     }
@@ -758,7 +802,7 @@ function fontAtlas(color) {
   if (c) return c;
   if (fontCache.size > 24) fontCache.clear();
   c = mkCanvas(GLYPH_KEYS.length * 5, 7);
-  const g = c.getContext('2d');
+  const g = ctx2d(c);
   GLYPH_KEYS.forEach((k, gi) => {
     const bits = GLYPHS[k];
     g.fillStyle = '#05040c';
@@ -774,7 +818,7 @@ function fontAtlas(color) {
 }
 function builtinText(ctx, str, x, y, color) {
   const at = fontAtlas(color || '#ffffff');
-  const n = str.length, x0 = Math.round(x - (n * 4 - 1) / 2), y0 = Math.round(y);
+  const n = str.length, x0 = x - ((n * 4 - 1) >> 1), y0 = y;
   for (let k = 0; k < n; k++) {
     const code = str.charCodeAt(k);
     const gi = code < 128 ? GLYPH_OF[code] : -1;
@@ -900,9 +944,9 @@ export function createFX() {
     curPal = p;
     const ivx = vx * 0.3, ivy = vy * 0.3;
     // light: flash core + halo (+ anamorphic streak for big ones)
-    addGlow(x, y, R.glow * 0.25, R.glow, R.glowT, 1, G_HOT, p, 0);
-    addGlow(x, y, R.glow * 0.7, R.glow * 1.3, R.glowT * 2.6, 0.42, G_SOFT, p, 0);
-    if (sz >= 3) addGlow(x, y, R.glow * 0.9, R.glow * 1.2, R.glowT * 0.9, 0.5, G_STREAK, p, 0);
+    addGlow(x, y, R.glow * 0.2, R.glow * 0.8, R.glowT, 0.75, G_HOT, p, 0);
+    addGlow(x, y, R.glow * 0.6, R.glow * 1.2, R.glowT * 2.6, 0.26, G_SOFT, p, 0);
+    if (sz >= 3) addGlow(x, y, R.glow * 0.7, R.glow * 0.9, R.glowT * 0.8, 0.45, G_STREAK, p, 0);
     if (R.sb) {
       addFlare(x, y, rnd() < 0.5 ? F_SB_PLUS : F_SB_X, 0.12 + 0.025 * sz, p, 0);
       if (R.sb > 1) addFlare(x + rr(-10, 10), y + rr(-10, 10), F_SB_X, 0.2, P_WHITE, 0.16);
@@ -911,13 +955,13 @@ export function createFX() {
     if (R.chroma) chromaKick(R.chroma);
 
     // fireballs: main + staggered secondary pops
-    addFire(x, y, ivx, ivy, R.fire, FB_T[R.fire] * rr(0.9, 1.1), 0.8, 0);
+    addFire(x, y, ivx, ivy, R.fire, FB_T[R.fire] * rr(0.9, 1.1), 0.5, 0);
     for (let k = 0; k < R.nSec; k++) {
       const a = rnd() * TAU, d = R.secSpread * Math.sqrt(rr(0.12, 1));
       const si = Math.max(0, R.fire - 1 - (rnd() < 0.35 ? 1 : 0));
       const delay = (R.secDelay * (k + rnd())) / R.nSec;
       const fx = x + Math.cos(a) * d, fy = y + Math.sin(a) * d;
-      addFire(fx, fy, ivx + Math.cos(a) * 12, ivy + Math.sin(a) * 12, si, FB_T[si] * rr(0.8, 1), 0.6, delay);
+      addFire(fx, fy, ivx + Math.cos(a) * 12, ivy + Math.sin(a) * 12, si, FB_T[si] * rr(0.8, 1), 0.4, delay);
       if (sz >= 2 && rnd() < 0.6) addGlow(fx, fy, 3, 10 + si * 7, 0.16, 0.7, G_HOT, p, delay);
     }
     if (sz >= 3) {
@@ -956,7 +1000,7 @@ export function createFX() {
         si, rr(1.0, 1.6) * (0.8 + 0.16 * sz), rr(0.06, 0.18) + FB_T[R.fire] * 0.25, p);
     }
     // shockwave rings (+ post distortion)
-    if (R.ringR && (sz >= 2 || rnd() < 0.7)) {
+    if (R.ringR && (sz >= 3 || rnd() < 0.55)) {
       addRing(x, y, 2, R.ringR, 0.22 + R.ringR / 260, R.ringTh, R.dist, p, 1, 0);
       if (sz >= 3) addRing(x, y, 2, R.ringR * 0.62, 0.45 + R.ringR / 300, 1, 0, p, 1, 0.08);
     }
@@ -980,7 +1024,7 @@ export function createFX() {
     addRing(x, y, 4, 210, 0.9, 4, 1.25, p, 1, 0);
     addRing(x, y, 4, 140, 1.0, 2, 0.6, P_WHITE, 1, 0.12);
     addRing(x, y, 4, 290, 1.35, 1, 0.35, p, 1, 0.22);
-    addGlow(x, y, 40, 200, 0.95, 1, G_HOT, P_WHITE, 0);
+    addGlow(x, y, 30, 150, 0.9, 1, G_HOT, P_WHITE, 0);
     addGlow(x, y, 60, 220, 0.8, 0.8, G_STREAK, p, 0);
     addFlare(x, y, F_SB_PLUS, 0.3, P_WHITE, 0);
     addBolt(x, y, 0.75, 110, 10, p);
@@ -1076,7 +1120,7 @@ export function createFX() {
       if (age >= NOVA_T) continue;
       nvAge[i] = age;
       const p = nvPal[i];
-      if (age < 0.3) flashKick(0.5 * (1 - age / 0.3), LIGHT_RGB[p]);
+      if (age < 0.2) flashKick(0.25 * (1 - age / 0.2), LIGHT_RGB[p]);
       const R = novaR(age);
       if (R < 470) {
         for (let k = 0; k < 5; k++) {
@@ -1115,7 +1159,7 @@ export function createFX() {
     }
     txN = w;
     // post kicks decay
-    flashA *= Math.exp(-dt * 5.5);
+    flashA *= Math.exp(-dt * 7.5);
     if (flashA < 0.003) flashA = 0;
     chromaA *= Math.exp(-dt * 3.2);
     if (chromaA < 0.003) chromaA = 0;
@@ -1135,31 +1179,28 @@ export function createFX() {
       let f = ((age / P.life[i]) * F) | 0;
       if (f >= F) f = F - 1;
       const k = s * 4 + P.v[i], h = S >> 1;
-      ctx.drawImage(exAtlas(P.pal[i]), SMX[k] + f * S, SMY[k], S, S, Math.round(P.x[i]) - h, Math.round(P.y[i]) - h, S, S);
+      ctx.drawImage(exAtlas(P.pal[i]), SMX[k] + f * S, SMY[k], S, S, ((P.x[i] + 1024.5) | 0) - 1024 - h, ((P.y[i] + 1024.5) | 0) - 1024 - h, S, S);
     }
   }
 
-  function sparkSprite(g, p, x, y, vx, vy, heat, lenMul) {
-    const sp = Math.sqrt(vx * vx + vy * vy) * lenMul * 0.024;
-    const li = LEN_IDX[sp >= 7 ? 7 : (sp + 0.5) | 0];
-    const L = SPL[li], c = 2 * L + 1;
-    const d = Math.round(Math.atan2(vy, vx) * (16 / TAU)) & 15;
-    g.drawImage(SPA[p], SPX[li] + d * c, SPY[li] + heat * c, c, c, Math.round(x) - L, Math.round(y) - L, c, c);
-  }
-
   function drawDebris(ctx, lctx) {
-    const P = DEB, [dbx, dby] = POS.db;
+    const P = DEB, dbx = POS.db[0], dby = POS.db[1], g = ctx || lctx;
     for (let i = 0; i < P.n; i++) {
       const u = P.age[i] / P.life[i];
       if (u > 0.8 && (frameNo & 2)) continue;       // blink out
-      const x = P.x[i], y = P.y[i], vx = P.vx[i], vy = P.vy[i];
-      const p = P.pal[i], tp = p === P_CRY || p >= P_TEAM ? p : P_FIRE;
       const heat = u < 0.2 ? 0 : u < 0.45 ? 1 : u < 0.7 ? 2 : 3;
-      // trail streak behind the chunk
-      sparkSprite(ctx, tp, x - vx * 0.02, y - vy * 0.02, vx, vy, heat, 1.4);
-      if (lctx && heat < 3) sparkSprite(lctx, tp, x - vx * 0.02, y - vy * 0.02, vx, vy, heat, 1.4);
-      const fr = (P.a[i] | 0) & 7;
-      ctx.drawImage(exAtlas(p), dbx + fr * 9, dby + P.s[i] * 9, 9, 9, Math.round(x) - 4, Math.round(y) - 4, 9, 9);
+      if (lctx && heat === 3) continue;
+      const vx = P.vx[i], vy = P.vy[i];
+      const ix = ((P.x[i] + 1024.5) | 0) - 1024, iy = ((P.y[i] + 1024.5) | 0) - 1024;
+      // glowing trail streak behind the chunk
+      const p = P.pal[i], tp = p === P_CRY || p >= P_TEAM ? p : P_FIRE;
+      const sp = Math.sqrt(vx * vx + vy * vy) * 0.0336;
+      const li = LEN_IDX[sp >= 7 ? 7 : (sp + 0.5) | 0], L = SPL[li], c = 2 * L + 1;
+      const d = ((Math.atan2(vy, vx) * K16 + 16.5) | 0) & 15;
+      const bx = ((vx * 0.02 + 1024.5) | 0) - 1024, by = ((vy * 0.02 + 1024.5) | 0) - 1024;
+      g.drawImage(SPA[tp], SPX[li] + d * c, SPY[li] + heat * c, c, c, ix - bx - L, iy - by - L, c, c);
+      if (lctx) continue;
+      ctx.drawImage(exAtlas(p), dbx + ((P.a[i] | 0) & 7) * 9, dby + P.s[i] * 9, 9, 9, ix - 4, iy - 4, 9, 9);
     }
   }
 
@@ -1174,8 +1215,8 @@ export function createFX() {
       if (f >= F) f = F - 1;
       const k = s * 4 + P.v[i], h = S >> 1;
       const at = exAtlas(P.pal[i]);
-      const sx = FBX[k] + f * S, sy = FBY[k], dx = Math.round(P.x[i]) - h, dy = Math.round(P.y[i]) - h;
-      ctx.drawImage(at, sx, sy, S, S, dx, dy, S, S);
+      const sx = FBX[k] + f * S, sy = FBY[k], dx = ((P.x[i] + 1024.5) | 0) - 1024 - h, dy = ((P.y[i] + 1024.5) | 0) - 1024 - h;
+      if (ctx) ctx.drawImage(at, sx, sy, S, S, dx, dy, S, S);
       if (lctx) {
         const a = P.a[i] * Math.pow(1 - u, 1.4);
         if (a > 0.02) { lctx.globalAlpha = a; lctx.drawImage(at, sx, sy, S, S, dx, dy, S, S); }
@@ -1191,20 +1232,19 @@ export function createFX() {
       const u = age / rgLife[i], e = 1 - (1 - u) * (1 - u) * (1 - u);
       const r = rgR0[i] + (rgR1[i] - rgR0[i]) * e;
       if (r < 1) continue;
-      const p = rgPal[i], ramp = CSTR[p], th = Math.max(1, rgTh[i] * (1 - u * 0.55));
-      const cx = Math.round(rgX[i]), cy = Math.round(rgY[i]);
+      const p = rgPal[i], ramp = CSTR[p], ti = thIdx(rgTh[i] * (1 - u * 0.55));
+      const cx = ((rgX[i] + 1024.5) | 0) - 1024, cy = ((rgY[i] + 1024.5) | 0) - 1024, ri = (r + 0.5) | 0;
       const step = Math.min(4, (u * 5) | 0);
-      ctx.fillStyle = ramp[rgF[i] & 2 ? 3 + step : 7 - step];
-      ringFill(ctx, cx, cy, r, th);
+      if (ctx) { ctx.fillStyle = ramp[rgF[i] & 2 ? 3 + step : 7 - step]; ringFill(ctx, cx, cy, ri, ti); }
       if (lctx) {
         lctx.globalAlpha = (1 - u) * 0.8;
         lctx.fillStyle = ramp[5];
-        ringFill(lctx, cx, cy, r, th);
+        ringFill(lctx, cx, cy, ri, ti);
         if (rgF[i] & 1) {
           lctx.globalAlpha = (1 - u) * 0.4;
           lctx.strokeStyle = ramp[4];
-          lctx.lineWidth = th * 3 + 2;
-          lctx.beginPath(); lctx.arc(cx + 0.5, cy + 0.5, Math.max(0.5, r - th * 0.5), 0, TAU); lctx.stroke();
+          lctx.lineWidth = ti * 3 + 2;
+          lctx.beginPath(); lctx.arc(cx, cy, ri > ti ? ri - (ti >> 1) : 1, 0, TAU); lctx.stroke();
         }
       }
     }
@@ -1213,34 +1253,38 @@ export function createFX() {
 
   function bigRing(g, cx, cy, r, th) {
     if (r < 1) return;
-    ringFill(g, cx, cy, r, th);
+    ringFill(g, cx, cy, (r + 0.5) | 0, thIdx(th));
   }
 
   function drawNovas(ctx, lctx) {
     for (let i = 0; i < nvN; i++) {
       const age = nvAge[i], u = age / NOVA_T, p = nvPal[i], ramp = CSTR[p];
-      const R = novaR(age), cx = Math.round(nvX[i]), cy = Math.round(nvY[i]);
+      const R = novaR(age), cx = ((nvX[i] + 1024.5) | 0) - 1024, cy = ((nvY[i] + 1024.5) | 0) - 1024;
       const th = 2 + 6 * (1 - u);
       const fade = u < 0.75 ? 1 : (1 - u) / 0.25;
-      // main: crisp front + echoes + lightning filaments
-      ctx.globalAlpha = fade;
-      if (u < 0.85) {
-        ctx.fillStyle = ramp[3]; bigRing(ctx, cx, cy, R * 0.64, 1);
-        ctx.fillStyle = ramp[4]; bigRing(ctx, cx, cy, R * 0.82, 1.6);
-      }
-      ctx.fillStyle = ramp[5]; bigRing(ctx, cx, cy, R - 1, th);
-      ctx.fillStyle = ramp[3]; bigRing(ctx, cx, cy, R - th - 1, 1.2);
-      ctx.fillStyle = u < 0.55 ? ramp[7] : ramp[6]; bigRing(ctx, cx, cy, R, 1.3);
-      const boltsOn = u < 0.8 && frameNo % 3 !== 2;
+      const boltsOn = u < 0.62 && frameNo % 3 !== 2;
+      const bIn = Math.max(4, R - 95), bFade = u < 0.4 ? 1 : 1 - (u - 0.4) / 0.22;
       const bs = nvSeed[i] + ((frameNo / 3) | 0) * 131;
-      if (boltsOn) {
-        bseed(bs);
-        ctx.fillStyle = ramp[7];
-        ctx.beginPath();
-        for (let b = 0; b < 9; b++) bolt(ctx, cx, cy, (b / 9) * TAU + (brnd() - 0.5) * 0.6, R * (0.8 + 0.18 * brnd()), true);
-        ctx.fill();
+      if (ctx) {
+        // main: crisp front + echoes + lightning filaments
+        ctx.globalAlpha = fade;
+        if (u < 0.85) {
+          ctx.fillStyle = ramp[3]; bigRing(ctx, cx, cy, R * 0.64, 1);
+          ctx.fillStyle = ramp[4]; bigRing(ctx, cx, cy, R * 0.82, 1.6);
+        }
+        ctx.fillStyle = ramp[5]; bigRing(ctx, cx, cy, R - 1, th);
+        ctx.fillStyle = ramp[3]; bigRing(ctx, cx, cy, R - th - 1, 1.2);
+        ctx.fillStyle = u < 0.55 ? ramp[7] : ramp[6]; bigRing(ctx, cx, cy, R, 1.3);
+        if (boltsOn) {
+          bseed(bs);
+          ctx.fillStyle = ramp[7];
+          ctx.beginPath();
+          ctx.globalAlpha = fade * bFade;
+          for (let b = 0; b < 9; b++) bolt(ctx, cx, cy, (b / 9) * TAU + (brnd() - 0.5) * 0.6, R * (0.86 + 0.12 * brnd()), true, bIn);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
       }
-      ctx.globalAlpha = 1;
       if (!lctx) continue;
       // light: interior wash, thick glowing front, bolts, core
       glowAt(lctx, p, G_SOFT, cx, cy, R * 1.05, R * 1.05, 0.34 * Math.pow(1 - u, 1.5));
@@ -1257,13 +1301,13 @@ export function createFX() {
       }
       if (boltsOn) {
         bseed(bs);
-        lctx.globalAlpha = 0.9 * fade;
-        lctx.strokeStyle = ramp[5]; lctx.lineWidth = 2.2;
+        lctx.globalAlpha = 0.75 * fade * bFade;
+        lctx.strokeStyle = ramp[5]; lctx.lineWidth = 1.8;
         lctx.beginPath();
-        for (let b = 0; b < 9; b++) bolt(lctx, cx + 0.5, cy + 0.5, (b / 9) * TAU + (brnd() - 0.5) * 0.6, R * (0.8 + 0.18 * brnd()), false);
+        for (let b = 0; b < 9; b++) bolt(lctx, cx, cy, (b / 9) * TAU + (brnd() - 0.5) * 0.6, R * (0.86 + 0.12 * brnd()), false, bIn);
         lctx.stroke();
       }
-      glowAt(lctx, p, G_HOT, cx, cy, 16 + 60 * (1 - u), 16 + 60 * (1 - u), (1 - u) * (1 - u));
+      glowAt(lctx, p, G_HOT, cx, cy, 14 + 40 * (1 - u), 14 + 40 * (1 - u), 0.9 * (1 - u) * (1 - u) * (1 - u));
       lctx.globalAlpha = 1;
     }
   }
@@ -1272,41 +1316,46 @@ export function createFX() {
     for (let i = 0; i < boN_; i++) {
       if (frameNo % 3 === 2) continue;
       const u = boAge[i] / boLife[i], p = boPal[i], ramp = CSTR[p];
-      const cx = Math.round(boX[i]), cy = Math.round(boY[i]), n = boN[i], R = boR[i] * (0.6 + 0.4 * u);
+      const cx = ((boX[i] + 1024.5) | 0) - 1024, cy = ((boY[i] + 1024.5) | 0) - 1024, n = boN[i], R = boR[i] * (0.6 + 0.4 * u);
       const bs = boSeed[i] + ((frameNo / 3) | 0) * 131;
-      bseed(bs);
-      ctx.fillStyle = u < 0.5 ? ramp[7] : ramp[6];
-      ctx.beginPath();
-      for (let b = 0; b < n; b++) bolt(ctx, cx, cy, brnd() * TAU, R * (0.5 + 0.5 * brnd()), true);
-      ctx.fill();
+      if (ctx) {
+        bseed(bs);
+        ctx.fillStyle = u < 0.5 ? ramp[7] : ramp[6];
+        ctx.beginPath();
+        for (let b = 0; b < n; b++) bolt(ctx, cx, cy, brnd() * TAU, R * (0.5 + 0.5 * brnd()), true);
+        ctx.fill();
+      }
       if (!lctx) continue;
       bseed(bs);
       lctx.globalAlpha = 0.9 * (1 - u);
       lctx.strokeStyle = ramp[5]; lctx.lineWidth = 2;
       lctx.beginPath();
-      for (let b = 0; b < n; b++) bolt(lctx, cx + 0.5, cy + 0.5, brnd() * TAU, R * (0.5 + 0.5 * brnd()), false);
+      for (let b = 0; b < n; b++) bolt(lctx, cx, cy, brnd() * TAU, R * (0.5 + 0.5 * brnd()), false);
       lctx.stroke();
       lctx.globalAlpha = 1;
     }
   }
 
   function drawSparks(ctx, lctx) {
-    const P = SPK;
+    const P = SPK, g = ctx || lctx;
     for (let i = 0; i < P.n; i++) {
       const age = P.age[i];
       if (age < 0) continue;
-      const u = age / P.life[i];
-      let h = (P.a[i] + u * 4) | 0;
+      let h = (P.a[i] + (age / P.life[i]) * 4) | 0;
       if (h > 3) h = 3;
       if (P.f[i] & S_REV) h = 3 - h;
-      const p = P.pal[i];
-      sparkSprite(ctx, p, P.x[i], P.y[i], P.vx[i], P.vy[i], h, P.b[i]);
-      if (lctx && P.f[i] & S_GLOW) sparkSprite(lctx, p, P.x[i], P.y[i], P.vx[i], P.vy[i], h, P.b[i]);
+      if (lctx && (h === 3 || !(P.f[i] & S_GLOW))) continue;
+      const vx = P.vx[i], vy = P.vy[i];
+      const sp = Math.sqrt(vx * vx + vy * vy) * P.b[i] * 0.024;
+      const li = LEN_IDX[sp >= 7 ? 7 : (sp + 0.5) | 0], L = SPL[li], c = 2 * L + 1;
+      const d = ((Math.atan2(vy, vx) * K16 + 16.5) | 0) & 15;
+      g.drawImage(SPA[P.pal[i]], SPX[li] + d * c, SPY[li] + h * c, c, c,
+        ((P.x[i] + 1024.5) | 0) - 1024 - L, ((P.y[i] + 1024.5) | 0) - 1024 - L, c, c);
     }
   }
 
   function drawDots(ctx, lctx) {
-    const P = DOT, [ox, oy] = POS.dot;
+    const P = DOT, ox = POS.dot[0], oy = POS.dot[1];
     for (let i = 0; i < P.n; i++) {
       const age = P.age[i];
       if (age < 0) continue;
@@ -1321,33 +1370,32 @@ export function createFX() {
         if (k < 0) k = 0;
         s = SHR[k];
       } else if (f & D_TWINKLE && s > 0 && ((frameNo + i * 3) >> 2) & 1) s = s === 5 ? 0 : s - 1;
-      const sx = ox + s * DOT_C, sy = oy + h * DOT_C, dx = Math.round(P.x[i]) - 3, dy = Math.round(P.y[i]) - 3;
+      const sx = ox + s * DOT_C, sy = oy + h * DOT_C, dx = ((P.x[i] + 1024.5) | 0) - 1027, dy = ((P.y[i] + 1024.5) | 0) - 1027;
       const at = SPA[P.pal[i]];
-      ctx.drawImage(at, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
-      if (lctx && f & D_GLOW && h < 3) lctx.drawImage(at, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
+      if (ctx) ctx.drawImage(at, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
+      else if (f & D_GLOW && h < 3) lctx.drawImage(at, sx, sy, DOT_C, DOT_C, dx, dy, DOT_C, DOT_C);
     }
   }
 
   function drawFlares(ctx, lctx) {
-    const P = FLR;
+    const P = FLR, g = ctx || lctx;
     for (let i = 0; i < P.n; i++) {
       const age = P.age[i];
       if (age < 0) continue;
-      const u = age / P.life[i], t = P.s[i], at = SPA[P.pal[i]];
-      let sx, sy, w, h, ax, ay;
-      if (t === F_MUZZLE) { const f = Math.min(2, (u * 3) | 0); sx = POS.mz[0] + f * 9; sy = POS.mz[1]; w = 9; h = 11; ax = 4; ay = 7; }
-      else if (t === F_IMPACT) { const f = Math.min(2, (u * 3) | 0); sx = POS.im[0] + f * 7; sy = POS.im[1]; w = 7; h = 7; ax = 3; ay = 3; }
-      else { const f = Math.min(SB_F - 1, (u * SB_F) | 0); sx = POS.sb[0] + f * SB; sy = POS.sb[1] + (t === F_SB_X ? SB : 0); w = SB; h = SB; ax = 20; ay = 20; }
-      const dx = Math.round(P.x[i]) - ax, dy = Math.round(P.y[i]) - ay;
-      ctx.drawImage(at, sx, sy, w, h, dx, dy, w, h);
-      if (lctx) lctx.drawImage(at, sx, sy, w, h, dx, dy, w, h);
+      const t = P.s[i], nf = FL_F[t], w = FL_W[t], h = FL_H[t];
+      let f = ((age / P.life[i]) * nf) | 0;
+      if (f >= nf) f = nf - 1;
+      g.drawImage(SPA[P.pal[i]], FL_X[t] + f * w, FL_Y[t], w, h, ((P.x[i] + 1024.5) | 0) - 1024 - FL_AX[t], ((P.y[i] + 1024.5) | 0) - 1024 - FL_AY[t], w, h);
     }
   }
 
+  // soft glow sprite on the light layer; dest rect snapped to ints (invisible on a soft glow,
+  // and it avoids boxing four doubles per draw)
   function glowAt(l, p, prof, x, y, rx, ry, alpha) {
-    if (alpha <= 0.004 || rx <= 0 || ry <= 0) return;
+    if (alpha <= 0.004 || rx < 0.5 || ry < 0.5) return;
     l.globalAlpha = alpha > 1 ? 1 : alpha;
-    l.drawImage(GLOW, p * GC, (prof === G_HOT ? 0 : GC), 64, 64, x - rx, y - ry, rx * 2, ry * 2);
+    const w = ((rx * 2 + 0.5) | 0) || 1, h = ((ry * 2 + 0.5) | 0) || 1;
+    l.drawImage(GLOW, p * GC, prof === G_HOT ? 0 : GC, 64, 64, ((x + 1024.5) | 0) - 1024 - (w >> 1), ((y + 1024.5) | 0) - 1024 - (h >> 1), w, h);
   }
 
   function drawGlows(lctx) {
@@ -1357,11 +1405,17 @@ export function createFX() {
       if (age < 0) continue;
       const u = age / P.life[i], e = 1 - (1 - u) * (1 - u);
       const r = P.a[i] + (P.b[i] - P.a[i]) * e, prof = P.s[i];
-      const k = 1 - u, al = P.d[i] * (prof === G_SOFT ? k : k * k);
-      const x = P.x[i] + 0.5, y = P.y[i] + 0.5;
-      if (prof === G_STREAK) glowAt(lctx, P.pal[i], G_SOFT, x, y, r * 3.2, Math.max(1.5, r * 0.16), al);
-      else if (prof === G_VSTREAK) glowAt(lctx, P.pal[i], G_SOFT, x, y, Math.max(1.5, r * 0.5), r * 5, al);
-      else glowAt(lctx, P.pal[i], prof, x, y, r, r, al);
+      const k = 1 - u;
+      let al = P.d[i] * (prof === G_SOFT ? k : k * k);
+      if (al <= 0.004) continue;
+      if (al > 1) al = 1;
+      let rx = r, ry = r;
+      if (prof === G_STREAK) { rx = r * 2.4; ry = r * 0.12 > 1.5 ? r * 0.12 : 1.5; }
+      else if (prof === G_VSTREAK) { rx = r * 0.5 > 1.5 ? r * 0.5 : 1.5; ry = r * 5; }
+      const w = ((rx * 2 + 0.5) | 0) || 1, h = ((ry * 2 + 0.5) | 0) || 1;
+      lctx.globalAlpha = al;
+      lctx.drawImage(GLOW, P.pal[i] * GC, prof === G_HOT ? 0 : GC, 64, 64,
+        ((P.x[i] + 1024.5) | 0) - 1024 - (w >> 1), ((P.y[i] + 1024.5) | 0) - 1024 - (h >> 1), w, h);
     }
     lctx.globalAlpha = 1;
   }
@@ -1372,38 +1426,44 @@ export function createFX() {
       const u = txAge[i] / txLife[i];
       if (u > 0.7 && ((frameNo >> 1) & 1)) continue;
       const rise = 1 - (1 - Math.min(1, u * 2.2)) * (1 - Math.min(1, u * 2.2));
-      fn(ctx, txStr[i], Math.round(txX[i]), Math.round(txY[i] - 4 - rise * 12), txCol[i]);
+      fn(ctx, txStr[i], ((txX[i] + 1024.5) | 0) - 1024, ((txY[i] - 4 - rise * 12 + 1024.5) | 0) - 1024, txCol[i]);
     }
   }
 
   function draw(ctx, lctx) {
+    // MAIN, back to front. All main draws are issued before any light draws: interleaving
+    // two canvases per particle makes Chrome flush its raster queue constantly.
     const prevSmooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = false;
-    let pOp, pSm, pA;
-    if (lctx) {
-      // LIGHT is additive, so its order does not matter; MAIN is drawn back to front.
-      pOp = lctx.globalCompositeOperation; pSm = lctx.imageSmoothingEnabled; pA = lctx.globalAlpha;
-      lctx.globalCompositeOperation = 'lighter';
-      lctx.imageSmoothingEnabled = true;
-      lctx.globalAlpha = 1;
-      drawGlows(lctx);
-    }
     drawSmoke(ctx);
-    drawDebris(ctx, lctx);
-    drawFire(ctx, lctx);
-    drawRings(ctx, lctx);
-    drawNovas(ctx, lctx);
-    drawBolts(ctx, lctx);
-    drawSparks(ctx, lctx);
-    drawDots(ctx, lctx);
-    drawFlares(ctx, lctx);
+    drawDebris(ctx, null);
+    drawFire(ctx, null);
+    drawRings(ctx, null);
+    drawNovas(ctx, null);
+    drawBolts(ctx, null);
+    drawSparks(ctx, null);
+    drawDots(ctx, null);
+    drawFlares(ctx, null);
     drawTexts(ctx);
     ctx.imageSmoothingEnabled = prevSmooth;
-    if (lctx) {
-      lctx.globalCompositeOperation = pOp;
-      lctx.imageSmoothingEnabled = pSm;
-      lctx.globalAlpha = pA;
-    }
+    if (!lctx) return;
+    // LIGHT: additive, so order does not matter
+    const pOp = lctx.globalCompositeOperation, pSm = lctx.imageSmoothingEnabled, pA = lctx.globalAlpha;
+    lctx.globalCompositeOperation = 'lighter';
+    lctx.imageSmoothingEnabled = true;
+    lctx.globalAlpha = 1;
+    drawGlows(lctx);
+    drawFire(null, lctx);
+    drawDebris(null, lctx);
+    drawRings(null, lctx);
+    drawNovas(null, lctx);
+    drawBolts(null, lctx);
+    drawSparks(null, lctx);
+    drawDots(null, lctx);
+    drawFlares(null, lctx);
+    lctx.globalCompositeOperation = pOp;
+    lctx.imageSmoothingEnabled = pSm;
+    lctx.globalAlpha = pA;
   }
 
   // ---- beams --------------------------------------------------------------------------------
@@ -1423,12 +1483,13 @@ export function createFX() {
     ctx.imageSmoothingEnabled = false;
     ctx.transform(ca, sa, -sa, ca, ox, oy);
     if (fire) {
-      if (player) ctx.globalAlpha = 0.9;
-      ctx.fillStyle = ramp[player ? 4 : 3]; ctx.fillRect(lft, 0, W, L);
-      if (W >= 3) { ctx.fillStyle = ramp[5]; ctx.fillRect(lft + 1, 0, W - 2, L); }
+      // bands: outer body -> inner body -> hot rim -> white core
+      if (player) ctx.globalAlpha = 0.88;
+      ctx.fillStyle = ramp[3]; ctx.fillRect(lft, 0, W, L);
+      if (W >= 3) { ctx.fillStyle = ramp[4]; ctx.fillRect(lft + 1, 0, W - 2, L); }
       // energy pulses flowing along the beam
       if (W >= 5) {
-        ctx.fillStyle = ramp[6];
+        ctx.fillStyle = ramp[5];
         const per = 34, off = (t * 240) % per;
         ctx.beginPath();
         for (let s = off - per; s < L; s += per) {
@@ -1439,8 +1500,9 @@ export function createFX() {
       }
       ctx.globalAlpha = 1;
       // white-hot core (flickers by a pixel on wide beams)
-      let cw = Math.max(1, Math.round(W * 0.34)) | 1;
+      let cw = Math.max(1, Math.round(W * 0.26)) | 1;
       if (W >= 7 && fr & 1) cw += 2;
+      if (W >= 5) { ctx.fillStyle = ramp[5]; ctx.fillRect(-(cw >> 1) - 1, 0, cw + 2, L); }
       ctx.fillStyle = ramp[7]; ctx.fillRect(-(cw >> 1), 0, cw, L);
       // animated edge ripples
       if (W >= 3) {
@@ -1453,7 +1515,7 @@ export function createFX() {
         }
       }
       // origin + impact splash
-      const r0 = hw + 1 + (fr & 1), r1 = Math.max(1, hw) + ((fr >> 1) & 1);
+      const r0 = hw + (fr & 1), r1 = Math.max(1, hw) + ((fr >> 1) & 1);
       ctx.fillStyle = ramp[5]; diskFill(ctx, 0, 0, r0 + 1);
       ctx.fillStyle = ramp[7]; diskFill(ctx, 0, 0, Math.max(1, r0 - 1));
       ctx.fillStyle = ramp[6]; diskFill(ctx, 0, L, r1 + 1);
@@ -1493,13 +1555,13 @@ export function createFX() {
       lctx.transform(ca, sa, -sa, ca, ox, oy);
       const gx = p * GC;
       if (fire) {
-        const k = player ? 0.6 : 1, fl = 0.9 + 0.1 * Math.sin(t * 50);
-        lctx.globalAlpha = 0.85 * k * fl;
-        lctx.drawImage(GLOW, gx, STRIP_BODY_Y, 32, 1, 0.5 - W * 1.9, 0, W * 3.8, L);
-        lctx.globalAlpha = 0.9 * k;
-        lctx.drawImage(GLOW, gx, STRIP_CORE_Y, 32, 1, 0.5 - W * 0.75, 0, W * 1.5, L);
-        glowAt(lctx, p, G_HOT, 0.5, 0.5, W * 2.4 + 4, W * 2.4 + 4, 0.9 * k * fl);
-        glowAt(lctx, p, G_HOT, 0.5, L + 0.5, W * 2 + 4, W * 2 + 4, 0.85 * k * fl);
+        const k = player ? 0.65 : 1, fl = 0.9 + 0.1 * Math.sin(t * 50);
+        lctx.globalAlpha = 0.42 * k * fl;
+        lctx.drawImage(GLOW, gx, STRIP_BODY_Y, 32, 1, 0.5 - W * 2.1, 0, W * 4.2, L);
+        lctx.globalAlpha = 0.22 * k;
+        lctx.drawImage(GLOW, gx, STRIP_CORE_Y, 32, 1, 0.5 - W * 0.6, 0, W * 1.2, L);
+        glowAt(lctx, p, G_HOT, 0.5, 0.5, W * 2.2 + 4, W * 2.2 + 4, 0.75 * k * fl);
+        glowAt(lctx, p, G_HOT, 0.5, L + 0.5, W * 1.9 + 4, W * 1.9 + 4, 0.7 * k * fl);
       } else {
         lctx.globalAlpha = (0.25 + 0.15 * Math.sin(t * 40)) * (fr % 4 !== 3 ? 1 : 0.4);
         lctx.drawImage(GLOW, gx, STRIP_BODY_Y, 32, 1, -2.5, 0, 6, L);
@@ -1586,8 +1648,8 @@ export function createFX() {
 
     trail(x, y, palette, size) {
       const p = palOf(palette), s = Math.max(1, Math.min(3, (size || 1) | 0));
-      const i = addDot(x + rr(-0.6, 0.6), y + rr(-0.6, 0.6), rr(-6, 6), 22 + s * 6 + rr(0, 10), rr(0.18, 0.28) + s * 0.05, 2, 0, 0, p, D_SHRINK | D_GLOW, 0);
-      if (i !== undefined) DOT.v[i] = s + 1;
+      const i = addDot(x + rr(-0.6, 0.6), y + rr(-0.6, 0.6), rr(-6, 6), 22 + s * 6 + rr(0, 10), rr(0.14, 0.22) + s * 0.04, 2, 0, 1, p, D_SHRINK | D_GLOW, 0);
+      if (i !== undefined) DOT.v[i] = s;
       if (s >= 2 && rnd() < 0.18 * s) addSmoke(x, y + 2, rr(-5, 5), rr(8, 20), 0, rr(0.4, 0.7), 0.06, P_FIRE);
     },
 
@@ -1613,12 +1675,12 @@ export function createFX() {
         for (let k = 1; k < NV; k++) if (nvAge[k] > nvAge[i]) i = k;
       } else nvN++;
       nvX[i] = x; nvY[i] = y; nvAge[i] = 0; nvPal[i] = p; nvSeed[i] = seedCounter++ * 7919;
-      flashKick(0.7, LIGHT_RGB[p]);
+      flashKick(0.5, LIGHT_RGB[p]);
       chromaKick(0.9);
       addFlare(x, y, F_SB_PLUS, 0.24, p, 0);
       addFlare(x, y, F_SB_X, 0.3, P_WHITE, 0.08);
-      addGlow(x, y, 10, 90, 0.5, 1, G_HOT, p, 0);
-      addGlow(x, y, 30, 150, 0.5, 0.8, G_STREAK, p, 0);
+      addGlow(x, y, 8, 60, 0.4, 0.9, G_HOT, p, 0);
+      addGlow(x, y, 30, 120, 0.45, 0.7, G_STREAK, p, 0);
       addRing(x, y, 3, 56, 0.32, 3, 0.5, P_WHITE, 1, 0);
       for (let k = 0; k < 70; k++) {
         const a = rnd() * TAU, sp = rr(140, 420);

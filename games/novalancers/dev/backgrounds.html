@@ -37,7 +37,7 @@ import { createBackground, buildBackgrounds, BG_KEYS } from '../js/art/backgroun
 const qs = new URLSearchParams(location.search);
 let key = qs.get('bg') || 'title';
 const views = (qs.get('view') || 'both').split(',');
-const PS = +(qs.get('ps') || 2), DS = +(qs.get('ds') || 1.25);
+const PS = +(qs.get('ps') || 3), DS = +(qs.get('ds') || 1.25);
 const freeze = qs.has('freeze');
 let scroll = +(qs.get('scroll') || 0);
 let tNow = +(qs.get('t') || 0);
@@ -71,7 +71,7 @@ for (const name of views) {
 }
 const blurC = mk(1, 1), bctx = blurC.getContext('2d');
 
-let genMs = 0;
+let genMs = 0, memMB = '0';
 function setBg(k) {
   key = k;
   for (const v of V) { if (v.bg) v.bg.dispose(); }
@@ -82,6 +82,7 @@ function setBg(k) {
     v.ms = [];
   }
   genMs = performance.now() - t0;
+  memMB = V.length ? (V[0].bg.memory() / 1048576).toFixed(1) : '0';
   document.querySelectorAll('#keys button').forEach((b) => b.classList.toggle('on', b.textContent === key));
   const u = new URL(location); u.searchParams.set('bg', key); history.replaceState(null, '', u);
 }
@@ -151,7 +152,7 @@ function frame(now) {
   }
   for (const v of V) renderView(v);
   const st = V.map((v) => `${v.d.label}: draw ${(v.ms.reduce((a, b) => a + b, 0) / Math.max(1, v.ms.length)).toFixed(3)} ms`).join('   ');
-  document.getElementById('stats').textContent = `${key}  scroll ${scroll.toFixed(0)}  t ${tNow.toFixed(1)}  gen ${genMs.toFixed(0)} ms   ${st}`;
+  document.getElementById('stats').textContent = `${key}  scroll ${scroll.toFixed(0)}  t ${tNow.toFixed(1)}  gen ${genMs.toFixed(0)} ms  mem ${memMB} MB   ${st}`;
   if (!freeze) requestAnimationFrame(frame);
 }
 

@@ -5,6 +5,8 @@
 
 import { FIELD_W, FIELD_H, HUD_TOP, HUD_BOTTOM } from '../config.js';
 
+const WHITE = [1, 1, 1];
+
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
@@ -117,7 +119,7 @@ export class Renderer {
     this.screen.style.width = cssW + 'px';
     this.screen.style.height = cssH + 'px';
     if (this.post) {
-      this.post.resize(cssW, cssH, dpr, W, H);
+      this.post.resize(cssW, cssH, dpr, W, H, s);
     } else {
       this.screen.width = Math.round(cssW * dpr);
       this.screen.height = Math.round(cssH * dpr);
@@ -185,20 +187,28 @@ export class Renderer {
   present(s = {}) {
     const t0 = performance.now();
     if (this.post) {
-      const waves = (s.waves || []).map((w) => ({
-        x: w.x + this.fx + this.shakeX, y: w.y + this.fy + this.shakeY, r: w.r, strength: w.strength,
-      }));
-      this.post.render(this.main, this.light, {
-        grade: s.grade || null,
-        waves,
-        flash: s.flash || 0,
-        flashColor: s.flashColor || [1, 1, 1],
-        chroma: s.chroma || 0,
-        lensing: s.lensing || null,
-        time: this.time,
-        quality: this.quality === 'auto' ? undefined : this.quality,
-        scanlines: s.scanlines !== false,
-      });
+      // reuse the wave objects / state object: no per-frame allocations
+      const src = s.waves || [];
+      const waves = this._waves || (this._waves = []);
+      const pool = this._wavePool || (this._wavePool = []);
+      waves.length = 0;
+      for (let i = 0; i < src.length; i++) {
+        const w = pool[i] || (pool[i] = { x: 0, y: 0, r: 0, strength: 0 });
+        w.x = src[i].x + this.fx + this.shakeX; w.y = src[i].y + this.fy + this.shakeY;
+        w.r = src[i].r; w.strength = src[i].strength;
+        waves.push(w);
+      }
+      const st = this._postState || (this._postState = {});
+      st.grade = s.grade || null;
+      st.waves = waves;
+      st.flash = s.flash || 0;
+      st.flashColor = s.flashColor || WHITE;
+      st.chroma = s.chroma || 0;
+      st.lensing = s.lensing || null;
+      st.time = this.time;
+      st.quality = this.quality === 'auto' ? undefined : this.quality;
+      st.scanlines = s.scanlines !== false;
+      this.post.render(this.main, this.light, st);
     } else {
       const c = this.ctx2d;
       const k = this.scale * this.dpr;

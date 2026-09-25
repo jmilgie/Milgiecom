@@ -12,9 +12,9 @@ const MAX_WAVES = 8;
 
 // quality presets: bloom mips, blur taps, chroma, distortion, DPR cap
 const QUALITY = {
-  high:   { mips: 3, hq: true,  chroma: true,  distort: true,  dpr: 2,   bloomW: [0.55, 0.75, 0.95] },
-  medium: { mips: 2, hq: false, chroma: false, distort: true,  dpr: 2,   bloomW: [0.75, 1.05, 0] },
-  low:    { mips: 1, hq: false, chroma: false, distort: false, dpr: 1.5, bloomW: [1.5, 0, 0] },
+  high:   { mips: 3, hq: true,  chroma: true,  distort: true,  dpr: 2,   bloomW: [0.4, 0.5, 0.6] },
+  medium: { mips: 2, hq: false, chroma: false, distort: true,  dpr: 2,   bloomW: [0.55, 0.8, 0] },
+  low:    { mips: 1, hq: false, chroma: false, distort: false, dpr: 1.5, bloomW: [1.1, 0, 0] },
 };
 const ORDER = ['high', 'medium', 'low'];
 
@@ -138,13 +138,13 @@ void main() {
 #if MIPS > 2
   bloom += texture2D(uB3, luv).rgb * uBloom.z;
 #endif
-  col += light + bloom * uBloom.w;
+  col += (light + bloom * uBloom.w) * mix(0.35, 1.0, hole);
 
   col = col * uTint + uLift;
   float l = dot(col, vec3(0.299, 0.587, 0.114));
   col = mix(vec3(l), col, uSatCon.x);
   col = (col - 0.5) * uSatCon.y + 0.5;
-  col += uFlash.rgb * uFlash.a;
+  col = col * (1.0 + uFlash.a * 1.4) + uFlash.rgb * (uFlash.a * 0.55);   // exposure kick + tinted veil
   vec2 q = gl_FragCoord.xy / uOut - 0.5;
   col *= 1.0 - uVig * dot(q, q) * 2.0;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -172,7 +172,7 @@ export function createPost(canvas) {
   let artScale = 0;                  // optional explicit CSS px per art px (0 = cover-fit)
 
   // quality
-  let quality = 'high', auto = true, lastReq;
+  let quality = 'high', auto = true;
   let emaDt = 16.7, slow = 0, lastT = 0, grace = 90;
 
   const wavesBuf = new Float32Array(MAX_WAVES * 4);
@@ -308,6 +308,8 @@ export function createPost(canvas) {
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, src);
   }
 
+  function bindTex(unit, t) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); }
+
   function pass(prog, target, w, h) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fb : null);
     gl.viewport(0, 0, w, h);
@@ -346,7 +348,13 @@ export function createPost(canvas) {
   function render(mainCanvas, lightCanvas, s) {
     if (lost || gl.isContextLost()) return false;
     s = s || EMPTY;
-    if (s.quality !== lastReq) { lastReq = s.quality; setQuality(s.quality); }
+    // s.quality is authoritative each frame: an explicit level locks it, undefined/'auto'
+    // lets frame-time monitoring step it down (never back up).
+    const rq = s.quality;
+    if (rq === 'high' || rq === 'medium' || rq === 'low') {
+      auto = false;
+      if (rq !== quality) { quality = rq; applySize(); }
+    } else auto = true;
     trackFrame(performance.now());
 
     const W = mainCanvas.width, H = mainCanvas.height;
@@ -383,7 +391,6 @@ export function createPost(canvas) {
     const outW = canvas.width, outH = canvas.height;
     const fin = getProg('final_' + quality);
     pass(fin, null, outW, outH);
-    const bindTex = (unit, t) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); };
     bindTex(0, texMain);
     bindTex(1, lightCanvas ? texLight : texBlack);
     bindTex(2, fbA[0].tex);
@@ -417,7 +424,7 @@ export function createPost(canvas) {
     }
     if (Q.chroma) gl.uniform1f(u.uChroma, Math.min(1, Math.max(0, s.chroma || 0)));
     const fc = s.flashColor || ID_TINT;
-    gl.uniform4f(u.uFlash, fc[0], fc[1], fc[2], Math.min(1, Math.max(0, s.flash || 0)) * 0.9);
+    gl.uniform4f(u.uFlash, fc[0], fc[1], fc[2], Math.min(1, Math.max(0, s.flash || 0)));
     const g = s.grade;
     const tint = (g && g.tint) || ID_TINT, lift = (g && g.lift) || ID_LIFT;
     gl.uniform3f(u.uTint, tint[0], tint[1], tint[2]);

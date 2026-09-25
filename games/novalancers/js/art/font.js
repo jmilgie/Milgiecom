@@ -160,8 +160,8 @@ const BIG = {
     '&': '.###... ##.##.. ##.##.. .###... .###.## ##.###. ##..##. ##.###. .###.##',
     '·': '.. .. .. .. ## ## .. .. ..',
     '—': '........ ........ ........ ........ ######## ........ ........ ........ ........',
-    '→': '....... ...##.. ....##. ....... ####### ....... ....##. ...##.. .......',
-    '←': '....... ..##... .##.... ....... ####### ....... .##.... ..##... .......',
+    '→': '........ ....##.. .....##. ######## ######## .....##. ....##.. ........ ........',
+    '←': '........ ..##.... .##..... ######## ######## .##..... ..##.... ........ ........',
     '↑': '...#... ..###.. .#####. ##.#.## ...#... ...#... ...#... ...#... ...#...',
     '↓': '...#... ...#... ...#... ...#... ...#... ##.#.## .#####. ..###.. ...#...',
     '★': '....#.... ...###... ...###... ######### .#######. ..#####.. ..##.##.. .##...##. .#.....#.',
@@ -386,9 +386,33 @@ function drawRun(ctx, atlas, f, str, from, to, x, y, size, spacing, dil) {
   }
 }
 
+// Pre-rendered strings for opt.cache (static labels/names drawn every frame): one drawImage
+// instead of one per glyph (x2 with shadow/outline, x2 again for the glow layer).
+const strCache = new Map();
+const STR_MAX = 160;
+function cachedText(str, f, size, spacing, opt, glow) {
+  const key = `${f.name}|${size}|${spacing}|${glow ? 'G' + (opt.glow || opt.color) : (opt.color || '') + '|' + (opt.shadow || '') + '|' + (opt.outline || '')}|${str}`;
+  let c = strCache.get(key);
+  if (c) { strCache.delete(key); strCache.set(key, c); return c; }   // refresh LRU position
+  const pad = size * 2;
+  const w = lineWidth(f, str, 0, str.length, spacing) * size;
+  c = makeCanvas(Math.max(1, w + pad * 2), (f.cell + 2) * size + pad * 2);
+  const g = c.getContext('2d');
+  if (glow) {
+    drawText(g, str, pad, pad, { font: f.name, size, spacing, glowOnly: true, lctx: g, glow: opt.glow || opt.color || DEFAULT_COLOR });
+  } else {
+    drawText(g, str, pad, pad, { font: f.name, size, spacing, color: opt.color, shadow: opt.shadow, outline: opt.outline });
+  }
+  c.pad = pad;
+  if (strCache.size >= STR_MAX) strCache.delete(strCache.keys().next().value);
+  strCache.set(key, c);
+  return c;
+}
+
 export function drawText(ctx, str, x, y, opt = EMPTY) {
   if (!ctx || str == null) return 0;
   str = typeof str === 'string' ? str : String(str);
+  if (opt.cache && str.indexOf('\n') < 0 && str.length) return drawCached(ctx, str, x, y, opt);
   const f = font(opt.font || 'small');
   const size = Math.max(1, Math.min(8, opt.size | 0 || 1));
   const spacing = opt.spacing | 0;
@@ -404,7 +428,7 @@ export function drawText(ctx, str, x, y, opt = EMPTY) {
   if (opt.baseline === 'middle') top = Math.round(y - (f.h * size + (lines - 1) * lineAdv) / 2);
   else if (opt.baseline === 'bottom') top = Math.round(y - f.h * size - (lines - 1) * lineAdv);
 
-  const main = tinted(f, color, false);
+  const main = opt.glowOnly ? null : tinted(f, color, false);
   const shadow = opt.shadow ? tinted(f, opt.shadow, false) : null;
   const outline = opt.outline ? tinted(f, opt.outline, true) : null;
   const lctx = opt.lctx || null;
@@ -424,13 +448,15 @@ export function drawText(ctx, str, x, y, opt = EMPTY) {
     if (align === 'center') lx = Math.round(x - w / 2);
     else if (align === 'right') lx = Math.round(x - w);
     ctx.globalAlpha = prevA * alpha;
-    if (outline) drawRun(ctx, outline, f, str, start, i, lx, ly, size, spacing, true);
-    if (shadow) drawRun(ctx, shadow, f, str, start, i, lx + size, ly + size, size, spacing, false);
-    drawRun(ctx, main, f, str, start, i, lx, ly, size, spacing, false);
+    if (!opt.glowOnly) {
+      if (outline) drawRun(ctx, outline, f, str, start, i, lx, ly, size, spacing, true);
+      if (shadow) drawRun(ctx, shadow, f, str, start, i, lx + size, ly + size, size, spacing, false);
+      drawRun(ctx, main, f, str, start, i, lx, ly, size, spacing, false);
+    }
     if (lctx) {
       const la = lctx.globalAlpha;
       lctx.imageSmoothingEnabled = false;
-      lctx.globalAlpha = la * alpha * glowAlpha * 0.45;
+      lctx.globalAlpha = la * alpha * glowAlpha * 0.16;
       drawRun(lctx, glowDil, f, str, start, i, lx, ly, size, spacing, true);
       lctx.globalAlpha = la * alpha * glowAlpha;
       drawRun(lctx, glowAtlas, f, str, start, i, lx, ly, size, spacing, false);
@@ -441,6 +467,37 @@ export function drawText(ctx, str, x, y, opt = EMPTY) {
   }
   ctx.globalAlpha = prevA;
   return maxW;
+}
+
+function drawCached(ctx, str, x, y, opt) {
+  const f = font(opt.font || 'small');
+  const size = Math.max(1, Math.min(8, opt.size | 0 || 1));
+  const spacing = opt.spacing | 0;
+  const alpha = opt.alpha == null ? 1 : opt.alpha;
+  const w = lineWidth(f, str, 0, str.length, spacing) * size;
+  if (alpha <= 0) return w;
+  let lx = Math.round(x);
+  if (opt.align === 'center') lx = Math.round(x - w / 2);
+  else if (opt.align === 'right') lx = Math.round(x - w);
+  let top = Math.round(y);
+  if (opt.baseline === 'middle') top = Math.round(y - (f.h * size) / 2);
+  else if (opt.baseline === 'bottom') top = Math.round(y - f.h * size);
+  const c = cachedText(str, f, size, spacing, opt, false);
+  const pa = ctx.globalAlpha;
+  ctx.imageSmoothingEnabled = false;
+  if (alpha !== 1) ctx.globalAlpha = pa * alpha;
+  ctx.drawImage(c, lx - c.pad, top - c.pad);
+  ctx.globalAlpha = pa;
+  const lctx = opt.lctx;
+  if (lctx) {
+    const gcv = cachedText(str, f, size, spacing, opt, true);
+    const la = lctx.globalAlpha;
+    lctx.imageSmoothingEnabled = false;
+    lctx.globalAlpha = la * alpha * (opt.glowAlpha == null ? 1 : opt.glowAlpha);
+    lctx.drawImage(gcv, lx - gcv.pad, top - gcv.pad);
+    lctx.globalAlpha = la;
+  }
+  return w;
 }
 
 // Every character each face can draw (for specimen / tests).

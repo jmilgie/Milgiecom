@@ -98,6 +98,7 @@ export function netConfig() {
     brokers,
     forceRelay: flag('forcerelay'),
     p2p: q.get('p2p') !== '0',
+    p2pTimeout: P2P_TIMEOUT,
     ...overrides,
   };
   return cached;

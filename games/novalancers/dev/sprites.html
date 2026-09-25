@@ -39,9 +39,10 @@
   <label>filter <input id="filter" placeholder="e.g. ship_ eb_ en_" /></label>
   <label>zoom <input id="zoom" type="number" min="1" max="12" value="4" style="width:48px" /></label>
 </header>
+<div id="sceneWrap" style="padding:12px 12px 0"><canvas id="scene"></canvas></div>
 <div id="grid"></div>
 <script type="module">
-import { buildSprites, listSprites, spr, drawSprite, drawSpriteEmissive, atlasInfo } from '../js/art/sprites.js';
+import { buildSprites, listSprites, spr, drawSprite, drawSpriteEmissive, atlasInfo, SHIP_META, FLAME_DY } from '../js/art/sprites.js';
 
 const q = new URLSearchParams(location.search);
 const $ = (s) => document.querySelector(s);
@@ -128,7 +129,7 @@ function render() {
   for (const name of names) {
     const s = spr(name);
     const card = document.createElement('div'); card.className = 'card'; card.dataset.name = name;
-    card.innerHTML = `<h3>${name}</h3><div class="meta">${s.w}×${s.h} · frames ${s.frames} · dirs ${s.dirs} · fps ${s.fps}` +
+    card.innerHTML = `<h3>${name}</h3><div class="meta">${s.w}×${s.h}${s.dirs > 1 ? ` (art ${s.bw}×${s.bh})` : ''} · frames ${s.frames} · dirs ${s.dirs} · fps ${s.fps}` +
       `${s.teamed ? ' · teamed' : ''}${s.emissive ? ' · emissive' : ''}</div>`;
     const fr = [...Array(s.frames).keys()];
     if (SECTIONS.includes('frames')) {
@@ -154,6 +155,136 @@ function render() {
   // live animation strip for everything (1x + zoom, in-game look)
   window.__rendered = names.length;
 }
+
+// ---- In-game look: an animated composite scene with bloom (main + light + blur(light)) ----
+const SW = 240, SH = 270;
+const SZ = +(q.get('sz') || 3);
+const sceneC = $('#scene');
+sceneC.width = SW * SZ; sceneC.height = SH * SZ;
+sceneC.style.width = Math.min(SW * SZ, innerWidth - 24) + 'px';  // ~phone density on mobile
+const mainC = document.createElement('canvas'), lightC = document.createElement('canvas');
+mainC.width = lightC.width = SW; mainC.height = lightC.height = SH;
+const g = mainC.getContext('2d'), lg = lightC.getContext('2d'), og = sceneC.getContext('2d');
+g.imageSmoothingEnabled = lg.imageSmoothingEnabled = og.imageSmoothingEnabled = false;
+let seed = 3; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const stars = [...Array(140)].map(() => ({ x: rnd() * SW | 0, y: rnd() * SH | 0, b: rnd(), p: rnd() * 6 }));
+const D = (name, f, x, y, opt) => { drawSprite(g, name, f, x, y, opt); drawSpriteEmissive(lg, name, f, x, y, opt); };
+const fr = (name, t) => { const s = spr(name); return Math.floor(t * (s.fps || 8)) % s.frames; };
+
+function drawScene(t) {
+  // background
+  const bg = g.createLinearGradient(0, 0, 0, SH);
+  bg.addColorStop(0, '#0a0818'); bg.addColorStop(1, '#05040c');
+  g.fillStyle = bg; g.fillRect(0, 0, SW, SH);
+  const neb = g.createRadialGradient(190, 150, 5, 190, 150, 120);
+  neb.addColorStop(0, 'rgba(106,63,208,0.28)'); neb.addColorStop(1, 'rgba(10,8,24,0)');
+  g.fillStyle = neb; g.fillRect(0, 0, SW, SH);
+  const neb2 = g.createRadialGradient(40, 220, 5, 40, 220, 100);
+  neb2.addColorStop(0, 'rgba(23,144,127,0.22)'); neb2.addColorStop(1, 'rgba(10,8,24,0)');
+  g.fillStyle = neb2; g.fillRect(0, 0, SW, SH);
+  for (const st of stars) {
+    const a = 0.25 + 0.6 * st.b * (0.6 + 0.4 * Math.sin(t * 2 + st.p));
+    g.fillStyle = `rgba(223,232,247,${a})`; g.fillRect(st.x, (st.y + t * 8 * (0.3 + st.b)) % SH | 0, 1, 1);
+  }
+  lg.globalCompositeOperation = 'source-over';
+  lg.fillStyle = '#000'; lg.fillRect(0, 0, SW, SH);
+
+  // title
+  D('logo', fr('logo', t), 120, 31);
+  D('logo_sub', 0, 120, 62);
+
+  // the Choir
+  D('en_bastion', 0, 120, 102);
+  D('en_carapace', fr('en_carapace', t), 38, 96);
+  D('en_weaver', fr('en_weaver', t), 202, 94);
+  D('en_eye', Math.floor(t * 2) % 8 < 4 ? 0 : Math.min(3, Math.floor(t * 8) % 8 - 3), 22, 132);
+  D('en_hornet', fr('en_hornet', t), 60, 134);
+  D('en_sentinel', fr('en_sentinel', t), 180, 134);
+  D('en_shard', fr('en_shard', t), 218, 134);
+  D('en_phantom', fr('en_phantom', t), 90, 150);
+  D('en_wisp', fr('en_wisp', t), 150, 150);
+  for (let i = 0; i < 3; i++) D('en_mite', fr('en_mite', t + i * 0.3), 112 + i * 12, 132 + (i & 1) * 4);
+  D('en_dart', 0, 200, 160, { dir: Math.PI * 0.85 });
+  D('en_lancet', 0, 232, 168, { dir: Math.PI + Math.sin(t) * 0.6 });
+  D('en_seeker', fr('en_seeker', t), 70, 160);
+  D('en_mine', fr('en_mine', t), 42, 158);
+  D('en_rock_l', 1, 18, 186); D('en_rock_m', 2, 44, 182); D('en_rock_s', 3, 58, 196);
+  D('en_turret', 0, 222, 196); D('en_turret_gun', 0, 222, 196, { dir: Math.PI + Math.sin(t * 1.3) * 0.8 });
+
+  // pickups & beacon
+  D('pk_power', fr('pk_power', t), 86, 186); D('pk_bomb', fr('pk_bomb', t), 102, 190);
+  D('pk_overdrive', fr('pk_overdrive', t), 118, 186); D('pk_life', fr('pk_life', t), 136, 190);
+  D('pk_gem_s', fr('pk_gem_s', t), 152, 186); D('pk_gem_l', fr('pk_gem_l', t), 162, 190);
+  D('beacon', fr('beacon', t), 190, 200, { team: 2 });
+
+  // player craft (team colors), flames under engines, drones, their fire
+  const ships = ['ship_aurora', 'ship_tempest', 'ship_seraph', 'ship_valkyrie'];
+  ships.forEach((name, team) => {
+    const x = 36 + team * 56, y = 240 + Math.sin(t * 1.5 + team) * 3;
+    const bank = Math.round(2 + 2 * Math.sin(t * 1.2 + team * 1.7));
+    // shots
+    if (team === 0) for (let k = -2; k <= 2; k++) for (let j = 0; j < 3; j++) {
+      const ang = k * 0.16, d = ((t * 180 + j * 26) % 78) + 14;
+      D('pb_vulcan', 0, x + Math.sin(ang) * d, y - 10 - Math.cos(ang) * d, { team, dir: ang });
+    }
+    if (team === 1) {
+      for (let yy = y - 16; yy > y - 90; yy -= 8) D('pb_laser_body', fr('pb_laser_body', t), x, yy, { team });
+      D('pb_laser_head', fr('pb_laser_head', t), x, y - 92, { team });
+    }
+    if (team === 2) for (let j = 0; j < 4; j++) {
+      const d = ((t * 90 + j * 22) % 80) + 8, side = j & 1 ? 1 : -1;
+      const ang = side * (0.5 - d / 200);
+      D('pb_missile', 0, x + side * (9 + d * 0.25), y - 6 - d, { team, dir: ang });
+    }
+    if (team === 3) for (let j = 0; j < 2; j++) {
+      const d = ((t * 120 + j * 40) % 80) + 14;
+      D(j ? 'pb_wave_l' : 'pb_wave', fr('pb_wave', t), x, y - d, { team });
+    }
+    const meta = SHIP_META[name];
+    for (const [ex, ey] of meta.engines) D('flame_s', fr('flame_s', t + ex * 0.07), x + ex, y + ey + FLAME_DY, { team });
+    D(name, bank, x, y, { team });
+    for (const side of [-1, 1]) {
+      D('option_drone', fr('option_drone', t), x + side * 16, y + 4 + Math.sin(t * 3 + side) * 2, { team });
+      D('pb_option', 0, x + side * 16, y - 8 - ((t * 200) % 40), { team });
+    }
+    if (team === 1) D('shield_bubble', fr('shield_bubble', t), x, y, { team, alpha: 0.6 });
+  });
+  // enemy fire drawn last (most readable)
+  const cols = ['p', 'o', 'v', 'c'];
+  for (let k = 0; k < 16; k++) {
+    const ang = k / 16 * Math.PI * 2 + t * 0.4, d = 20 + (t * 22) % 30;
+    D('eb_orb_' + cols[k & 3], fr('eb_orb_p', t), 120 + Math.cos(ang) * d, 108 + Math.sin(ang) * d);
+  }
+  for (let k = 0; k < 7; k++) {
+    const ang = Math.PI / 2 + (k - 3) * 0.18, d = 18 + (t * 40 + k * 3) % 40;
+    D('eb_needle_c', 0, 180 + Math.cos(ang) * d, 134 + Math.sin(ang) * d, { dir: Math.PI - (k - 3) * 0.18 });
+  }
+  for (let k = 0; k < 5; k++) D('eb_small_o', fr('eb_small_o', t), 30 + k * 4, 112 + k * 7);
+  D('eb_big_v', fr('eb_big_v', t), 22, 150);
+  D('eb_big_p', fr('eb_big_p', t), 108, 170);
+  D('eb_star_o', fr('eb_star_o', t), 64, 116);
+  D('eb_ring_v', fr('eb_ring_v', t), 150, 172);
+  D('eb_needle_p', 0, 176, 184, { dir: 3.3 }); D('eb_needle_o', 0, 186, 180, { dir: 2.9 });
+  D('eb_small_p', 0, 96, 206); D('eb_small_v', 1, 104, 212); D('eb_small_c', 0, 112, 206);
+
+  // composite: main, + light, + bloom(light)
+  og.globalCompositeOperation = 'source-over';
+  og.filter = 'none';
+  og.drawImage(mainC, 0, 0, SW * SZ, SH * SZ);
+  og.globalCompositeOperation = 'lighter';
+  og.drawImage(lightC, 0, 0, SW * SZ, SH * SZ);
+  og.filter = `blur(${SZ * 2}px)`;
+  og.drawImage(lightC, 0, 0, SW * SZ, SH * SZ);
+  og.filter = `blur(${SZ * 6}px)`;
+  og.drawImage(lightC, 0, 0, SW * SZ, SH * SZ);
+  og.filter = 'none';
+  og.globalCompositeOperation = 'source-over';
+}
+const tFixed = q.get('t');
+if (q.get('scene') === '0') sceneC.style.display = 'none';
+else if (tFixed != null) drawScene(+tFixed);
+else { const t0s = performance.now(); const loop = () => { drawScene((performance.now() - t0s) / 1000); requestAnimationFrame(loop); }; loop(); }
+
 filterEl.addEventListener('change', render);
 zoomEl.addEventListener('change', render);
 render();

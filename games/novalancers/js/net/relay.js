@@ -7,15 +7,17 @@
 //   lobby             public-room announcements (quick match discovery)
 //
 // The host listens on every reachable broker; a client probes all brokers in parallel and
-// keeps the first one on which the host answers. Messages are batched per ~50 ms flush so
-// the publish rate on public brokers stays low (≤ 20/s per direction per link).
+// keeps the first one on which the host answers. Messages queued in the same task share one
+// publish, and a token bucket paces publishes (≤ 25/s per direction per link on average),
+// keeping the load on the free public brokers low.
 
 import { MqttClient } from './mqtt.js';
 import {
   TOPIC_ROOT, LOBBY_TOPIC, MAX_ENVELOPE, CID_RE, BAD, isObj, now, sleep, validInfo,
 } from './common.js';
 
-const FLUSH_MS = 50;
+const PUB_RATE = 25;          // sustained publishes/s per link direction (token bucket)
+const PUB_BURST = 3;
 const SPLIT = 12000;          // start a new envelope beyond this many chars
 const MAX_QUEUE = 512;        // outbound backlog cap while a broker is reconnecting
 const MAX_PENDING_CIDS = 32;  // unbound relay peers the host tracks at once
@@ -24,6 +26,31 @@ const PROBE_WAIT = 2200;      // how long a client waits for the host on one bro
 export function roomTopics(code) {
   const root = `${TOPIC_ROOT}/${code}`;
   return { h: `${root}/h`, b: `${root}/b`, c: (cid) => `${root}/c/${cid}` };
+}
+
+/**
+ * Publish pacing: messages queued in the same task are coalesced into one publish, and a
+ * token bucket keeps the average publish rate ≤ PUB_RATE without adding latency to a
+ * steady 20 Hz stream (a fixed min-spacing rule would make such a stream drift late).
+ */
+class Pacer {
+  constructor() {
+    this.tokens = PUB_BURST;
+    this.t = now();
+  }
+  _refill() {
+    const t = now();
+    this.tokens = Math.min(PUB_BURST, this.tokens + (t - this.t) * PUB_RATE / 1000);
+    this.t = t;
+  }
+  delay() {
+    this._refill();
+    return this.tokens >= 1 ? 0 : Math.ceil((1 - this.tokens) * 1000 / PUB_RATE);
+  }
+  take() {
+    this._refill();
+    this.tokens = Math.max(-PUB_BURST, this.tokens - 1);
+  }
 }
 
 /** Pack pre-serialized messages into one or more envelopes. */
@@ -105,7 +132,7 @@ export class RelayHub {
     this.onlink = null;       // (link) => void, first valid envelope from an unknown cid
     this.q = [];
     this.flushTimer = 0;
-    this.lastFlush = 0;
+    this.pacer = new Pacer();
     this.closed = false;
     this._lobbyFn = null;
   }
@@ -201,18 +228,15 @@ export class RelayHub {
     if (this.q.length >= MAX_QUEUE) this.q.shift();
     this.q.push({ s: str, to });
     if (urgent) { this.flush(); return; }
-    if (!this.flushTimer) {
-      const wait = Math.max(0, FLUSH_MS - (now() - this.lastFlush));
-      this.flushTimer = setTimeout(() => this.flush(), wait);
-    }
+    if (!this.flushTimer) this.flushTimer = setTimeout(() => this.flush(), this.pacer.delay());
   }
 
   flush() {
     if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = 0; }
-    this.lastFlush = now();
     const q = this.q;
     if (!q.length) return;
     this.q = [];
+    this.pacer.take();
     let allBroadcast = true;
     for (const e of q) if (e.to) { allBroadcast = false; break; }
     if (allBroadcast) {
@@ -365,7 +389,7 @@ export class RelayClientLink {
     this.onclose = null;
     this.q = [];
     this.flushTimer = 0;
-    this.lastFlush = 0;
+    this.pacer = new Pacer();
     this.reconnecting = false;
     this._bind(mq, url);
   }
@@ -423,16 +447,14 @@ export class RelayClientLink {
     if (this.q.length >= MAX_QUEUE) this.q.shift();
     this.q.push(str);
     if (urgent) this.flush();
-    else if (!this.flushTimer) {
-      this.flushTimer = setTimeout(() => this.flush(), Math.max(0, FLUSH_MS - (now() - this.lastFlush)));
-    }
+    else if (!this.flushTimer) this.flushTimer = setTimeout(() => this.flush(), this.pacer.delay());
     return true;
   }
 
   flush() {
     if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = 0; }
     if (!this.mq || !this.q.length) return;
-    this.lastFlush = now();
+    this.pacer.take();
     const items = this.q;
     this.q = [];
     for (const env of envelopes(this.prefix, items)) this.mq.publish(this.t.h, env);

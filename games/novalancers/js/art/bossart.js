@@ -10,6 +10,28 @@
 // 1-px dark outline. Rotated directions are rendered by re-rasterizing the geometry at
 // each angle (with the light staying fixed in world space), so every baked direction
 // keeps crisp single-pixel outlines and correct lighting — no resampled pixel mush.
+//
+// API
+//   makeBossArt(onProgress?, { bosses?: ['warden'|'wyrm'|'prism'|'dread'|'heart'] })
+//       -> { [spriteName]: def } in the registerSprite() shape (DESIGN.md §5)
+//   buildBossArt(onProgress?, opt?)  makeBossArt + registerSprite() for every sprite
+//   BOSS_META  attachment points / collision shapes (px, relative to the named sprite's
+//              center, for dir 0 / unflipped art). Static: available at import time.
+//
+// Conventions
+//   * Rotated sprites (dirs > 1): dir 0 points UP, clockwise. Their frames are square
+//     (max(w, h) of the DESIGN target) so every baked direction fits:
+//     boss_prism_shard 35x35, boss_heart_petal 41x41, boss_wyrm_head 45x45.
+//   * boss_warden_arm is the LEFT arm; draw the right one with flipX and mirror the x of
+//     armPivot / armTip. Arm sprite center = hull + armL - armPivot (right: hull + armR -
+//     [-armPivot[0], armPivot[1]]). Suggested order: hull, arms, turrets, core.
+//   * boss_wyrm_head frame = open ? 1 : 0; rotate BOSS_META.wyrm.mouth by the head angle.
+//     boss_wyrm_seg frame 1 = cracked / exposed. Tail dir = direction from the previous
+//     segment to the tail (tip points away from the body).
+//   * boss_prism_shard dir = its orbit angle (tip points outward).
+//   * boss_dread_cannon frames 0..3 = idle .. full charge (fire on 3); hatch 0 closed / 1 open.
+//   * boss_heart frames 0-3 iris pulse loop, 4 half-closed, 5 closed; halo 8 frames loop
+//     seamlessly; petal k at heart + petalR * (sin a, -cos a) with dir a.
 
 import { RAMPS, C, hexToRgb } from './palette.js';
 
@@ -52,22 +74,24 @@ function fbm(x, y, seed, oct = 3) {
   return s / n;
 }
 
-// Voronoi-ish cell distance (for rock plates / crystal crust): returns [d1, d2, cellId]
+// Voronoi cell distances (for rock plates / crystal crust): returns [d1, d2, cellId]
 const _vor = [0, 0, 0];
 function voronoi(x, y, seed) {
   const xi = Math.floor(x), yi = Math.floor(y);
-  let d1 = 9, d2 = 9, id = 0;
+  let d1 = 99, d2 = 99, bx = 0, by = 0;
   for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
     const cx = xi + i, cy = yi + j;
-    const px = cx + 0.15 + 0.7 * hash2(cx, cy, seed), py = cy + 0.15 + 0.7 * hash2(cx, cy, seed + 7);
-    const d = Math.hypot(px - x, py - y);
-    if (d < d1) { d2 = d1; d1 = d; id = hash2(cx, cy, seed + 13); } else if (d < d2) d2 = d;
+    const dx = cx + 0.15 + 0.7 * hash2(cx, cy, seed) - x, dy = cy + 0.15 + 0.7 * hash2(cx, cy, seed + 7) - y;
+    const d = dx * dx + dy * dy;
+    if (d < d1) { d2 = d1; d1 = d; bx = cx; by = cy; } else if (d < d2) d2 = d;
   }
-  _vor[0] = d1; _vor[1] = d2; _vor[2] = id;
+  _vor[0] = Math.sqrt(d1); _vor[1] = Math.sqrt(d2); _vor[2] = hash2(bx, by, seed + 13);
   return _vor;
 }
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const hyp = (a, b) => Math.sqrt(a * a + b * b);   // Math.hypot is slow in hot loops
+const hyp3 = (a, b, c) => Math.sqrt(a * a + b * b + c * c);
 const lerp = (a, b, t) => a + (b - a) * t;
 
 // Packed little-endian RGBA (ImageData Uint32 view)
@@ -76,6 +100,12 @@ function pack(hex, a = 255) {
   return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
 }
 function lum32(c) { return (c & 255) * 0.3 + ((c >>> 8) & 255) * 0.59 + ((c >>> 16) & 255) * 0.11; }
+function scale32(c, k) {
+  return ((c & 0xff000000) | (Math.round(((c >>> 16) & 255) * k) << 16) | (Math.round(((c >>> 8) & 255) * k) << 8) | Math.round((c & 255) * k)) >>> 0;
+}
+// Light-layer intensity for area glows (post adds the light layer over the color layer and
+// blooms it). Near-white ramp tops (lum >= EMI_HOT_LUM) and S.hot pixels stay at 1.
+const EMI_K = 0.6, EMI_HOT_LUM = 200;
 
 const OUTLINE = pack(C.outline);
 const P = {}; // packed ramps
@@ -84,7 +114,7 @@ const WHITE = pack('#ffffff');
 
 // Key light: top-left, above.
 const LX = -0.5, LY = -0.62, LZ = 0.6;
-const LN = Math.hypot(LX, LY, LZ);
+const LN = hyp3(LX, LY, LZ);
 const Lx = LX / LN, Ly = LY / LN, Lz = LZ / LN;
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16 - 0.5);
@@ -126,12 +156,13 @@ function initMats() {
   M.car = mat(r.carapace, { amb: 0.12, dif: 0.95, spec: 0.95 });
   M.crysM = mat([r.carapace[0], r.magenta[0], r.magenta[1], r.magenta[2], r.magenta[3], r.magenta[4], r.magenta[5]], { amb: 0.12, dif: 0.95, spec: 0.93, noSpill: true });
   M.rock = mat(r.smoke, { amb: 0.1, dif: 0.95, dither: 0.7 });
-  M.iron = mat(['#0b0708', r.rust[0], r.rust[1], r.rust[2], r.rust[3], r.rust[4], r.rust[5]], { amb: 0.1, dif: 0.95, spec: 0.95 });
   M.rust = mat(r.rust, { amb: 0.1, dif: 0.95 });
   M.gmetal = mat(['#0c0a0c', '#1c1719', '#2e2729', '#463b3b', '#655450', '#8c7466', '#b89a82'], { amb: 0.1, dif: 0.95, spec: 0.94 });
-  M.crysT = mat([r.crystal[0], r.crystal[1], r.crystal[2], r.crystal[3], r.crystal[4], r.crystal[5]], { amb: 0.12, dif: 0.95, spec: 0.9, edge: 0 });
-  M.crysV = mat([r.plasma[0], r.plasma[1], r.plasma[2], r.plasma[3], r.plasma[4], r.plasma[5]], { amb: 0.12, dif: 0.95, spec: 0.9 });
+  M.crysT = mat(['#051a1c', r.crystal[0], r.crystal[1], r.crystal[2], r.crystal[3], r.crystal[4], r.crystal[5]], { amb: 0.1, dif: 0.95, spec: 0.93, noSpill: true });
+  M.crysV = mat(['#12061f', r.plasma[0], r.plasma[1], r.plasma[2], r.plasma[3], r.plasma[4], r.plasma[5]], { amb: 0.1, dif: 0.95, spec: 0.93, noSpill: true });
   M.void = mat([r.void[0], r.void[1], r.void[2], r.void[3], r.void[4], r.void[5]], { amb: 0.1, dif: 0.9, spec: 0.96 });
+  M.abyss = mat(['#000000', '#05040c', '#0a0818'], { amb: 0, dif: 0.3, rim: 0, noSpill: true });
+  M.obs = mat(['#07050a', r.carapace[0], r.carapace[1], r.carapace[2], r.carapace[3], r.carapace[4], r.carapace[6]], { amb: 0.1, dif: 0.95, spec: 0.92 });
   M.bone = mat([r.plasma[0], r.carapace[3], r.carapace[5], r.carapace[6], '#c7a9c9', '#f1e2f0'], { amb: 0.15, dif: 0.9, spec: 0.93, dither: 0.6 });
   M.ready = true;
 }
@@ -141,6 +172,9 @@ function initMats() {
 // ---------------------------------------------------------------------------------------
 
 const NO = {};
+// scratch buffers for polygon scan conversion (max 256 vertices)
+const XS = new Float64Array(256), WXB = new Float64Array(256), WYB = new Float64Array(256);
+const PX = new Float64Array(256), PY = new Float64Array(256), PE = new Float64Array(256 * 11);
 
 class GB {
   constructor(w, h) {
@@ -153,14 +187,15 @@ class GB {
     this.p = new Uint16Array(n);
     this.e = new Uint32Array(n);
     this.sp = new Uint8Array(n); // spill ramp id for emissive pixels
+    this.hot = new Uint8Array(n); // 1 = deliberate hot point: light layer at full intensity
     this.ox = w / 2; this.oy = h / 2;
     this.reset(0);
   }
   reset(angle = 0) {
-    this.m.fill(0); this.t.fill(0); this.e.fill(0); this.z.fill(0); this.p.fill(0); this.sp.fill(0);
+    this.m.fill(0); this.t.fill(0); this.e.fill(0); this.z.fill(0); this.p.fill(0); this.sp.fill(0); this.hot.fill(0);
     this.pid = 1;
     this.stack = [];
-    this.T = [1, 0, 0, 1, 0, 0];
+    this.T = [1, 0, 0, 1, 0, 0, 1]; // 2x2 linear part, translation, uniform scale
     this.angle = angle;
     if (angle) this.rot(angle);
     this._inv();
@@ -183,6 +218,8 @@ class GB {
     return this;
   }
   flipX() { this.T[0] = -this.T[0]; this.T[1] = -this.T[1]; this._inv(); return this; }
+  // uniform scale of the local frame (normals are renormalized when shading)
+  scale(k) { const T = this.T; T[0] *= k; T[1] *= k; T[2] *= k; T[3] *= k; T[6] *= k; this._inv(); return this; }
   // run fn twice: as is, and mirrored across the local vertical axis
   sym(fn) { fn(1); this.save(); this.flipX(); fn(-1); this.restore(); return this; }
 
@@ -223,18 +260,20 @@ class GB {
       if (S.m) this.m[i] = S.m;
       if (S.dt) this.t[i] = clamp(this.t[i] + S.dt, -8, 8);
       if (S.t !== undefined) this.t[i] = S.t;
-      if (S.n) { this.nx[i] = T[0] * nu + T[2] * nv; this.ny[i] = T[1] * nu + T[3] * nv; this.nz[i] = nz; }
-      if (S.em !== undefined) { this.e[i] = S.em; this.sp[i] = S.sp || 0; }
+      if (S.n) { const ik = 1 / T[6]; this.nx[i] = (T[0] * nu + T[2] * nv) * ik; this.ny[i] = (T[1] * nu + T[3] * nv) * ik; this.nz[i] = nz; }
+      if (S.em !== undefined) { this.e[i] = S.em; this.sp[i] = S.sp || 0; this.hot[i] = S.hot ? 1 : 0; }
       if (S.dz) this.z[i] += S.dz;
       return;
     }
     this.m[i] = S.m;
-    this.nx[i] = T[0] * nu + T[2] * nv; this.ny[i] = T[1] * nu + T[3] * nv; this.nz[i] = nz;
+    const ik = 1 / T[6];
+    this.nx[i] = (T[0] * nu + T[2] * nv) * ik; this.ny[i] = (T[1] * nu + T[3] * nv) * ik; this.nz[i] = nz;
     this.z[i] = z;
     this.t[i] = S.t || 0;
     this.p[i] = pid;
     this.e[i] = S.em || 0;
     this.sp[i] = S.sp || 0;
+    this.hot[i] = S.hot ? 1 : 0;
   }
 
   _pid(S) { return S.pid || (S.decal ? 0 : this.pid++); }
@@ -259,7 +298,7 @@ class GB {
   ring(cu, cv, r0, r1, S) {
     const pid = this._pid(S), z0 = S.z || 0, mid = (r0 + r1) / 2, half = (r1 - r0) / 2, k = S.k ?? 1;
     this.scan(cu - r1, cv - r1, cu + r1, cv + r1, (i, u, v) => {
-      const du = u - cu, dv = v - cv, rr = Math.hypot(du, dv);
+      const du = u - cu, dv = v - cv, rr = hyp(du, dv);
       if (rr < r0 || rr > r1) return;
       if (S.flat) { this.put(i, S, 0, 0, 1, z0, pid); return; }
       const s = clamp((rr - mid) / half, -1, 1), w = Math.sqrt(1 - s * s * 0.9);
@@ -291,44 +330,87 @@ class GB {
   // Polygon (any simple polygon). S.bev = bevel width, S.bk = bevel tilt, S.n = fixed normal,
   // S.pil = pillow curvature (subtle light->dark gradient across big plates)
   poly(pts, S) {
-    const pid = this._pid(S), z0 = S.z || 0, bev = S.bev || 0, bk = S.bk ?? 1.1, fn = S.n, pil = S.pil || 0;
+    const pid = this._pid(S), z0 = S.z || 0, fn = S.n, pil = S.pil || 0;
+    const facet = S.facet || 0, table = S.table ?? 1e9, bev = facet ? 1e9 : S.bev || 0, bk = S.bk ?? 1.1;
     const n = pts.length;
     let u0 = 1e9, v0 = 1e9, u1 = -1e9, v1 = -1e9;
-    const X = new Float64Array(n), Y = new Float64Array(n);
+    if (n > 256) throw new Error('poly: too many vertices');
+    const X = PX, Y = PY;
     for (let k = 0; k < n; k++) {
       const u = pts[k][0], v = pts[k][1]; X[k] = u; Y[k] = v;
       if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v;
     }
     const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2, iw = 2 / Math.max(1, u1 - u0), ih = 2 / Math.max(1, v1 - v0);
-    // edges with outward normals: [ax, ay, ex, ey, 1/len2, nx, ny]
-    const E = new Float64Array(n * 7);
+    // edges with outward normals: [ax, ay, ex, ey, 1/len2, nx, ny, bbox u0, v0, u1, v1 (grown by reach)]
+    const reach = facet ? 1e9 : bev + 0.5;
+    const E = PE, EL = n * 11;
     for (let k = 0; k < n; k++) {
       const ax = X[k], ay = Y[k], bx = X[(k + 1) % n], by = Y[(k + 1) % n];
-      const ex = bx - ax, ey = by - ay, len = Math.hypot(ex, ey) || 1e-6;
+      const ex = bx - ax, ey = by - ay, len = hyp(ex, ey) || 1e-6;
       let nx = ey / len, ny = -ex / len;
       if (inPolyF(X, Y, n, (ax + bx) / 2 + nx * 0.01, (ay + by) / 2 + ny * 0.01)) { nx = -nx; ny = -ny; }
-      const o = k * 7;
+      const o = k * 11;
       E[o] = ax; E[o + 1] = ay; E[o + 2] = ex; E[o + 3] = ey; E[o + 4] = 1 / (len * len); E[o + 5] = nx; E[o + 6] = ny;
+      E[o + 7] = Math.min(ax, bx) - reach; E[o + 8] = Math.min(ay, by) - reach; E[o + 9] = Math.max(ax, bx) + reach; E[o + 10] = Math.max(ay, by) + reach;
     }
-    this.scan(u0, v0, u1, v1, (i, u, v) => {
-      if (!inPolyF(X, Y, n, u, v)) return;
+    const pix = (i, u, v) => {
       if (fn) { this.put(i, S, fn[0], fn[1], fn[2], z0, pid); return; }
       let pu = 0, pv = 0;
       if (pil) { pu = (u - cu) * iw * pil; pv = (v - cv) * ih * pil; }
       if (!bev) { this.put(i, S, pu, pv, 1, z0, pid); return; }
       let best = 1e9, bnx = 0, bny = 0;
-      for (let o = 0; o < E.length; o += 7) {
+      for (let o = 0; o < EL; o += 11) {
+        if (u < E[o + 7] || u > E[o + 9] || v < E[o + 8] || v > E[o + 10]) continue;
         let t = ((u - E[o]) * E[o + 2] + (v - E[o + 1]) * E[o + 3]) * E[o + 4];
         t = t < 0 ? 0 : t > 1 ? 1 : t;
         const dx = u - E[o] - E[o + 2] * t, dy = v - E[o + 1] - E[o + 3] * t;
         const d = dx * dx + dy * dy;
         if (d < best) { best = d; bnx = E[o + 5]; bny = E[o + 6]; }
       }
+      if (best === 1e9) { this.put(i, S, pu, pv, 1, z0, pid); return; }
       best = Math.sqrt(best);
+      if (facet) {
+        // faceted roof: flat planes sloping down to every edge, flat table on top
+        if (best * facet >= table) { this.put(i, S, pu, pv, 1, z0 + table, pid); return; }
+        this.put(i, S, bnx * facet + pu, bny * facet + pv, 1, z0 + best * facet, pid);
+        return;
+      }
       if (best >= bev) { this.put(i, S, pu, pv, 1, z0, pid); return; }
       const k = (1 - best / bev) * bk;
       this.put(i, S, bnx * k + pu, bny * k + pv, 1, z0 - (1 - best / bev) * bev * 0.4, pid);
-    });
+    };
+    // scanline fill in world space (the transform is affine, so inside-ness is preserved)
+    const T = this.T, I = this.I, W = this.w, ex0 = this.ox + T[4], ey0 = this.oy + T[5];
+    let wy0 = 1e9, wy1 = -1e9;
+    for (let k = 0; k < n; k++) {
+      const wx = ex0 + T[0] * X[k] + T[2] * Y[k], wy = ey0 + T[1] * X[k] + T[3] * Y[k];
+      WXB[k] = wx; WYB[k] = wy;
+      if (wy < wy0) wy0 = wy; if (wy > wy1) wy1 = wy;
+    }
+    const ys = Math.max(0, Math.floor(wy0)), ye = Math.min(this.h - 1, Math.ceil(wy1));
+    for (let y = ys; y <= ye; y++) {
+      const yc = y + 0.5;
+      let c = 0;
+      for (let k = 0, j = n - 1; k < n; j = k++) {
+        const ya = WYB[k], yb = WYB[j];
+        if ((ya > yc) !== (yb > yc)) {
+          const x = WXB[k] + ((yc - ya) * (WXB[j] - WXB[k])) / (yb - ya);
+          let q = c++;
+          while (q > 0 && XS[q - 1] > x) { XS[q] = XS[q - 1]; q--; }
+          XS[q] = x;
+        }
+      }
+      const dy = yc - ey0;
+      for (let q = 0; q + 1 < c; q += 2) {
+        // symmetric span rule: a pixel center lying exactly on the left OR right edge is in,
+        // so mirror()ed polygons on odd-width sprites rasterize exactly symmetric
+        const xa = Math.max(0, Math.ceil(XS[q] - 0.5 - 1e-7)), xb = Math.min(W - 1, Math.floor(XS[q + 1] - 0.5 + 1e-7));
+        for (let x = xa; x <= xb; x++) {
+          const dx = x + 0.5 - ex0;
+          pix(y * W + x, I[0] * dx + I[2] * dy, I[1] * dx + I[3] * dy);
+        }
+      }
+    }
     return this;
   }
   rect(u, v, w, h, S) { return this.poly([[u, v], [u + w, v], [u + w, v + h], [u, v + h]], S); }
@@ -336,22 +418,25 @@ class GB {
   // Generic per-pixel shape. fn(u, v, o) -> truthy to write; may set o.nu,o.nv,o.nz,o.z,o.m,o.t,o.em
   fill(u0, v0, u1, v1, S, fn) {
     const pid = this._pid(S), o = {};
+    const decalOnly = S.decal || S.clip;
     this.scan(u0, v0, u1, v1, (i, u, v, x, y) => {
-      o.nu = 0; o.nv = 0; o.nz = 1; o.z = S.z || 0; o.m = S.m; o.t = S.t || 0; o.em = S.em || 0; o.x = x; o.y = y; o.i = i;
+      if (decalOnly && !this.m[i]) return;
+      o.nu = 0; o.nv = 0; o.nz = 1; o.z = S.z || 0; o.m = S.m; o.t = S.t || 0; o.em = S.em || 0; o.hot = S.hot; o.x = x; o.y = y; o.i = i;
       if (!fn(u, v, o)) return;
       if (S.decal) {
         if (!this.m[i]) return;
         if (o.m) this.m[i] = o.m;
         if (o.dt) this.t[i] = clamp(this.t[i] + o.dt, -8, 8);
-        if (o.em) { this.e[i] = o.em; this.sp[i] = S.sp || 0; }
+        if (o.em) { this.e[i] = o.em; this.sp[i] = S.sp || 0; this.hot[i] = o.hot ? 1 : 0; }
         o.dt = 0;
         return;
       }
       if (S.clip && !this.m[i]) return;
       const T = this.T;
       this.m[i] = o.m;
-      this.nx[i] = T[0] * o.nu + T[2] * o.nv; this.ny[i] = T[1] * o.nu + T[3] * o.nv; this.nz[i] = o.nz;
-      this.z[i] = o.z; this.t[i] = o.t; this.p[i] = o.pid || pid; this.e[i] = o.em; this.sp[i] = o.em ? S.sp || 0 : 0;
+      const ik = 1 / T[6];
+      this.nx[i] = (T[0] * o.nu + T[2] * o.nv) * ik; this.ny[i] = (T[1] * o.nu + T[3] * o.nv) * ik; this.nz[i] = o.nz;
+      this.z[i] = o.z; this.t[i] = o.t; this.p[i] = o.pid || pid; this.e[i] = o.em; this.sp[i] = o.em ? S.sp || 0 : 0; this.hot[i] = o.em && o.hot ? 1 : 0;
     });
     return this;
   }
@@ -388,19 +473,34 @@ class GB {
   // Shading: G-buffer -> color + emissive Uint32 buffers
   // -------------------------------------------------------------------------------------
   shade(opt = NO) {
-    const { w, h, m, nx, ny, nz, z, t, p, e, sp } = this;
+    const { w, h, m, nx, ny, nz, z, t, p, e, sp, hot } = this;
     const n = w * h;
-    const col = new Uint32Array(n), emi = new Uint32Array(n);
+    // output buffers are reused between frames: putImageData copies them into the canvas
+    if (!this._col) {
+      this._col = new Uint32Array(n); this._emi = new Uint32Array(n);
+      this.imgCol = new ImageData(new Uint8ClampedArray(this._col.buffer), w, h);
+      this.imgEmi = new ImageData(new Uint8ClampedArray(this._emi.buffer), w, h);
+    }
+    const col = this._col, emi = this._emi;
+    col.fill(0); emi.fill(0);
     const edge = this._edge || (this._edge = new Uint8Array(n));
     edge.fill(0);
-    const shadowReach = opt.shadowReach ?? 2;
+    const shadowReach = opt.shadowReach ?? 2, ao = opt.ao !== false, emiK = opt.emiK ?? EMI_K;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const i = y * w + x, mi = m[i];
       if (!mi) continue;
-      if (e[i]) { col[i] = e[i]; emi[i] = e[i]; continue; }
+      if (e[i]) {
+        // The color layer keeps the full glow color; the light layer (added on top of it AND
+        // bloomed by post) gets a dimmed copy, so glowing areas read as lit color instead of
+        // clipping to white/lavender. White and deliberate hot points stay at full strength.
+        const c = e[i];
+        col[i] = c;
+        emi[i] = hot[i] || c === WHITE || lum32(c) >= EMI_HOT_LUM ? c : scale32(c, emiK);
+        continue;
+      }
       const Mt = MATS[mi], R = Mt.ramp, N = R.length;
       let ax = nx[i], ay = ny[i], az = nz[i];
-      const nl = Math.hypot(ax, ay, az) || 1; ax /= nl; ay /= nl; az /= nl;
+      const nl = Math.sqrt(ax * ax + ay * ay + az * az) || 1; ax /= nl; ay /= nl; az /= nl;
       const ndl = ax * Lx + ay * Ly + az * Lz;
       let I = Mt.amb + Mt.dif * Math.max(0, ndl);
       // cast shadow from taller geometry toward the light (up-left)
@@ -410,6 +510,13 @@ class GB {
         if (qx < 0 || qy < 0) break;
         const q = qy * w + qx;
         if (m[q] && z[q] - zi > 0.9 * k + 0.4) { I -= Mt.shadow; break; }
+      }
+      // ambient occlusion: crevices hemmed in by taller geometry on both sides go darker
+      if (ao && x > 1 && y > 1 && x < w - 2 && y < h - 2) {
+        const zr = zi + 1.6, w2 = w + w;
+        const occ = (m[i - 2] && z[i - 2] > zr ? 1 : 0) + (m[i + 2] && z[i + 2] > zr ? 1 : 0) +
+          (m[i - w2] && z[i - w2] > zr ? 1 : 0) + (m[i + w2] && z[i + w2] > zr ? 1 : 0);
+        if (occ >= 2) I -= 0.07 * occ;
       }
       let tv = I * (N - 1) + t[i] + Mt.lift;
       if (Mt.dither) tv += BAYER[(y & 3) * 4 + (x & 3)] * Mt.dither;
@@ -499,23 +606,14 @@ function inPolyF(X, Y, n, x, y) {
   return c;
 }
 
-function inPoly(pts, x, y) {
-  let c = false;
-  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-    const [xi, yi] = pts[i], [xj, yj] = pts[j];
-    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
-  }
-  return c;
-}
-
 // ---------------------------------------------------------------------------------------
 // Sprite building
 // ---------------------------------------------------------------------------------------
 
-function toCanvas(w, h, u32, any = true) {
+function toCanvas(w, h, img) {
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h;
-  if (any) cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(u32.buffer, u32.byteOffset, w * h * 4), w, h), 0, 0);
+  if (img) cv.getContext('2d').putImageData(img, 0, 0);
   return cv;
 }
 
@@ -528,43 +626,112 @@ function mirrorGB(src, dst) {
     for (let x = 0; x < w; x++) {
       const i = r + x, j = r + (w - 1 - x);
       dst.m[j] = src.m[i]; dst.nx[j] = -src.nx[i]; dst.ny[j] = src.ny[i]; dst.nz[j] = src.nz[i];
-      dst.z[j] = src.z[i]; dst.t[j] = src.t[i]; dst.p[j] = src.p[i]; dst.e[j] = src.e[i]; dst.sp[j] = src.sp[i];
+      dst.z[j] = src.z[i]; dst.t[j] = src.t[i]; dst.p[j] = src.p[i]; dst.e[j] = src.e[i]; dst.sp[j] = src.sp[i]; dst.hot[j] = src.hot[i];
     }
   }
 }
 
+// copy every G-buffer channel of src into dst (same size); onlyFilled = composite src over dst
+function copyGB(src, dst, onlyFilled) {
+  if (!onlyFilled) {
+    dst.m.set(src.m); dst.nx.set(src.nx); dst.ny.set(src.ny); dst.nz.set(src.nz); dst.z.set(src.z);
+    dst.t.set(src.t); dst.p.set(src.p); dst.e.set(src.e); dst.sp.set(src.sp); dst.hot.set(src.hot);
+    dst.pid = Math.max(dst.pid, src.pid);
+    return;
+  }
+  const sm = src.m, snx = src.nx, sny = src.ny, snz = src.nz, sz = src.z, st = src.t, spp = src.p, se = src.e, ssp = src.sp, sh = src.hot;
+  const dm = dst.m, dnx = dst.nx, dny = dst.ny, dnz = dst.nz, dz = dst.z, dt = dst.t, dp = dst.p, de = dst.e, dsp = dst.sp, dh = dst.hot;
+  for (let i = 0, n = sm.length; i < n; i++) {
+    if (!sm[i]) continue;
+    dm[i] = sm[i]; dnx[i] = snx[i]; dny[i] = sny[i]; dnz[i] = snz[i]; dz[i] = sz[i]; dt[i] = st[i]; dp[i] = spp[i]; de[i] = se[i]; dsp[i] = ssp[i]; dh[i] = sh[i];
+  }
+}
+
 // Build a registerSprite def. draw(g, frame, dirIndex, angle) paints the G-buffer.
-// sym: the art is left/right symmetric (odd width) -> directions past 180 deg are mirrored
-// G-buffers of their counterparts (then shaded normally, so lighting stays top-left).
-function build(w, h, { frames = 1, dirs = 1, fps = 8, shade = NO, sym = false }, draw) {
+//  sym:  the art is left/right symmetric (odd width) -> directions past 180 deg are mirrored
+//        G-buffers of their counterparts (then shaded normally, so lighting stays top-left).
+//  fx:   draw() is frame-independent geometry, painted once; fx(g, frame) adds the per-frame
+//        lights on a copy of it (big hulls whose frames only differ in running lights).
+//  over: over(g, dirIndex, angle) paints frame-independent layers once per direction; they
+//        are composited over each frame's draw() (e.g. a head whose jaw alone animates).
+//  chunk: yield after this many directions (generator), so long jobs never block the
+//        loading bar for long; yields the fraction of the job done.
+//  loop: the frames form a seamless loop (dev lint renders frame N and compares it to 0).
+// Dev lint (opts.lint = array): reports art touching the frame border without an outline,
+// and loops that do not close.
+function* build(name, w, h, opts, draw) {
+  const { frames = 1, dirs = 1, fps = 8, shade = NO, sym = false, fx = null, over = null, chunk = 8, loop = false, lint = null } = opts;
   const g = new GB(w, h);
   const out = { w, h, frameCount: frames, dirs, fps, frames: new Array(frames * dirs), emissive: new Array(frames * dirs) };
   const useSym = sym && dirs > 1 && (w & 1) && dirs % 2 === 0;
   const mg = useSym ? new GB(w, h) : null;
-  let anyEm = false;
+  const aux = fx || over ? new GB(w, h) : null;
+  let anyEm = false, first = null, borderBad = 0;
   const emit = (gb, idx) => {
     const { col, emi } = gb.shade(shade);
     let has = false;
     for (let k = 0; k < emi.length; k++) if (emi[k]) { has = true; break; }
     anyEm = anyEm || has;
-    out.frames[idx] = toCanvas(w, h, col);
-    out.emissive[idx] = toCanvas(w, h, emi, has);
+    out.frames[idx] = toCanvas(w, h, gb.imgCol);
+    out.emissive[idx] = toCanvas(w, h, has ? gb.imgEmi : null);
+    if (lint) {
+      if (idx === 0) first = col.slice();
+      if (borderPixels(col, w, h)) borderBad++;
+    }
   };
+  if (fx) {
+    aux.reset(0);
+    draw(aux, 0, 0, 0);
+    for (let f = 0; f < frames; f++) {
+      g.reset(0); copyGB(aux, g, false);
+      fx(g, f);
+      emit(g, f);
+    }
+    if (lint && loop) { g.reset(0); copyGB(aux, g, false); fx(g, frames); checkLoop(g); }
+    return finish();
+  }
   const last = useSym ? dirs / 2 : dirs - 1;
   for (let d = 0; d <= last; d++) {
     const ang = (d / dirs) * TAU;
+    if (over) { aux.reset(ang); aux.pid = 30000; over(aux, d, ang); }
     for (let f = 0; f < frames; f++) {
       g.reset(ang);
       draw(g, f, d, ang);
+      if (over) copyGB(aux, g, true);
       emit(g, d * frames + f);
       if (useSym && d > 0 && d < dirs / 2) {
         mirrorGB(g, mg);
         emit(mg, (dirs - d) * frames + f);
       }
     }
+    if (d < last && (d + 1) % chunk === 0) yield (d + 1) / (last + 1);
   }
-  if (!anyEm) out.emissive = null;
-  return out;
+  if (lint && loop) {
+    g.reset(0); draw(g, frames, 0, 0);
+    if (over) { aux.reset(0); aux.pid = 30000; over(aux, 0, 0); copyGB(aux, g, true); }
+    checkLoop(g);
+  }
+  return finish();
+  function checkLoop(gb) {
+    const { col } = gb.shade(shade);
+    let n = 0;
+    for (let i = 0; i < col.length; i++) if (col[i] !== first[i]) n++;
+    if (n) lint.push(`${name}: loop does not close (frame ${frames} differs from frame 0 by ${n} px)`);
+  }
+  function finish() {
+    if (lint && borderBad) lint.push(`${name}: ${borderBad}/${out.frames.length} frames have art on the frame border`);
+    if (!anyEm) out.emissive = null;
+    return out;
+  }
+}
+
+// count opaque non-outline pixels on the outermost ring of a shaded frame
+function borderPixels(col, w, h) {
+  let n = 0;
+  const bad = (i) => col[i] && col[i] !== OUTLINE;
+  for (let x = 0; x < w; x++) { if (bad(x)) n++; if (bad((h - 1) * w + x)) n++; }
+  for (let y = 1; y < h - 1; y++) { if (bad(y * w)) n++; if (bad(y * w + w - 1)) n++; }
+  return n;
 }
 
 // Emissive color from a ramp, t in 0..1 (0 = darkest glow, 1 = white hot)
@@ -606,7 +773,7 @@ function mirror(half) {
 
 // Tapered beam (quad) from p1 (width w1) to p2 (width w2)
 function beam(g, u1, v1, u2, v2, w1, w2, S) {
-  const dx = u2 - u1, dy = v2 - v1, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+  const dx = u2 - u1, dy = v2 - v1, L = hyp(dx, dy) || 1, nx = -dy / L, ny = dx / L;
   return g.poly([[u1 + nx * w1 / 2, v1 + ny * w1 / 2], [u2 + nx * w2 / 2, v2 + ny * w2 / 2],
     [u2 - nx * w2 / 2, v2 - ny * w2 / 2], [u1 - nx * w1 / 2, v1 - ny * w1 / 2]], S);
 }
@@ -651,7 +818,7 @@ function crystalCluster(g, u, v, dir, n, size, seed, S = {}) {
 function crust(g, u, v, r, seed, S = {}) {
   const z = S.z || 0, f = 0.2;
   g.fill(u - r - 2, v - r - 2, u + r + 2, v + r + 2, { m: S.m || M.crust, z }, (uu, vv, o) => {
-    const du = uu - u, dv = vv - v, d = Math.hypot(du, dv) / r;
+    const du = uu - u, dv = vv - v, d = hyp(du, dv) / r;
     const nn = fbm(uu * f, vv * f, seed, 2);
     const k = d + (nn - 0.5) * 0.8;
     if (k > 1) return false;
@@ -691,9 +858,66 @@ function veins(g, u, v, dir, n, len, seed, S = {}) {
   }
 }
 
+// Faceted gem mesh: verts [[u, v, h]...] (h = height toward the viewer), tris [[a, b, c]...].
+// Each triangle is a flat facet whose normal comes from its 3D plane.
+function gemMesh(g, verts, tris, S) {
+  const pid = S.pid || g.pid++;
+  for (const [a, b, c] of tris) {
+    const A = verts[a], B = verts[b], Cc = verts[c];
+    const e1 = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], e2 = [Cc[0] - A[0], Cc[1] - A[1], Cc[2] - A[2]];
+    let nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0];
+    if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    const zc = (S.z || 0) + (A[2] + B[2] + Cc[2]) / 3;
+    g.poly([[A[0], A[1]], [B[0], B[1]], [Cc[0], Cc[1]]], { ...S, pid, z: zc, n: [nx, ny, nz * (S.flat ?? 1)] });
+  }
+}
+
+// Mirror a half mesh (u <= 0) into a full symmetric mesh. Vertices on u = 0 are shared.
+function mirrorMesh(verts, tris) {
+  const V = verts.slice(), map = [];
+  verts.forEach((p, i) => { if (p[0] === 0) map[i] = i; else { map[i] = V.length; V.push([-p[0], p[1], p[2]]); } });
+  const T = tris.slice();
+  for (const [a, b, c] of tris) T.push([map[a], map[c], map[b]]);
+  return [V, T];
+}
+
+// Circuit veins: the infection creeping along panel lines — axis-aligned tendrils with
+// right-angle turns, glowing near the source, darkening to magenta scars, bright end nodes.
+function circuit(g, u, v, n, len, seed, S = {}) {
+  const R = rng(seed);
+  const dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+  for (let k = 0; k < n; k++) {
+    let d = S.dir !== undefined ? (S.dir + (R() < 0.5 ? 0 : R() < 0.5 ? 1 : 3)) & 3 : (R() * 4) | 0;
+    let x = Math.round(u), y = Math.round(v), walked = 0;
+    const L = len * (0.5 + R() * 0.7);
+    while (walked < L) {
+      const step = 2 + ((R() * 4) | 0);
+      const nx = x + dirs[d][0] * step, ny = y + dirs[d][1] * step;
+      const near = walked < L * 0.4;
+      g.line(x, y, nx, ny, near ? { em: glow('magenta', S.bright ?? 0.45), sp: SP.mag } : { m: M.crysM, t: -3 });
+      x = nx; y = ny; walked += step;
+      if (R() < 0.55) d = (d + (R() < 0.5 ? 1 : 3)) & 3;
+      if (R() < 0.15) g.px(x, y, { em: glow('magenta', 0.7) });
+    }
+    g.px(x, y, { em: glow('magenta', 0.8), sp: SP.mag });
+  }
+}
+
+// Rows of tiny hull windows: most lit warm amber, some dark, some possessed magenta.
+function windows(g, u1, v1, u2, v2, step, seed, S = {}) {
+  const R = rng(seed);
+  const L = hyp(u2 - u1, v2 - v1), n = Math.max(1, Math.round(L / step));
+  for (let k = 0; k <= n; k++) {
+    const u = lerp(u1, u2, k / n), v = lerp(v1, v2, k / n), r = R();
+    if (r < (S.dark ?? 0.25)) g.px(u, v, { m: M.dark, t: 0 });
+    else if (r < (S.dark ?? 0.25) + (S.possessed ?? 0.1)) g.px(u, v, { em: glow('magenta', 0.7), sp: SP.mag });
+    else g.px(u, v, { em: glow('gold', r > 0.9 ? 0.9 : 0.65) });
+  }
+}
+
 // Row of rivets along a local line
 function rivets(g, u1, v1, u2, v2, step, S = {}) {
-  const L = Math.hypot(u2 - u1, v2 - v1), n = Math.max(1, Math.round(L / step));
+  const L = hyp(u2 - u1, v2 - v1), n = Math.max(1, Math.round(L / step));
   for (let k = 0; k <= n; k++) {
     const u = lerp(u1, u2, k / n), v = lerp(v1, v2, k / n);
     g.px(u, v, { dt: S.dt ?? 2 });
@@ -827,7 +1051,7 @@ function wardenHull(g, f) {
   seam(g, -2, -6, -2, -2); seam(g, 2, -6, 2, -2);
   g.circ(0, 8, 12, { m: M.dark, z: 3 });
   g.fill(-12, -4, 12, 20, { decal: true }, (u, v, o) => {
-    const d = Math.hypot(u, v - 8);
+    const d = hyp(u, v - 8);
     if (d > 11.5 || d < 9) return false;
     if (hash2(Math.round(u * 3), Math.round(v * 3), 3) > 0.75) { o.em = glow('magenta', 0.3); return true; }
     return false;
@@ -863,24 +1087,56 @@ function wardenHull(g, f) {
 
   // ---- scorched plating (old battle damage), port side
   g.fill(-44, -34, -18, -8, { decal: true }, (u, v, o) => {
-    const n = fbm(u * 0.25, v * 0.25, 91) - Math.hypot(u + 33, v + 25) * 0.04;
+    const n = fbm(u * 0.25, v * 0.25, 91) - hyp(u + 33, v + 25) * 0.04;
     if (n < 0.3) return false;
     o.dt = n > 0.45 ? -2 : -1;
     if (n > 0.52) o.m = M.rust;
     return true;
   });
 
+  // ---- tiny hull windows (scale cues)
+  g.sym(() => {
+    windows(g, -39, -15, -30, -15, 2, 61, { possessed: 0 });
+    windows(g, -37, 16, -37, 26, 2, 62, { possessed: 0 });
+  });
+  windows(g, -28, -12.5, -14, -12.5, 2, 63, { possessed: 0.05 });
+  windows(g, 14, -12.5, 28, -12.5, 2, 64, { possessed: 0.5 });
+
   // ---- Choir infection
   crust(g, 37, -24, 9, 11, { z: 6 });
-  veins(g, 33, -21, 3.8, 6, 20, 12);
+  circuit(g, 32, -18, 5, 26, 12);
+  veins(g, 35, -20, 3.9, 3, 9, 13);
   crystalCluster(g, 34, -22, 0.35, 3, 11, 75, { z: 8, spread: 0.5 });
   crystalCluster(g, 41, -25, 1.0, 5, 19, 71, { z: 10, tip: WHITE, spread: 0.38, fat: 0.2 });
   crust(g, -33, 29, 6, 21, { z: 6 });
-  veins(g, -32, 26, 0.3, 3, 12, 22);
+  circuit(g, -32, 24, 3, 18, 22, { dir: 3 });
   crystalCluster(g, -35, 31, -2.45, 3, 9, 72, { z: 7, tip: glow('magenta', 1) });
   crust(g, 9, -3, 4, 31, { z: 6 });
   crystalCluster(g, 10, -4, 0.5, 3, 7, 73, { z: 7 });
-  veins(g, 6, -3, -1.2, 2, 10, 32);
+  circuit(g, 7, -4, 2, 12, 32, { dir: 2 });
+}
+
+// Per-frame lights (applied as decals over the static hull): running lights, strobes,
+// engine flicker, bridge windows.
+function wardenLights(g, f) {
+  const on = f === 0;
+  g.sym(() => {
+    for (let v = -2; v <= 26; v += 4) g.px(-23, v, { em: glow('cyan', on === (v % 8 === 2) ? 0.7 : 0.45), sp: SP.cyan });
+  });
+  g.ell(-18, -36.2, 2.8, 0.9, { decal: true, em: glow('plasma', on ? 0.85 : 0.7), sp: SP.violet });
+  g.ell(18, -36.2, 2.8, 0.9, { decal: true, em: glow('plasma', on ? 0.7 : 0.85), sp: SP.violet });
+  g.px(-18, -36, { em: glow('plasma', 1) }); g.px(18, -36, { em: glow('plasma', 1) });
+  for (let k = -7; k <= 6; k++) if (k & 1) g.px(k + 0.5, -17.5, { em: glow('gold', k === 3 && !on ? 0.35 : 0.7), sp: SP.amber });
+  g.px(9, -35.5, { em: on ? pack('#ff5a5a') : pack('#5a1018') });
+  g.sym(() => {
+    g.px(-17, 1, { em: glow('magenta', on ? 0.6 : 0.4), sp: SP.mag });
+    g.px(-18, 1, { em: glow('magenta', on ? 0.45 : 0.6), sp: SP.mag });
+  });
+  g.px(-6, 30, { em: on ? glow('gold', 0.8) : glow('gold', 0.4) });
+  g.circ(-62.5, -19, 1.1, { decal: true, em: on ? glow('lime', 0.8) : glow('lime', 0.4) });
+  g.circ(62.5, -19, 1.1, { decal: true, em: on ? pack('#ff5a5a') : pack('#7a1420') });
+  g.px(-32, 36, { em: on ? WHITE : glow('steel', 0.3) });
+  g.px(32, 36, { em: on ? glow('steel', 0.3) : WHITE });
 }
 
 function wardenArm(g) {
@@ -894,7 +1150,7 @@ function wardenArm(g) {
   // forearm
   g.cyl(-1, 4, 5, 13, 1.2, { m: M.steel, z: 4.5 });
   beam(g, -4, 2, 0, 15, 10, 7.5, { m: M.paint, z: 5.5, bev: 1.6, bk: 1.3, pil: 0.3 });
-  hazard(g, -8, 10, 14, 4, { dir: -1 });
+  hazard(g, -6, 12, 12, 2.5, { dir: -1 });
   seam(g, -7, 8, 3, 7);
   g.px(-3, 11, { em: glow('gold', 0.8), sp: SP.amber });
   g.px(1, 11, { em: glow('gold', 0.8), sp: SP.amber });
@@ -953,13 +1209,13 @@ function wardenCore(g, f) {
   for (const [u, v] of [[-6, -7], [6, -7], [-6, 7], [6, 7]]) g.px(u, v, { dt: 2 });
 }
 
-function makeWarden() {
-  const hull = build(129, 81, { frames: 2, fps: 3 }, wardenHull);
-  const arm = build(37, 57, {}, wardenArm);
-  const turret = build(15, 15, { dirs: 16 }, wardenTurret);
-  const core = build(21, 17, { frames: 4, fps: 8 }, wardenCore);
-  BOSS_META.warden = WARDEN;
-  return { boss_warden: hull, boss_warden_arm: arm, boss_warden_turret: turret, boss_warden_core: core };
+function wardenJobs() {
+  return [
+    ['boss_warden', 129, 81, { frames: 2, fps: 3, fx: wardenLights }, wardenHull],
+    ['boss_warden_arm', 37, 57, {}, wardenArm],
+    ['boss_warden_turret', 15, 15, { dirs: 16 }, wardenTurret],
+    ['boss_warden_core', 21, 17, { frames: 4, fps: 8 }, wardenCore],
+  ];
 }
 
 // =======================================================================================
@@ -1008,7 +1264,7 @@ function wyrmSeg(g, f) {
   // basalt carapace with radial magma cracks from a central vent
   const rr = open ? 10.4 : 10;
   g.fill(-rr, -rr, rr, rr, { m: M.rock, z: 5, sp: open ? SP.fireS : SP.ember }, (u, v, o) => {
-    const d = Math.hypot(u, v) / rr;
+    const d = hyp(u, v) / rr;
     if (d > 1) return false;
     const w = Math.sqrt(1 - d * d);
     const heat = basalt(u, v, o, 303, 0.16, 0, 0, 1, open ? 0.22 : 0.09);
@@ -1027,14 +1283,8 @@ function wyrmSeg(g, f) {
   });
 }
 
-function wyrmHead(g, f) {
+function wyrmJaw(g, f) {
   const open = f === 1;
-  // swept-back cheek spikes and a crown of short spines at the rear of the skull
-  g.sym(() => {
-    beam(g, -10, 6, -13.5, 17, 5, 0.5, { m: M.gmetal, z: 4, bev: 1.1, bk: 1.3 });
-    beam(g, -5, 12, -6.5, 19.5, 4, 0.5, { m: M.gmetal, z: 3.5, bev: 1, bk: 1.3 });
-  });
-  beam(g, 0, 13, 0, 20.5, 4, 0.5, { m: M.gmetal, z: 3.5, bev: 1, bk: 1.3 });
   // molten maw at the snout tip
   g.ell(0, -16, open ? 6 : 3, open ? 6 : 3.4, { m: M.dark, z: 2, em2: (r2) => glow('fire', clamp(1.05 - r2 * 0.8, 0.3, 1)), sp: SP.fireS });
   if (open) {
@@ -1049,6 +1299,16 @@ function wyrmHead(g, f) {
     g.px(4.2, -11.8, { em: glow('ember', open ? 0.9 : 0.55), sp: SP.ember });
     g.restore();
   });
+}
+
+// frame-independent layers of the head, composited over the jaw frames
+function wyrmHead(g) {
+  // swept-back cheek spikes and a crown of short spines at the rear of the skull
+  g.sym(() => {
+    beam(g, -10, 6, -13.5, 17, 5, 0.5, { m: M.gmetal, z: 4, bev: 1.1, bk: 1.3 });
+    beam(g, -5, 12, -6.5, 19.5, 4, 0.5, { m: M.gmetal, z: 3.5, bev: 1, bk: 1.3 });
+  });
+  beam(g, 0, 13, 0, 20.5, 4, 0.5, { m: M.gmetal, z: 3.5, bev: 1, bk: 1.3 });
   // skull: broad basalt wedge with a pointed snout
   const skull = mirror([[0, -17.5], [-3, -17], [-6, -12.5], [-9, -7], [-12, -1], [-13.5, 5], [-12, 11], [-7, 15], [0, 16]]);
   const SX = new Float64Array(skull.map((p) => p[0])), SY = new Float64Array(skull.map((p) => p[1]));
@@ -1105,41 +1365,682 @@ function wyrmTail(g) {
   });
   g.line(-4, 2.5, 4, 2.5, { em: glow('ember', 0.75), sp: SP.ember });
   g.sym(() => beam(g, -4.5, 5, -8.5, 8.5, 2.6, 0.4, { m: M.gmetal, z: 4, bev: 0.8 }));
-  g.poly([[0, -9.5], [-2.2, -4], [-1.2, -2], [1.2, -2], [2.2, -4]], { m: M.gmetal, z: 8, bev: 1, bk: 1.4 });
-  g.px(0, -4, { em: glow('fire', 0.9), sp: SP.fire });
+  g.poly([[0, -10], [-2.4, -4.5], [-1.4, -2], [1.4, -2], [2.4, -4.5]], { m: M.gmetal, z: 8, bev: 1, bk: 1.4 });
+  g.line(0, -9, 0, -5, { em: glow('ember', 0.7), sp: SP.ember });
+  g.px(0, -4, { em: glow('fire', 1), sp: SP.fireS });
+  g.px(0, -9.5, { em: glow('fire', 0.9) });
 }
 
-function makeWyrm() {
-  const seg = build(29, 29, { frames: 2, fps: 4 }, wyrmSeg);
-  const head = build(45, 45, { frames: 2, dirs: 32, fps: 4, sym: true }, wyrmHead);
-  const tail = build(21, 21, { dirs: 32, sym: true }, wyrmTail);
-  BOSS_META.wyrm = WYRM;
-  return { boss_wyrm_head: head, boss_wyrm_seg: seg, boss_wyrm_tail: tail };
+function wyrmJobs() {
+  return [
+    ['boss_wyrm_head', 45, 45, { frames: 2, dirs: 32, fps: 4, sym: true, over: wyrmHead }, wyrmJaw],
+    ['boss_wyrm_seg', 29, 29, { frames: 2, fps: 4 }, wyrmSeg],
+    ['boss_wyrm_tail', 21, 21, { dirs: 32, sym: true }, wyrmTail],
+  ];
 }
 
-// @@BOSSES@@
+// =======================================================================================
+// 3. PRISM — crystal array entity (S3 Veil Nebula)
+// A great faceted teal crystal with violet satellite crystals, held in Choir carapace
+// clamps, an eye of light suspended inside. Facets come from a straight-skeleton "roof"
+// over each outline; a light band sweeps across the facets over the 4 shimmer frames.
+// =======================================================================================
 
-const BOSSES = [makeWarden, makeWyrm];
+const PRISM = {
+  shardOrbitR: 40,      // orbit radius of the shard sprites around the prism center
+  eye: [0, -3],         // weak point
+  coreR: 7,
+  shardR: 5,            // shard collision: capsule of radius shardR, length shardLen along its dir
+  shardLen: 26,
+  bodyRx: 15, bodyRy: 27, // body collision ellipse
+};
+
+// Crystal column mesh pointing along -v (tip at -len, base at +base): side facets meet on a
+// central ridge, tip facets converge on the point.
+function crystalColumn(g, len, hw, S, base = len * 0.32) {
+  const H = hw * (S.ridgeH ?? 1.3);
+  const [V, T] = mirrorMesh(
+    [[0, -len, 0], [-hw * 0.8, -len * 0.5, 0], [-hw, 0, 0], [-hw * 0.7, base * 0.8, 0], [0, base, 0], [0, -len * 0.5, H], [0, base * 0.45, H * 0.9]],
+    [[0, 1, 5], [1, 2, 6], [1, 6, 5], [2, 3, 6], [3, 4, 6]]);
+  gemMesh(g, V, T, S);
+}
+
+// sweeping shimmer band: brightens facets (decal) where the band crosses them
+function shimmer(g, u0, v0, u1, v1, phase, width, mt) {
+  g.fill(u0, v0, u1, v1, { decal: true }, (u, v, o) => {
+    const k = u * 0.55 + v - phase;
+    if (Math.abs(k) > width) return false;
+    const i = o.i;
+    if (g.m[i] !== mt || g.e[i]) return false;
+    o.dt = Math.abs(k) < width * 0.35 ? 2 : 1;
+    return true;
+  });
+}
+
+function sparkle(g, u, v, r, c) {
+  g.px(u, v, { em: WHITE });
+  for (let k = 1; k <= r; k++) {
+    const cc = k === r ? glow(c, 0.6) : glow(c, 0.9);
+    g.px(u + k, v, { em: cc }); g.px(u - k, v, { em: cc }); g.px(u, v + k, { em: cc }); g.px(u, v - k, { em: cc });
+  }
+}
+
+function prismBody(g, f) {
+  // ---- satellite crystals (violet), behind the main body
+  g.sym(() => {
+    g.save().tr(-11, 9).rot(-2.25);
+    crystalColumn(g, 16, 5, { m: M.crysV, z: 2 });
+    g.line(0, 1, 0, -8, { em: glow('plasma', 0.6), sp: SP.violet });
+    g.restore();
+    g.save().tr(-8, -15).rot(-0.6);
+    crystalColumn(g, 13, 4.2, { m: M.crysV, z: 2 });
+    g.line(0, 1, 0, -6, { em: glow('plasma', 0.6), sp: SP.violet });
+    g.restore();
+    g.save().tr(-5, 21).rot(-2.8);
+    crystalColumn(g, 9, 3, { m: M.crysV, z: 2 });
+    g.restore();
+  });
+
+  // ---- the great crystal: a hand-cut gem mesh
+  const [V, T] = mirrorMesh(
+    [[0, -29, 0], [-8, -19, 0], [-13.5, -5, 0], [-11, 13, 0], [-4, 25, 0], [0, 28, 0],
+     [-4.5, -18, 9], [-8.5, -5, 10], [-7, 10, 10], [-2.5, 20, 9], [0, -13, 14], [0, -3, 16], [0, 13, 14]],
+    [[0, 1, 6], [0, 6, 10], [1, 2, 7], [1, 7, 6], [2, 3, 8], [2, 8, 7], [3, 4, 9], [3, 9, 8], [4, 5, 9], [9, 5, 12],
+     [6, 7, 11], [6, 11, 10], [7, 8, 11], [8, 12, 11], [8, 9, 12]]);
+  gemMesh(g, V, T, { m: M.crysT, z: 4 });
+
+  // internal refraction: light paths flare in turn across the frames
+  const paths = [
+    [[-4.5, -18], [0, -3], [7, 10]], [[4.5, -18], [0, -3], [-7, 10]], [[-8.5, -5], [8.5, -5]], [[0, -13], [0, 13]],
+    [[-7, 10], [2.5, 20]], [[7, 10], [-2.5, 20]], [[-4.5, -18], [4.5, -18]], [[-8.5, -5], [0, 13], [8.5, -5]],
+  ];
+  paths.forEach((pth, k) => {
+    const hot = (k + f) % 4 === 0;
+    g.polyline(pth, { em: glow('crystal', hot ? 0.95 : 0.6), sp: SP.teal });
+  });
+
+  // shimmer band sweeping down across the facets
+  const phase = -40 + f * 22;
+  shimmer(g, -15, -30, 15, 30, phase, 4, M.crysT);
+  shimmer(g, -15, -30, 15, 30, phase + 44, 4, M.crysT);
+
+  // ---- Choir carapace talons gripping the girdle + socket at the base
+  g.sym(() => {
+    g.poly([[-16.5, 3], [-18, -2.5], [-16, -8], [-11.5, -11], [-12.5, -7.5], [-14.8, -3.5], [-14.8, 1.5]], { m: M.car, z: 12, bev: 1, bk: 1.3 });
+    g.px(-16.3, -1.5, { em: glow('magenta', 0.85), sp: SP.mag });
+  });
+  g.poly(mirror([[0, 21], [-5, 22.5], [-4, 27], [0, 28.5]]), { m: M.car, z: 12, bev: 0.9, bk: 1.3 });
+  g.px(0, 25, { em: glow('magenta', 0.85), sp: SP.mag });
+
+  // ---- the eye of light
+  g.poly(mirror([[0, -12], [-6.5, -3], [0, 6]]), { m: M.void, z: 13, bev: 1.2, bk: 1.2 });
+  const irisI = [0.8, 0.9, 1, 0.9][f];
+  g.fill(-6, -11.5, 6, 5.5, { m: M.void, z: 13.5, sp: SP.violetS }, (u, v, o) => {
+    const k = Math.abs(u) / 5.2 + Math.abs(v + 3) / 7.6;
+    if (k > 1) return false;
+    o.em = glow('plasma', clamp(irisI - k * 0.5, 0.2, 1));
+    if (k < 0.25) o.em = glow('plasma', 1);
+    if (Math.abs(u) < 0.6 && Math.abs(v + 3) < 5) o.em = pack(RAMPS.void[1]);
+    return true;
+  });
+  g.px(-2, -6, { em: WHITE });
+
+  const sp = [[[-8, -12], [6, 14]], [[9, -16], [-4, 20]], [[-10, 4], [3, -24]], [[8, 3], [-7, 15]]][f];
+  for (const [u, v] of sp) sparkle(g, u, v, 1, 'crystal');
+}
+
+function prismShard(g) {
+  // orbiting crystal; dir 0 = tip pointing up (orbit code points it outward)
+  crystalColumn(g, 16.5, 4.6, { m: M.crysT, z: 2 }, 13.5);
+  g.line(0, -11, 0, 8, { em: glow('crystal', 0.55), sp: SP.teal });
+  g.px(0, -12.5, { em: glow('crystal', 0.9) });
+  // carapace socket at the base with a Choir node
+  g.poly(mirror([[0, 11], [-2.8, 11.8], [-2.4, 14.8], [0, 15.8]]), { m: M.crysV, z: 5, facet: 1.2 });
+  g.px(0, 13, { em: glow('plasma', 0.9), sp: SP.violet });
+}
+
+function prismJobs() {
+  return [
+    ['boss_prism', 45, 61, { frames: 4, fps: 8 }, prismBody],
+    ['boss_prism_shard', 35, 35, { dirs: 16, sym: true }, prismShard],
+  ];
+}
+
+// =======================================================================================
+// 4. DREAD — the awakening dreadnought bridge section (S4 Leviathan Wreck)
+// A colossal bow section torn from the wreck: exposed ribs along the torn stern edge,
+// rust-streaked armor, a stepped command tower whose bridge windows now burn Choir
+// magenta, a spinal cannon down the centerline, flank turrets and drone hatches.
+// =======================================================================================
+
+const DREAD = {
+  cannon: [0, 25],            // main cannon sprite center on the body
+  cannonMuzzle: [0, 21],      // muzzle relative to the cannon sprite center
+  turrets: [[-61, -12], [61, -12], [-38, 4], [38, 4], [-23, 27], [23, 27]],
+  hatches: [[-45, -27], [45, -27], [-73, 1], [73, 1]],
+  bridge: [0, -7],            // weak point (bridge windows)
+  bridgeR: 9,
+  hullRadius: 70,
+  // collision rects [x, y, w, h] relative to the body center
+  rects: [[-62, -38, 124, 40], [-87, -26, 174, 26], [-70, 0, 140, 16], [-44, 16, 88, 16], [-20, 32, 40, 15]],
+};
+
+function dreadBody(g, f) {
+  const on = f === 0;
+  const R = rng(4404);
+
+  // ---- rib cage exposed along the torn stern (behind the plating)
+  g.rect(-60, -46, 120, 12, { m: M.dark, z: 0.5 });
+  for (let u = -58; u <= 58; u += 6.5) {
+    const top = -46 + R() * 6, bend = (R() - 0.5) * 5;
+    g.cyl(u, -34, u + bend * 0.3, top + 3, 1.2, { m: M.hullD, z: 1.5 });
+    g.cyl(u + bend * 0.3, top + 3, u + bend, top, 0.9, { m: M.hullD, z: 1.5 });
+  }
+  g.cyl(-44, -40, -12, -41, 0.9, { m: M.rust, z: 2 });
+  g.cyl(8, -41, 50, -39, 0.9, { m: M.rust, z: 2 });
+  g.fill(-60, -46, 60, -34, { decal: true }, (u, v, o) => {
+    if (u * u / 3600 + (v + 46) * (v + 46) / 144 > 1) return false; // clip to a rounded torn region
+    return false;
+  });
+
+  // ---- main hull: bow wedge with a jagged torn stern edge
+  const hull = mirror([[0, -35], [-5, -39], [-11, -36], [-17, -43], [-23, -37], [-30, -40], [-36, -35], [-43, -42], [-50, -36], [-56, -39], [-61, -34],
+    [-71, -31], [-81, -26], [-87, -17], [-87, -5], [-79, 5], [-60, 18], [-38, 31], [-20, 41], [-8, 47], [0, 47]]);
+  g.poly(hull, { m: M.rust, z: 3, bev: 2.5, bk: 1.2, pil: 0.15, t: -1 });
+
+  // armor belts (raised plating)
+  g.sym(() => {
+    g.poly([[-61, -31], [-71, -27], [-80, -22], [-84, -15], [-84, -6], [-77, 3], [-66, 9], [-52, 5], [-50, -31]], { m: M.hull, z: 5, bev: 1.6, bk: 1.3, pil: 0.3 });
+    g.poly([[-62, 13], [-48, 9], [-32, 12], [-30, 26], [-25, 36], [-38, 28]], { m: M.hull, z: 5, bev: 1.6, bk: 1.3, pil: 0.3, t: -1 });
+    g.poly([[-47, -33], [-27, -33], [-27, 0], [-31, 8], [-47, 4]], { m: M.hull, z: 5.5, bev: 1.6, bk: 1.3, pil: 0.3 });
+    seam(g, -50, -18, -82, -18); seam(g, -65, -29, -65, 7); seam(g, -47, -12, -27, -12); seam(g, -44, 16, -32, 14);
+    rivets(g, -79, -14, -68, -14, 3.5); rivets(g, -44, -31, -44, -15, 4); rivets(g, -56, 12, -36, 13, 4); rivets(g, -30, -31, -30, -15, 4);
+    // trenches with pipe runs
+    g.cyl(-49, -32, -49, 5, 1.1, { m: M.gmetal, z: 4.5 });
+    g.cyl(-26, -33, -26, 22, 1.0, { m: M.gmetal, z: 4.5 });
+    vent(g, -83, -12, 5, 6, true, { z: 5.2 });
+    vent(g, -45, -9, 7, 5, false, { z: 5.7 });
+    for (const [u, v] of [[-61, -12], [-38, 4], [-23, 27]]) {
+      g.circ(u, v, 7.6, { m: M.hullD, z: 6, h: 0.8 });
+      g.ring(u, v, 6.4, 7.6, { m: M.hull, z: 6.3, flat: true });
+    }
+    for (const [u, v] of [[-45, -27], [-73, 1]]) g.rect(u - 11.5, v - 7.5, 23, 15, { m: M.hullD, z: 5.4, bev: 1 });
+  });
+
+  // ---- spinal cannon mount down the bow
+  g.poly(mirror([[0, -2], [-14, -2], [-15, 26], [-9, 45], [0, 47]]), { m: M.hull, z: 6, bev: 2, bk: 1.3, pil: 0.3, t: -1 });
+  g.poly(mirror([[0, 2], [-9, 2], [-9, 30], [-6, 44], [0, 45]]), { m: M.dark, z: 5 });
+  for (let v = 5; v <= 41; v += 4) g.line(-8, v, 8, v, { m: M.hullD, t: 1 });
+  g.sym(() => { rivets(g, -12.5, 2, -12.5, 26, 3); g.px(-12, 34, { em: glow('magenta', on ? 0.6 : 0.4), sp: SP.mag }); });
+
+  // ---- command tower (stepped), window band facing the bow
+  g.poly(mirror([[0, -36], [-20, -36], [-23, -32], [-23, -2], [-17, 2], [0, 2]]), { m: M.hull, z: 8, bev: 2, bk: 1.3, pil: 0.3 });
+  g.poly(mirror([[0, -32], [-14, -32], [-16, -28], [-16, -4], [-11, -1], [0, -1]]), { m: M.hull, z: 10.5, bev: 1.8, bk: 1.3, pil: 0.3, t: 1 });
+  g.poly(mirror([[0, -27], [-8, -27], [-10, -22], [-10, -8], [-7, -5], [0, -5]]), { m: M.steel, z: 13, bev: 1.6, bk: 1.4 });
+  // bridge window strip along the tower's bow face (possessed: burning magenta)
+  g.poly(mirror([[0, -9], [-9.5, -8.5], [-9, -5.5], [-7, -4.5], [0, -4.5]]), { m: M.dark, z: 13.2 });
+  for (let u = -8; u <= 8; u++) {
+    if ((u & 1) === 0) g.px(u, -7.5, { em: glow('magenta', 0.85), sp: SP.magS });
+    if (Math.abs(u) < 7) g.px(u, -6, { em: glow('magenta', (u & 1) ? 0.95 : 0.6), sp: SP.magS });
+  }
+  g.px(-3, -6, { em: WHITE }); g.px(4, -7.5, { em: WHITE });
+  // tower roof: radar dome and rotating array off-centre, single mast
+  g.circ(-4, -19, 3.2, { m: M.steel, z: 15, h: 2.2 });
+  g.ring(-4, -19, 3.2, 4.1, { m: M.hullD, z: 14, flat: true });
+  g.rect(2, -24, 6, 2, { m: M.steel, z: 15, bev: 0.6 });
+  g.rect(3, -17, 5, 4, { m: M.hullD, z: 14.5, bev: 0.6 });
+  g.cyl(6, -20, 7, -34, 0.7, { m: M.steel, z: 15.5 });
+  g.px(7, -34.5, { em: on ? pack('#ff5a5a') : pack('#5a1018') });
+  g.sym(() => {
+    vent(g, -14, -29, 4, 8, true, { z: 10.7 });
+    rivets(g, -20, -33, -20, -6, 4);
+    g.rect(-14, -5, 5, 3, { m: M.hullD, z: 10.8 });
+    g.px(-19, 0, { em: glow('gold', 0.6), sp: SP.amber });
+  });
+
+  // ---- faded hull numbers + grime streaks
+  text(g, '04', -71, -24, { m: M.bone, t: -1 });
+  text(g, '04', 64, -24, { m: M.bone, t: -1 });
+  g.fill(-87, -43, 87, 47, { decal: true }, (u, v, o) => {
+    const n = fbm(u * 0.1, v * 0.14, 77, 2);
+    if (n > 0.7) { o.dt = -1; o.m = M.rust; return true; }
+    if (n > 0.48 && vnoise(u * 0.55, v * 0.06, 78) > 0.8) { o.dt = -1; return true; }
+    return false;
+  });
+  for (const [u, v, r] of [[-70, -8, 5], [34, -18, 4], [55, 14, 5]]) {
+    g.fill(u - r - 2, v - r - 2, u + r + 2, v + r + 2, { decal: true }, (uu, vv, o) => {
+      const d = hyp(uu - u, vv - v) / r + (fbm(uu * 0.4, vv * 0.4, 79) - 0.5) * 0.8;
+      if (d > 1) return false;
+      o.dt = d < 0.5 ? -3 : -2;
+      return true;
+    });
+  }
+
+  // (running lights, bridge flicker and rib sparks are applied per frame by dreadLights)
+
+  // ---- rows of tiny hull windows along the armor belts (scale cues)
+  g.sym((sg) => {
+    windows(g, -80, -21, -53, -21, 2, 450 + (sg > 0 ? 0 : 7), { possessed: sg > 0 ? 0.05 : 0.35 });
+    windows(g, -58, 22, -36, 30, 2, 451 + (sg > 0 ? 0 : 7), { possessed: sg > 0 ? 0.05 : 0.35 });
+    windows(g, -46, -30, -46, -16, 2, 452 + (sg > 0 ? 0 : 7), { possessed: sg > 0 ? 0.1 : 0.4 });
+  });
+
+  // ---- Choir awakening: crystal growth bursting from the tower, veins through the hull
+  crust(g, 18, -30, 5, 441, { z: 12 });
+  crystalCluster(g, 19, -31, 0.75, 4, 12, 442, { z: 13, tip: WHITE });
+  crust(g, -32, 20, 4, 443, { z: 7 });
+  crystalCluster(g, -33, 21, -2.3, 3, 8, 444, { z: 8 });
+  circuit(g, 16, -26, 6, 30, 445, { dir: 0 });
+  veins(g, 17, -28, 2.6, 2, 8, 448);
+  circuit(g, -30, 18, 4, 20, 446, { dir: 2 });
+}
+
+// Per-frame lights over the static body: alternating running lights, bridge flicker, sparks.
+function dreadLights(g, f) {
+  const on = f === 0;
+  g.sym(() => g.px(-12, 34, { em: glow('magenta', on ? 0.6 : 0.4), sp: SP.mag }));
+  for (let u = -8; u <= 8; u += 2) g.px(u, -7.5, { em: glow('magenta', on ? 0.85 : 0.65), sp: SP.magS });
+  g.px(4, -7.5, { em: WHITE });
+  g.px(7, -34.5, { em: on ? pack('#ff5a5a') : pack('#5a1018') });
+  const lights = [[-86, -10], [-79, 4], [-60, 17], [-40, 29], [-21, 40], [-80, -25], [-66, -31]];
+  lights.forEach(([u, v], k) => {
+    const lit = (k & 1) === (on ? 0 : 1);
+    for (const s of [1, -1]) g.px(u * s, v, { em: lit ? pack('#ff5a5a') : pack('#5a1018'), sp: lit ? SP.red : 0 });
+  });
+  for (const [u, v] of [[-47, -44], [-13, -41], [22, -44], [49, -41], [-33, -45]]) g.px(u, v, { em: glow('ember', on ? 0.9 : 0.5), sp: SP.ember });
+}
+
+function dreadCannon(g, f) {
+  // Spinal railgun pointing down (toward the player). f: 0 idle .. 3 full charge:
+  // plasma fills the channel between the rails from the breech to the muzzle.
+  const c = [0, 0.34, 0.68, 1][f];
+  // breech block
+  g.poly(mirror([[0, -21.5], [-11, -21.5], [-15.5, -17], [-15.5, -8], [-12, -4], [0, -4]]), { m: M.hull, z: 4, bev: 2, bk: 1.3, pil: 0.3 });
+  g.sym(() => {
+    vent(g, -14, -17, 3, 9, true, { z: 4.2 });
+    g.cyl(-12.5, -4, -10.5, 8, 1.6, { m: M.gmetal, z: 3.5 });
+    rivets(g, -9.5, -20, -9.5, -6, 3.5);
+  });
+  // capacitor window
+  g.rect(-6, -19.5, 12, 7, { m: M.hullD, z: 4.5, bev: 0.8 });
+  g.fill(-5, -18.5, 5, -13.5, { m: M.dark, z: 4.6, sp: c > 0.3 ? SP.violetS : SP.violet }, (u, v, o) => {
+    const k = (u + 5) / 10;
+    if (c > 0 && k <= c + 0.05) o.em = glow('plasma', clamp(0.35 + c * 0.5 + (((u + v) & 1) ? 0.1 : 0), 0, 1));
+    return true;
+  });
+  // plasma channel between the rails
+  const top = -8, bot = 20, fillTo = top + (bot - top) * c;
+  g.fill(-2.6, top, 2.6, bot, { m: M.dark, z: 3, sp: c > 0.5 ? SP.violetS : SP.violet }, (u, v, o) => {
+    if (c > 0 && v <= fillTo) {
+      const core = Math.abs(u) < 1.1;
+      const head = fillTo - v < 2.5;
+      o.em = glow('plasma', clamp((core ? 0.75 : 0.5) + c * 0.3 + (head ? 0.2 : 0), 0, 1));
+      if (c >= 1 && core) o.em = WHITE;
+    } else if (Math.abs(u) < 1.1 && ((Math.round(v) + f) % 3) === 0) o.em = pack(RAMPS.plasma[1]); // residual glow
+    return true;
+  });
+  // twin rails
+  g.sym(() => {
+    g.poly([[-2.6, -8], [-7.5, -8], [-7.5, 16], [-6, 22], [-2.6, 20]], { m: M.steel, z: 6, bev: 1.6, bk: 1.4, t: -1 });
+    g.line(-3.4, -7, -3.4, 19, { dt: -2 });
+  });
+  // armored straps across the rails
+  for (const v of [0, 11]) {
+    g.poly(mirror([[0, v - 1.4], [-8.8, v - 1.4], [-9.4, v], [-8.8, v + 1.4], [0, v + 1.4]]), { m: M.hull, z: 7.5, bev: 0.8, bk: 1.2 });
+    g.sym(() => g.px(-7.5, v, { dt: 2 }));
+    if (c > 0) g.px(0, v, { decal: true, em: glow('plasma', 0.5 + c * 0.5) });
+  }
+  // muzzle
+  g.ell(0, 20.8, 2.6, 1.4, { m: M.dark, z: 6.5, em: c > 0 ? glow('plasma', 0.35 + c * 0.65) : pack(RAMPS.plasma[0]), sp: c > 0.3 ? SP.violetS : 0 });
+  if (c >= 1) g.ell(0, 20.8, 1.3, 0.8, { decal: true, em: WHITE });
+  if (c >= 0.68) {
+    const R = rng(90 + f);
+    for (let k = 0; k < 2 + f; k++) {
+      const v = -6 + R() * 24, side = R() < 0.5 ? -1 : 1;
+      g.polyline([[side * 3, v], [side * (4.5 + R() * 2), v + 1], [side * (5 + R() * 3), v + 2.5]], { em: glow('plasma', 0.95) });
+    }
+  }
+}
+
+function dreadTurret(g) {
+  // battleship-style twin turret, dir 0 = up
+  g.circ(0, 0.5, 7.4, { m: M.hullD, z: 1, h: 1 });
+  g.ring(0, 0.5, 6.2, 7.4, { m: M.gmetal, z: 1.5 });
+  g.cyl(-1.8, -2, -1.8, -7.6, 1.1, { m: M.gun, z: 4, cap: 'flat' });
+  g.cyl(1.8, -2, 1.8, -7.6, 1.1, { m: M.gun, z: 4, cap: 'flat' });
+  g.fill(-5, -4, 5, 5.5, { m: M.hull, z: 5 }, (u, v, o) => {
+    // rounded-rear housing with a sloped front plate
+    if (v > 1.5 && u * u / 25 + (v - 1.5) * (v - 1.5) / 16 > 1) return false;
+    if (Math.abs(u) > 4.6) return false;
+    o.nu = (u / 5) * 0.8; o.nv = v < -2.5 ? -0.9 : v > 2 ? (v - 2) / 4 : 0; o.nz = 1;
+    o.z = 5 + (v < -2.5 ? 0 : 1);
+    return true;
+  });
+  g.line(-4, -2, 4, -2, { dt: 1 });
+  g.px(-2.5, 2, { dt: -2 }); g.px(2.5, 2, { dt: -2 });
+  g.px(-1.8, -7.3, { em: glow('ember', 0.75) }); g.px(1.8, -7.3, { em: glow('ember', 0.75) });
+  g.px(0, 3, { em: glow('magenta', 0.95), sp: SP.mag });
+}
+
+function dreadHatch(g, f) {
+  const open = f === 1;
+  g.rect(-10, -6, 20, 12, { m: M.hullD, z: 1, bev: 1 });
+  g.rect(-8.5, -4.5, 17, 9, { m: M.dark, z: 0.5 });
+  if (open) {
+    // interior: launch rails and the Choir glow below
+    g.fill(-8.5, -4.5, 8.5, 4.5, { m: M.dark, z: 0.5 }, (u, v, o) => {
+      const d = hyp(u / 8, v / 4.5);
+      if (d < 0.8 && ((Math.round(u) + Math.round(v)) & 1)) o.em = glow('magenta', 0.55 - d * 0.35);
+      else o.t = 1;
+      return true;
+    });
+    g.line(-6, -4, -6, 4, { m: M.hullD, t: 2 }); g.line(6, -4, 6, 4, { m: M.hullD, t: 2 });
+    g.ell(0, 0, 2.2, 1.6, { decal: true, em: glow('magenta', 0.9) });
+    // retracted door leaves
+    g.rect(-10, -6, 3, 12, { m: M.hull, z: 3, bev: 0.8 });
+    g.rect(7, -6, 3, 12, { m: M.hull, z: 3, bev: 0.8 });
+  } else {
+    g.rect(-8.5, -4.5, 8.5, 9, { m: M.hull, z: 2.5, bev: 1 });
+    g.rect(0, -4.5, 8.5, 9, { m: M.hull, z: 2.5, bev: 1 });
+    hazard(g, -8, -3.5, 16, 7, { dir: 1 });
+    g.line(0, -4.5, 0, 4.5, { dt: -3 });
+  }
+  g.px(-9, -5, { em: glow('gold', open ? 0.9 : 0.5), sp: SP.amber });
+  g.px(9, -5, { em: glow('gold', open ? 0.9 : 0.5), sp: SP.amber });
+}
+
+function dreadJobs() {
+  return [
+    ['boss_dread', 177, 97, { frames: 2, fps: 2, fx: dreadLights }, dreadBody],
+    ['boss_dread_cannon', 33, 45, { frames: 4, fps: 6 }, dreadCannon],
+    ['boss_dread_turret', 17, 17, { dirs: 16, sym: true }, dreadTurret],
+    ['boss_dread_hatch', 21, 13, { frames: 2, fps: 2 }, dreadHatch],
+  ];
+}
+
+// =======================================================================================
+// 5. HEART — the Choir Heart (S5 Event Horizon)
+// A colossal eye of glossy void: a magenta fibre iris around a black pupil ringed with a
+// thin photon ring and a white singularity point, in a socket of carapace plates with
+// crystal teeth. A 12-fold machine-crystal halo turns around it (8 frames = one period
+// of its symmetry, so it loops seamlessly), blade petals fan out beyond the halo, and a
+// raw singularity core is exposed in the final phase.
+// =======================================================================================
+
+const HEART = {
+  iris: [0, 2],          // iris center relative to the eye sprite center (it gazes down)
+  coreR: 7,              // eye weak point radius (pupil) — also core2 hit radius
+  eyeR: 23,              // eyeball radius
+  haloR: 47,             // halo ring mid radius (collision band ~ haloR ± 6)
+  haloBand: 6,
+  petalR: 64,            // petal sprite centers sit petalR from the heart center, dir = outward angle
+  petalLen: 36,          // petal blade spans petalR ± 18 along its dir
+  petalW: 7,
+  core2R: 10,
+};
+
+function heartEye(g, f) {
+  const pulse = f < 4 ? [0.7, 0.85, 1, 0.85][f] : 0.8;
+  const pupilR = f < 4 ? [3.6, 4.4, 5.4, 4.4][f] : 4;
+  const slit = f === 4 ? 7.5 : f === 5 ? 0 : 99;   // half-height of the lid opening
+  const [iu, iv] = HEART.iris;
+
+  g.circ(0, 0, 30, { m: M.car, z: 1, h: 3 });
+
+  // ---- eyeball: glossy void sphere, fibre iris, photon-ringed alien pupil
+  const IR = 12;
+  g.fill(-23.5, -23.5, 23.5, 23.5, { m: M.void, z: 2, sp: SP.mag }, (u, v, o) => {
+    const r = hyp(u, v) / 23;
+    if (r > 1) return false;
+    const w = Math.sqrt(1 - r * r);
+    o.nu = u / 23; o.nv = v / 23; o.nz = w; o.z = 2 + 7 * w;
+    const du = u - iu, dv = v - iv;
+    const pd = hyp(du, dv) / pupilR;                // the pupil is a tiny event horizon
+    if (pd < 1) { o.m = M.abyss; o.t = -9; if (f === 2 && Math.abs(du) < 0.6 && Math.abs(dv) < 0.6) o.em = glow('plasma', 0.8); return true; }
+    if (pd < 1 + 1 / pupilR) { o.em = glow('plasma', f === 2 ? 1 : 0.85); return true; } // photon ring
+    const d = hyp(du, dv);
+    if (d < IR) {
+      const a = Math.atan2(du, -dv);
+      const fib = hash2(Math.floor(((a / TAU) + 1) * 40), 3, 57), fib2 = hash2(Math.floor(((a / TAU) + 1) * 40), 9, 58);
+      const k = d / IR;
+      if (k > 0.86) { o.em = glow('magenta', 0.18); return true; }           // dark limbal ring
+      let t = pulse * (1.02 - k * 0.6) + (fib - 0.5) * 0.45;
+      if (k > 0.35 && k < 0.45) t += 0.2;                                     // collarette
+      if (fib2 > 0.8 && k > 0.45) t -= 0.35;                                  // crypts
+      o.em = glow('magenta', clamp(t, 0.15, 1));
+      return true;
+    }
+    return true;
+  });
+  // capillaries crawling toward the iris
+  const R = rng(5505);
+  for (let k = 0; k < 11; k++) {
+    let a = (k / 11) * TAU + R() * 0.3, rr = 22;
+    const pts = [];
+    while (rr > 15.5) {
+      pts.push([Math.sin(a) * rr + iu * (1 - rr / 23), -Math.cos(a) * rr + iv * (1 - rr / 23)]);
+      rr -= 1.6 + R(); a += (R() - 0.5) * 0.35;
+    }
+    g.polyline(pts, { em: glow('magenta', 0.35), sp: 0 });
+    if (R() < 0.5) g.px(pts[pts.length - 1][0], pts[pts.length - 1][1], { em: glow('magenta', 0.55) });
+  }
+  // wet specular glint (upper-left)
+  for (let k = 0; k < 7; k++) {
+    const a = -1.25 + k * 0.1;
+    g.px(Math.sin(a) * 17.5, -Math.cos(a) * 17.5 + 0.5, { em: k === 2 || k === 3 ? WHITE : glow('plasma', 0.75) });
+  }
+  g.px(-13, -9, { em: glow('plasma', 0.8) });
+
+  // ---- lids (half-closed / closed): overlapping armored carapace plates closing over the eye
+  if (slit < 99) {
+    const cv = slit ? iv * 0.3 : 0;
+    g.fill(-24, -24, 24, 24, { m: M.car, z: 12, sp: SP.magS }, (u, v, o) => {
+      const r = hyp(u, v) / 23.8;
+      if (r > 1) return false;
+      const h = slit * Math.sqrt(Math.max(0, 1 - (u / 23.5) ** 2));
+      const dv = Math.abs(v - cv) - h;
+      if (dv < 0) return false;
+      const w = Math.sqrt(1 - r * r);
+      // three plates per lid, each overlapping the next toward the opening
+      const span = (23.8 - h) / 3, idx = Math.min(2, Math.floor(dv / span)), f2 = (dv - idx * span) / span;
+      o.nu = u / 23.8; o.nv = v / 23.8 + (v > cv ? -1 : 1) * (0.6 - f2) * 0.9; o.nz = w + 0.2;
+      o.z = 12 + 3 * w + (2 - idx);
+      o.t = idx === 0 ? 0 : -1;
+      if (dv < 1.2) { o.em = glow('magenta', slit ? 0.8 : 0.9); return true; }  // glowing lid edge
+      return true;
+    });
+    if (!slit) for (let u = -18; u <= 18; u += 6) g.px(u, 0, { em: WHITE });
+    else g.sym(() => { g.px(-20, cv, { em: glow('magenta', 0.9) }); });
+  }
+}
+
+// cheap crystal spike: one roof-faceted polygon (facets meet on the central ridge)
+function spike(g, len, hw, S, base) {
+  g.poly(mirror([[0, -len], [-hw * 0.8, -len * 0.5], [-hw, 0], [-hw * 0.7, base * 0.8], [0, base]]), { ...S, facet: 1.3 });
+}
+
+// socket: 12 carapace plates with glowing seams and crystal teeth (shared by all eye frames)
+function heartSocket(g) {
+  g.ring(0, 0, 24, 30, { m: M.car, z: 1 });
+  for (let k = 0; k < 12; k++) {
+    const a0 = (k / 12) * TAU + 0.05, a1 = ((k + 1) / 12) * TAU - 0.05;
+    const pts = [];
+    for (let s = 0; s <= 4; s++) { const a = lerp(a0, a1, s / 4); pts.push([Math.sin(a) * 30, -Math.cos(a) * 30]); }
+    for (let s = 4; s >= 0; s--) { const a = lerp(a0, a1, s / 4); pts.push([Math.sin(a) * 24.5, -Math.cos(a) * 24.5]); }
+    g.poly(pts, { m: M.car, z: 3, bev: 1.6, bk: 1.3, pil: 0 });
+    const am = (k / 12) * TAU;
+    g.line(Math.sin(am) * 25, -Math.cos(am) * 25, Math.sin(am) * 29.3, -Math.cos(am) * 29.3, { em: glow('magenta', 0.5), sp: SP.mag });
+    const ac = am + TAU / 24;
+    g.px(Math.sin(ac) * 27.3, -Math.cos(ac) * 27.3, { dt: 2 });
+  }
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * TAU + TAU / 24;
+    g.save().tr(Math.sin(a) * 25.5, -Math.cos(a) * 25.5).rot(a + Math.PI);
+    shard(g, 4.5, 1.6, { m: M.crysM, z: 6 });
+    g.restore();
+  }
+
+}
+
+function heartHalo(g, f) {
+  // 12-fold symmetric outer ring turning clockwise; 24-fold inner ring turning back.
+  const a0 = (f / 8) * (TAU / 12), b0 = -(f / 8) * (TAU / 24);
+  // inner rune ring
+  g.ring(0, 0, 33.5, 36, { m: M.car, z: 2 });
+  for (let k = 0; k < 24; k++) {
+    const a = b0 + (k / 24) * TAU;
+    g.px(Math.sin(a) * 34.7, -Math.cos(a) * 34.7, { em: glow('magenta', k % 3 === 0 ? 0.9 : 0.5), sp: SP.mag });
+  }
+  // spokes linking inner and outer rings
+  for (let k = 0; k < 6; k++) {
+    const a = a0 + (k / 6) * TAU + TAU / 24;
+    g.cyl(Math.sin(a) * 36, -Math.cos(a) * 36, Math.sin(a) * 41, -Math.cos(a) * 41, 0.9, { m: M.car, z: 1.5 });
+  }
+  // outer ring: 12 armored segments, crystal spikes between them
+  for (let k = 0; k < 12; k++) {
+    const a = a0 + (k / 12) * TAU;
+    g.save().rot(a);
+    // segment: annular plate spanning +-12 deg
+    const pts = [];
+    for (let s = 0; s <= 5; s++) { const t = (-0.2 + s * 0.08); pts.push([Math.sin(t) * 47.5, -Math.cos(t) * 47.5]); }
+    for (let s = 5; s >= 0; s--) { const t = (-0.19 + s * 0.076); pts.push([Math.sin(t) * 40.5, -Math.cos(t) * 40.5]); }
+    g.poly(pts, { m: M.car, z: 4, bev: 1.5, bk: 1.3 });
+    g.line(-4, -44, 4, -44, { dt: -2 });
+    // glowing node
+    g.ell(0, -44, 1.6, 1.3, { m: M.dark, z: 5, em: glow('magenta', 0.85), sp: SP.magS });
+    g.px(0, -44, { em: WHITE });
+    // crystal spikes: long between segments, short on the segment
+    g.save().rot(TAU / 24).tr(0, -44);
+    spike(g, 10.5, 2.9, { m: M.crysM, z: 6 }, 2);
+    g.line(0, -1, 0, -6, { em: glow('magenta', 0.7), sp: SP.mag });
+    g.restore();
+    g.save().tr(0, -47);
+    spike(g, 6, 2, { m: M.crysV, z: 6 }, 1.5);
+    g.restore();
+    g.restore();
+  }
+}
+
+function heartPetal(g) {
+  // obsidian blade pointing outward (dir 0 = up); base (inner end) at +v
+  const [V, T] = mirrorMesh(
+    [[0, -19.5, 0], [-4.5, -10, 0], [-6.8, 2, 0], [-5.5, 11, 0], [-2.5, 17, 0], [0, 18.5, 0], [0, -8, 6.5], [0, 10, 6]],
+    [[0, 1, 6], [1, 2, 6], [2, 7, 6], [2, 3, 7], [3, 4, 7], [4, 5, 7]]);
+  gemMesh(g, V, T, { m: M.obs, z: 3 });
+  // crystal cutting edges
+  g.sym(() => g.polyline([[0, -19], [-4.3, -10], [-6.5, 2], [-5.3, 10]], { m: M.crysM, t: 1 }));
+  // glowing veins
+  g.line(0, 14, 0, -14, { em: glow('magenta', 0.65), sp: SP.mag });
+  g.sym(() => { g.polyline([[0, 4], [-3, -1], [-4, -6]], { em: glow('magenta', 0.4) }); g.polyline([[0, 10], [-3.5, 6], [-4.5, 2]], { em: glow('magenta', 0.4) }); });
+  g.px(0, -16, { em: WHITE });
+  // carapace root collar
+  g.poly(mirror([[0, 11], [-5, 12], [-5.5, 16], [-3, 19.5], [0, 20]]), { m: M.car, z: 8, bev: 1.2, bk: 1.3 });
+  g.line(-4.5, 14.5, 4.5, 14.5, { dt: -2 });
+  g.px(0, 17, { em: glow('magenta', 0.9), sp: SP.mag });
+}
+
+function heartCore2(g, f) {
+  // exposed singularity: black horizon, tilted accretion disk in front, lensed arc behind,
+  // a cage of broken crystal shards. 4 frames: the disk streams around and flares.
+  const ph = (f / 4) * TAU;
+  // cage shards (8), pointing inward
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * TAU + TAU / 16;
+    g.save().tr(Math.sin(a) * 19.5, -Math.cos(a) * 19.5).rot(a + Math.PI);
+    shard(g, 6 + (k & 1) * 2.5, 2.2, { m: k & 1 ? M.crysV : M.crysM, z: 2 });
+    g.restore();
+  }
+  const diskEm = (u, v, back) => {
+    const a = Math.atan2(v * 3.2, u);
+    const r = hyp(u, v * 3.2);
+    const k = 1 - Math.abs(r - 12.8) / 4.6;
+    const band = 0.5 + 0.5 * Math.sin(a * 4 - ph + r * 0.7);
+    let t = k * (0.55 + band * 0.45) * (back ? 0.8 : 1);
+    if (u < 0) t += 0.12; // doppler-bright approaching side
+    return t;
+  };
+  // lensed arc (the far side of the disk bent up over the horizon)
+  g.fill(-12, -12, 12, 3, { m: M.dark, z: 4, sp: SP.magS }, (u, v, o) => {
+    const d = hyp(u, v);
+    if (d < 7.6 || d > 11.2 || v > 1) return false;
+    const t = (1 - Math.abs(d - 9.3) / 1.9) * (0.85 + 0.15 * Math.cos(Math.atan2(u, -v) * 3 - ph));
+    if (t < 0.25) return false;
+    o.em = t > 0.8 ? WHITE : t > 0.55 ? glow('magenta', 0.95) : glow('plasma', 0.65);
+    return true;
+  });
+  // event horizon with a thin photon ring
+  g.circ(0, 0, 8, { m: M.abyss, z: 8, t: -9 });
+  g.ring(0, 0, 7.2, 8.1, { decal: true, em: glow('plasma', 0.9), sp: 0 });
+  // accretion disk (front half crosses in front of the horizon)
+  g.fill(-19, -7, 19, 7, { m: M.dark, z: 10, sp: SP.magS }, (u, v, o) => {
+    const t = diskEm(u, v, false);
+    if (t < 0.22) return false;
+    if (v < 0 && hyp(u, v) < 8.2) return false; // behind the horizon
+    o.em = t > 0.88 ? WHITE : t > 0.62 ? glow('magenta', 0.95) : t > 0.4 ? glow('magenta', 0.7) : glow('plasma', 0.5);
+    return true;
+  });
+  if (f === 2) g.px(-8, 0, { em: WHITE });
+}
+
+function heartJobs() {
+  return [
+    ['boss_heart', 63, 63, { frames: 6, fps: 6, over: heartSocket }, heartEye],
+    ['boss_heart_halo', 111, 111, { frames: 8, fps: 10 }, heartHalo],
+    ['boss_heart_petal', 41, 41, { dirs: 16, sym: true }, heartPetal],
+    ['boss_heart_core2', 41, 41, { frames: 4, fps: 10 }, heartCore2],
+  ];
+}
+
+// Boss name -> job list: [spriteName, w, h, buildOptions, drawFn]
+const BOSSES = { warden: wardenJobs, wyrm: wyrmJobs, prism: prismJobs, dread: dreadJobs, heart: heartJobs };
+Object.assign(BOSS_META, { warden: WARDEN, wyrm: WYRM, prism: PRISM, dread: DREAD, heart: HEART });
+
+// Yield to the event loop without setTimeout's nested-timer clamping (4 ms per hop)
+const yieldNow = typeof MessageChannel !== 'undefined'
+  ? () => new Promise((r) => { const ch = new MessageChannel(); ch.port1.onmessage = () => { ch.port1.close(); r(); }; ch.port2.postMessage(0); })
+  : () => new Promise((r) => setTimeout(r, 0));
 
 // ---------------------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------------------
 
-export async function makeBossArt(onProgress) {
+/**
+ * Generate boss sprite defs (registerSprite shape) for every boss, or only `opt.bosses`
+ * (e.g. { bosses: ['wyrm'] } to build the next sector's boss lazily).
+ * Yields between sprites (and inside long rotated ones) and reports cost-weighted progress 0..1.
+ * Dev only: opt.lint = [] collects art-on-frame-border and loop-seam problems.
+ */
+export async function makeBossArt(onProgress, opt = {}) {
   initMats(); initSpill();
+  const names = opt.bosses || Object.keys(BOSSES);
+  const jobs = [];
+  for (const n of names) {
+    if (!BOSSES[n]) throw new Error('makeBossArt: unknown boss ' + n);
+    jobs.push(...BOSSES[n]());
+  }
+  const cost = (j) => j[1] * j[2] * (j[3].frames || 1) * ((j[3].dirs || 1) / (j[3].sym ? 2 : 1)) * (j[3].fx ? 0.6 : 1) + 2000;
+  const total = jobs.reduce((a, j) => a + cost(j), 0);
   const out = {};
-  const yieldNow = () => new Promise((r) => setTimeout(r, 0));
-  for (let k = 0; k < BOSSES.length; k++) {
-    Object.assign(out, BOSSES[k]());
-    if (onProgress) onProgress((k + 1) / BOSSES.length);
+  let done = 0;
+  for (const j of jobs) {
+    const it = build(j[0], j[1], j[2], opt.lint ? { ...j[3], lint: opt.lint } : j[3], j[4]);
+    let r;
+    while (!(r = it.next()).done) {
+      if (onProgress) onProgress(Math.min(1, (done + cost(j) * r.value) / total));
+      await yieldNow();
+    }
+    out[j[0]] = r.value;
+    done += cost(j);
+    if (onProgress) onProgress(Math.min(1, done / total));
     await yieldNow();
   }
   return out;
 }
 
-export async function buildBossArt(onProgress) {
+/** Generate every boss sprite and register it with sprites.js. Returns the defs. */
+export async function buildBossArt(onProgress, opt = {}) {
   const { registerSprite } = await import('./sprites.js');
-  const defs = await makeBossArt(onProgress);
+  const defs = await makeBossArt(onProgress, opt);
   for (const name in defs) registerSprite(name, defs[name]);
   return defs;
 }

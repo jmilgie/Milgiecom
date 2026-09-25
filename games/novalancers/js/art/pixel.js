@@ -6,9 +6,11 @@
 // crisp 1-px outlines, column remapping (bank frames), seeded noise, ordered dithering,
 // lighting and small rasterizers.
 //
-// Data model: an "Art" is { w, h, col: Uint32Array, emi: Uint32Array|null }.
+// Data model: an "Art" is { w, h, col: Int32Array, emi: Int32Array|null }.
 //   col = main color layer, emi = emissive (glow) layer, both packed RGBA in the byte order
 //   of ImageData on little-endian machines (0xAABBGGRR). 0 = fully transparent.
+//   Colors are kept as SIGNED int32 on purpose: opaque colors then fall in V8's small-integer
+//   range, so passing them around never allocates (uint32 values > 2^31 would be boxed).
 
 export const TAU = Math.PI * 2;
 
@@ -30,7 +32,7 @@ export function makeCanvas(w, h) {
 const HEX = new Map();
 
 export function pack(r, g, b, a = 255) {
-  return ((a & 255) << 24 | (b & 255) << 16 | (g & 255) << 8 | (r & 255)) >>> 0;
+  return (a & 255) << 24 | (b & 255) << 16 | (g & 255) << 8 | (r & 255);
 }
 
 // "#rrggbb" (or "#rgb") -> packed; alpha 0..255
@@ -52,7 +54,7 @@ export const B_ = (p) => (p >>> 16) & 255;
 export const A_ = (p) => p >>> 24;
 
 export function withAlpha(p, a) {
-  return ((p & 0x00ffffff) | ((a & 255) << 24)) >>> 0;
+  return (p & 0x00ffffff) | ((a & 255) << 24);
 }
 
 export function toHex(p) {
@@ -76,7 +78,7 @@ export function scaleRGB(p, k) {
 // ---------------------------------------------------------------------------------------
 
 export function newArt(w, h, withEmi = true) {
-  return { w, h, col: new Uint32Array(w * h), emi: withEmi ? new Uint32Array(w * h) : null };
+  return { w, h, col: new Int32Array(w * h), emi: withEmi ? new Int32Array(w * h) : null };
 }
 
 export function cloneArt(a) {
@@ -136,10 +138,10 @@ export function flipArtX(a) {
 
 // Solid white silhouette of the color layer (for hit flashes).
 export function whiteOf(a) {
-  const o = new Uint32Array(a.w * a.h);
+  const o = new Int32Array(a.w * a.h);
   for (let i = 0; i < o.length; i++) {
     const c = a.col[i];
-    if (c) o[i] = (0x00ffffff | ((c >>> 24) << 24)) >>> 0;
+    if (c) o[i] = 0x00ffffff | ((c >>> 24) << 24);
   }
   return o;
 }
@@ -230,16 +232,16 @@ export function makeRampShifter(rampList) {
     packed.forEach((p, i) => { if (!map.has(p)) map.set(p, { ramp: packed, i }); });
   }
   return {
-    info(p) { return map.get((p | 0xff000000) >>> 0) || null; },
+    info(p) { return map.get(p | 0xff000000) || null; },
     // Move a color d steps along its ramp (clamped); keeps alpha. Non-ramp colors unchanged.
     shift(p, d) {
       if (!p || !d) return p;
-      const inf = map.get((p | 0xff000000) >>> 0);
+      const inf = map.get(p | 0xff000000);
       if (!inf) return p;
       const j = Math.max(0, Math.min(inf.ramp.length - 1, inf.i + d));
       return withAlpha(inf.ramp[j], p >>> 24);
     },
-    has(p) { return map.has((p | 0xff000000) >>> 0); },
+    has(p) { return map.has(p | 0xff000000); },
   };
 }
 
@@ -251,11 +253,11 @@ export function recolorMap(from, to) {
 }
 
 function remapPx(px, m) {
-  const o = new Uint32Array(px.length);
+  const o = new Int32Array(px.length);
   for (let i = 0; i < px.length; i++) {
     const p = px[i];
     if (!p) continue;
-    const q = m.get((p | 0xff000000) >>> 0);
+    const q = m.get(p | 0xff000000);
     o[i] = q === undefined ? p : withAlpha(q, p >>> 24);
   }
   return o;
@@ -384,8 +386,8 @@ export function makeRotator(a, passes = 3) {
   let idx = new Int32Array(n);
   for (let i = 0; i < n; i++) idx[i] = a.col[i] ? i : -1;
   // equality key: color, disambiguated by emissive so glowing/non-glowing never merge
-  const key = new Uint32Array(n);
-  for (let i = 0; i < n; i++) key[i] = a.col[i] ? (a.col[i] ^ (a.emi ? (a.emi[i] * 2654435761) >>> 0 : 0)) || 1 : 0;
+  const key = new Int32Array(n);
+  for (let i = 0; i < n; i++) key[i] = a.col[i] ? (a.col[i] ^ (a.emi ? Math.imul(a.emi[i], -1640531535) : 0)) || 1 : 0;
   let w = a.w, h = a.h;
   for (let p = 0; p < passes; p++) { idx = scale2xIndex(idx, w, h, key); w *= 2; h *= 2; }
   const S = 1 << passes;
@@ -395,26 +397,34 @@ export function makeRotator(a, passes = 3) {
     const o = newArt(ow, oh, !!a.emi);
     const cs = Math.cos(angle), sn = Math.sin(angle);
     const cx = a.w / 2, cy = a.h / 2, ocx = ow / 2, ocy = oh / 2;
-    const step = S / 3; // 3x3 taps spread across ~1 source pixel
+    const off = S / 6; // 3x3 taps spread across ~1/3 source pixel
+    const at = (px, py) => {
+      const bx = Math.floor(px), by = Math.floor(py);
+      return (bx < 0 || by < 0 || bx >= w || by >= h) ? -1 : idx[by * w + bx];
+    };
     for (let y = 0; y < oh; y++) {
       for (let x = 0; x < ow; x++) {
         const dx = x + 0.5 - ocx, dy = y + 0.5 - ocy;
         const sx = (dx * cs + dy * sn + cx) * S;
         const sy = (-dx * sn + dy * cs + cy) * S;
-        let nv = 0, center = -1;
-        for (let j = -1; j <= 1; j++) {
-          for (let i = -1; i <= 1; i++) {
-            const bx = Math.floor(sx + i * step * 0.5), by = Math.floor(sy + j * step * 0.5);
-            const v = (bx < 0 || by < 0 || bx >= w || by >= h) ? -1 : idx[by * w + bx];
-            if (i === 0 && j === 0) center = v;
-            let k = 0;
-            while (k < nv && votesI[k] !== v) k++;
-            if (k === nv) { votesI[nv] = v; votesN[nv] = 0; nv++; }
-            votesN[k] += (i === 0 && j === 0) ? 2 : 1;
+        const center = at(sx, sy);
+        let best = center;
+        if (at(sx - off, sy - off) !== center || at(sx + off, sy - off) !== center ||
+          at(sx - off, sy + off) !== center || at(sx + off, sy + off) !== center) {
+          // edge pixel: 3x3 majority vote (center weighted double)
+          let nv = 0;
+          for (let j = -1; j <= 1; j++) {
+            for (let i = -1; i <= 1; i++) {
+              const v = at(sx + i * off, sy + j * off);
+              let k = 0;
+              while (k < nv && votesI[k] !== v) k++;
+              if (k === nv) { votesI[nv] = v; votesN[nv] = 0; nv++; }
+              votesN[k] += (i === 0 && j === 0) ? 2 : 1;
+            }
           }
+          let bn = -1;
+          for (let k = 0; k < nv; k++) if (votesN[k] > bn) { bn = votesN[k]; best = votesI[k]; }
         }
-        let best = center, bn = -1;
-        for (let k = 0; k < nv; k++) if (votesN[k] > bn) { bn = votesN[k]; best = votesI[k]; }
         if (best >= 0) {
           const t = y * ow + x;
           o.col[t] = a.col[best];
@@ -476,14 +486,14 @@ export function pxToCanvas(px, w, h) {
 // layer: 'col' | 'emi' | 'white'
 export function artToCanvas(a, layer = 'col') {
   const px = layer === 'white' ? whiteOf(a) : a[layer];
-  return pxToCanvas(px || new Uint32Array(a.w * a.h), a.w, a.h);
+  return pxToCanvas(px || new Int32Array(a.w * a.h), a.w, a.h);
 }
 
 // Read a canvas back into an Art (color layer only).
 export function canvasToArt(c) {
   const ctx = c.getContext('2d');
   const id = ctx.getImageData(0, 0, c.width, c.height);
-  return { w: c.width, h: c.height, col: new Uint32Array(id.data.buffer.slice(0)), emi: null };
+  return { w: c.width, h: c.height, col: new Int32Array(id.data.buffer.slice(0)), emi: null };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -641,8 +651,8 @@ export function forEachPixel(a, fn) {
 // Derive (or extend) the emissive layer from colors: `map` is a Map(packedColor -> packed
 // emissive) or a function (p, x, y) -> packed|0.
 export function emissiveFrom(a, map) {
-  if (!a.emi) a.emi = new Uint32Array(a.w * a.h);
-  const fn = typeof map === 'function' ? map : (p) => map.get((p | 0xff000000) >>> 0) || 0;
+  if (!a.emi) a.emi = new Int32Array(a.w * a.h);
+  const fn = typeof map === 'function' ? map : (p) => map.get(p | 0xff000000) || 0;
   for (let y = 0; y < a.h; y++) {
     for (let x = 0; x < a.w; x++) {
       const i = y * a.w + x, p = a.col[i];

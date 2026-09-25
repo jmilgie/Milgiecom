@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — roster lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #07060f; color: #cfd6ea; font: 11px/1.4 ui-monospace, Menlo, monospace; }
+  header { padding: 6px 10px; border-bottom: 1px solid #1d1a33; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  header a { color: #79ecff; text-decoration: none; }
+  select, button { font: inherit; background: #120f24; color: #cfd6ea; border: 1px solid #2c2650; padding: 3px 6px; }
+  #wrap { display: flex; justify-content: center; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; width: min(100vw, 480px); height: auto; display: block; background: #05040c; }
+  #info { padding: 6px 10px; white-space: pre-wrap; color: #9fb0d4; }
+  #det { padding: 6px 10px; white-space: pre-wrap; color: #b8ff6e; }
+</style>
+</head>
+<body>
+<header>
+  <b>ROSTER LAB</b>
+  <select id="pick"></select>
+  <button id="spawn">spawn</button>
+  <a href="?tour">tour</a> · <a href="?pat=all">patterns</a> · <a href="?det">determinism</a> · <a href="?tour&dbg">hitboxes</a>
+</header>
+<div id="wrap"><canvas id="cv" width="240" height="400"></canvas></div>
+<div id="info"></div>
+<div id="det"></div>
+<script type="module">
+// Dev harness (not shipped): drives a real Sim with a custom env and a scripted "runner".
+//   ?e=<type>        spawn one enemy type repeatedly (default params per type)
+//   ?tour            the full roster gallery, timed
+//   ?pat=<name|all>  fire patterns from the top-center in a loop (all = cycle the catalog)
+//   ?det             host + client Sims wired through an in-memory delayed net; compares state
+//   &dbg (hitboxes + names)  &speed=N  &fire (player shoots)  &paused  &seed=N  &delay=ticks (det)
+import { Sim } from '../js/game/sim.js';
+import { ENEMIES } from '../js/game/enemies.js';
+import { PATTERNS } from '../js/game/patterns.js';
+import { FIELD_W, FIELD_H } from '../js/config.js';
+
+const Q = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const main = document.createElement('canvas'); main.width = FIELD_W; main.height = FIELD_H;
+const light = document.createElement('canvas'); light.width = FIELD_W; light.height = FIELD_H;
+const R = { ctx: main.getContext('2d'), lctx: light.getContext('2d'), beginField() {}, endField() {} };
+const noop = () => {};
+
+// ---- art / fx (degrade gracefully while other agents' modules are in flux)
+let S = null, FX = null;
+try { S = await import('../js/art/sprites.js'); await S.buildSprites(); } catch (e) { console.warn('sprites unavailable', e); S = null; }
+try { const P = await import('../js/fx/particles.js'); FX = P.createFX; } catch (e) { console.warn('fx unavailable', e); }
+
+const kit = {
+  meta: S?.SHIP_META || {}, emeta: S?.ENEMY_META || {}, _o: {}, _dirs: new Map(),
+  draw(c, n, f, x, y, o) { if (S) S.drawSprite(c, n, f, x, y, o || {}); else { c.fillStyle = n.startsWith('eb_') ? '#ff5fae' : '#93709a'; c.fillRect(x - 3, y - 3, 6, 6); } },
+  drawE(c, n, f, x, y, o) { if (S) S.drawSpriteEmissive(c, n, f, x, y, o || {}); },
+  dirs(n) { let d = this._dirs.get(n); if (d === undefined) { d = S ? (S.spr(n).dirs || 1) : 1; this._dirs.set(n, d); } return d; },
+  optDir(n, a, team) { const o = this._o; o.team = team; o.white = false; o.flipX = false; o.alpha = undefined; o.dir = this.dirs(n) > 1 ? a + Math.PI / 2 : undefined; return o; },
+  optNone() { const o = this._o; o.team = undefined; o.dir = undefined; o.white = false; o.flipX = false; o.alpha = undefined; return o; },
+  withWhite(o) { return Object.assign({}, o, { white: true }); },
+  teamOpt(t) { return { team: t }; }, teamWhite(t) { return { team: t, white: true }; },
+};
+const glowCache = new Map();
+function glow(l, x, y, r, color, a = 1) {
+  let c = glowCache.get(color);
+  if (!c) {
+    c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, color); grd.addColorStop(0.35, color + '88'); grd.addColorStop(1, color + '00');
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64); glowCache.set(color, c);
+  }
+  l.globalAlpha = a; l.drawImage(c, x - r, y - r, r * 2, r * 2); l.globalAlpha = 1;
+}
+function stubFX() {
+  return new Proxy({
+    postState: () => ({ waves: [] }), count: 0,
+    drawBeam(c, l, x1, y1, x2, y2, w, phase) {
+      c.strokeStyle = phase === 'warn' ? 'rgba(255,95,174,.5)' : '#ffc4e1'; c.lineWidth = phase === 'warn' ? 1 : Math.max(1, w);
+      c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    },
+  }, { get: (t, k) => (k in t ? t[k] : noop) });
+}
+const stars = Array.from({ length: 90 }, (_, i) => [(i * 97) % FIELD_W, (i * 61) % FIELD_H, 1 + (i % 3)]);
+const sfxLog = {};
+function mkEnv(visual) {
+  let fx = stubFX();
+  if (visual && FX) { try { fx = FX(); } catch (e) { console.warn(e); } }
+  return {
+    sprites: kit, fx, glow, text: null, hiScore: 0, bossMeta: {},
+    bg: { scrollSpeed: 30, draw(c, l, sy) { for (const [x, y, k] of stars) { c.fillStyle = k === 3 ? '#dfe8f7' : k === 2 ? '#6c7ca0' : '#303a55'; c.fillRect(x, (y + sy * k * 0.3) % FIELD_H | 0, 1, 1); } } },
+    music: { play: noop, duck: noop, stinger: noop },
+    sfx: (n) => { sfxLog[n] = (sfxLog[n] || 0) + 1; }, sfxLoop: () => ({ stop: noop, setVol: noop, setPitch: noop, setX: noop }),
+    haptic: noop, shake: noop, setSector: noop, ui: { event: noop },
+  };
+}
+
+// ---- default spawn params per type (what a stage author would pass)
+const DEF = {
+  mite: (i) => ({ path: 'sine', x: 40 + (i % 5) * 40, y: -10 - (i / 5 | 0) * 16, vy: 50, amp: 24, freq: 0.5, ph: i }),
+  mite_shot: (i) => ({ path: 'sine', x: 60 + (i % 4) * 40, y: -10, vy: 45, amp: 20, freq: 0.4 }),
+  dart: (i) => ({ path: 'swoop', side: i & 1 ? 1 : -1, preset: 'u', y: 40, depth: 110, dur: 3 }),
+  dart_elite: (i) => ({ path: 'swoop', side: i & 1 ? -1 : 1, preset: 'hook', y: 50, depth: 100, dur: 3 }),
+  wisp: () => ({ path: 'sine', x: 120, y: -10, vy: 30, amp: 60, freq: 0.3 }),
+  wisp_ring: () => ({ path: 'sine', x: 90, y: -10, vy: 28, amp: 40, freq: 0.25 }),
+  lancet: (i) => ({ path: 'dive', x: 50 + (i % 3) * 70, y: -20, tx: 50 + (i % 3) * 70, ty: 70 }),
+  lancet_elite: (i) => ({ path: 'dive', x: 180 - (i % 3) * 60, y: -20, tx: 180 - (i % 3) * 60, ty: 90 }),
+  eye: (i) => ({ path: 'hold', x: 60 + (i % 3) * 60, y: -20, tx: 60 + (i % 3) * 60, ty: 80, hold: 6, sway: 10 }),
+  eye_ring: () => ({ path: 'hold', x: 170, y: -20, tx: 170, ty: 70, hold: 6 }),
+  eye_elite: () => ({ path: 'hold', x: 120, y: -20, tx: 120, ty: 100, hold: 6 }),
+  carapace: () => ({ path: 'hold', x: 120, y: -30, tx: 120, ty: 100 }),
+  carapace_elite: () => ({ path: 'hold', x: 90, y: -30, tx: 90, ty: 70 }),
+  weaver: (i) => ({ path: 'strafe', side: i & 1 ? 1 : -1, y: 60 + (i & 1) * 30, v: 60 }),
+  weaver_elite: (i) => ({ path: 'strafe', side: i & 1 ? -1 : 1, y: 80, v: 55 }),
+  mine: (i) => ({ path: 'drift', x: 40 + (i % 4) * 55, y: -10, vy: 25, fuse: 4 }),
+  mine_elite: () => ({ path: 'drift', x: 140, y: -10, vy: 25, fuse: 4 }),
+  hornet: () => ({ path: 'hold', x: 90, y: -20, tx: 90, ty: 110 }),
+  hornet_elite: () => ({ path: 'hold', x: 160, y: -20, tx: 160, ty: 80 }),
+  seeker: (i) => ({ path: 'seek', x: 30 + (i % 4) * 60, y: -10, v: 100 }),
+  shard: () => ({ path: 'hold', x: 60, y: 60, tx: 60, ty: 80 }),
+  shard_elite: () => ({ path: 'hold', x: 180, y: 60, tx: 180, ty: 80 }),
+  phantom: () => ({ path: 'hover', x: 80, y: -20, tx: 80, ty: 90 }),
+  phantom_elite: () => ({ path: 'hover', x: 160, y: -20, tx: 160, ty: 110 }),
+  turret: (i, sim) => ({ path: 'ground', x: 60 + (i % 3) * 60, y: -16, sy0: sim.scrollY }),
+  turret_heavy: (i, sim) => ({ path: 'ground', x: 120, y: -30, sy0: sim.scrollY }),
+  turret_flak: (i, sim) => ({ path: 'ground', x: 190, y: -20, sy0: sim.scrollY }),
+  rock_l: () => ({ path: 'drift', x: 90, y: -20, vx: 6, vy: 30 }),
+  rock_m: () => ({ path: 'drift', x: 170, y: -20, vx: -8, vy: 36 }),
+  rock_s: (i) => ({ path: 'drift', x: 60 + i * 30, y: -20, vx: 0, vy: 45 }),
+  sentinel: () => ({ path: 'hover', x: 120, y: -20, tx: 120, ty: 90 }),
+  sentinel_elite: () => ({ path: 'hover', x: 120, y: -20, tx: 120, ty: 110 }),
+};
+for (const k of Object.keys(ENEMIES)) if (!DEF[k]) DEF[k] = () => ({});
+const TOUR = [
+  [0.2, 'mite', 5], [0.2, 'mite_shot', 3], [0.5, 'dart', 3], [0.8, 'dart_elite', 2], [1.0, 'wisp', 1], [1.2, 'wisp_ring', 1],
+  [1.5, 'lancet', 3], [1.7, 'lancet_elite', 1], [2.0, 'eye', 2], [2.2, 'eye_ring', 1], [2.4, 'eye_elite', 1],
+  [3.0, 'carapace', 1], [3.2, 'carapace_elite', 1], [3.5, 'weaver', 1], [3.8, 'weaver_elite', 1], [4.0, 'mine', 3], [4.2, 'mine_elite', 1],
+  [4.5, 'hornet', 1], [4.7, 'hornet_elite', 1], [5.0, 'seeker', 3], [5.5, 'shard', 1], [5.7, 'shard_elite', 1],
+  [6.0, 'phantom', 1], [6.2, 'phantom_elite', 1], [6.5, 'turret', 3], [6.6, 'turret_heavy', 1], [6.7, 'turret_flak', 1],
+  [7.0, 'rock_l', 1], [7.1, 'rock_m', 1], [7.2, 'rock_s', 3], [7.5, 'sentinel', 1], [7.8, 'sentinel_elite', 1], [8.0, 'bastion', 1],
+];
+const PAT_DEMO = {
+  lines: { ways: 5, spread: 1, per: 4 }, petal: { n: 6, per: 5, curl: 0.012 }, polygon: { sides: 5, per: 4, star: 0.45 },
+  aimRing: { n: 16 }, accelRing: { n: 20, layers: 2 }, layered: { n: 14, layers: 3, twist: 0.1 }, homing: { n: 5, target: 0 },
+  snipe: { n: 3, spread: 0.4 }, refract: { n: 3, split: 3 }, stopAim: { n: 12, target: 0 }, orbitRing: { n: 14, r: 16, k: 0.8, spinT: 80 },
+  implode: { n: 18, r: 80 }, crossfire: { n: 5, y0: 60 }, lattice: { n: 9 }, fountain: { n: 10 }, burstChain: {},
+  crossSpiral: { arms: 3, count: 30 }, curtain: { rows: 5, gap: 150, drift: -12 }, rain: { count: 40, every: 3 }, wave: { ways: 3, spread: 0.8, pair: 1, count: 20 },
+  barrage: { count: 16, spread: 0.5 }, trail: { count: 1 }, mineLayer: { count: 4, every: 12 }, laserFan: { n: 3, spread: 1.0, av: 0.004, mirror: 1, avT: 60 },
+  ring: { n: 20 }, spiral: { arms: 4, count: 40 }, flower: { n: 28 }, cluster: { n: 3 }, shotgun: { n: 5 }, wall: { n: 13, gap: 5 }, sweep: { n: 3, spread: 0.4 },
+};
+
+function makeSim(mode, o = {}) {
+  const sim = new Sim(Object.assign({ mode, env: mkEnv(o.visual !== false), players: o.players || [{ slot: 0, name: 'LAB', ship: Q.get('ship') || 'aurora' }], localSlot: o.localSlot ?? 0, sector: 0, seed: +(Q.get('seed') || 1234) }, o));
+  sim.god = true;
+  if (!Q.has('fire')) for (const p of sim.players) if (p) p.firing = false;
+  return sim;
+}
+
+function runner(sim, plan) {
+  let i = 0, rep = 0;
+  return {
+    i: 0,
+    update() {
+      const t = sim.tick / 60;
+      if (plan.loop && i >= plan.list.length && sim.elist.filter((e) => !e.def.ground).length === 0) { i = 0; rep++; plan.t0 = t + 1; }
+      while (i < plan.list.length && t >= (plan.t0 || 0) + plan.list[i][0]) {
+        const [, type, n] = plan.list[i++];
+        for (let k = 0; k < (n || 1); k++) sim.spawn(type, DEF[type](k + rep, sim));
+      }
+      if (plan.pat) plan.pat(sim);
+    },
+    bossDown() {},
+  };
+}
+
+// ---- modes
+let sim, det = null;
+const only = Q.get('e');
+if (Q.has('det')) det = setupDet();
+else {
+  sim = makeSim('solo');
+  if (Q.get('pat')) {
+    const names = Q.get('pat') === 'all' ? Object.keys(PAT_DEMO) : [Q.get('pat')];
+    let k = 0;
+    sim.runner = runner(sim, { list: [], pat(s) {
+      if (s.tick % 150 !== 30) return;
+      const name = names[k++ % names.length];
+      const me = s.me, x = FIELD_W / 2, y = 70;
+      const A = Object.assign({ a: Math.atan2(me.y - y, me.x - x), target: 0 }, PAT_DEMO[name] || {});
+      if (name === 'trail') return;
+      s.fire({ id: 0, x, y }, name, A);
+      $('info').textContent = 'pattern: ' + name + ' ' + JSON.stringify(PAT_DEMO[name] || {});
+    } });
+  } else if (only) sim.runner = runner(sim, { list: [[0.3, only, +(Q.get('n') || 1)]], loop: true });
+  else sim.runner = runner(sim, { list: TOUR, loop: true });
+  const pick = $('pick');
+  for (const k of Object.keys(ENEMIES)) { const o = document.createElement('option'); o.value = o.textContent = k; if (k === only) o.selected = true; pick.appendChild(o); }
+  $('spawn').onclick = () => { const t = pick.value; sim.spawn(t, DEF[t](0, sim)); };
+  pick.onchange = () => { location.search = '?e=' + pick.value + (Q.has('dbg') ? '&dbg' : ''); };
+}
+
+// player autopilot: slow sweep along the bottom (keeps the pattern variety readable)
+function pilot(s) {
+  const me = s.me;
+  if (!me || !me.alive) return null;
+  const tx = FIELD_W / 2 + Math.sin(s.tick / 140) * 80;
+  return { dx: 0, dy: 0, ax: Math.max(-1, Math.min(1, (tx - me.x) / 12)), ay: Math.max(-1, Math.min(1, (FIELD_H - 60 - me.y) / 12)), slow: false, bomb: false, overdrive: false };
+}
+
+// ---- determinism mode: host + client over an in-memory delayed net
+function setupDet() {
+  const D = +(Q.get('delay') || 5);
+  const players = [{ slot: 0, name: 'HOST', ship: 'aurora' }, { slot: 1, name: 'CLIENT', ship: 'aurora' }];
+  const st = { tick: 0, hq: [], cq: [], lastEv: -99, samples: 0, maxPos: 0, maxCnt: 0, maxNN: 0 };
+  const host = makeSim('host', { players, localSlot: 0, net: { send: (m) => st.hq.push([st.tick + D, JSON.stringify(m)]), hostTime: () => st.tick * 1000 / 60 } });
+  const client = makeSim('client', { players, localSlot: 1, visual: false, net: { send: (m) => st.cq.push([st.tick + D, JSON.stringify(m)]), hostTime: () => st.tick * 1000 / 60 } });
+  for (const s of [host, client]) for (const p of s.players) if (p) p.firing = false;
+  const emit = host.emitEvent.bind(host);
+  host.emitEvent = (ev) => { if ('sp f es ph x cu pk pc cl'.includes(ev.k)) st.lastEv = host.tick; return emit(ev); };
+  host.runner = runner(host, { list: only ? [[0.3, only, 1]] : TOUR });
+  sim = host;
+  return { host, client, st, D };
+}
+function detStep() {
+  const { host, client, st, D } = det;
+  st.tick++;
+  host.update(null);
+  while (st.hq.length && st.hq[0][0] <= st.tick) client.onHostMessage(JSON.parse(st.hq.shift()[1]));
+  client.update(null);
+  while (st.cq.length && st.cq[0][0] <= st.tick) host.onClientMessage(JSON.parse(st.cq.shift()[1]), 1);
+  if (st.tick - st.lastEv > D + 4 && st.tick % 10 === 0) {
+    st.samples++;
+    let pe = 0;
+    for (const e of host.elist) { const c = client.enemies.get(e.id); pe = Math.max(pe, c ? Math.hypot(e.x - c.x, e.y - c.y) : (host.tick - e.t0 > D + 4 ? 999 : 0)); }
+    st.maxPos = Math.max(st.maxPos, pe);
+    st.maxCnt = Math.max(st.maxCnt, Math.abs(host.ebs.list.length - client.ebs.list.length));
+    let nn = 0;
+    for (const b of host.ebs.list) { let best = Infinity; for (const o of client.ebs.list) { const d = Math.abs(o.x - b.x) + Math.abs(o.y - b.y); if (d < best) best = d; if (best < 0.01) break; } if (best < Infinity) nn = Math.max(nn, best); }
+    st.maxNN = Math.max(st.maxNN, nn);
+  }
+  $('det').textContent = `DETERMINISM host vs client (delay ${D} ticks) — tick ${st.tick} (${(st.tick / 60).toFixed(1)} s)\n` +
+    `enemies H${host.elist.length}/C${client.elist.length}  bullets H${host.ebs.list.length}/C${client.ebs.list.length}  beams H${host.beams.list.length}/C${client.beams.list.length}\n` +
+    `settled samples ${st.samples}: max enemy pos err ${st.maxPos.toFixed(4)} px · max bullet count diff ${st.maxCnt} · max bullet offset ${st.maxNN.toFixed(2)} px`;
+  window.__det = { tick: st.tick, samples: st.samples, maxPos: st.maxPos, maxCnt: st.maxCnt, maxNN: st.maxNN, eh: host.elist.length, ec: client.elist.length, bh: host.ebs.list.length, bc: client.ebs.list.length };
+}
+
+// ---- render
+function render() {
+  const { ctx: c, lctx: l } = R;
+  c.fillStyle = '#07060f'; c.fillRect(0, 0, FIELD_W, FIELD_H);
+  l.clearRect(0, 0, FIELD_W, FIELD_H);
+  sim.draw(R);
+  if (Q.has('dbg')) {
+    c.font = '6px monospace'; c.textAlign = 'center';
+    for (const e of sim.elist) {
+      c.strokeStyle = e.armor ? '#79ecff' : '#b8ff6e'; c.lineWidth = 0.5;
+      c.beginPath(); c.arc(e.x, e.y, e.r, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = '#b8ff6e'; c.fillText(`${e.type} ${Math.ceil(e.hp)}${e.phase ? ' p' + e.phase : ''}`, e.x, e.y - e.r - 3);
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(main, 0, 0);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.filter = 'blur(3px)'; ctx.globalAlpha = 0.8; ctx.drawImage(light, 0, 0);
+  ctx.filter = 'none'; ctx.globalAlpha = 1; ctx.drawImage(light, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+const speed = +(Q.get('speed') || 1);
+let paused = Q.has('paused');
+function step(n = 1) {
+  for (let i = 0; i < n; i++) {
+    if (det) detStep();
+    else sim.update(pilot(sim));
+    sim.env.fx.update?.(1 / 60);
+  }
+}
+let last = performance.now(), acc = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (!paused) { acc += dt * speed; let n = 0; while (acc >= 1 / 60 && n < 8 * speed) { step(1); acc -= 1 / 60; n++; } if (acc > 0.2) acc = 0; }
+  render();
+  if (!det) $('info').textContent = (Q.get('pat') ? $('info').textContent.split('\n')[0] + '\n' : '') +
+    `t ${(sim.tick / 60).toFixed(1)}s  enemies ${sim.elist.length}  bullets ${sim.ebs.list.length}  beams ${sim.beams.list.length}  emitters ${sim.emitters.list.length}\n` +
+    sim.elist.slice(0, 14).map((e) => `${e.type}#${e.id} hp ${Math.ceil(e.hp)}/${Math.ceil(e.maxHp)} ph${e.phase}${e.armor ? ' ARMOR' : ''}`).join('\n');
+}
+requestAnimationFrame(frame);
+// test hooks (playwright): deterministic stepping + render
+window.__roster = { get sim() { return sim; }, det, step(n) { step(n); render(); }, pause(v = true) { paused = v; }, sfxLog, render };
+</script>
+</body>
+</html>

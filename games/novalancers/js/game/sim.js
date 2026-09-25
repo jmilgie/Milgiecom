@@ -22,6 +22,7 @@ import {
   makePlayer, controlLocal, tickTimers, fireWeapons, resolveBeam, drawPlayer, drawBeamFor, playerFlags, PF,
 } from './player.js';
 
+const TAG_COLORS = ['#79ecff', '#ffd966', '#b8ff6e', '#c9b0ff'];
 const NET_EVERY = 3;           // ticks between network flushes (20 Hz)
 const INTERP_DELAY = 6;        // ticks of interpolation delay for remote ships
 const ENEMY_MARGIN = 40;
@@ -84,6 +85,7 @@ export class Sim {
     this.seed = seed >>> 0;
     this.rng = new RNG(hash32(this.seed, 77));
     this.tick = 0;
+    if (this.beams) this.stopLoops();
     this.enemies.clear(); this.elist.length = 0;
     this.ebs.clear(); this.pbs.list.length = 0; this.beams.list.length = 0; this.emitters.list.length = 0;
     this.pickups.clear(); this.queue.length = 0; this.pendingDmg.clear(); this.bossIds.length = 0;
@@ -148,11 +150,12 @@ export class Sim {
     this.beams.update(this);
     for (const b of this.beams.list) {
       if (b.age === b.warn + 1) {
-        this.sfxAt('enemy_laser_fire', b.x, 0.9);
+        if (!b.sfxLoop) b.sfxLoop = this.env.sfxLoop('enemy_laser_fire', { x: b.x, vol: 0.8 });
         this.env.shake(2, 0.2);
       } else if (b.age === 1) this.sfxAt('enemy_laser_charge', b.x, 0.7);
     }
     void beamsBefore;
+    this.updateBeamHum();
     this.pbs.update(this);
     this.updatePickups();
 
@@ -759,7 +762,7 @@ export class Sim {
     if (cx === undefined) {
       let n = 0;
       this.ebs.clear((b) => { if (pop && (n++ & 1) === 0) fx.spark(b.x, b.y, -Math.PI / 2, 'gold', 1); });
-      for (const bm of this.beams.list) bm.dead = true;
+      for (const bm of this.beams.list) { bm.dead = true; if (bm.sfxLoop) { bm.sfxLoop.stop(0.2); bm.sfxLoop = null; } }
       this.beams.update(this);
     } else {
       const r2 = radius * radius;
@@ -899,6 +902,24 @@ export class Sim {
       }
       this.reviving.set(p.slot, v);
     }
+  }
+
+  // Tempest's lance beam hum (local ship only) — a seamless loop while the beam is live
+  updateBeamHum() {
+    const me = this.me;
+    const on = !!(me && me.beam && me.alive && me.respawnT <= 0);
+    if (on && !this.beamHum) this.beamHum = this.env.sfxLoop('shot_tempest_loop', { x: me.x, vol: 0.55 });
+    else if (!on && this.beamHum) { this.beamHum.stop(0.15); this.beamHum = null; }
+    if (this.beamHum && me) {
+      this.beamHum.setX?.(me.x);
+      this.beamHum.setPitch?.(me.odT > 0 ? 3 : 0);
+    }
+  }
+
+  // stop every looping sound this sim owns (sector change, quit)
+  stopLoops() {
+    if (this.beamHum) { this.beamHum.stop(0.1); this.beamHum = null; }
+    for (const b of this.beams.list) if (b.sfxLoop) { b.sfxLoop.stop(0.1); b.sfxLoop = null; }
   }
 
   reviveProgress(slot) { return Math.min(1, (this.reviving.get(slot) || 0) / RULES.reviveTime); }
@@ -1222,7 +1243,9 @@ export class Sim {
     if (this.online && env.text) {
       for (const p of this.players) {
         if (!p || p.local || !p.alive || p.respawnT > 0) continue;
-        env.text(ctx, p.name, Math.round(p.x), Math.round(p.y + 15), { color: ['#79ecff', '#ffd966', '#b8ff6e', '#c9b0ff'][p.slot], align: 'center', font: 'small', alpha: 0.75 });
+        const o = this._tagOpt || (this._tagOpt = { color: '', align: 'center', font: 'small', alpha: 0.75 });
+        o.color = TAG_COLORS[p.slot];
+        env.text(ctx, p.name, Math.round(p.x), Math.round(p.y + 15), o);
       }
     }
 
