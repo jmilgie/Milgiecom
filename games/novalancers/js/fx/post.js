@@ -9,6 +9,17 @@
 //             main + light + bloom, colour grade, flash, vignette, art-pixel scanlines.
 // WebGL1 only (GLSL ES 1.00), no extensions. Returns null when WebGL is unavailable.
 //
+// API: createPost(canvas) -> { resize(cssW, cssH, dpr, W, H, scale?), render(main, light, s),
+//      setQuality(q), resetAuto(), quality, autoQuality, software, lost, frameMs, dispose() }
+//   s = { grade, waves:[{x,y,r,strength}] (internal art px), flash, flashColor, chroma,
+//         lensing: null | { x, y, shadow, strength },    // see LENS_* below
+//         quality: 'high'|'medium'|'low' (locks) | undefined (auto), scanlines,
+//         field?: {x, y, w, h}   play-field rect in internal px (default: derived from the
+//                                renderer layout; false = no mask, effects everywhere),
+//         bloom? (0.8), illum? (3.6), vignette? (0.3) }
+//   Wave strength: |s| <= 1 is gameplay-safe (<= 3 px); > 1 marks event waves (nova, boss
+//   death) allowed up to 10 px; negative = implode.
+//
 // Gameplay-safety rules baked in here:
 //  * The HUD (everything outside the play field) never moves or colour-fringes: warps and
 //    chroma are masked to the field rect (s.field, or a guess mirroring the renderer layout).

@@ -50,6 +50,8 @@ export const Haptics = {
     lastAt = now;
     const pat = PATTERNS[type] || PATTERNS.light;
     if (canVibrate) {
+      // browsers reject vibrate() before the first user gesture (and log an error)
+      if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
       try { navigator.vibrate(pat); } catch { /* ignore */ }
       return;
     }

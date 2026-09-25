@@ -9,10 +9,20 @@
 //    post.js adds it on top of MAIN and blooms it; the 2D fallback blends it with 'lighter'.
 //
 // Performance
-//  * Typed-array pools per particle kind (stable order, 1500 particles total), one atlas
-//    canvas per palette so each kind batches from a single texture.
+//  * Typed-array pools per particle kind (stable order, 1500 particles total). A full pool
+//    recycles its most-spent particle for the new one; continuous cosmetic emitters (trails,
+//    debris smoke) only use the spare part of a pool, so bursts never starve.
+//  * All palettes live in stacked atlases (sparks/dots/flares: one canvas; explosion
+//    flipbooks: two), so consecutive main-layer drawImage calls share a texture and batch.
 //  * Zero allocations per frame in steady state (postState() reuses its objects).
 //  * All coordinates are FIELD coordinates; draw() expects ctx/lctx translated to the field.
+//
+// Notes on the contract (DESIGN.md §7)
+//  * explode opt.vx / opt.vy: the exploding object's velocity in px/s (30 % is inherited).
+//  * Beams: impact/emitter sparks are emitted by update() for the beams drawn since the
+//    previous update, so their density is frame-rate independent.
+//  * Optional: `await buildFX(onProgress)` during loading pre-builds the art in chunks, making
+//    createFX() instant (otherwise createFX builds it synchronously, ~100-200 ms).
 
 import { RAMPS } from '../art/palette.js';
 
@@ -1955,7 +1965,8 @@ export function createFX() {
 
     shockwave(x, y, radius, palette) {
       const p = palOf(palette), R = radius || 40;
-      addRing(x, y, 2, R, 0.25 + R / 260, R > 40 ? 3 : 2, Math.min(1.1, 0.35 + R / 150), p, 1, 0);
+      // distortion strength <= 1: a gameplay-safe wave (post.js reserves > 1 for nova/boss death)
+      addRing(x, y, 2, R, 0.25 + R / 260, R > 40 ? 3 : 2, Math.min(1, 0.35 + R / 150), p, 1, 0);
       addGlow(x, y, R * 0.2, R * 0.6, 0.2, 0.6, G_HOT, p, 0);
     },
 

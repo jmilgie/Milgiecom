@@ -10,6 +10,24 @@ import { toSpriteDir } from '../util.js';
 
 const MARGIN = 28;
 
+// Round black masks used to cut the light layer under enemy bullets (cached per radius).
+const MASKS = [];
+function lightMask(r) {
+  let c = MASKS[r];
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = r * 2 + 1;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000';
+    for (let y = -r; y <= r; y++) {
+      const w = Math.floor(Math.sqrt(r * r + r * 0.8 - y * y));
+      if (w >= 0) g.fillRect(r - w, y + r, w * 2 + 1, 1);
+    }
+    MASKS[r] = c;
+  }
+  return c;
+}
+
 // Default hit radius per enemy-bullet sprite family
 export function bulletRadius(spr) {
   if (spr.startsWith('eb_small')) return 2;
@@ -122,17 +140,30 @@ export class EnemyBullets {
 
   draw(ctx, lctx, env, tick) {
     const S = env.sprites;
-    for (const b of this.list) {
+    const L = this.list;
+    // pass 1: sprites on the main layer + cut the light layer under each bullet, so explosions
+    // and neighbouring glows never wash out a bullet's dark rim (readability first)
+    const pco = lctx.globalCompositeOperation;
+    lctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < L.length; i++) {
+      const b = L[i];
       if (b.dead || b.age < 0) continue;
-      const fr = ((tick >> 2) + b.frameOff);
+      if (b.age <= b.delay && ((b.age >> 1) & 1)) continue;   // telegraph flicker before launch
       const opt = S.optDir(b.spr, b.a);
-      if (b.age <= b.delay) {
-        // telegraph: bullets waiting to launch flicker in
-        if ((b.age >> 1) & 1) continue;
-      }
-      S.draw(ctx, b.spr, fr, b.x, b.y, opt);
-      S.drawE(lctx, b.spr, fr, b.x, b.y, opt);
+      S.draw(ctx, b.spr, (tick >> 2) + b.frameOff, b.x, b.y, opt);
+      const r = Math.min(9, Math.ceil(b.r) + 2);
+      lctx.drawImage(lightMask(r), Math.round(b.x) - r, Math.round(b.y) - r);
     }
+    // pass 2: bullet glows
+    lctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < L.length; i++) {
+      const b = L[i];
+      if (b.dead || b.age < 0) continue;
+      if (b.age <= b.delay && ((b.age >> 1) & 1)) continue;
+      const opt = S.optDir(b.spr, b.a);
+      S.drawE(lctx, b.spr, (tick >> 2) + b.frameOff, b.x, b.y, opt);
+    }
+    lctx.globalCompositeOperation = pco;
   }
 }
 

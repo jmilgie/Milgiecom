@@ -1033,6 +1033,8 @@ function extractCode(s) {
     const sc = (t === t.toUpperCase() ? 2 : 0) + (/[0-9]/.test(t) ? 1 : 0);
     if (sc >= bs) { bs = sc; best = t; }
   }
+  // a plain lowercase word inside a sentence ("hello there") is not a code
+  if (bs === 0 && s.trim().length !== 5) return null;
   return best.toUpperCase();
 }
 
@@ -1887,7 +1889,7 @@ function onKeyDown(e) {
   const nav = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
   let dir = nav[k];
   if (!dir && !isText && !e.ctrlKey && !e.metaKey && !e.altKey) dir = { w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' }[k];
-  if (dir || k === 'Tab') root.classList.add('kbd');
+  if (dir || k === 'Tab' || k === 'Escape') root.classList.add('kbd');
 
   if (k === 'Tab') {
     // keep focus inside the active screen (or the QR view on top of the lobby)
@@ -1957,7 +1959,7 @@ function padStart() {
       else if (cur[d] && pad.held === d && now > pad.heldT) { padDir(d); pad.heldT = now + 110; }
     }
     if (edge('a')) { root.classList.add('kbd'); if (curName === 'title') { snd('ui_start'); DEF.title.act('start', null, null, true); } else activate(); }
-    if (edge('b')) goBack();
+    if (edge('b')) { root.classList.add('kbd'); goBack(); }
     if (edge('start')) {
       if (curName === 'pause') call('onResume');
       else if (curName === 'title') { snd('ui_start'); DEF.title.act('start', null, null, true); }

@@ -80,7 +80,8 @@ export class Renderer {
     const vv = window.visualViewport;
     const cssW = Math.max(1, Math.round(vv ? vv.width : window.innerWidth));
     const cssH = Math.max(1, Math.round(vv ? vv.height : window.innerHeight));
-    const dprCap = this.quality === 'low' ? 1.5 : 2;
+    // DPR 3 only when the player explicitly asks for High (auto stays at 2 for battery/heat)
+    const dprCap = this.quality === 'low' ? 1.5 : this.quality === 'high' ? 3 : 2;
     const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
     this.safe = readSafeArea();
     const usableH = Math.max(100, cssH - this.safe.top - this.safe.bottom);
@@ -208,6 +209,8 @@ export class Renderer {
       st.time = this.time;
       st.quality = this.quality === 'auto' ? undefined : this.quality;
       st.scanlines = s.scanlines !== false;
+      const fr = st.field || (st.field = { x: 0, y: 0, w: FIELD_W, h: FIELD_H });
+      fr.x = this.fx + this.shakeX; fr.y = this.fy + this.shakeY;
       this.post.render(this.main, this.light, st);
     } else {
       const c = this.ctx2d;

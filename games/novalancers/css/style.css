@@ -1147,9 +1147,9 @@ kbd {
   /* As big as the space allows without covering the playfield: main.js publishes the free
      height under the field (--below-field) and the margin beside it (--field-left). */
   --size-max: 72px;
-  --size: clamp(56px, max(calc(var(--below-field, 100px) - 14px), calc(var(--field-left, 0px) - 20px)), var(--size-max));
+  --size: clamp(52px, max(calc(var(--below-field, 100px) - 12px), calc(var(--field-left, 0px) - 20px)), var(--size-max));
   position: absolute;
-  bottom: max(calc(var(--sa-b) + 8px), calc((var(--below-field, 100px) - var(--size)) / 2));
+  bottom: max(calc(var(--sa-b) + 6px), calc((var(--below-field, 100px) - var(--size)) / 2));
   width: var(--size); height: var(--size);
   padding: 0; margin: 0;
   border: 0; border-radius: 50%;
@@ -1203,6 +1203,13 @@ kbd {
 /* OVERDRIVE is too wide for the circle on one line at a legible size: split it */
 #btnOver .tbtn-label { top: calc(var(--size) * .5); font-size: 0; }
 #btnOver .tbtn-label::after { content: 'OVER\A DRIVE'; white-space: pre; font-size: var(--fs-xs); line-height: 1.15; }
+/* small buttons (16:9 phones, where they shrink to stay off the playfield): icon only */
+.tbtn { container-type: size; }
+@container (max-width: 63px) {
+  .tbtn-label { display: none; }
+  .tbtn-icon { top: 26%; width: 48%; height: 48%; margin-left: -24%; }
+  #btnOver .tbtn-icon { top: 24%; width: 38%; height: 52%; margin-left: -19%; }
+}
 .tbtn-count {
   position: absolute; right: -4px; top: -4px;
   min-width: 24px; height: 24px; padding: 0 5px;

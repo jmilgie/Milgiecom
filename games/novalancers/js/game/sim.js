@@ -525,7 +525,8 @@ export class Sim {
   explodeEnemy(e) {
     const def = e.def;
     const size = def.explode || (e.r > 20 ? 'large' : e.r > 9 ? 'medium' : 'small');
-    this.env.fx.explode(e.x, e.y, size, { palette: def.palette || 'fire', vx: (e.x - e.px) * 0.5, vy: (e.y - e.py) * 0.5 });
+    // inherit half the enemy's velocity (px/tick -> px/s)
+    this.env.fx.explode(e.x, e.y, size, { palette: def.palette || 'fire', vx: (e.x - e.px) * 30, vy: (e.y - e.py) * 30 });
     const snd = size === 'boss' ? 'explode_boss' : size === 'huge' || size === 'large' ? 'explode_large' : size === 'medium' ? 'explode_medium' : 'explode_small';
     this.sfxAt(snd, e.x, size === 'small' || size === 'tiny' ? 0.7 : 1);
     if (size === 'large' || size === 'huge') { this.env.shake(4, 0.3); this.env.haptic('medium'); }

@@ -236,6 +236,9 @@ async function boot() {
   }
   setBackground('title');
   const particles = await tryImport('./fx/particles.js');
+  if (particles?.buildFX) {
+    try { await particles.buildFX((p) => UI.setLoading(0.72 + p * 0.02, 'Arming warheads')); } catch (e) { console.error('fx build failed', e); }
+  }
   try { fx = particles?.createFX ? particles.createFX() : stubFX(); } catch (e) { console.error('fx failed', e); fx = stubFX(); }
   const textOpt = { color: '#fff', align: 'center', font: 'small', shadow: '#05040c' };
   if (env.text && fx.setTextRenderer) fx.setTextRenderer((ctx, str, x, y, color) => { textOpt.color = color; env.text(ctx, str, x, y, textOpt); });
@@ -329,7 +332,9 @@ function startSolo(o) {
   AudioSys.unlock();
   const ship = SHIPS[o.ship] ? o.ship : (profile.ship || 'aurora');
   profile.ship = ship; profile.plays = (profile.plays || 0) + 1; saveProfile();
-  const sector = clamp(o.sector ?? solo.sector ?? 0, 0, Math.min(profile.unlocked, SECTORS.length - 1));
+  // debug runs may start anywhere; players can start at any sector they've reached
+  const maxSector = DEBUG ? SECTORS.length - 1 : Math.min(profile.unlocked, SECTORS.length - 1);
+  const sector = clamp(o.sector ?? solo.sector ?? 0, 0, maxSector);
   leaveSession('LEFT');
   beginGame({ mode: 'solo', players: [{ slot: 0, name: settings.name, ship }], localSlot: 0, sector, seed: randomSeed() });
 }
@@ -343,6 +348,7 @@ function beginGame(o) {
   UI.show('none');
   input.setEnabled(true);
   $('touchControls').classList.remove('hidden');
+  try { R.post?.resetAuto?.(); } catch { /* */ }
   if (settings.fullscreenAuto !== false && matchMedia('(pointer: coarse)').matches) goFullscreen(true);
   acc = 0;
 }

@@ -144,8 +144,8 @@ function touchVisible(R) {
     st.btn = null;
     if (st.touch) {
       const rect = (id) => { const e = doc.getElementById(id); const r = e && e.getBoundingClientRect(); return r && r.width > 0 ? r : null; };
-      const n = rect('btnNova'), o = rect('btnOver'), p = rect('btnPause');
-      if (n && o) st.btn = { l: n.right, r: o.left, pl: p ? p.left : 0 };
+      const n = rect('btnNova'), o = rect('btnOver'), p = rect('btnPause'), c = rect('novaCount');
+      if (n && o) st.btn = { l: Math.max(n.right, c ? c.right : 0), r: o.left, pl: p ? p.left : 0 };
     }
   }
   return st.touch;
@@ -177,9 +177,9 @@ function layout(R) {
     L.bx0 = Math.max(L.bx0, Math.ceil((b.l + 6) / scale));
     L.bx1 = Math.min(L.bx1, Math.floor((b.r - 6) / scale));
   } else if (touch) {
-    // same sizing rule as css .tbtn: 56..72 px, as large as the space under the field allows
+    // same sizing rule as css .tbtn: 52..72 px, as large as the space under the field allows
     const below = (R.H - L.botY) * scale, beside = R.fx * scale;
-    const size = Math.max(56, Math.min(72, Math.max(below - 14, beside - 20)));
+    const size = Math.max(52, Math.min(72, Math.max(below - 12, beside - 20)));
     const btnArt = Math.ceil((14 + size + 6) / scale);
     L.x1 -= Math.max(0, Math.ceil(52 / scale) - (R.W - (R.fx + FIELD_W)));
     L.bx0 = Math.max(L.bx0, btnArt);
