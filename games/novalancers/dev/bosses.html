@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — boss art lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #07060f; color: #cfd6ea; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  header { padding: 10px 14px; border-bottom: 1px solid #1d1a33; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  header a { color: #79ecff; }
+  h2 { margin: 18px 14px 6px; font-size: 14px; color: #ff6fb4; letter-spacing: 1px; }
+  h3 { margin: 10px 14px 4px; font-size: 11px; color: #7c8fb3; font-weight: normal; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 14px; align-items: flex-start; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .cap { color: #7c8fb3; font-size: 10px; margin-top: 2px; }
+  .sheet { background: #0c0a18; outline: 1px solid #1d1a33; }
+  #stat { color: #b8ff6e; }
+</style>
+</head>
+<body>
+<header>
+  <b>BOSS ART LAB</b>
+  <span id="stat">generating…</span>
+  <span>
+    <a href="?">all</a> · <a href="?boss=warden">warden</a> · <a href="?boss=wyrm">wyrm</a> ·
+    <a href="?boss=prism">prism</a> · <a href="?boss=dread">dread</a> · <a href="?boss=heart">heart</a>
+  </span>
+  <label><input type="checkbox" id="anim" checked /> animate</label>
+</header>
+<div id="out"></div>
+<script type="module">
+import { makeBossArt, BOSS_META } from '../js/art/bossart.js';
+
+const Q = new URLSearchParams(location.search);
+const ONLY = Q.get('boss');
+const FIXED_T = Q.has('t') ? parseFloat(Q.get('t')) : null;
+const SHOW = (Q.get('show') || 'scene,x3,bloom,sheets').split(',');
+const out = document.getElementById('out');
+
+const t0 = performance.now();
+const prog = [];
+const S = await makeBossArt((p) => prog.push(p));
+const ms = performance.now() - t0;
+let nCanvas = 0;
+for (const k in S) nCanvas += S[k].frames.length + (S[k].emissive ? S[k].emissive.length : 0);
+document.getElementById('stat').textContent =
+  `generated ${Object.keys(S).length} sprites / ${nCanvas} canvases in ${ms.toFixed(0)} ms · progress ${prog.map((p) => p.toFixed(2)).join(' ')}`;
+window.__bossStats = { ms, sprites: Object.keys(S).length, canvases: nCanvas, prog };
+
+// --- sprite drawing (mirrors sprites.js semantics: x,y = center, dir radians 0 = up, clockwise)
+function dirIndex(def, dir) {
+  if (def.dirs <= 1) return 0;
+  const step = (Math.PI * 2) / def.dirs;
+  return ((Math.round(dir / step) % def.dirs) + def.dirs) % def.dirs;
+}
+function frameCanvas(def, frame, dir, em) {
+  const f = ((frame % def.frameCount) + def.frameCount) % def.frameCount;
+  const idx = dirIndex(def, dir || 0) * def.frameCount + f;
+  return em ? (def.emissive ? def.emissive[idx] : null) : def.frames[idx];
+}
+function draw(ctx, name, frame, x, y, o = {}) {
+  const def = S[name]; if (!def) return;
+  const cv = frameCanvas(def, frame, o.dir, o.em);
+  if (!cv) return;
+  const px = Math.round(x - def.w / 2), py = Math.round(y - def.h / 2);
+  ctx.save();
+  if (o.flipX) { ctx.translate(px + def.w, py); ctx.scale(-1, 1); ctx.drawImage(cv, 0, 0); }
+  else ctx.drawImage(cv, px, py);
+  ctx.restore();
+}
+const aim = (x, y, tx, ty) => Math.atan2(tx - x, -(ty - y));
+
+// --- starfield backdrop
+function starfield(ctx, W, H, seed = 7) {
+  let s = seed;
+  const R = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const gr = ctx.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, '#0a0818'); gr.addColorStop(1, '#05040c');
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  for (let k = 0; k < W * H / 90; k++) {
+    const b = R();
+    ctx.fillStyle = b > 0.97 ? '#dfe8f7' : b > 0.85 ? '#7c8fb3' : '#322c6a';
+    ctx.fillRect((R() * W) | 0, (R() * H) | 0, 1, 1);
+  }
+}
+
+// --- assembled scenes: fn(ctx, t, em) draws the boss (em = emissive pass)
+const player = { x: 150, y: 330 };
+const SCENES = {
+  warden: { h: 250, parts: ['boss_warden', 'boss_warden_arm', 'boss_warden_turret', 'boss_warden_core'], fn(ctx, t, em) {
+    const M = BOSS_META.warden; if (!M) return;
+    const hx = 120, hy = 70 + Math.sin(t * 0.8) * 2;
+    const lf = Math.floor(t * 3);
+    // arms under? no: arms over the pods, below turrets
+    draw(ctx, 'boss_warden', lf, hx, hy, { em });
+    const sw = Math.sin(t * 1.3) * 3;
+    draw(ctx, 'boss_warden_arm', 0, hx + M.armL[0] - M.armPivot[0], hy + M.armL[1] - M.armPivot[1] + sw, { em });
+    draw(ctx, 'boss_warden_arm', 0, hx + M.armR[0] + M.armPivot[0], hy + M.armR[1] - M.armPivot[1] - sw, { em, flipX: true });
+    for (const [x, y] of M.turrets) draw(ctx, 'boss_warden_turret', 0, hx + x, hy + y, { em, dir: aim(hx + x, hy + y, player.x, player.y) });
+    draw(ctx, 'boss_warden_core', Math.floor(t * 8), hx + M.core[0], hy + M.core[1], { em });
+  } },
+  wyrm: { h: 300, parts: ['boss_wyrm_head', 'boss_wyrm_seg', 'boss_wyrm_tail'], fn(ctx, t, em) {
+    const M = BOSS_META.wyrm; if (!M) return;
+    const n = 9, pts = [];
+    for (let k = 0; k <= n + 1; k++) {
+      const s = k * M.segSpacing;
+      pts.push([120 + Math.sin(s * 0.028 - t * 1.4) * 60, 250 - s * 0.9 + Math.cos(s * 0.02 + t) * 8 - 10]);
+    }
+    // tail at end, head at pts[0] -> draw tail first
+    const last = pts[n + 1], prev = pts[n];
+    draw(ctx, 'boss_wyrm_tail', 0, last[0], last[1], { em, dir: aim(prev[0], prev[1], last[0], last[1]) });
+    for (let k = n; k >= 1; k--) draw(ctx, 'boss_wyrm_seg', (k === 4 || k === 5) ? 1 : 0, pts[k][0], pts[k][1], { em });
+    const hd = aim(pts[1][0], pts[1][1], pts[0][0], pts[0][1]);
+    draw(ctx, 'boss_wyrm_head', Math.floor(t * 1.5) % 2, pts[0][0], pts[0][1], { em, dir: hd });
+  } },
+  prism: { h: 230, parts: ['boss_prism', 'boss_prism_shard'], fn(ctx, t, em) {
+    const M = BOSS_META.prism; if (!M) return;
+    const cx = 120, cy = 100;
+    const shards = 6;
+    const behind = [], front = [];
+    for (let k = 0; k < shards; k++) {
+      const a = t * 0.6 + (k / shards) * Math.PI * 2;
+      const x = cx + Math.sin(a) * M.shardOrbitR, y = cy - Math.cos(a) * M.shardOrbitR * 0.55;
+      (Math.cos(a) > 0 ? behind : front).push([x, y, a]);
+    }
+    for (const [x, y, a] of behind) draw(ctx, 'boss_prism_shard', 0, x, y, { em, dir: a });
+    draw(ctx, 'boss_prism', Math.floor(t * 8), cx, cy, { em });
+    for (const [x, y, a] of front) draw(ctx, 'boss_prism_shard', 0, x, y, { em, dir: a });
+  } },
+  dread: { h: 250, parts: ['boss_dread', 'boss_dread_cannon', 'boss_dread_turret', 'boss_dread_hatch'], fn(ctx, t, em) {
+    const M = BOSS_META.dread; if (!M) return;
+    const hx = 120, hy = 80;
+    draw(ctx, 'boss_dread', Math.floor(t * 2), hx, hy, { em });
+    M.hatches.forEach(([x, y], k) => draw(ctx, 'boss_dread_hatch', (Math.floor(t) + k) % 2, hx + x, hy + y, { em }));
+    draw(ctx, 'boss_dread_cannon', Math.floor(t * 3) % 4, hx + M.cannon[0], hy + M.cannon[1], { em });
+    for (const [x, y] of M.turrets) draw(ctx, 'boss_dread_turret', 0, hx + x, hy + y, { em, dir: aim(hx + x, hy + y, player.x, player.y) });
+  } },
+  heart: { h: 300, parts: ['boss_heart', 'boss_heart_halo', 'boss_heart_petal', 'boss_heart_core2'], fn(ctx, t, em) {
+    const M = BOSS_META.heart; if (!M) return;
+    const cx = 120, cy = 120;
+    const n = 8;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + Math.sin(t * 0.7) * 0.15 + Math.PI / n;
+      draw(ctx, 'boss_heart_petal', 0, cx + Math.sin(a) * M.petalR, cy - Math.cos(a) * M.petalR, { em, dir: a });
+    }
+    draw(ctx, 'boss_heart_halo', Math.floor(t * 8), cx, cy, { em });
+    draw(ctx, 'boss_heart', Math.floor(t * 6) % 4, cx, cy, { em });
+    draw(ctx, 'boss_heart_core2', Math.floor(t * 8), 205, 262, { em });
+    draw(ctx, 'boss_heart', 4, 35, 262, { em });
+  } },
+};
+
+function section(name) {
+  const sc = SCENES[name];
+  if (!sc.parts.some((p) => S[p])) return null;
+  const wrap = document.createElement('section');
+  wrap.innerHTML = `<h2>${name.toUpperCase()}</h2>`;
+  const row = document.createElement('div'); row.className = 'row'; wrap.appendChild(row);
+  const W = 240, H = sc.h;
+  const mk = (w, h, scale, cap) => {
+    const d = document.createElement('div');
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.style.width = w * scale + 'px'; c.style.height = h * scale + 'px';
+    d.appendChild(c);
+    const p = document.createElement('div'); p.className = 'cap'; p.textContent = cap; d.appendChild(p);
+    row.appendChild(d);
+    return c;
+  };
+  const views = [];
+  const base = document.createElement('canvas'); base.width = W; base.height = H;
+  const emc = document.createElement('canvas'); emc.width = W; emc.height = H;
+  if (SHOW.includes('scene')) views.push(['1x', mk(W, H, 1, '1x (true pixels)')]);
+  if (SHOW.includes('x3')) views.push(['3x', mk(W, H, 3, '3x nearest')]);
+  if (SHOW.includes('bloom')) views.push(['bloom', mk(W * 3, H * 3, 1, 'emissive bloom preview (3x)')]);
+  const render = (t) => {
+    const b = base.getContext('2d'); starfield(b, W, H, 11); sc.fn(b, t, false);
+    const e = emc.getContext('2d'); e.clearRect(0, 0, W, H); sc.fn(e, t, true);
+    for (const [kind, c] of views) {
+      const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
+      if (kind !== 'bloom') { ctx.drawImage(base, 0, 0); continue; }
+      ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none';
+      ctx.drawImage(base, 0, 0, W * 3, H * 3);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.imageSmoothingEnabled = true;
+      ctx.filter = 'blur(14px)'; ctx.globalAlpha = 0.9; ctx.drawImage(emc, 0, 0, W * 3, H * 3);
+      ctx.filter = 'blur(5px)'; ctx.globalAlpha = 0.8; ctx.drawImage(emc, 0, 0, W * 3, H * 3);
+      ctx.filter = 'none'; ctx.globalAlpha = 0.5; ctx.imageSmoothingEnabled = false; ctx.drawImage(emc, 0, 0, W * 3, H * 3);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    }
+  };
+  if (SHOW.includes('sheets')) {
+    for (const p of sc.parts) {
+      const def = S[p]; if (!def) continue;
+      const h3 = document.createElement('h3');
+      h3.textContent = `${p} — ${def.w}×${def.h} · frames ${def.frameCount} · dirs ${def.dirs} · fps ${def.fps} · emissive ${def.emissive ? 'yes' : 'no'}`;
+      wrap.appendChild(h3);
+      const n = def.frames.length, cols = Math.min(n, Math.max(1, Math.floor(1100 / ((def.w + 2) * 2)))), rows = Math.ceil(n / cols);
+      const r2 = document.createElement('div'); r2.className = 'row'; wrap.appendChild(r2);
+      for (const em of [false, true]) {
+        if (em && !def.emissive) continue;
+        const c = document.createElement('canvas'); c.className = 'sheet';
+        c.width = cols * (def.w + 2); c.height = rows * (def.h + 2);
+        const sc2 = n > 16 ? 2 : 3;
+        c.style.width = c.width * sc2 + 'px'; c.style.height = c.height * sc2 + 'px';
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = em ? '#000' : '#141225'; ctx.fillRect(0, 0, c.width, c.height);
+        for (let k = 0; k < n; k++) ctx.drawImage(em ? def.emissive[k] : def.frames[k], (k % cols) * (def.w + 2) + 1, Math.floor(k / cols) * (def.h + 2) + 1);
+        r2.appendChild(c);
+      }
+    }
+  }
+  return { wrap, render };
+}
+
+const renders = [];
+for (const name of Object.keys(SCENES)) {
+  if (ONLY && ONLY !== name) continue;
+  const r = section(name);
+  if (r) { out.appendChild(r.wrap); renders.push(r.render); }
+}
+const animBox = document.getElementById('anim');
+const start = performance.now();
+function loop() {
+  const t = FIXED_T ?? (performance.now() - start) / 1000;
+  for (const r of renders) r(t);
+  if (FIXED_T === null && animBox.checked) requestAnimationFrame(loop);
+}
+animBox.onchange = () => animBox.checked && loop();
+loop();
+
+// --- export hooks for automated screenshots
+function scaled(src, scale) {
+  const c = document.createElement('canvas'); c.width = src.width * scale; c.height = src.height * scale;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+window.__scene = (name, t, scale = 1, bloom = false, crop = null) => {
+  const sc = SCENES[name], W = 240, H = sc.h;
+  const b = document.createElement('canvas'); b.width = W; b.height = H;
+  const bx = b.getContext('2d'); starfield(bx, W, H, 11); sc.fn(bx, t, false);
+  let src = b;
+  if (crop) { const c = document.createElement('canvas'); c.width = crop[2]; c.height = crop[3]; c.getContext('2d').drawImage(b, -crop[0], -crop[1]); src = c; }
+  const out = scaled(src, scale);
+  if (bloom) {
+    const e = document.createElement('canvas'); e.width = W; e.height = H; sc.fn(e.getContext('2d'), t, true);
+    let es = e;
+    if (crop) { const c = document.createElement('canvas'); c.width = crop[2]; c.height = crop[3]; c.getContext('2d').drawImage(e, -crop[0], -crop[1]); es = c; }
+    const ctx = out.getContext('2d'); ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
+    ctx.filter = `blur(${4 * scale}px)`; ctx.globalAlpha = 0.9; ctx.drawImage(es, 0, 0, out.width, out.height);
+    ctx.filter = `blur(${1.5 * scale}px)`; ctx.globalAlpha = 0.8; ctx.drawImage(es, 0, 0, out.width, out.height);
+    ctx.filter = 'none'; ctx.globalAlpha = 0.45; ctx.imageSmoothingEnabled = false; ctx.drawImage(es, 0, 0, out.width, out.height);
+  }
+  return out.toDataURL();
+};
+window.__sheet = (name, scale = 4, em = false, cols = 0, bg = '#141225') => {
+  const def = S[name], n = def.frames.length; cols = cols || n;
+  const rows = Math.ceil(n / cols);
+  const c = document.createElement('canvas'); c.width = cols * (def.w + 2); c.height = rows * (def.h + 2);
+  const x = c.getContext('2d'); x.fillStyle = em ? '#000' : bg; x.fillRect(0, 0, c.width, c.height);
+  for (let k = 0; k < n; k++) x.drawImage(em ? def.emissive[k] : def.frames[k], (k % cols) * (def.w + 2) + 1, Math.floor(k / cols) * (def.h + 2) + 1);
+  return scaled(c, scale).toDataURL();
+};
+window.__ready = true;
+</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — background lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #020207; color: #cfd8ef; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  header { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; position: sticky; top: 0; background: #07060fe6; z-index: 2; }
+  button, select, input { font: inherit; background: #151329; color: #cfd8ef; border: 1px solid #322c6a; border-radius: 4px; padding: 4px 8px; }
+  button.on { background: #322c6a; color: #fff; }
+  #views { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px; align-items: flex-start; }
+  figure { margin: 0; }
+  figcaption { opacity: .7; padding: 2px 0 4px; }
+  canvas.disp { image-rendering: pixelated; image-rendering: crisp-edges; display: block; background: #000; }
+  #stats { white-space: pre; opacity: .85; }
+</style>
+</head>
+<body>
+<header>
+  <span id="keys"></span>
+  <button id="flash">flash()</button>
+  <button id="pause">pause</button>
+  <label>speed <input id="speed" type="range" min="0" max="12" step="0.5" value="1" style="width:90px"></label>
+  <label><input id="bloom" type="checkbox" checked> bloom</label>
+  <label><input id="field" type="checkbox" checked> field</label>
+  <label><input id="light" type="checkbox"> light only</label>
+  <label><input id="grade" type="checkbox"> grade</label>
+  <button id="jump">+2000px</button>
+  <span id="stats"></span>
+</header>
+<div id="views"></div>
+<script type="module">
+import { createBackground, buildBackgrounds, BG_KEYS } from '../js/art/backgrounds.js';
+
+const qs = new URLSearchParams(location.search);
+let key = qs.get('bg') || 'title';
+const views = (qs.get('view') || 'both').split(',');
+const PS = +(qs.get('ps') || 2), DS = +(qs.get('ds') || 1.25);
+const freeze = qs.has('freeze');
+let scroll = +(qs.get('scroll') || 0);
+let tNow = +(qs.get('t') || 0);
+let speedMul = +(qs.get('speed') || 1);
+let paused = freeze;
+
+const VIEW_DEFS = {
+  phone: { W: +(qs.get('pw') || 250), H: +(qs.get('ph') || 520), s: PS, label: 'phone' },
+  desktop: { W: 720, H: 405, s: DS, label: 'desktop' },
+  tall: { W: 270, H: 560, s: PS, label: 'tall phone' },
+  narrow: { W: 240, H: 460, s: PS, label: 'narrow phone' },
+};
+
+function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+
+const V = [];
+for (const name of views) {
+  const d = VIEW_DEFS[name]; if (!d) continue;
+  const main = mk(d.W, d.H), light = mk(d.W, d.H);
+  const disp = mk(d.W * d.s, d.H * d.s); disp.className = 'disp';
+  const fig = document.createElement('figure');
+  const cap = document.createElement('figcaption');
+  cap.textContent = `${d.label} ${d.W}×${d.H} @${d.s}x`;
+  fig.append(cap, disp);
+  document.getElementById('views').append(fig);
+  const fx = Math.floor((d.W - 240) / 2);
+  const free = d.H - 400;
+  const fy = free >= 62 ? 22 + Math.floor((free - 62) * 0.35) : Math.max(0, Math.floor(free / 2));
+  V.push({ d, main, light, disp, fx, fy, ctx: main.getContext('2d', { alpha: false }), lctx: light.getContext('2d', { alpha: false }),
+    dctx: disp.getContext('2d'), bg: null, ms: [] });
+}
+const blurC = mk(1, 1), bctx = blurC.getContext('2d');
+
+let genMs = 0;
+function setBg(k) {
+  key = k;
+  for (const v of V) { if (v.bg) v.bg.dispose(); }
+  const t0 = performance.now();
+  for (const v of V) {
+    v.bg = createBackground(key);
+    v.bg.resize(v.d.W, v.d.H, v.fx, v.fy);
+    v.ms = [];
+  }
+  genMs = performance.now() - t0;
+  document.querySelectorAll('#keys button').forEach((b) => b.classList.toggle('on', b.textContent === key));
+  const u = new URL(location); u.searchParams.set('bg', key); history.replaceState(null, '', u);
+}
+
+const keysEl = document.getElementById('keys');
+for (const k of BG_KEYS) {
+  const b = document.createElement('button'); b.textContent = k; b.onclick = () => setBg(k); keysEl.append(b);
+}
+document.getElementById('flash').onclick = () => V.forEach((v) => v.bg.flash());
+document.getElementById('pause').onclick = (e) => { paused = !paused; e.target.classList.toggle('on', paused); };
+document.getElementById('jump').onclick = () => { scroll += 2000; };
+const speedEl = document.getElementById('speed'); speedEl.value = speedMul; speedEl.oninput = () => { speedMul = +speedEl.value; };
+const opt = (id) => document.getElementById(id).checked;
+
+function renderView(v) {
+  const { ctx, lctx, d } = v;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.imageSmoothingEnabled = false; lctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#05040c'; ctx.fillRect(0, 0, d.W, d.H);
+  lctx.globalCompositeOperation = 'source-over'; lctx.fillStyle = '#000'; lctx.fillRect(0, 0, d.W, d.H);
+  lctx.globalCompositeOperation = 'lighter';
+  const t0 = performance.now();
+  v.bg.draw(ctx, lctx, scroll, tNow);
+  const dt = performance.now() - t0;
+  v.ms.push(dt); if (v.ms.length > 120) v.ms.shift();
+  // composite: main + light + blurred light (preview of the post pass)
+  const dc = v.dctx, s = d.s;
+  dc.imageSmoothingEnabled = false;
+  dc.globalCompositeOperation = 'source-over'; dc.globalAlpha = 1; dc.filter = 'none';
+  const g = v.bg.grade;
+  if (opt('grade') && g) dc.filter = `saturate(${g.sat}) contrast(${g.contrast})`;
+  if (opt('light')) { dc.fillStyle = '#000'; dc.fillRect(0, 0, d.W * s, d.H * s); }
+  else dc.drawImage(v.main, 0, 0, d.W * s, d.H * s);
+  dc.globalCompositeOperation = 'lighter';
+  dc.drawImage(v.light, 0, 0, d.W * s, d.H * s);
+  if (opt('bloom')) {
+    if (blurC.width !== (d.W >> 1) || blurC.height !== (d.H >> 1)) { blurC.width = d.W >> 1; blurC.height = d.H >> 1; }
+    bctx.globalCompositeOperation = 'copy'; bctx.filter = 'blur(3px)'; bctx.imageSmoothingEnabled = true;
+    bctx.drawImage(v.light, 0, 0, blurC.width, blurC.height);
+    bctx.filter = 'none';
+    dc.imageSmoothingEnabled = true;
+    dc.globalAlpha = 0.9; dc.drawImage(blurC, 0, 0, d.W * s, d.H * s);
+    dc.filter = 'blur(10px)'; dc.globalAlpha = 0.5; dc.drawImage(blurC, 0, 0, d.W * s, d.H * s);
+    dc.filter = 'none'; dc.globalAlpha = 1;
+    dc.imageSmoothingEnabled = false;
+  }
+  dc.filter = 'none';
+  dc.globalCompositeOperation = 'source-over';
+  if (opt('field')) {
+    dc.strokeStyle = 'rgba(255,255,255,0.18)'; dc.lineWidth = 1;
+    dc.strokeRect(v.fx * s + 0.5, v.fy * s + 0.5, 240 * s - 1, 400 * s - 1);
+  }
+  const lz = v.bg.lensing && v.bg.lensing(d.W, d.H);
+  if (lz && opt('field')) {
+    dc.strokeStyle = 'rgba(255,90,200,0.35)';
+    dc.beginPath(); dc.arc(lz.x * s, lz.y * s, lz.r * s, 0, Math.PI * 2); dc.stroke();
+  }
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!paused) {
+    tNow += dt;
+    for (const v of V) v.bg.update(dt);
+    scroll += dt * (V[0]?.bg.scrollSpeed || 30) * speedMul;
+  }
+  for (const v of V) renderView(v);
+  const st = V.map((v) => `${v.d.label}: draw ${(v.ms.reduce((a, b) => a + b, 0) / Math.max(1, v.ms.length)).toFixed(3)} ms`).join('   ');
+  document.getElementById('stats').textContent = `${key}  scroll ${scroll.toFixed(0)}  t ${tNow.toFixed(1)}  gen ${genMs.toFixed(0)} ms   ${st}`;
+  if (!freeze) requestAnimationFrame(frame);
+}
+
+// Hooks for automated testing
+window.__bg = {
+  keys: BG_KEYS,
+  set(k) { setBg(k); },
+  state(o) { if (o.scroll !== undefined) scroll = o.scroll; if (o.t !== undefined) tNow = o.t; },
+  step(dt, n = 1) { for (let i = 0; i < n; i++) { tNow += dt; for (const v of V) v.bg.update(dt); scroll += dt * V[0].bg.scrollSpeed * speedMul; } for (const v of V) renderView(v); },
+  flash() { V.forEach((v) => v.bg.flash()); },
+  render() { for (const v of V) renderView(v); return true; },
+  bench(n = 200) {
+    const out = {};
+    for (const v of V) {
+      const t0 = performance.now();
+      for (let i = 0; i < n; i++) { v.bg.update(1 / 60); v.bg.draw(v.ctx, v.lctx, scroll + i * 0.5, tNow + i / 60); }
+      out[v.d.label] = (performance.now() - t0) / n;
+    }
+    return out;
+  },
+  genTime(k) { const t0 = performance.now(); const b = createBackground(k); b.resize(250, 520, 5, 40); const t1 = performance.now(); b.dispose(); return t1 - t0; },
+  get genMs() { return genMs; },
+};
+
+const tA = performance.now();
+await buildBackgrounds(null, [key]);
+window.__assetMs = performance.now() - tA;
+setBg(key);
+if (freeze) { for (const v of V) renderView(v); }
+requestAnimationFrame(frame);
+window.__ready = true;
+</script>
+</body>
+</html>

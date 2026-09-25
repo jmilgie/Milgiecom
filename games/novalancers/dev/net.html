@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Nova Lancers · Net Lab</title>
+<style>
+  :root { --bg:#07060f; --panel:#12101f; --line:#2b2748; --text:#dfe8f7; --dim:#8a86a8; --cyan:#4ee6ff; --gold:#ffc94a; --lime:#9dff5a; --violet:#c38bff; --red:#ff5a7a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  body { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 10px; letter-spacing: .08em; color: var(--cyan); }
+  .panel { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  input, select, button { font: inherit; color: var(--text); background: #1b1830; border: 2px solid var(--line); border-radius: 8px; min-height: 44px; padding: 0 12px; }
+  input { flex: 1 1 120px; min-width: 0; }
+  input.code { text-transform: uppercase; letter-spacing: .3em; font-size: 20px; flex: 0 1 150px; }
+  button { cursor: pointer; font-weight: 700; }
+  button:active { transform: translateY(1px); }
+  button.pri { border-color: var(--cyan); color: var(--cyan); }
+  button.warn { border-color: var(--red); color: var(--red); }
+  button:disabled { opacity: .4; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+  .kv b { color: var(--dim); font-weight: 400; }
+  .big { font-size: 28px; letter-spacing: .25em; color: var(--gold); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 400; }
+  .t0 { color: var(--cyan); } .t1 { color: var(--gold); } .t2 { color: var(--lime); } .t3 { color: var(--violet); }
+  #log, #chat { height: 150px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 12px; background: #0b0a16; border-radius: 6px; padding: 6px; }
+  .err { color: var(--red); } .ok { color: var(--lime); } .dim { color: var(--dim); }
+</style>
+</head>
+<body>
+<h1>NOVA LANCERS · NET LAB</h1>
+
+<div class="panel">
+  <div class="row">
+    <input id="name" placeholder="name" maxlength="16" />
+    <select id="ship"></select>
+  </div>
+  <div class="row">
+    <button class="pri" id="bHost">HOST</button>
+    <button id="bHostPub">HOST PUBLIC</button>
+    <button class="pri" id="bQuick">QUICK MATCH</button>
+  </div>
+  <div class="row">
+    <input id="code" class="code" placeholder="CODE" maxlength="5" autocomplete="off" autocapitalize="characters" />
+    <button class="pri" id="bJoin">JOIN</button>
+  </div>
+  <div class="row dim" id="cfg"></div>
+</div>
+
+<div class="panel">
+  <div class="row"><span class="big" id="vCode">-----</span><button id="bInvite" disabled>COPY INVITE</button></div>
+  <div class="kv">
+    <b>status</b><span id="vStatus">idle</span>
+    <b>role / slot</b><span id="vRole">-</span>
+    <b>transport</b><span id="vTransport">-</span>
+    <b>ping</b><span id="vPing">-</span>
+    <b>hostTime</b><span id="vTime">-</span>
+    <b>stress rx</b><span id="vStress">-</span>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="bReady" disabled>READY</button>
+    <button id="bStart" disabled>START</button>
+    <button id="bStress" disabled>STRESS 20/s</button>
+    <button class="warn" id="bLeave" disabled>LEAVE</button>
+  </div>
+</div>
+
+<div class="panel">
+  <table><thead><tr><th>slot</th><th>name</th><th>ship</th><th>ready</th><th>conn</th><th>ping</th><th>net</th></tr></thead><tbody id="lobby"></tbody></table>
+  <div class="dim" id="vStarted"></div>
+</div>
+
+<div class="panel">
+  <div id="chat"></div>
+  <div class="row" style="margin-top:8px"><input id="msg" placeholder="chat" maxlength="120" /><button id="bSend" disabled>SEND</button></div>
+</div>
+
+<div class="panel"><div id="log"></div></div>
+
+<script type="module">
+import * as Net from '../js/net/session.js';
+import { SHIP_ORDER } from '../js/config.js';
+
+const $ = (id) => document.getElementById(id);
+const T = (window.NT = { Net, s: null, events: [], stress: null });
+let s = null, ready = false, stressTimer = 0;
+
+for (const sh of SHIP_ORDER) $('ship').add(new Option(sh.toUpperCase(), sh));
+try { $('name').value = localStorage.getItem('nvl-net-name') || ''; } catch {}
+const cfg = Net.netConfig();
+$('cfg').textContent = `peer ${cfg.peer.secure ? 'wss' : 'ws'}://${cfg.peer.host}:${cfg.peer.port}${cfg.peer.path} · mqtt ${cfg.brokers.length} broker(s)` +
+  (cfg.forceRelay ? ' · FORCE RELAY' : '') + (cfg.p2p ? '' : ' · P2P OFF');
+const urlRoom = Net.parseRoomFromUrl();
+if (urlRoom) $('code').value = urlRoom;
+
+function log(msg, cls = '') {
+  const el = $('log');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `${(performance.now() / 1000).toFixed(1).padStart(7)} ${msg}`;
+  el.appendChild(line);
+  while (el.childNodes.length > 300) el.firstChild.remove();
+  el.scrollTop = el.scrollHeight;
+}
+function chat(msg, cls = '') {
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = msg;
+  $('chat').appendChild(line);
+  $('chat').scrollTop = 1e9;
+}
+function opts() {
+  const name = $('name').value;
+  try { localStorage.setItem('nvl-net-name', name); } catch {}
+  return { name, ship: $('ship').value };
+}
+
+function renderLobby(l) {
+  $('lobby').innerHTML = '';
+  for (const p of l.players) {
+    const tr = document.createElement('tr');
+    tr.className = 't' + p.slot;
+    for (const v of [p.slot, p.name, p.ship, p.ready ? '✓' : '·', p.connected ? 'yes' : 'LAG', p.ping, p.net]) {
+      const td = document.createElement('td');
+      td.textContent = String(v);
+      tr.appendChild(td);
+    }
+    $('lobby').appendChild(tr);
+  }
+  $('vStarted').textContent = l.started ? 'GAME STARTED' : '';
+  if (s && s.isHost) $('bStart').disabled = l.started;
+}
+
+function setUi(active) {
+  for (const id of ['bHost', 'bHostPub', 'bQuick', 'bJoin']) $(id).disabled = active;
+  for (const id of ['bReady', 'bStress', 'bLeave', 'bSend', 'bInvite']) $(id).disabled = !active;
+  $('bStart').disabled = !active || !(s && s.isHost);
+}
+
+const stress = { rx: 0, lat: [], perSlot: {}, t0: 0 };
+T.stress = stress;
+
+function attach(sess) {
+  s = T.s = sess;
+  ready = sess.isHost; // host starts ready
+  $('bReady').textContent = ready ? 'UNREADY' : 'READY';
+  $('vCode').textContent = sess.code;
+  $('vRole').textContent = (sess.isHost ? 'HOST' : 'CLIENT') + ' / ' + sess.selfSlot + (sess.isPublic ? ' (public)' : '');
+  $('vStatus').textContent = 'connected';
+  $('vStatus').className = 'ok';
+  setUi(true);
+  renderLobby(sess.lobby);
+  const ev = (name) => (a, b) => T.events.push({ name, a, b, t: performance.now() });
+  sess.on('lobby', (l) => { renderLobby(l); ev('lobby')(l); });
+  sess.on('start', (p) => { log(`START ${JSON.stringify(p)}`, 'ok'); ev('start')(p); });
+  sess.on('peerjoin', (slot, info) => { log(`peerjoin ${slot} ${info.name}`, 'ok'); ev('peerjoin')(slot, info); });
+  sess.on('peerleave', (slot, info) => { log(`peerleave ${slot} ${info.name} ${info.reason || ''}`, 'err'); ev('peerleave')(slot, info); });
+  sess.on('transport', (t) => { log(`transport slot ${t.slot}: ${t.kind}`); ev('transport')(t); });
+  sess.on('close', (r) => {
+    log(`CLOSE ${r}`, 'err');
+    ev('close')(r);
+    $('vStatus').textContent = 'closed: ' + r;
+    $('vStatus').className = 'err';
+    stopStress();
+    setUi(false);
+    s = null;
+  });
+  sess.on('message', (m, from) => {
+    if (m.k === 'chat') {
+      const name = typeof m.n === 'string' ? m.n : '?';
+      chat(`${name}: ${m.text}`, 't' + (m.s ?? from));
+      if (sess.isHost && from > 0) sess.send({ k: 'chat', text: m.text, n: name, s: from }); // relay to everyone
+    } else if (m.k === 'st') {
+      stress.rx++;
+      const key = m.s ?? from;
+      const ps = (stress.perSlot[key] ||= { n: 0, last: -1, gaps: 0, lat: [] });
+      ps.n++;
+      if (ps.last >= 0 && m.i !== ps.last + 1) ps.gaps++;
+      ps.last = m.i;
+      const lat = sess.hostTime() - m.t;
+      ps.lat.push(lat);
+      if (ps.lat.length > 2000) ps.lat.shift();
+    }
+    ev('message')(m, from);
+  });
+}
+
+async function run(label, fn) {
+  setUi(true);
+  $('bLeave').disabled = true;
+  $('vStatus').textContent = label + '…';
+  $('vStatus').className = '';
+  const t0 = performance.now();
+  try {
+    const sess = await fn();
+    log(`${label} ok in ${Math.round(performance.now() - t0)} ms → ${sess.isHost ? 'host' : 'client'} ${sess.code}`, 'ok');
+    attach(sess);
+  } catch (e) {
+    log(`${label} failed: ${e.message} (${Math.round(performance.now() - t0)} ms)`, 'err');
+    $('vStatus').textContent = e.message;
+    $('vStatus').className = 'err';
+    setUi(false);
+  }
+}
+
+$('bHost').onclick = () => run('host', () => Net.hostSession({ ...opts(), isPublic: false }));
+$('bHostPub').onclick = () => run('host public', () => Net.hostSession({ ...opts(), isPublic: true }));
+$('bQuick').onclick = () => run('quick match', () => Net.quickMatch(opts()));
+$('bJoin').onclick = () => run('join', () => Net.joinSession($('code').value, opts()));
+$('bLeave').onclick = () => { if (s) s.close(); };
+$('bReady').onclick = () => {
+  if (!s) return;
+  ready = !ready;
+  s.setInfo({ ready });
+  $('bReady').textContent = ready ? 'UNREADY' : 'READY';
+};
+$('ship').onchange = () => { if (s) s.setInfo({ ship: $('ship').value }); };
+$('name').onchange = () => { if (s) s.setInfo({ name: $('name').value }); };
+$('bStart').onclick = () => { if (s && s.isHost) s.startGame({ seed: (Math.random() * 1e9) | 0, t0: Math.round(s.hostTime() + 2000) }); };
+$('bInvite').onclick = async () => {
+  if (!s) return;
+  const url = Net.makeInviteUrl(s.code);
+  try {
+    if (navigator.share) await navigator.share({ title: 'Nova Lancers', url });
+    else { await navigator.clipboard.writeText(url); log('invite copied: ' + url, 'ok'); }
+  } catch { log(url); }
+};
+function sendChat() {
+  const text = $('msg').value.trim();
+  if (!s || !text) return;
+  $('msg').value = '';
+  const me = s.lobby.players.find((p) => p.slot === s.selfSlot);
+  const m = { k: 'chat', text, n: me ? me.name : '?', s: s.selfSlot };
+  s.send(m);
+  chat(`${m.n}: ${text}`, 't' + s.selfSlot);
+}
+$('bSend').onclick = sendChat;
+$('msg').onkeydown = (e) => { if (e.key === 'Enter') sendChat(); };
+
+function stopStress() { clearInterval(stressTimer); stressTimer = 0; $('bStress').textContent = 'STRESS 20/s'; }
+T.startStress = (hz = 20) => {
+  if (!s || stressTimer) return;
+  let i = 0;
+  stress.t0 = performance.now();
+  stressTimer = setInterval(() => {
+    if (!s) return stopStress();
+    s.send({ k: 'st', i: i++, s: s.selfSlot, t: s.hostTime(), pad: 'x'.repeat(120) });
+  }, 1000 / hz);
+  $('bStress').textContent = 'STOP STRESS';
+};
+T.stopStress = stopStress;
+$('bStress').onclick = () => (stressTimer ? stopStress() : T.startStress(20));
+
+setInterval(() => {
+  if (!s) return;
+  $('vTransport').textContent = s.transportKind;
+  $('vPing').textContent = s.isHost ? s.lobby.players.map((p) => `${p.slot}:${s.ping(p.slot)}`).join(' ') : s.ping() + ' ms';
+  $('vTime').textContent = (s.hostTime() / 1000).toFixed(2) + ' s';
+  const parts = [];
+  for (const [k, v] of Object.entries(stress.perSlot)) {
+    const lat = v.lat.slice(-40).sort((a, b) => a - b);
+    const p50 = lat.length ? Math.round(lat[lat.length >> 1]) : 0;
+    parts.push(`s${k}:${v.n} gaps ${v.gaps} p50 ${p50}ms`);
+  }
+  $('vStress').textContent = parts.join(' · ') || '-';
+}, 250);
+</script>
+</body>
+</html>

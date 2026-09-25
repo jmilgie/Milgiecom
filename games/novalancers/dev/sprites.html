@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Lancers — Sprite Sheet</title>
+<style>
+  :root { --bg:#05040c; --panel:#0c0a1c; --line:#252050; --text:#dfe8f7; --dim:#7c8fb3; --acc:#79ecff; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font:12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #1a1638 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 30%, #221247 0%, transparent 55%),
+      var(--bg);
+    min-height:100vh;
+  }
+  header { position:sticky; top:0; z-index:5; padding:10px 14px; background:rgba(5,4,12,.88); border-bottom:1px solid var(--line); display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  header b { color:var(--acc); letter-spacing:1px; }
+  header input { background:#110e26; color:var(--text); border:1px solid var(--line); padding:4px 6px; font:inherit; width:160px; }
+  header label { color:var(--dim); }
+  #bar { width:160px; height:6px; background:#110e26; border:1px solid var(--line); }
+  #bar i { display:block; height:100%; width:0; background:var(--acc); }
+  #grid { display:flex; flex-wrap:wrap; gap:10px; padding:12px; }
+  .card { background:rgba(12,10,28,.85); border:1px solid var(--line); padding:8px; border-radius:4px; }
+  .card h3 { margin:0 0 4px; font-size:12px; color:var(--acc); }
+  .card .meta { color:var(--dim); margin-bottom:6px; }
+  .row { display:flex; gap:8px; align-items:flex-end; margin:4px 0; flex-wrap:wrap; }
+  .row span { color:var(--dim); width:44px; flex:none; }
+  canvas { image-rendering:pixelated; display:block; }
+  .stars { position:fixed; inset:0; z-index:-1; }
+</style>
+</head>
+<body>
+<canvas class="stars" id="stars"></canvas>
+<header>
+  <b>NOVA LANCERS · SPRITES</b>
+  <div id="bar"><i></i></div>
+  <span id="stat">building…</span>
+  <label>filter <input id="filter" placeholder="e.g. ship_ eb_ en_" /></label>
+  <label>zoom <input id="zoom" type="number" min="1" max="12" value="4" style="width:48px" /></label>
+</header>
+<div id="grid"></div>
+<script type="module">
+import { buildSprites, listSprites, spr, drawSprite, drawSpriteEmissive, atlasInfo } from '../js/art/sprites.js';
+
+const q = new URLSearchParams(location.search);
+const $ = (s) => document.querySelector(s);
+const filterEl = $('#filter'), zoomEl = $('#zoom');
+filterEl.value = q.get('f') || '';
+zoomEl.value = q.get('z') || '4';
+const SECTIONS = (q.get('rows') || 'frames,dirs,teams,white,glow').split(',');
+
+// twinkling backdrop
+(function stars() {
+  const c = $('#stars'), g = c.getContext('2d');
+  const fit = () => { c.width = innerWidth; c.height = innerHeight; g.fillStyle = '#fff';
+    let s = 7; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 260; i++) { g.globalAlpha = 0.15 + r() * 0.6; g.fillRect(r() * c.width | 0, r() * c.height | 0, 1, 1); } };
+  fit(); addEventListener('resize', fit);
+})();
+
+const t0 = performance.now();
+await buildSprites((p) => { $('#bar i').style.width = (p * 100).toFixed(0) + '%'; });
+const tSprites = performance.now() - t0;
+let tBoss = null;
+if (q.get('boss') !== '0') {
+  try {
+    const b0 = performance.now();
+    const mod = await import('../js/art/bossart.js');
+    if (mod.buildBossArt) { await mod.buildBossArt(() => {}); tBoss = performance.now() - b0; }
+  } catch (e) { console.warn('bossart not available:', e.message); }
+}
+const pages = atlasInfo();
+$('#stat').textContent = `buildSprites ${tSprites.toFixed(0)} ms` + (tBoss != null ? ` · bossart ${tBoss.toFixed(0)} ms` : '') +
+  ` · ${listSprites().length} sprites · atlas ${pages.map((p) => p.w + '×' + p.h).join(', ')}`;
+window.__spriteStats = { tSprites, tBoss, count: listSprites().length, pages: pages.map((p) => ({ w: p.w, h: p.h, frames: p.frames })) };
+
+const BG = '#0a0818';
+
+// Render one sprite frame into a small canvas at 1x (color or emissive layer)
+function frameCanvas(s, f, opt, layer) {
+  const pad = 2;
+  const c = document.createElement('canvas');
+  c.width = s.w + pad * 2; c.height = s.h + pad * 2;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  const x = (c.width >> 1), y = (c.height >> 1);
+  if (layer === 'emi') drawSpriteEmissive(g, s.name, f, x, y, opt);
+  else drawSprite(g, s.name, f, x, y, opt);
+  return c;
+}
+
+// Up-scaled cell with optional "in-game" bloom compositing
+function cell(s, f, opt, z, mode = 'plain') {
+  const src = frameCanvas(s, f, opt, 'col');
+  const c = document.createElement('canvas');
+  c.width = src.width * z; c.height = src.height * z;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = BG; g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(src, 0, 0, c.width, c.height);
+  if (mode === 'glow' && s.emissive) {
+    const e = frameCanvas(s, f, opt, 'emi');
+    g.globalCompositeOperation = 'lighter';
+    g.drawImage(e, 0, 0, c.width, c.height);            // light layer added on top
+    g.filter = `blur(${2 * z}px)`;
+    g.drawImage(e, 0, 0, c.width, c.height);            // bloom
+    g.drawImage(e, 0, 0, c.width, c.height);
+    g.filter = 'none';
+    g.globalCompositeOperation = 'source-over';
+  }
+  c.title = `${s.name} f${f}` + (opt.dir ? ` dir ${opt.dir.toFixed(2)}` : '') + (opt.team ? ` team ${opt.team}` : '');
+  return c;
+}
+
+function row(label, items) {
+  const r = document.createElement('div'); r.className = 'row';
+  const l = document.createElement('span'); l.textContent = label; r.appendChild(l);
+  for (const it of items) r.appendChild(it);
+  return r;
+}
+
+function render() {
+  const grid = $('#grid'); grid.innerHTML = '';
+  const terms = filterEl.value.trim().split(/\s+/).filter(Boolean);
+  const z = Math.max(1, Math.min(12, +zoomEl.value || 4));
+  const names = listSprites().filter((n) => !terms.length || terms.some((t) => n.includes(t)));
+  for (const name of names) {
+    const s = spr(name);
+    const card = document.createElement('div'); card.className = 'card'; card.dataset.name = name;
+    card.innerHTML = `<h3>${name}</h3><div class="meta">${s.w}×${s.h} · frames ${s.frames} · dirs ${s.dirs} · fps ${s.fps}` +
+      `${s.teamed ? ' · teamed' : ''}${s.emissive ? ' · emissive' : ''}</div>`;
+    const fr = [...Array(s.frames).keys()];
+    if (SECTIONS.includes('frames')) {
+      card.appendChild(row('1x', fr.map((f) => cell(s, f, {}, 1))));
+      card.appendChild(row(z + 'x', fr.map((f) => cell(s, f, {}, z))));
+    }
+    if (s.dirs > 1 && SECTIONS.includes('dirs')) {
+      const dz = Math.max(1, Math.min(z, s.w > 20 ? 2 : 3));
+      const ds = [...Array(s.dirs).keys()].map((d) => (d / s.dirs) * Math.PI * 2);
+      card.appendChild(row('dirs 1x', ds.map((d) => cell(s, 0, { dir: d }, 1))));
+      card.appendChild(row(`dirs ${dz}x`, ds.map((d) => cell(s, 0, { dir: d }, dz, 'glow'))));
+    }
+    if (s.teamed && SECTIONS.includes('teams')) {
+      for (let t = 1; t < 4; t++) card.appendChild(row('team ' + t, fr.map((f) => cell(s, f, { team: t }, Math.max(2, z >> 1)))));
+    }
+    if (SECTIONS.includes('white')) card.appendChild(row('white', fr.map((f) => cell(s, f, { white: true }, Math.max(2, z >> 1)))));
+    if (SECTIONS.includes('glow') && s.emissive) {
+      card.appendChild(row('in-game', fr.map((f) => cell(s, f, {}, z, 'glow'))));
+      if (s.teamed) card.appendChild(row('ig t1-3', [1, 2, 3].map((t) => cell(s, Math.min(2, s.frames - 1), { team: t }, z, 'glow'))));
+    }
+    grid.appendChild(card);
+  }
+  // live animation strip for everything (1x + zoom, in-game look)
+  window.__rendered = names.length;
+}
+filterEl.addEventListener('change', render);
+zoomEl.addEventListener('change', render);
+render();
+</script>
+</body>
+</html>
