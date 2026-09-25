@@ -261,12 +261,8 @@ async function boot() {
   }
   UI.setLoading(1, 'Ready');
 
-  // Deep-link: ?room=CODE
-  try {
-    const net = await tryImport('./net/session.js');
-    M.net = net;
-    pendingRoom = net?.parseRoomFromUrl ? net.parseRoomFromUrl() : (params.get('room') || null);
-  } catch { pendingRoom = params.get('room'); }
+  // Deep-link: ?room=CODE (parsed here so solo players never download the network modules)
+  pendingRoom = parseRoomParam();
 
   input.onAnyInput = () => AudioSys.unlock();
   AudioSys.onUnlock(() => { if ((mode === 'title' || mode === 'menu') && Music && !Music.current) playMusic('title', { fade: 2 }); });
@@ -284,6 +280,13 @@ async function boot() {
   UI.show('title', { version: VERSION, room: pendingRoom, best: profile.best });
   lastScreen = 'title';
   if (DEBUG && params.get('autostart')) startSolo({ ship: params.get('ship') || 'aurora', sector: +(params.get('sector') || 0) });
+}
+
+// ?room=ABCDE / ?r=ABCDE / #room=ABCDE  (same alphabet as js/net: no I, L, O, 0, 1)
+function parseRoomParam() {
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const raw = String(params.get('room') || params.get('r') || hash.get('room') || '').toUpperCase().replace(/[\s-]/g, '');
+  return /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}$/.test(raw) ? raw : null;
 }
 
 // ------------------------------------------------------------------ UI handlers
@@ -524,7 +527,8 @@ async function startOnline(kind, o = {}) {
     }[code] || 'Could not connect. Check your connection and try again.';
     UI.toast(msg, 3500);
     sfx('ui_error');
-    UI.show(kind === 'join' ? 'join' : 'coop');
+    if (kind === 'join') UI.show('join', { code: String(o.code || '').toUpperCase(), error: code || 'NETWORK' });
+    else UI.show('coop');
     return;
   }
   wireSession(session);

@@ -144,6 +144,8 @@ export default {
     xSpic: { base: 'strings', a: 0.008, d: 0.12, s: 0.55, r: 0.09 },                       // spiccato (play-time env)
     xLead: { base: 'lead', wave: 'saw', voices: 3, detune: 13, sub: 0.18, cutoff: 2600, q: 2.5, env: 1.6, fd: 0.28, vib: 20, vibRate: 5.8, vibDelay: 0.2, glide: 0.11, r: 0.22, vol: 0.6 },
     xLead2: { base: 'leadSquare', cutoff: 1900, vib: 12, r: 0.16 },
+    xPad: { base: 'padDark', r: 1.0 },                                                      // shorter tails (play-time)
+    xChoir: { base: 'choir', r: 0.9 },
     xSaw: { base: 'lead', wave: 'saw', voices: 3, detune: 16, cutoff: 1700, q: 3, env: 2.2, fd: 0.12, vib: 0, a: 0.003, d: 0.1, s: 0.5, r: 0.06, vol: 0.6 },
   },
 
@@ -157,23 +159,23 @@ export default {
     ride: { gain: 0.22, pan: -0.3, layer: { min: 0.7 } },
     crash: { gain: 0.42, reverb: 0.15, pan: -0.2 },
     tom: { gain: 0.4, reverb: 0.16 },
-    taiko: { gain: 0.3, reverb: 0.22 },
+    taiko: { gain: 0.26, reverb: 0.22 },
     taiko2: { inst: 'taiko', gain: 0.26, reverb: 0.25, pan: 0.2, tune: 5, layer: { min: 0.75 } },
     impact: { gain: 0.42, reverb: 0.25 },
     rev: { inst: 'revcym', gain: 0.4 },
     riser: { gain: 0.4, reverb: 0.3 },
     sub: { gain: 0.5, duck: 0.3 },
     bass: { inst: 'xBass', gain: 0.78, duck: 0.4 },
-    pad: { inst: 'padDark', gain: 0.26, duck: 0.6, reverb: 0.3 },
+    pad: { inst: 'xPad', gain: 0.26, duck: 0.6, reverb: 0.3 },
     spic: { inst: 'xSpic', gain: 0.4, reverb: 0.2, pan: 0.22, duck: 0.25 },
     strings: { gain: 0.36, reverb: 0.35, duck: 0.3, pan: -0.15 },
-    choir: { gain: 0.24, reverb: 0.45, duck: 0.25 },
-    chant: { inst: 'choir', gain: 0.3, reverb: 0.4, duck: 0.2 },
+    choir: { inst: 'xChoir', gain: 0.24, reverb: 0.45, duck: 0.25 },
+    chant: { inst: 'xChoir', gain: 0.3, reverb: 0.4, duck: 0.2 },
     brass: { gain: 0.4, reverb: 0.28 },
     lowbrass: { inst: 'brass', gain: 0.36, reverb: 0.3, pan: -0.05 },
-    stab: { inst: 'brassStab', gain: 0.32, reverb: 0.22, pan: -0.12, delay: 0.1 },
-    saw: { inst: 'xSaw', gain: 0.3, pan: 0.1, reverb: 0.12, duck: 0.2 },
-    arp: { inst: 'xArp', gain: 0.36, delay: 0.25, reverb: 0.15, pan: -0.25, duck: 0.35 },
+    stab: { inst: 'brassStab', gain: 0.38, reverb: 0.22, pan: -0.12, delay: 0.1 },
+    saw: { inst: 'xSaw', gain: 0.55, pan: 0.1, reverb: 0.12, duck: 0.2 },
+    arp: { inst: 'xArp', gain: 0.36, delay: 0.25, reverb: 0.15, pan: -0.25, duck: 0.35, poly: 5 },
     lead: { inst: 'xLead', gain: 0.8, reverb: 0.2, delay: 0.2 },
     lead2: { inst: 'xLead2', gain: 0.36, reverb: 0.15, layer: { min: 0.8 } },
   },
@@ -200,8 +202,8 @@ export default {
     riffChant: { chant: CHANT_RIFF },
     riffStab: { len: 128, stab: hits(RIFF_H, STAB_332, { low: 'G3', high: 'F4', voices: 3 }) },
     riffPad: { len: 128, pad: chordEvents(RIFF_H, { low: 'D3', high: 'D5', voices: 4, vel: 0.62 }) },
-    riffBeat: { kick: 'X..X..X..X..X.x.', snare: '....X.......X...', clap: '....x.......x...', hat: 'x.xgx.xgx.xgx.xg', taiko: 'X.....X.....X...' },
-    riffFill: { kick: 'X..X..X..X..X...', snare: '....X.......X.xx', clap: '....x.......x...', hat: 'x.xgx.xgx.xg....', taiko: 'X.....X.....X...', tom: '.*12 G3 D3 Bb2 G2' },
+    riffBeat: { kick: 'X..X..X..X..X.x.', snare: '....X.......X...', clap: '....x.......x...', hat: 'x.xgx.xgx.xgx.xg', taiko: 'X.....x.....o...' },
+    riffFill: { kick: 'X..X..X..X..X...', snare: '....X.......X.xx', clap: '....x.......x...', hat: 'x.xgx.xgx.xg....', taiko: 'X.....x.....o...', tom: '.*12 G3 D3 Bb2 G2' },
     riffFill2: { kick: 'X..X..X.X.......', snare: '....X...........', roll: '.*8 x@0.5 x@0.55 x@0.6 x@0.65 x@0.7 x@0.8 x@0.9 X', hat: 'x.xgx.xg........', taiko: 'X.....X.X.X.X.XX', tom: '.*8 G3 G3 D3 D3 Bb2 Bb2 G2 G2' },
 
     // ── A / A2 ──
@@ -276,7 +278,8 @@ export default {
     intro: {
       bars: 4, chords: INTRO_H,
       play: ['introChant', 'introPad', 'introDr', 'introBass'],
-      auto: { 'bass.lpf': [[2, 300], [4, 5000]], 'pad.lpf': [[0, 700], [4, 4000]] },
+      // bars 1–2 sit back under the WARNING siren, then everything swells into the riff
+      auto: { 'bass.lpf': [[2, 300], [4, 5000]], 'pad.lpf': [[0, 700], [4, 4000]], 'chant.vol': [[0, 0.55], [2, 0.7], [4, 1]], 'lowbrass.vol': [[0, 0.6], [4, 1]], 'sub.vol': [[0, 0.6], [4, 1]] },
     },
     riff: {
       bars: 8, chords: RIFF_H,

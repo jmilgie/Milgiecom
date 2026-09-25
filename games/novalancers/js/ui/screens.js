@@ -43,7 +43,10 @@ const reduceMotion = () => { try { return matchMedia('(prefers-reduced-motion: r
 const numify = (s) => esc(s).replace(/[0-9]+(?:[.,:][0-9]+)*/g, (m) => `<span class="num">${m}</span>`);
 
 // ------------------------------------------------------------------ device-pixel helpers
-const dprNow = () => Math.max(1, +window.devicePixelRatio || 1);
+// Everything these helpers size lives inside #ui, which big desktop screens zoom (uiZoom):
+// one CSS px there covers devicePixelRatio * uiZoom device pixels.
+let uiZoom = 1;
+const dprNow = () => Math.max(1, +window.devicePixelRatio || 1) * uiZoom;
 // CSS px that cover a whole number of device pixels (nearest to `css`, at least one).
 const devSnap = (css) => { const d = dprNow(); return Math.max(1, Math.round(css * d)) / d; };
 
@@ -51,14 +54,27 @@ const devSnap = (css) => { const d = dprNow(); return Math.max(1, Math.round(css
 // covers a whole number of device pixels, i.e. at k * 8 / dpr CSS px. Publish the label
 // sizes for this screen as CSS variables (smallest crisp size at or above the target).
 function applyTypeScale() {
-  const d = dprNow();
-  const up = (px) => (Math.ceil((px * d) / 8 - 0.05) * 8) / d;
-  const s = document.documentElement.style;
-  s.setProperty('--fs-xs', up(10).toFixed(3) + 'px');     // fine print, kickers
-  s.setProperty('--fs-sm', up(12).toFixed(3) + 'px');     // status labels
-  s.setProperty('--fs-md', up(15).toFixed(3) + 'px');     // numbers in rows / tables
-  s.setProperty('--fs-lg', up(20).toFixed(3) + 'px');     // big stat values
+  // Big desktop screens: the phone-sized menus are zoomed up in whole-ish steps, only when
+  // the zoomed layout still has at least ~800 px of height to work with.
+  let z = 1;
+  try {
+    if (matchMedia('(pointer: fine) and (min-width: 1250px) and (min-height: 1000px)').matches) z = innerHeight >= 1200 && innerWidth >= 1500 ? 1.5 : 1.25;
+  } catch { /* */ }
+  uiZoom = z;
+  if (root) root.style.zoom = z === 1 ? '' : String(z);
+  const set = (style, d) => {
+    const up = (px) => (Math.ceil((px * d) / 8 - 0.05) * 8) / d;
+    style.setProperty('--fs-xs', up(10).toFixed(3) + 'px');     // fine print, kickers
+    style.setProperty('--fs-sm', up(12).toFixed(3) + 'px');     // status labels
+    style.setProperty('--fs-md', up(15).toFixed(3) + 'px');     // numbers in rows / tables
+    style.setProperty('--fs-lg', up(20).toFixed(3) + 'px');     // big stat values
+  };
+  const dpr = Math.max(1, +window.devicePixelRatio || 1);
+  set(document.documentElement.style, dpr);                    // touch buttons (not zoomed)
+  if (root) set(root.style, dpr * z);                          // everything inside #ui
 }
+// Viewport size in #ui's (zoomed) CSS px.
+const vw = () => innerWidth / uiZoom, vh = () => innerHeight / uiZoom;
 
 // Crisp bitmap text (font.js) for room codes and scores — its glyphs keep 2/Z, 5/S, 8/B and
 // 0/O apart. Drawn at 1 art px per canvas px and scaled by CSS in whole device pixels;
@@ -1161,8 +1177,8 @@ DEF.lobby = {
     const m = $(el, '.qr-modal');
     m.hidden = false;
     // big enough to scan across a room, small enough to leave the code + CLOSE on screen
-    const land = innerWidth > innerHeight && innerHeight < 560;
-    const target = land ? Math.min(innerHeight - 64, innerWidth * 0.5) : Math.min(innerWidth * 0.74, innerHeight - 230);
+    const land = vw() > vh() && vh() < 560;
+    const target = land ? Math.min(vh() - 64, vw() * 0.5) : Math.min(vw() * 0.74, vh() - 230);
     sizeQR($(m, '.qr-big'), inviteUrl(code), Math.max(120, Math.min(440, target)));
     const c = $(m, '.qr-modal-code');
     pix(c, code, { color: '#ffffff', spacing: 3 });
@@ -1984,6 +2000,66 @@ function padDir(d) {
 }
 function padStop() { cancelAnimationFrame(pad.raf); pad.raf = 0; }
 
+// ------------------------------------------------------------------ first-flight coach
+// The first time a run starts (from a menu, not on resume), a non-blocking overlay shows how
+// to fly: a hand dragging with the ship following at an offset, plus callouts over the NOVA
+// and OVERDRIVE buttons. It fades after a few seconds or as soon as the player starts moving.
+const COACH_KEY = 'nvl-coach-v1';
+const HAND = ['....oo......', '...owwo.....', '...owwo.....', '...owwooo...', '...owwowwoo.', '.ooowwowwowo', 'owwowwwwwwwo', 'owwwwwwwwwwo', '.owwwwwwwwwo', '..owwwwwwwo.', '...owwwwwwo.', '....oooooo..'];
+function handSVG() {
+  const path = (ch) => HAND.map((r, y) => [...r].map((c, x) => (c === ch ? `M${x} ${y}h1v1h-1z` : '')).join('')).join('');
+  return `<svg class="coach-hand" viewBox="0 0 12 12" width="36" height="36" shape-rendering="crispEdges" aria-hidden="true"><path fill="#05040c" d="${path('o')}"/><path fill="#ffffff" d="${path('w')}"/></svg>`;
+}
+const coach = { el: null, timers: [], off: null };
+function coachSeen() { try { return window.localStorage.getItem(COACH_KEY) === '1'; } catch { return true; } }
+function showCoach() {
+  if (!coach.el || coachSeen()) return;
+  try { window.localStorage.setItem(COACH_KEY, '1'); } catch { /* */ }
+  const el = coach.el;
+  const touch = matchMedia('(pointer: coarse)').matches;
+  $(el, '.coach-title').textContent = touch ? 'DRAG ANYWHERE TO FLY' : 'ARROWS / WASD TO FLY';
+  $(el, '.coach-sub').textContent = touch ? 'YOUR SHIP FOLLOWS · FIRE IS AUTOMATIC' : 'SHIFT: PRECISE · X: NOVA · C: OVERDRIVE';
+  $(el, '.coach-hand-wrap').hidden = !touch;
+  drawShipIcon($(el, '.coach-ship'), curShip(), 0);
+  el.classList.remove('out');
+  el.classList.add('show');
+  // callouts sit over the real buttons (skipped when they are hidden), kept on screen with
+  // the arrow still pointing at the button centre
+  for (const [id, sel] of [['btnNova', '.coach-nova'], ['btnOver', '.coach-od']]) {
+    const b = document.getElementById(id);
+    const r = b && b.getBoundingClientRect();
+    const c = $(el, sel);
+    c.hidden = !(touch && r && r.width > 0);
+    if (c.hidden) continue;
+    const cx = (r.left + r.width / 2) / uiZoom, w = c.offsetWidth;
+    const left = clamp(cx - w / 2, 8, vw() - w - 8);
+    c.style.left = left.toFixed(1) + 'px';
+    c.style.bottom = (vh() - r.top / uiZoom + 12).toFixed(1) + 'px';
+    c.style.setProperty('--ax', (cx - left).toFixed(1) + 'px');
+  }
+  const t0 = performance.now();
+  const hide = () => { if (performance.now() - t0 > 900) hideCoach(); };
+  coach.off = () => {
+    removeEventListener('pointermove', onMove, true);
+    removeEventListener('keydown', onKey, true);
+  };
+  const onMove = (e) => { if (e.buttons || e.pointerType === 'touch') hide(); };
+  const onKey = (e) => { if (/^(Arrow|[wasdWASD]$)/.test(e.key)) hide(); };
+  addEventListener('pointermove', onMove, true);
+  addEventListener('keydown', onKey, true);
+  coach.timers.push(setTimeout(hideCoach, 6500));
+}
+function hideCoach(now) {
+  if (!coach.el) return;
+  coach.timers.forEach(clearTimeout);
+  coach.timers = [];
+  if (coach.off) { coach.off(); coach.off = null; }
+  if (!coach.el.classList.contains('show')) return;
+  if (now) { coach.el.classList.remove('show', 'out'); return; }
+  coach.el.classList.add('out');
+  coach.timers.push(setTimeout(() => coach.el.classList.remove('show', 'out'), 420));
+}
+
 // ------------------------------------------------------------------ banner & toast
 const GLITCH_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ0123456789#%*+<>/';
 let bannerTimers = [];
@@ -2019,10 +2095,19 @@ export const UI = {
           <div class="bn-line bn-line2"></div>
         </div>
       </div>
+      <div class="ui-coach" aria-hidden="true">
+        <div class="coach-drag">
+          <div class="coach-hand-wrap"><div class="coach-mover"><canvas class="coach-ship" width="26" height="26"></canvas><span class="coach-link"></span>${handSVG()}</div></div>
+          <div class="coach-text"><span class="coach-title"></span><span class="coach-sub"></span></div>
+        </div>
+        <div class="coach-call coach-nova"><b>NOVA BOMB</b><span>CLEARS BULLETS</span></div>
+        <div class="coach-call coach-od"><b>OVERDRIVE</b><span>WHEN CHARGED</span></div>
+      </div>
       <div class="ui-toasts" role="status" aria-live="polite"></div>`;
     layer = $(root, '.ui-screens');
     bannerEl = $(root, '.ui-banner');
     toastEl = $(root, '.ui-toasts');
+    coach.el = $(root, '.ui-coach');
 
     // Delegated clicks: sound + screen action.
     root.addEventListener('click', (e) => {
@@ -2088,9 +2173,14 @@ export const UI = {
     this.current = name;
     // in-game messages still on screen move over to the HTML toasts
     if (name && name !== 'none' && DEF[name]) for (const t of takeHudToasts()) this.toast(t.text, t.ms);
+    if (name !== 'none') hideCoach(true);
     if (!name || name === 'none' || !DEF[name]) {
       root.classList.remove('has-screen');
       root.dataset.screen = 'none';
+      // a run starting from a menu (not a resume / next sector): first-flight coach
+      if (name === 'none' && /^(hangar|lobby|menu|title|coop|join)$/.test(prev || '') && !coachSeen()) {
+        coach.timers.push(setTimeout(() => { if (curName === 'none') showCoach(); }, 300));
+      }
       padStop();
       if (document.activeElement && root.contains(document.activeElement)) document.activeElement.blur();
       if (name && name !== 'none' && !DEF[name]) console.warn('UI: unknown screen', name);

@@ -282,6 +282,47 @@ function showHarmony(h) {
   $('harm').innerHTML = html;
 }
 
+// Concurrent-voice estimate from the note log (the engine cuts the OLDEST voice once a deck has
+// more than 56 sounding, which would chop long pads/choirs). Each note is modelled with its
+// instrument's real tail (sustained: note + release·1.6; one-shots: the rendered sample length;
+// gated one-shots: note + release) and the per-channel poly limit.
+function voices(log, song) {
+  const spans = [];
+  const perCh = {};
+  for (const e of log) {
+    if (!e.c || !song.channels[e.c]) continue;
+    const c = song.channels[e.c], T = c.T, p = c.patch;
+    const notes = e.n && e.n.length ? e.n : [null];
+    for (const m of notes) {
+      let end;
+      if (T.kind === 'live') end = e.t + e.d + (p.r || 0.2) * 1.6 + 0.03;
+      else if (T.sustain) end = e.t + Math.max(e.d, 0.01) + (p.r || 0.1) * 1.6 + 0.02;
+      else {
+        const f = m == null ? 261.6 : 440 * Math.pow(2, (m - 69) / 12);
+        const len = T.len ? T.len(p, f) : 1;
+        end = e.t + (p.gate ? Math.min(len, e.d + (p.r || 0.1) * 1.6) : len);
+      }
+      const list = (perCh[e.c] = perCh[e.c] || []);
+      for (let i = list.length - 1; i >= 0; i--) if (list[i].end <= e.t) list.splice(i, 1);
+      while (list.length >= c.poly) { const v = list.shift(); v.end = Math.min(v.end, e.t + 0.05); }
+      const v = { t: e.t, end, c: e.c };
+      list.push(v); spans.push(v);
+    }
+  }
+  const pts = [];
+  for (const v of spans) pts.push([v.t, 1, v], [v.end, -1, v]);
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let cur = 0, max = 0, at = 0, over = 0, last = 0;
+  for (const [t, d] of pts) {
+    if (cur > 56) over += t - last;
+    last = t; cur += d;
+    if (cur > max) { max = cur; at = t; }
+  }
+  const byCh = {};
+  for (const v of spans) if (v.t <= at && v.end > at) byCh[v.c] = (byCh[v.c] || 0) + 1;
+  return { max, at: +at.toFixed(2), secondsOver56: +over.toFixed(2), atPeak: byCh };
+}
+
 // ─── public checks (also driven headlessly) ──────────────────────────────────────────
 async function check(track, secs = 100, opt = {}) {
   AudioSys.init();
@@ -307,7 +348,7 @@ async function check(track, secs = 100, opt = {}) {
     maxSilentGapS: +(maxGap * 0.1).toFixed(1), events: log.filter((e) => e.c).length, renderMs,
     sections: log.filter((e) => e.sec).map((e) => `${e.sec}@${e.t.toFixed(1)}`).join(' '),
     harmony: { total: h.total, chordPct: +((100 * h.chord) / Math.max(1, h.total)).toFixed(1), chromatic: uniq(h.chromatic), clashes: uniq(h.clashes), strongNCT: uniq(h.strongNCT), bassNCT: uniq(h.bassNCT) },
-    warnings: warns, bankMB: Music.stats().bankMB,
+    warnings: warns, bankMB: Music.stats().bankMB, voices: voices(log, song),
   };
   $('summary').innerHTML = `peak <b class="${sum.peakDb <= -1 ? 'good' : 'bad'}">${sum.peakDb} dBFS</b> · RMS <b>${sum.rmsDb}</b> · gated loudness <b>${sum.loud}</b> · clipped <b class="${lv.clips ? 'bad' : 'good'}">${lv.clips}</b> · longest silence <b>${sum.maxSilentGapS} s</b> · ${sum.events} events · render ${renderMs} ms`;
   return sum;

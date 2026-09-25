@@ -548,14 +548,14 @@ function drawRoster(ctx, lctx, hud, x, y, w, cols, s, overlay) {
     const room = rx - nameX - right - (extra ? extraW : 0) - 4 * s;
     let nm = nameRaw.slice(0, 10);
     while (nm.length > 2 && measureText(nm, { font: 'small', size: s }) > room) nm = nm.slice(0, -1);
-    drawText(ctx, nm, nameX, cy, { cache: true, font: 'small', size: s, color: dead ? MUTE : p.isLocal ? '#ffffff' : col, shadow: DARK });
+    drawText(ctx, nm, nameX, cy, { cache: true, font: 'small', size: s, color: dead ? DIM : p.isLocal ? '#ffffff' : col, shadow: DARK });
     if (sos) {
       drawText(ctx, 'SOS', rx, cy + s, { cache: true, font: 'tiny', size: s, color: WARN, align: 'right', alpha: blinkOn ? 1 : 0.35, lctx, glow: WARN, glowAlpha: 0.7 });
       return;
     }
-    drawText(ctx, '♥' + Math.max(0, p.lives | 0), rx, cy + s, { cache: true, font: 'tiny', size: s, color: dead ? MUTE : INK, align: 'right' });
+    drawText(ctx, '♥' + Math.max(0, p.lives | 0), rx, cy + s, { cache: true, font: 'tiny', size: s, color: dead ? DIM : INK, align: 'right' });
     if (extra === 'tag') {
-      drawText(ctx, hud.net.kind === 'relay' ? 'RELAY' : 'P2P', rx - right - 4 * s, cy + s, { cache: true, font: 'tiny', size: s, color: hud.net.kind === 'relay' ? GOLD2 : MUTE, align: 'right' });
+      drawText(ctx, hud.net.kind === 'relay' ? 'RELAY' : 'P2P', rx - right - 4 * s, cy + s, { cache: true, font: 'tiny', size: s, color: hud.net.kind === 'relay' ? GOLD2 : DIM, align: 'right' });
     } else if (extra === 'bars') {
       const pc = p.ping < 90 ? '#6fd23f' : p.ping < 180 ? GOLD : WARN;
       const bars = p.ping < 90 ? 3 : p.ping < 180 ? 2 : 1;
@@ -620,7 +620,7 @@ function drawSide(ctx, lctx, hud, R, L) {
   const m = chainMult(hud);
   lab('CHAIN', lx, y);
   const col = chainColor(m);
-  drawText(ctx, '×' + m, lx, y + 7 * s - (st.chainPop > 0.5 ? s : 0), { cache: true, font: 'big', size: s, color: m > 1 ? (st.chainPop > 0.6 ? '#ffffff' : col) : MUTE, shadow: DARK, lctx: m > 1 ? lctx : null, glow: col, glowAlpha: 0.5 + st.chainPop * 0.5 });
+  drawText(ctx, '×' + m, lx, y + 7 * s - (st.chainPop > 0.5 ? s : 0), { cache: true, font: 'big', size: s, color: m > 1 ? (st.chainPop > 0.6 ? '#ffffff' : col) : DIM, shadow: DARK, lctx: m > 1 ? lctx : null, glow: col, glowAlpha: 0.5 + st.chainPop * 0.5 });
   const by = y + 7 * s + 11 * s;
   const k = m > 1 ? chainT(hud) : 0;
   rect(ctx, lx, by, pw, 2 * s, '#1a1638');
