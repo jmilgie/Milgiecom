@@ -247,7 +247,8 @@ export function createPost(canvas) {
   // can actually fix: hitches (> 100 ms: loading, GC, tab switches) and a steady vsync-locked
   // 30 fps cadence (iOS Low Power Mode, battery saver) are ignored, and every downgrade is
   // probed: if frame time did not improve by 15 % within ~2 s the old level comes back and
-  // auto is switched off (until resetAuto()). After 20 s at a solid 60 fps it tries one level
+  // auto is switched off (until resetAuto()); a step that doesn't help gets one further step
+  // tried first. After 20 s at a solid 60 fps it tries one level
   // up again (at most twice per session).
   let quality = autoMax, auto = true, autoOff = false;
   let emaDt = 16.7, jit = 0, slow = 0, lastT = 0, grace = 120, calm = 0, ups = 0;
@@ -431,11 +432,13 @@ export function createPost(canvas) {
     if (grace > 0) { grace--; return; }
     if (!auto || autoOff) return;
     if (probeFrom) {
-      // judge the last downgrade on the frames after it settled
+      // judge the downgrade on the frames after it settled: keep it if frame time improved
+      // by 15 %, else try one more step (only 'low' drops the DPR further), else restore
       probeT += d; probeSum += d; probeN++;
       if (probeT > 2000) {
-        if (probeSum / probeN > probeRef * 0.85) { autoOff = true; setLevel(probeFrom); }
-        probeFrom = '';
+        if (probeSum / probeN <= probeRef * 0.85) probeFrom = '';
+        else if (quality !== 'low') { probeT = probeSum = probeN = 0; setLevel(ORDER[ORDER.indexOf(quality) + 1]); }
+        else { autoOff = true; setLevel(probeFrom); probeFrom = ''; }
       }
       return;
     }
@@ -564,8 +567,8 @@ export function createPost(canvas) {
     gl.uniform3f(u.uLift, lift[0], lift[1], lift[2]);
     gl.uniform2f(u.uSatCon, g && g.sat != null ? g.sat : 1, g && g.contrast != null ? g.contrast : 1);
     const bw = Q.bloomW;
-    gl.uniform4f(u.uBloom, bw[0], bw[1], bw[2], s.bloom != null ? s.bloom : 0.82);
-    gl.uniform1f(u.uIllum, s.illum != null ? s.illum : 2.4);
+    gl.uniform4f(u.uBloom, bw[0], bw[1], bw[2], s.bloom != null ? s.bloom : 0.8);
+    gl.uniform1f(u.uIllum, s.illum != null ? s.illum : 3.6);
     gl.uniform1f(u.uScan, s.scanlines ? 0.16 * Math.min(1, Math.max(0, (scale - 1.6) / 1.4)) : 0);
     gl.uniform1f(u.uVig, s.vignette != null ? s.vignette : 0.3);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

@@ -1119,7 +1119,7 @@ DEF.lobby = {
     const host = !!lobbyState.session?.isHost;
     const b = $(el, '.lb-leave');
     $(b, '.btn-label').textContent = this.leaveArmed ? (host ? 'CLOSE SQUAD?' : 'LEAVE SQUAD?') : 'LEAVE';
-    $(b, '.btn-sub').textContent = this.leaveArmed ? (root.classList.contains('kbd') ? 'PRESS AGAIN TO CONFIRM' : 'TAP AGAIN TO CONFIRM') : '';
+    $(b, '.btn-sub').textContent = this.leaveArmed ? (root.classList.contains('kbd') ? 'PRESS AGAIN' : 'TAP AGAIN') : '';
     b.setAttribute('aria-label', this.leaveArmed ? (host ? 'Confirm: close the squad for everyone' : 'Confirm: leave the squad') : (host ? 'Close squad' : 'Leave squad'));
   },
   act(a, b) {
@@ -1161,7 +1161,7 @@ DEF.lobby = {
     // big enough to scan across a room, small enough to leave the code + CLOSE on screen
     const land = innerWidth > innerHeight && innerHeight < 560;
     const target = land ? Math.min(innerHeight - 64, innerWidth * 0.5) : Math.min(innerWidth * 0.74, innerHeight - 230);
-    sizeQR($(m, '.qr-big'), inviteUrl(code), Math.max(120, target));
+    sizeQR($(m, '.qr-big'), inviteUrl(code), Math.max(120, Math.min(440, target)));
     const c = $(m, '.qr-modal-code');
     pix(c, code, { color: '#ffffff', spacing: 3 });
     c.setAttribute('aria-label', 'Squad code ' + code.split('').join(' '));
@@ -1463,8 +1463,8 @@ DEF.results = {
         <div class="res-body"></div>
         <p class="res-wait" hidden>WAITING FOR THE HOST…</p>
         <div class="foot">
-          ${btn('menu', 'MAIN MENU', { cls: 'btn-sm btn-ghost res-menu', ico: 'home', sub: ' ', sfx: 'none' })}
           ${btn('next', 'NEXT SECTOR', { cls: 'btn-primary btn-xl res-next', ico: 'play', sfx: 'ui_start', attrs: 'data-autofocus' })}
+          ${btn('menu', 'MAIN MENU', { cls: 'btn-sm btn-ghost res-menu', ico: 'home', sub: ' ', sfx: 'none' })}
         </div>
       </div>
     </div>`,
@@ -1517,7 +1517,7 @@ DEF.results = {
     b.classList.toggle('btn-danger', this.menuArmed);
     b.classList.toggle('btn-ghost', !this.menuArmed);
     $(b, '.btn-label').textContent = this.menuArmed ? (online ? 'LEAVE SQUAD?' : 'QUIT TO MENU?') : (online ? 'LEAVE SQUAD' : 'MAIN MENU');
-    $(b, '.btn-sub').textContent = this.menuArmed ? (root.classList.contains('kbd') ? 'PRESS AGAIN TO CONFIRM' : 'TAP AGAIN TO CONFIRM') : '';
+    $(b, '.btn-sub').textContent = this.menuArmed ? (root.classList.contains('kbd') ? 'PRESS AGAIN' : 'TAP AGAIN') : '';
     if (this.menuArmed) this.mt = setTimeout(() => this.armMenu(false), 3000);
   },
   act(a) {

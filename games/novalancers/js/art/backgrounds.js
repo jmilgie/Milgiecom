@@ -505,8 +505,7 @@ class BandTile {
 }
 // draw a canvas or BandTile once at (x, y)
 const blit = (ctx, img, x, y) => { if (img.bands) img.blit(ctx, x, y); else ctx.drawImage(img, x, y); };
-const banded = (r) => runGen(BandTile.from(r));
-const bandedG = (r) => BandTile.from(r);
+const bandedG = (r) => BandTile.from(r);     // generator: const t = yield* bandedG(raster)
 // Erase the light layer behind an opaque layer that is about to be drawn in front of it
 // (so far emissive layers don't shine through near structures). lctx is opaque, so
 // 'destination-out' leaves black; with an alpha-enabled light canvas it leaves
@@ -661,10 +660,12 @@ function pixelRing(ctx, cx, cy, rx, ry) {
 }
 
 // Additive light sprite from an intensity function: f(dx, dy) -> 0..1, coloured through ramp.
-function glowSprite(w, h, ramp, f, levels = 0) {
+function glowSprite(...a) { return runGen(glowSpriteG(...a)); }
+function* glowSpriteG(w, h, ramp, f, levels = 0) {
   const r = new Raster(w, h, false);
   const cols = ramp.map(hexToRgb), n = cols.length;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (x === 0 && due()) yield;
     let v = f(x + 0.5 - w / 2, y + 0.5 - h / 2);
     if (v <= 0.002) continue;
     v = clamp01(v) * (n - 1);
@@ -698,6 +699,65 @@ function freeAll(v) {
 }
 
 let lastVP = null;           // last viewport any background was sized to (used to prebuild layouts)
+
+// ---------------------------------------------------------------------------
+// Stage transitions. When a stage is disposed right after being drawn (sector change,
+// menu <-> game), its last background frame is kept and dissolved away over the next
+// stage with an ordered-dither wipe that sweeps down the screen, as if flying into the
+// new region. Nothing changes in the API: main keeps calling dispose() + createBackground().
+// ---------------------------------------------------------------------------
+const XF_MS = 1300;
+let XF = null;               // { main, light, W, H, made, t0, owner }
+function xfCanvas(c, W, H) { if (!c) c = makeCanvas(W, H); else if (c.width !== W || c.height !== H) { c.width = W; c.height = H; ctx2d(c); } return c; }
+function xfSnapshot(st) {
+  const W = st.vpW, H = st.vpH;
+  if (!W || !H) return;
+  const x = XF || {};
+  x.main = xfCanvas(x.main, W, H); x.light = xfCanvas(x.light, W, H);
+  x.mask = xfCanvas(x.mask, W, H); x.tmp = xfCanvas(x.tmp, W, H);
+  const m = ctx2d(x.main), l = ctx2d(x.light);
+  m.globalCompositeOperation = 'source-over'; m.globalAlpha = 1; m.fillStyle = '#05040c'; m.fillRect(0, 0, W, H);
+  l.globalCompositeOperation = 'source-over'; l.globalAlpha = 1; l.fillStyle = '#000'; l.fillRect(0, 0, W, H);
+  l.globalCompositeOperation = 'lighter';
+  st.draw(m, l, st.lastScroll, st.lastT, true);
+  x.W = W; x.H = H; x.made = nowMs(); x.t0 = 0; x.owner = null;
+  XF = x;
+}
+function xfFree() { if (!XF) return; for (const k of ['main', 'light', 'mask', 'tmp']) freeCanvas(XF[k]); XF = null; }
+// (pattern objects belong to the mask context: a fresh snapshot keeps them)
+// draws the dissolving previous frame over the stage just rendered
+function xfDraw(st, ctx, lctx) {
+  const x = XF, now = nowMs();
+  // progress per drawn frame (steps capped at 50 ms): a slow first frame can't skip it
+  if (!x.t0) { x.t0 = now; x.acc = 0; } else x.acc += Math.min(50, now - x.tl);
+  x.tl = now;
+  const u = x.acc / XF_MS, W = x.W, H = x.H;
+  if (u >= 1 || W !== st.vpW || H !== st.vpH) { xfFree(); return; }
+  // mask: rows near the top switch first; ordered dither inside each 8-row band
+  const mc = ctx2d(x.mask), pats = x.pats || (x.pats = []);
+  mc.globalCompositeOperation = 'source-over';
+  mc.clearRect(0, 0, W, H);
+  let last = -1;
+  for (let y = 0; y < H; y += 8) {
+    const p = clamp01(u * 1.7 - (y / H) * 0.7);                 // share of the new stage
+    const L = 16 - Math.round(p * 16);                          // Bayer level of the old frame
+    if (!L) continue;
+    if (L !== last) { mc.fillStyle = pats[L] || (pats[L] = dissolvePattern(mc, L)); last = L; }
+    mc.fillRect(0, y, W, 8);
+  }
+  const tc = ctx2d(x.tmp);
+  const put = (src, dst, op) => {
+    tc.globalCompositeOperation = 'copy'; tc.drawImage(src, 0, 0);
+    tc.globalCompositeOperation = 'destination-in'; tc.drawImage(x.mask, 0, 0);
+    tc.globalCompositeOperation = 'source-over';
+    const o = dst.globalCompositeOperation, a = dst.globalAlpha;
+    dst.globalCompositeOperation = op; dst.globalAlpha = 1; dst.drawImage(x.tmp, 0, 0);
+    dst.globalCompositeOperation = o; dst.globalAlpha = a;
+  };
+  put(x.main, ctx, 'source-over');
+  occlude(lctx, (l) => l.drawImage(x.mask, 0, 0));             // old pixels: only the old light
+  put(x.light, lctx, 'lighter');
+}
 
 // A layout can be kept when only the height wobbles (mobile URL bar) or fy shifts slightly.
 const layoutFits = (S, W, H, fx, fy) => S && S.W === W && S.fx === fx && H <= S.LH && H >= S.LH - 120 && Math.abs(fy - S.fy) <= 24;
@@ -782,15 +842,26 @@ class Stage {
     if (this.S) this.step(dt);
   }
   step() {}
-  draw(ctx, lctx, scrollY, t) {
+  draw(ctx, lctx, scrollY, t, snapshot = false) {
     if (!this.A) return;
+    if (!snapshot) {
+      this.lastScroll = scrollY || 0; this.lastT = t || 0; this.lastDraw = nowMs();
+      this.vpW = ctx.canvas ? ctx.canvas.width : this.W; this.vpH = ctx.canvas ? ctx.canvas.height : this.H;
+    }
     const S = this.S;
-    if (!S) { if (this.want) this.placeholder(ctx, lctx, t || 0); return; }
-    let dx = 0, dy = 0;
-    if (this.want) { dx = this.want.fx - this.fx; dy = this.want.fy - this.fy; }
-    if (dx || dy) { ctx.save(); lctx.save(); ctx.translate(dx, dy); lctx.translate(dx, dy); }
-    this.render(ctx, lctx, scrollY || 0, t || 0, S);
-    if (dx || dy) { ctx.restore(); lctx.restore(); }
+    if (!S) { if (this.want) this.placeholder(ctx, lctx, t || 0); }
+    else {
+      let dx = 0, dy = 0;
+      if (this.want) { dx = this.want.fx - this.fx; dy = this.want.fy - this.fy; }
+      if (dx || dy) { ctx.save(); lctx.save(); ctx.translate(dx, dy); lctx.translate(dx, dy); }
+      this.render(ctx, lctx, scrollY || 0, t || 0, S);
+      if (dx || dy) { ctx.restore(); lctx.restore(); }
+    }
+    if (!snapshot && XF) {
+      if (!XF.owner && XF.W === this.vpW && XF.H === this.vpH && nowMs() - XF.made < 1500) XF.owner = this;
+      if (XF.owner === this) xfDraw(this, ctx, lctx);
+      else if (!XF.owner && nowMs() - XF.made > 1500) xfFree();            // nobody took it
+    }
   }
   placeholder() {}
   render() {}
@@ -803,6 +874,11 @@ class Stage {
   dispose() {
     if (!this.A || this.pooled) return;
     this.cancelRelayout();
+    // was on screen a moment ago: keep its last frame for the transition into the next stage
+    if (this.S && this.lastDraw && nowMs() - this.lastDraw < 400) {
+      try { xfSnapshot(this); } catch (e) { XF = null; if (globalThis.__BG_ERR) globalThis.__BG_ERR.push(String(e && e.stack || e)); }
+    }
+    if (XF && XF.owner === this) XF.owner = null;
     this.pooled = true;
     LIVE.delete(this);
     poolAdd(this);
@@ -817,7 +893,6 @@ class Stage {
 
 // Additive nebula tile (periodic in x and y). Returns an opaque-black canvas meant for
 // 'lighter' compositing. dens(x, y, v) can reshape the noise value v -> 0..1 density.
-function nebulaTile(...a) { return runGen(nebulaTileG(...a)); }
 function* nebulaTileG(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 0.45, contrast = 2.2, profile = null, step = 2, ridged = 0, levels = 0 }) {
   const f = new Fbm(rng, w, h, cell, oct, 0.52);
   const wx = yield* new Fbm(rng, w, h, cell * 1.3, 3, 0.5).fieldG(4);
@@ -2046,24 +2121,25 @@ function kRock(r, e, cx, cy, rad, rng, M, L3, { cracks = 0, craters = 3, rim = n
       if (e) { const k = core ? 0.8 : 0.35; e.set(cx + X, cy + Y, pack(c[0] * k, c[1] * k * 0.9, c[2] * k * 0.8)); }
     };
     const walk = (x, y, ang, len, heat, depth) => {
+      const side = rng.sign();
       for (let s = 0; s < len; s++) {
         x += Math.cos(ang); y += Math.sin(ang);
         if (!inside(x, y)) return;
-        const h = heat * (1 - (s / len) * 0.55);
-        const ci = Math.round(1 + h * (top - 1));
+        // hottest mid-way, cooling toward both ends
+        const h = heat * (0.55 + 0.45 * Math.sin((s / len) * Math.PI));
+        const ci = Math.round(h * (top - 0.5));
         put(x, y, ci, true);
-        // margin on both sides, one ramp step cooler; a second cooler step on thick hot parts
-        const px = -Math.sin(ang), py = Math.cos(ang);
-        put(x + px, y + py, ci - 2, false); put(x - px, y - py, ci - 2, false);
-        if (h > 0.8) { put(x + px * 2, y + py * 2, ci - 4, false); }
-        ang += rng.range(-0.55, 0.55);
-        if (depth < 2 && rng.chance(0.07)) walk(x, y, ang + rng.sign() * rng.range(0.6, 1.2), len * 0.45, heat * 0.75, depth + 1);
+        // a cooler margin on one side only (the fissure's lit wall)
+        const px = -Math.sin(ang) * side, py = Math.cos(ang) * side;
+        if (h > 0.45) put(x + px, y + py, ci - 2, false);
+        ang += rng.range(-0.5, 0.5);
+        if (depth < 1 && rng.chance(0.035)) walk(x, y, ang + rng.sign() * rng.range(0.7, 1.2), len * 0.4, heat * 0.8, depth + 1);
       }
     };
-    const n = cracks * (rad > 20 ? 2 : 1) + (rad > 30 ? 1 : 0);
+    const n = cracks + (rad > 30 ? 1 : 0);
     for (let k = 0; k < n; k++) {
-      const a = rng.range(0, TAU), d0 = rng.range(0, 0.35) * rad;
-      walk(Math.cos(a) * d0, Math.sin(a) * d0, rng.range(0, TAU), rad * rng.range(0.7, 1.3), rad > 8 ? rng.range(0.75, 1) : 0.6, 0);
+      const a = rng.range(0, TAU), d0 = rng.range(0, 0.4) * rad;
+      walk(Math.cos(a) * d0, Math.sin(a) * d0, rng.range(0, TAU), rad * rng.range(0.5, 0.95), rad > 8 ? rng.range(0.7, 0.92) : 0.55, 0);
     }
   }
 }
@@ -2422,17 +2498,13 @@ class CinderStage extends Stage {
     lctx.globalAlpha = clamp01(0.75 + fl * 0.8); blit(lctx, S.cor, 0, 0);
     lctx.globalAlpha = 1;
     A.tw.draw(ctx, lctx, ax, Math.round(scrollY * 0.02), W, H, t, 0.8);
-    // dust lanes absorb (part of) the light behind them
-    const d1 = this.L('dust1'), o1 = Math.round(scrollY * 0.06);
-    this.tile(ctx, d1, o1);
-    occlude(lctx, (l) => this.tile(l, d1, o1));
+    // dust lanes and far rocks (thin / tiny: their light occlusion isn't worth two blits)
+    this.tile(ctx, this.L('dust1'), Math.round(scrollY * 0.06));
     const of = Math.round(scrollY * 0.2);
     drawTiled(ctx, A.rocksFar, ax, of, W, H, 0.41);
-    occlude(lctx, (l) => drawTiled(l, A.rocksFar, ax, of, W, H, 0.41));
     lctx.globalAlpha = 0.7; drawTiled(lctx, A.rocksFarE, ax, of, W, H, 0.41); lctx.globalAlpha = 1;
-    const d2 = this.L('dust2'), o2 = Math.round(scrollY * 0.3);
-    this.tile(ctx, d2, o2);
-    occlude(lctx, (l) => this.tile(l, d2, o2));
+    this.tile(ctx, this.L('dust2'), Math.round(scrollY * 0.3));
+    // big mid and near rocks hide the light (corona, far cracks) behind them
     // mid rocks with rigs, lasers, sparks
     const oy = Math.round(scrollY * 0.45);
     drawTiled(ctx, A.rocksMid, ax, oy, W, H, 0.37);
@@ -2833,10 +2905,8 @@ class VeilStage extends Stage {
       ctx.globalAlpha = 1; lctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = 'source-over';
-    // dark dust lanes, crystals and globules each hide the light of the layers behind them
-    const dust = this.L('dust'), od = Math.round(scrollY * 0.24);
-    this.tile(ctx, dust, od);
-    occlude(lctx, (l) => this.tile(l, dust, od));
+    // dark dust filaments; crystals and globules hide the light of the layers behind them
+    this.tile(ctx, this.L('dust'), Math.round(scrollY * 0.24));
     const oc = Math.round(scrollY * 0.42);
     drawTiled(ctx, A.crys, ax, oc, W, H, 0.43);
     occlude(lctx, (l) => drawTiled(l, A.crys, ax, oc, W, H, 0.43));
@@ -3273,7 +3343,7 @@ function* genWreck() {
   // --- deep space below: stars, a cold nebula glow and far debris ---
   {
     const H3 = 640;
-    const neb = nebulaTile(rng, TW, H3, { cell: 180, oct: 4, warp: 50, bias: 0.46, contrast: 2, step: 4, ramp: ['#000000', '#030a0e', '#061318', '#0a1c22', '#0f2830', '#15363e'] });
+    const neb = yield* nebulaTileG(rng, TW, H3, { cell: 180, oct: 4, warp: 50, bias: 0.46, contrast: 2, step: 4, ramp: ['#000000', '#030a0e', '#061318', '#0a1c22', '#0f2830', '#15363e'] });
     const nc = ctx2d(neb);
     nc.globalCompositeOperation = 'lighter';
     nc.drawImage(starTile(rng, TW, H3, 700, { maxB: 0.75, pow: 2.3, big: 0.04 }), 0, 0);
@@ -3425,7 +3495,7 @@ function* renderHole(rs, q) {
   }
   // soft outer glow (additive) hugging the disk plane
   const gw = Math.ceil(rout * 2.3) | 1, gh = Math.ceil(rout * 0.9) | 1;
-  out.glow = glowSprite(gw, gh, ['#000000', '#0c0503', '#180805', '#260d06', '#341408'], (dx, dy) => {
+  out.glow = yield* glowSpriteG(gw, gh, ['#000000', '#0c0503', '#180805', '#260d06', '#341408'], (dx, dy) => {
     const X = dx / (rout * 1.1), Y = dy / (rout * 0.42); const d = 1 - Math.sqrt(X * X + Y * Y); return d > 0 ? d * d : 0;
   });
   yield;
@@ -3503,8 +3573,8 @@ function* genHorizon() {
   for (let i = 0; i < NA; i++) {
     const u = rng.next(), a = 1.3 + 1.3 * u * u;                  // radius in shadow radii, dense near the ring
     A.arcs.a[i] = a; A.arcs.a0[i] = rng.range(0, TAU);
-    A.arcs.span[i] = (0.18 + 0.55 * (1 - (a - 1.3) / 1.3)) * rng.range(0.6, 1.2);
-    A.arcs.br[i] = rng.range(0.5, 1); A.arcs.w[i] = 0.16 * Math.pow(1.3 / a, 1.5) * (rng.chance(0.5) ? 1 : 0.8);
+    A.arcs.span[i] = (0.4 + 0.55 * (1 - (a - 1.3) / 1.3)) * rng.range(0.7, 1.2);
+    A.arcs.br[i] = rng.range(0.45, 0.9) * (1.3 / a); A.arcs.w[i] = 0.16 * Math.pow(1.3 / a, 1.5) * (rng.chance(0.5) ? 1 : 0.8);
     A.arcs.T[i] = rng.range(6, 14); A.arcs.ph[i] = rng.next();
   }
   // the hole at its starting size (size-independent: shared by every instance)
@@ -3671,7 +3741,7 @@ class HorizonStage extends Stage {
       lctx.globalAlpha = clamp01(la * bright); d.put(lctx, dx0, dy0);
     };
     ctx.globalCompositeOperation = 'source-over';
-    layer(h.back, 0.3, 0);
+    layer(h.back, 0.24, 0);
     layer(h.halo, 0.45, 1);
     // the shadow is pure black on both layers (punch it out of the light layer too)
     ctx.globalAlpha = 1; lctx.globalAlpha = 1;
@@ -3692,7 +3762,7 @@ class HorizonStage extends Stage {
       lctx.globalAlpha = a * 0.5; lctx.fillRect(px, py, 1, 1);
     }
     ctx.globalAlpha = 1;
-    layer(h.front, 0.35, 2);
+    layer(h.front, 0.27, 2);
     // flare pulse: an expanding 1-px ring of light
     if (pu > 0) {
       const rr = h.rs * (1.2 + (1 - pu) * 4);
@@ -3807,7 +3877,6 @@ function prebuild(key, pri = 0) {
     const A = yield* assetsGen(key);
     if (!vp) return null;
     const st = new STAGES[key][1](A);
-    lastVP = lastVP || vp;
     st.applyLayout(yield* st.buildLayout(vp.W, vp.H, vp.fx, vp.fy));
     if (vp.W > TW) wideTiles(key);
     return st;
@@ -3834,7 +3903,7 @@ export async function buildBackgrounds(onProgress, keys = ['title', 'aurora']) {
     let steps = 0;
     const j = startJob((function* () {
       const g = assetsGen(keys[i]);
-      for (;;) { const r = g.next(); if (r.done) return r.value; steps++; if (onProgress) onProgress(Math.min(0.99, (i + Math.min(0.95, steps / 40)) / keys.length)); yield; }
+      for (;;) { const r = g.next(); if (r.done) return r.value; steps++; if (onProgress) onProgress(Math.min(0.99, (i + 0.95 * (1 - Math.exp(-steps / 120))) / keys.length)); yield; }
     })(), 2, 24);
     await j.promise;
     if (onProgress) onProgress((i + 1) / keys.length);
@@ -3872,6 +3941,7 @@ export function _bgDebug() {
     assets: [...CACHE].map(([k, c]) => ({ key: k, ready: !!c.A, mb: +(bytesOf(c.A) / 1048576).toFixed(2), wide: !!c.wide })),
     pool: POOL.map((s) => ({ key: s.key, W: s.W, H: s.H, mb: +(s.layoutBytes() / 1048576).toFixed(2) })),
     prebuilding: [...PREP.keys()], jobs: JOBS.length,
+    xf: XF ? { W: XF.W, H: XF.H, owner: XF.owner ? XF.owner.key : null, age: +(nowMs() - XF.made).toFixed(0), t0: XF.t0 ? +(nowMs() - XF.t0).toFixed(0) : 0 } : null,
   };
 }
 // Dev: run a stage's asset and layout generators step by step and report the longest steps.

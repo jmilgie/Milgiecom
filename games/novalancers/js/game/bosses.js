@@ -340,6 +340,9 @@ const W_CORE = 1400, W_RES = 150, W_ARM = 240, W_TUR = 60;
 // hull plates [x, y, r] relative to the hull center (kept clear of turrets, arms and the bay)
 const W_PLATES = [[0, -26, 11], [-16, -34, 6], [16, -34, 6], [-37, -21, 6], [37, -21, 6], [-53, -21, 9], [53, -21, 9], [-31, 1, 8], [31, 1, 8]];
 const W_SWING = { sl: 92, sw: 0.72, half: 0.8, n: 4 };
+// grapple telegraph (ticks the reticle shows before the claw launches) and the reticle's final
+// radius — it must cover the claw's real body-kill radius (0.75·r 13 + ship hitbox ≈ 12.3 px)
+const W_GRAB = 60, W_GRAB_R = 13;
 
 function wardenHullPath(e, t) {
   const p = e.p, tin = p.tin ?? 4.2, tick = e.t0 + t * 60;
@@ -411,10 +414,10 @@ function wArmDrop(e, sim, side) {
   const tg = sim.targetPlayer(arm, 'near');
   if (!tg) return;
   const tx = clamp(tg.x, side < 0 ? 18 : 72, side < 0 ? 168 : 222), ty = clamp(tg.y, 176, 300);
-  const at = sim.tick + 48;
+  const at = sim.tick + W_GRAB;
   sim.setParams(arm, { act: 1, at, tx: r2(tx), ty: r2(ty) });
   arm.data.busy = at + 112;
-  later(e, sim, 48 + 19, () => {
+  later(e, sim, W_GRAB + 19, () => {
     if (!arm.alive) return;
     sim.cue('snap', null, arm);
     if (canFire(arm, sim, 330, 46)) sim.fire(arm, 'ring', { n: dens(sim, e.phase >= 2 ? 12 : 10), v: 0.9, a0: r3(sim.rng.next() * TAU), spr: 'eb_small_o' }, [0, 8]);
@@ -628,11 +631,19 @@ function wardenArmDraw(e, ctx, lctx, sim) {
   // grapple telegraph: reticle on the target + guide line
   if (p.act === 1) {
     const s = sim.tick - (p.at || 0);
-    if (s >= -48 && s < 22) {
-      const k = clamp((s + 48) / 48, 0, 1), rot = sim.tick * 0.08 * side;
+    if (s >= -W_GRAB && s < 22) {
+      const k = clamp((s + W_GRAB) / W_GRAB, 0, 1), rot = sim.tick * 0.08 * side;
       const col = s >= 0 ? COL.w : COL.o;
-      dotRing(ctx, p.tx, p.ty, 12 - 4 * k, 8, rot, col, 0.5 + 0.4 * k);
-      dotRing(lctx, p.tx, p.ty, 12 - 4 * k, 8, rot, col, 0.5 + 0.5 * k);
+      const rr = W_GRAB_R + 5 * (1 - k);       // closes in on the real danger radius
+      // a dense pixel ring with a dark rim (reads over bright backgrounds on a phone) + 4 brackets
+      dotRing(ctx, p.tx, p.ty, rr + 1, 40, rot, OUTLINE, 0.55);
+      dotRing(ctx, p.tx, p.ty, rr, 40, rot, col, 0.7 + 0.3 * k);
+      dotRing(lctx, p.tx, p.ty, rr, 40, rot, col, 0.55 + 0.45 * k);
+      for (let i = 0; i < 4; i++) {
+        const a = -rot * 1.5 + i * HALF, c = Math.cos(a), si = Math.sin(a);
+        dotLine(ctx, p.tx + c * (rr + 7), p.ty + si * (rr + 7), p.tx + c * (rr + 2), p.ty + si * (rr + 2), 1, 0, col, 0.85);
+        dotLine(lctx, p.tx + c * (rr + 7), p.ty + si * (rr + 7), p.tx + c * (rr + 2), p.ty + si * (rr + 2), 1, 0, col, 0.7);
+      }
       ctx.globalAlpha = 0.8; ctx.fillStyle = col;
       ctx.fillRect(Math.round(p.tx) - 1, Math.round(p.ty), 3, 1); ctx.fillRect(Math.round(p.tx), Math.round(p.ty) - 1, 1, 3);
       ctx.globalAlpha = 1;

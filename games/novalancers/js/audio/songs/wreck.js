@@ -95,7 +95,7 @@ export default {
   title: 'Leviathan Wreck',
   bpm: 124,
   key: 'C', scale: 'minor',
-  gain: 0.83,
+  gain: 0.86,
   delay: { beats: 0.75, feedback: 0.4, lp: 3200, hp: 450 },
   duck: { release: 0.18 },
   seed: 41,

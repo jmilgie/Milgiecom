@@ -309,7 +309,8 @@ function coopStress(sec) {
 
 // Auto-quality simulation: drives post.render() on a timer with a synthetic cadence.
 // pattern: 'load' (loading-screen jank 30-200 ms for 4 s, then 60 fps), 'cap30' (steady 33.3 ms),
-// 'slow' (post-bound 28 ms that improves 40 % per level), 'cpu' (28 ms regardless of level)
+// 'slow' (post-bound 28 ms that improves 40 % per level), 'fill' (only 'low' helps),
+// 'cpu' (28 ms regardless of level)
 async function autoSim(pattern, ms) {
   post.setQuality('high');
   pstate.quality = undefined;
@@ -326,6 +327,7 @@ async function autoSim(pattern, ms) {
       if (pattern === 'load') d = fakeT < 4000 ? 30 + rand() * 170 : 16.7 + (rand() - 0.5) * 2;
       else if (pattern === 'cap30') d = 33.3 + (rand() - 0.5) * 1.5;
       else if (pattern === 'slow') d = 28 * Math.pow(0.6, lvl()) + rand() * 3;
+      else if (pattern === 'fill') d = (lvl() < 2 ? 26 : 16) + rand() * 2;     // only 'low' (DPR 1.5) helps
       else d = 28 + rand() * 3;
       fakeT += d;
       post.render(main, light, pstate);

@@ -101,9 +101,10 @@ const assetMs = {};
 let memMB = '0';
 async function setBg(k) {
   key = k;
-  for (const v of V) { if (v.bg) v.bg.dispose(); v.bg = null; }
   if (assetMs[k] === undefined) { const t0 = performance.now(); await buildBackgrounds(null, [k]); assetMs[k] = performance.now() - t0; }
   for (const v of V) {
+    // like main.js: dispose + create in the same frame (the module dissolves between them)
+    if (v.bg) v.bg.dispose();
     const t0 = performance.now();
     v.bg = createBackground(key);
     v.bg.resize(v.d.W, v.d.H, v.fx, v.fy);

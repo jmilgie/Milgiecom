@@ -18,7 +18,8 @@
 //                second half = the B phrase, the call again and the bVI–bVII–I cadence (C–D–E)
 //   climax2 (16) the relative minor (C# minor): riff at full power, then the Horizon melody high
 //   turn (4)     B → G → A → F#sus4–F#: falls back into B minor (loop)
-// Intensity: ≥0.7 ride, ≥0.8 lead doubled an octave down; <0.15 drops the kit.
+// Intensity: ≥0.7 ride, ≥0.8 doubles the lead (an octave down for the Lancers theme, in unison for
+// the Horizon melody, whose octave-down double would rub the pads); <0.15 drops the kit.
 
 import { arp, voiceLead, chordInfo } from '../music.js';
 import { themeEvents, themeHarmony } from './motifs.js';
@@ -114,7 +115,7 @@ export default {
   title: 'Event Horizon',
   bpm: 138,
   key: 'B', scale: 'minor',
-  gain: 0.85,
+  gain: 0.88,
   delay: { beats: 0.75, feedback: 0.42, lp: 4600, hp: 380 },
   duck: { release: 0.2 },
   seed: 23,
@@ -304,8 +305,9 @@ export default {
       bars: 16, chords: A_H + ' ' + B_H,
       play: [{ p: 'riffA', until: 8 }, { p: 'gateA', until: 8 }, { p: 'c2Choir', until: 8 }, { p: 'padA', until: 8 }, { p: 'bassA', until: 8 }, { p: 'arpA', until: 8 },
         { p: 'melB', at: 8 }, { p: 'choirB', at: 8 }, { p: 'gateB', at: 8 }, { p: 'padB', at: 8 }, { p: 'bassB', at: 8 }, { p: 'arpB', at: 8 },
-        'c2Fx', 'dRide',
+        { p: 'bldVast', until: 8 }, { p: 'vastB', at: 8 }, 'c2Fx', 'dRide',
         ['dA', 'dA', 'dA', 'dA', 'dA', 'dA', 'dA', 'dFill', 'dA', 'dA', 'dA', 'dA', 'dA', 'dA', 'dA', 'dFill2']],
+      auto: { 'riff.vol': [[0, 1.15]], 'gate.vol': [[0, 1.25]], 'arp.vol': [[0, 1.2]] },
     },
     turn: {
       bars: 4, chords: TURN_H,

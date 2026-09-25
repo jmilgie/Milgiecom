@@ -73,7 +73,7 @@
 
 <script type="module">
 import { AudioSys } from '../js/audio/audio.js';
-import { Music, SCALES, chordPcs, chordInfo, pitchClass, noteName } from '../js/audio/music.js';
+import { Music, SCALES, chordPcs, pitchClass, noteName } from '../js/audio/music.js';
 
 const $ = (id) => document.getElementById(id);
 const MINE = ['wreck', 'horizon'];
@@ -132,7 +132,7 @@ const db = (x) => 20 * Math.log10(Math.max(1e-9, x));
 function levels(buf, win = 0.1) {
   const sr = buf.sampleRate, n = Math.floor(win * sr), L = buf.getChannelData(0), R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L;
   const frames = [];
-  let peak = 0, sum = 0, clips = 0, maxJump = 0;
+  let peak = 0, sum = 0, clips = 0;
   for (let i = 0; i + n <= L.length; i += n) {
     let pk = 0, s = 0;
     for (let j = i; j < i + n; j++) {
