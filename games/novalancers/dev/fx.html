@@ -27,7 +27,7 @@ import { RAMPS } from '../js/art/palette.js';
 //   ?t=SEC        step deterministically to SEC and freeze    ?manual=1   no auto-run (Playwright)
 //   ?nopost=1     2D composite instead of post.js              ?q=high|medium|low|auto
 //   ?stress=1     keep ~1500 particles alive, time update+draw  ?lens=S     black-hole lensing test
-//                 (horizon-like values: r = 3.4 x shadow radius, strength S e.g. 0.8)
+//                 ({x, y, shadow: 20, strength: S}, S = 0.4..0.8 like the horizon background)
 //   ?nofield=1    no field rect (post effects over the HUD strip too)
 //   ?illum=X / ?bloom=X   override post bloom illumination / additive bloom intensity
 //   ?atlas=ex|sp|glow&p=N&z=Z&sx=&sy=  inspect atlases (with ?nopost=1)
@@ -160,8 +160,10 @@ function sim() {
 }
 
 // ---------- render ----------
-const LENS_RS = 20;   // painted shadow radius; lensing r follows backgrounds.js horizon (3.4 x rs)
-const LENS = qs.get('lens') ? { x: FX0 + 120, y: FY0 + 150, r: LENS_RS * 3.4, strength: +qs.get('lens') } : null;
+const LENS_RS = 20;   // painted shadow radius (art px)
+const LENS = !qs.get('lens') ? null : qs.get('lensr')   // ?lensr=R: legacy {x, y, r, strength} shape
+  ? { x: FX0 + 120, y: FY0 + 150, r: +qs.get('lensr'), strength: +qs.get('lens') }
+  : { x: FX0 + 120, y: FY0 + 150, shadow: LENS_RS, strength: +qs.get('lens') };
 const FIELD = qs.get('nofield') ? null : { x: FX0, y: FY0, w: 240, h: 400 };
 const wavesInt = Array.from({ length: 8 }, () => ({ x: 0, y: 0, r: 0, strength: 0 }));
 const pstate = { waves: [], flash: 0, flashColor: [1, 1, 1], chroma: 0, grade: { tint: [1, 0.97, 1.04], lift: [0.01, 0, 0.02], sat: 1.05, contrast: 1.04 }, lensing: null, time: 0, quality, scanlines: true, field: FIELD };

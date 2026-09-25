@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova Lancers · campaign determinism lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #07060f; color: #dfe8f7; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  main { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; }
+  canvas { background: #0d0b1c; image-rendering: pixelated; width: 360px; height: 600px; border: 1px solid #2b2745; }
+  pre { margin: 0; white-space: pre-wrap; max-width: 560px; }
+  .ok { color: #8dffb0; } .bad { color: #ff7a7a; }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="c" width="240" height="400"></canvas>
+  <pre id="out">booting…</pre>
+</main>
+<script type="module">
+// Host + client Sims of the REAL campaign (StageRunner + roster + bosses) in one page, linked by an
+// in-memory fake network with `delay` ticks of latency each way (messages JSON round-tripped).
+// Both players fly a simple autopilot and fire, so client damage reports / predicted kills /
+// pickups all travel the real message paths. Every `every` ticks it compares each enemy's
+// position on host vs client once that enemy (and its parents) had no host event for delay+2
+// ticks — closed-form paths must then agree exactly.
+//   ?sector=0 (0-based) &delay=6 &secs=60 &speed=8 (ticks per frame) &seed=77 &skip=0 (jump the
+//   stage script to its WARNING step first: boss fight) &players=2
+// Canvas: host enemies = cyan rings, client enemies = magenta dots, host bullets white, client pink.
+// Results: window.__det = { done, host:{tick,state,i}, client:{…}, maxErr, p99, worst, missing, extra, … }
+import { Sim } from '../js/game/sim.js';
+import { FIELD_W, FIELD_H } from '../js/config.js';
+
+const q = new URLSearchParams(location.search);
+const SECTOR = +(q.get('sector') || 0), DELAY = +(q.get('delay') || 6), SECS = +(q.get('secs') || 60);
+const SPEED = +(q.get('speed') || 8), SEED = +(q.get('seed') || 77), SKIP = q.has('skip'), NP = +(q.get('players') || 2);
+const noop = () => {};
+const warns = [];
+const _warn = console.warn;
+console.warn = (...a) => { warns.push(a.map(String).join(' ')); _warn(...a); };
+
+function mkEnv() {
+  const fx = new Proxy({}, { get: (t, k) => (k === 'postState' ? () => ({ waves: [] }) : k === 'count' ? 0 : noop) });
+  const env = {
+    sprites: { meta: {}, emeta: {}, draw: noop, drawE: noop, optDir: () => ({}), optNone: () => ({}), withWhite: (o) => o, teamOpt: () => ({}), teamWhite: () => ({}) },
+    fx, bg: { scrollSpeed: 30, draw: noop, flash: noop }, glow: noop, text: null, hiScore: 0, bossMeta: {},
+    music: { play: noop, duck: noop, stinger: noop }, sfx: noop, sfxLoop: () => ({ stop: noop, setX: noop, setPitch: noop, setVol: noop }),
+    haptic: noop, shake: noop,
+    setSector(s) { env.bg = { scrollSpeed: { aurora: 28, cinder: 32, veil: 24, wreck: 36, horizon: 30 }[s.key] || 30, draw: noop, flash: noop }; },
+    ui: { event: noop },
+  };
+  return env;
+}
+
+let tick = 0;
+const toClient = [], toHost = [];
+const players = [];
+for (let i = 0; i < NP; i++) players.push({ slot: i, name: i ? 'CLIENT' : 'HOST', ship: ['aurora', 'valkyrie', 'seraph', 'tempest'][i] });
+const host = new Sim({ mode: 'host', env: mkEnv(), players, localSlot: 0, sector: SECTOR, seed: SEED,
+  net: { send: (m) => toClient.push([tick + DELAY, JSON.stringify(m)]), hostTime: () => tick * 1000 / 60 } });
+const client = new Sim({ mode: 'client', env: mkEnv(), players, localSlot: 1, sector: SECTOR, seed: SEED,
+  net: { send: (m) => toHost.push([tick + DELAY, JSON.stringify(m)]), hostTime: () => tick * 1000 / 60 } });
+host.god = client.god = true;
+for (const s of [host, client]) for (const p of s.players) if (p) p.power = [1, 5, 6, 8, 8][SECTOR];
+if (SKIP) {
+  const R = host.runner, i = R.steps.findIndex((st) => st.warning);
+  if (i >= 0) { R.i = i; R.timer = 0.2; }
+}
+
+// per-enemy "last host event" tick (spawn / params / phase), to know when positions must agree
+const lastEv = new Map();
+const _emit = host.emitEvent.bind(host);
+host.emitEvent = (ev) => { if ((ev.k === 'sp' || ev.k === 'es' || ev.k === 'ph') && ev.id) lastEv.set(ev.id, host.tick); return _emit(ev); };
+function settledFor(e) {
+  let t = lastEv.get(e.id) ?? -1e9, par = e.parent, guard = 0;
+  while (par && guard++ < 4) { t = Math.max(t, lastEv.get(par) ?? -1e9); const pe = host.enemies.get(par); par = pe ? pe.parent : 0; }
+  return host.tick - t;
+}
+
+function bot(sim, me, k) {
+  const inp = { dx: 0, dy: 0, ax: 0, ay: 0, slow: false, bomb: false, overdrive: false, pause: false };
+  if (!me.alive) return inp;
+  const tg = sim.nearestEnemy(me.x, me.y - 200, true);
+  const tx = tg ? tg.x + (k ? 14 : -14) : FIELD_W / 2 + (k ? 30 : -30);
+  inp.ax = Math.max(-1, Math.min(1, (tx - me.x) / 18));
+  inp.ay = Math.max(-1, Math.min(1, (FIELD_H - 80 - me.y) / 18));
+  return inp;
+}
+
+const R = { samples: 0, compared: 0, errs: [], maxErr: 0, worst: '', bossMax: 0, missing: 0, extra: 0, maxQueue: 0, maxBulletDiff: 0, exc: null, predStuck: 0, stateMismatch: 0 };
+const EVERY = 6;
+function sample() {
+  R.samples++;
+  for (const e of host.elist) {
+    if (!e.alive) continue;
+    const c = client.enemies.get(e.id);
+    const age = host.tick - e.t0;
+    if (!c) { if (age > DELAY + 3) { R.missing++; if (R.missing < 6) console.log('missing on client', e.type, e.id, 'age', age); } continue; }
+    if (settledFor(e) <= DELAY + 2) continue;
+    const d = Math.hypot(e.x - c.x, e.y - c.y);
+    R.compared++;
+    R.errs.push(d);
+    if (d > R.maxErr) { R.maxErr = d; R.worst = `${e.type}#${e.id} path=${typeof e.path === 'string' ? e.path : 'fn'} d=${d.toFixed(4)} ph ${e.phase}/${c.phase} t=${(host.tick / 60).toFixed(1)}s`; }
+    if (e.def.boss && d > R.bossMax) R.bossMax = d;
+  }
+  // enemies the client still has that the host killed/removed long ago
+  for (const c of client.elist) {
+    if (!c.alive || host.enemies.has(c.id)) continue;
+    if (!c._goneAt) c._goneAt = tick;
+    else if (tick - c._goneAt > DELAY + 30 && !c._counted) { c._counted = 1; R.extra++; if (R.extra < 6) console.log('extra on client', c.type, c.id, c.x.toFixed(0), c.y.toFixed(0)); }
+    if (c.dying && c.predT > 80) R.predStuck++;
+  }
+  R.maxQueue = Math.max(R.maxQueue, client.queue.length);
+  R.maxBulletDiff = Math.max(R.maxBulletDiff, Math.abs(host.ebs.list.length - client.ebs.list.length));
+  if (host.state !== client.state && tick > DELAY * 3) R.stateMismatch++;
+}
+
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+function draw() {
+  g.fillStyle = '#0d0b1c'; g.fillRect(0, 0, 240, 400);
+  g.fillStyle = '#ffffff'; for (const b of host.ebs.list) g.fillRect(b.x | 0, b.y | 0, 1, 1);
+  g.fillStyle = '#ff6fb4'; for (const b of client.ebs.list) g.fillRect((b.x | 0) + 1, b.y | 0, 1, 1);
+  g.strokeStyle = '#79ecff';
+  for (const e of host.elist) { g.beginPath(); g.arc(e.x, e.y, Math.max(2, e.r), 0, 6.283); g.stroke(); }
+  g.fillStyle = '#ff5fae';
+  for (const e of client.elist) g.fillRect(Math.round(e.x) - 1, Math.round(e.y) - 1, 2, 2);
+  for (const s of [host, client]) for (const p of s.players) if (p && p.local) { g.fillStyle = s === host ? '#79ecff' : '#ffd966'; g.fillRect(p.x - 2, p.y - 2, 4, 4); }
+}
+function pct(a, q) { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * q))]; }
+function report(done) {
+  const hb = host.bossIds.length ? host.enemies.get(host.bossIds[0]) : null;
+  const res = window.__det = {
+    done, sector: SECTOR, delay: DELAY, secs: SECS,
+    host: { tick: host.tick, state: host.state, i: host.runner.i, n: host.runner.steps.length, enemies: host.elist.length, eb: host.ebs.list.length, boss: hb ? hb.type + ' ph' + hb.phase : null },
+    client: { tick: client.tick, state: client.state, enemies: client.elist.length, eb: client.ebs.list.length, queue: client.queue.length },
+    samples: R.samples, compared: R.compared, maxErr: +R.maxErr.toFixed(4), p99: +pct(R.errs, 0.99).toFixed(4), worst: R.worst, bossMaxErr: +R.bossMax.toFixed(4),
+    missing: R.missing, extra: R.extra, predStuck: R.predStuck, maxQueue: R.maxQueue, maxBulletDiff: R.maxBulletDiff, stateMismatch: R.stateMismatch,
+    score: [host.score, client.score], exc: R.exc, warns: [...new Set(warns)].slice(0, 6),
+  };
+  const good = !R.exc && R.maxErr < 3 && R.missing === 0 && R.extra === 0 && R.stateMismatch === 0;
+  document.getElementById('out').innerHTML = `<span class="${good ? 'ok' : 'bad'}">${done ? (good ? 'PASS' : 'CHECK') : 'running'}</span>\n` + JSON.stringify(res, null, 1);
+}
+
+function frame() {
+  try {
+    for (let k = 0; k < SPEED && tick < SECS * 60; k++) {
+      tick++;
+      host.update(bot(host, host.me, 0));
+      while (toClient.length && toClient[0][0] <= tick) client.onHostMessage(JSON.parse(toClient.shift()[1]));
+      client.update(bot(client, client.me, 1));
+      while (toHost.length && toHost[0][0] <= tick) host.onClientMessage(JSON.parse(toHost.shift()[1]), 1);
+      if (tick % EVERY === 0) sample();
+    }
+  } catch (err) { R.exc = String(err && err.stack || err); console.error(err); report(true); return; }
+  draw();
+  const done = tick >= SECS * 60;
+  report(done);
+  if (!done) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

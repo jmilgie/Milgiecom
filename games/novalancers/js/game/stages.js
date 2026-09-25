@@ -6,6 +6,7 @@
 //   spawn:type n gap p(object | (i, rng, sim) => object) bonus:'power'|'bomb'|'overdrive'|'life'
 //   call:(sim, rng) => void   wait:'clear'|'boss' max   banner:{title, sub}   warning:{name, music}
 //   music:track   boss:key   pickup:{type, x, y}   end:true
+//   (finale() spawns its boss through a guarded `call`; the step is tagged `bossSpawn: key`)
 //
 // Authoring model: every sector is a list of timeline BLOCKS. Inside a block, items are
 // written with ABSOLUTE times (seconds from the start of the block) and block() converts them
@@ -26,6 +27,7 @@
 
 import { swoop, formationOffsets } from './paths.js';
 import { ENEMIES } from './enemies.js';
+import { BOSSES } from './bosses.js';
 import { FIELD_W, FIELD_H } from '../config.js';
 
 const W = FIELD_W;
@@ -229,10 +231,27 @@ function bastion(type, o = {}) {
 
 // WARNING → boss → end. The WARNING shows the boss's own display name (ENEMIES[bossKey].name,
 // registered by bosses.js; resolved when the runner builds the script) with `name` as fallback.
+// The boss is spawned by a guarded call (not the runner's `boss:` field): if its spawn is missing
+// or throws, the runner is released (bossDown) instead of stalling forever on wait:'boss' — or
+// re-running a throwing step every tick.
+function spawnBoss(key) {
+  return (sim, rng) => {
+    let root = null;
+    try {
+      root = BOSSES[key] ? BOSSES[key].spawn(sim, rng) : null;
+    } catch (err) {
+      console.error('[stages] boss spawn failed:', key, err);
+    }
+    if (!root) {
+      console.warn('[stages] no boss root for', key, '- skipping the fight');
+      if (sim.runner) sim.runner.bossDown();
+    }
+  };
+}
 function finale(bossKey, name, music = 'boss', lead = 1.2) {
   return [
     { dt: lead, warning: { name, music }, bossKey },
-    { dt: 3.6, boss: bossKey },
+    { dt: 3.6, call: spawnBoss(bossKey), bossSpawn: bossKey },
     { dt: 0, wait: 'boss' },
     { dt: 1.5, end: true },
   ];

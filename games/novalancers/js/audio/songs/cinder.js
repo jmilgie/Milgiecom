@@ -17,9 +17,11 @@
 //                C major (hope), strings reply over Am; heartbeat taiko → snare build
 //   climax (8)   everything: counter on lead + brass, the choir sings the hook beneath it
 //   climax2 (8)  the anthem again with brass, strings and choir, taiko thunder
-//   tag (2)      stop-time hits on the dominant: the machine stutters, then drops back into A
-// Intensity: ≥0.7 ride on the A grooves, ≥0.75 taiko, ≥0.8 a square lead doubles the tune an
-// octave up; <0.15 drops the kit (machine + bass + pad only).
+//   tag (2)      stop-time hits on bVI → V7 (C → B7): the machine stutters, then drops back into A
+// Intensity: ≥0.7 ride on the A grooves, ≥0.75 taiko, ≥0.8 a square lead doubles the tune in
+// octaves; <0.15 drops the kit (machine, riff, reese, pad and melodies carry on).
+// Mix: song gain 0.77 lands at ≈ −14 LUFS integrated like aurora.js. Note that a channel `drive`
+// also adds gain to quiet signals (hook, snare), hence their low channel gains.
 
 import { voiceLead, chordInfo } from '../music.js';
 import { themeEvents } from './motifs.js';
@@ -59,10 +61,10 @@ function riffLine(harm, figs, lo = 47, vel = 0.85) {
   const ev = [];
   const f = [];
   for (const x of flat(harm)) { const p = f[f.length - 1]; if (p && p[0] === x[0] && p[1] + p[2] === x[1]) p[2] += x[2]; else f.push(x.slice()); }
-  f.forEach(([c, s, l], ci) => {
+  f.forEach(([c, s, l]) => {
     const r = rootIn(c, lo);
     for (let b = 0; b < l / BAR; b++) {
-      const fig = typeof figs === 'function' ? figs(c, b, ci) : figs[Math.min(b, figs.length - 1)];
+      const fig = typeof figs === 'function' ? figs(c, b) : figs[Math.min(b, figs.length - 1)];
       fig.forEach((o, i) => { if (o != null) ev.push([s + b * BAR + i, r + o, 0.9, (i % 4 === 0 ? 1 : i % 2 ? 0.72 : 0.84) * vel]); });
     }
   });
@@ -85,13 +87,17 @@ const OCT8 = [[0, _, 0, _, 12, _, 0, _, 0, _, 12, _, 0, _, 12, _]];
 // ── melodies (16th-step tokens; `*n` = n steps) ──────────────────────────────────────
 // THE HOOK — 5th held, a sigh to the step above and back, fall through the triad; sequenced down.
 const HOOK = 'B4*12 C5*2 B4*10 G4*4 E4*4 | A4*12 B4*2 A4*10 F#4*4 D4*4 | G4*12 A4*2 G4*10 E4*4 C4*4 | F#4*12 G4*2 F#4*10 D#4*4 B3*4';
+// the same line without the sighs, for sustaining sections (strings, choir): a neighbour note
+// that a mono lead passes through would ring on as a rub in a pad-like part
+const HOOK_HELD = 'B4*24 G4*4 E4*4 | A4*24 F#4*4 D4*4 | G4*24 E4*4 C4*4 | F#4*24 D#4*4 B3*4';
 // THE COUNTER — the Lancers call (E→B), the call again on D (D→A an octave up), a climb, B7 home.
 const COUNTER = 'E4*6 B4*10 | A4*2 G4*2 A4*2 B4*2 E5*4 D5*4 | D5*6 A5*10 | G5*2 F#5*2 G5*2 A5*2 F#5*4 D5*4 |' +
   ' E5*6 G5*6 C6*4 | B5*2 A5*2 G5*4 E5*8 | F#5*4 A5*4 B5*8 | B5*2 A5*2 F#5*4 D#5*8';
 // THE ANTHEM (B) — rising cells over C D G Em, then the climb to D6 and the dominant
 const ANTHEM = 'G4*2 C5*4 D5*2 E5*8 | F#5*4 E5*2 D5*2 A4*8 | B4*2 D5*4 E5*2 G5*8 | G5*4 F#5*2 E5*2 B4*8 |' +
   ' C5*2 E5*4 G5*2 C6*8 | A5*4 F#5*2 A5*2 D6*8 | B5*8 F#5*4 E5*4 | F#5*4 D#5*4 B4*8';
-const down = (line, k = 12) => line.replace(/([A-G][#b]?)(\d)/g, (_, n, o) => n + (+o - k / 12));
+// shift every note of a token line by whole octaves
+const oct = (line, k) => line.replace(/([A-G][#b]?)(\d)/g, (_, n, o) => n + (+o + k));
 
 // anvils: a struck-pipe clang on the "and" of 4, pitched to each bar's chord
 const ANVIL_A = [[14, 'B4'], [30, 'E5'], [46, 'A4'], [62, 'D5'], [78, 'G4'], [94, 'E5'], [110, 'F#4'], [126, 'B4']].map(([s, n]) => [s, n, 2, 0.75]);
@@ -108,7 +114,7 @@ export default {
   title: 'Cinder Belt',
   bpm: 116,
   key: 'E', scale: 'minor',
-  gain: 0.8,
+  gain: 0.77,
   reverb: 0.9,
   delay: { beats: 0.75, feedback: 0.34, lp: 3000, hp: 450 },
   duck: { release: 0.24 },
@@ -143,22 +149,22 @@ export default {
     clank: { gain: 0.34, pan: -0.32, reverb: 0.18, delay: 0.1, human: { t: 0.002, v: 0.1 } },
     ping: { gain: 0.26, pan: 0.36, reverb: 0.3 },
     rim: { gain: 0.28, pan: 0.15, reverb: 0.2 },
-    anvil: { gain: 0.45, reverb: 0.35, delay: 0.18, pan: 0.18 },
+    anvil: { gain: 0.52, poly: 3, reverb: 0.35, delay: 0.18, pan: 0.18 },
     crash: { gain: 0.4, reverb: 0.15, pan: -0.2 },
-    tom: { gain: 0.3, reverb: 0.2, drive: 0.2 },
+    tom: { gain: 0.3, reverb: 0.2, drive: 0.2, poly: 2 },
     taiko: { gain: 0.46, reverb: 0.22, layer: { min: 0.75 } },
-    boom: { inst: 'taiko', gain: 0.46, reverb: 0.25 },
+    boom: { inst: 'taiko', gain: 0.38, reverb: 0.25 },
     rev: { inst: 'revcym', gain: 0.4 },
     riser: { gain: 0.4, reverb: 0.3 },
     down: { inst: 'downlifter', gain: 0.34, reverb: 0.3 },
-    impact: { gain: 0.44, reverb: 0.25 },
+    impact: { gain: 0.44, reverb: 0.25, poly: 1 },
     reese: { inst: 'cReese', gain: 0.25, duck: 0.6, drive: 0.3, lpf: 2400 },
     riff: { inst: 'cRiff', gain: 1.4, duck: 0.35, lpf: 20000, pan: 0.04 },
-    pad: { inst: 'padDark', gain: 0.27, duck: 0.55, reverb: 0.3, lpf: 2600 },
+    pad: { inst: 'padDark', gain: 0.27, poly: 8, duck: 0.55, reverb: 0.3, lpf: 2600 },
     strings: { gain: 0.42, reverb: 0.35, duck: 0.25, pan: -0.15, lpf: 3200 },
     choir: { gain: 0.24, reverb: 0.45, duck: 0.25 },
-    stab: { inst: 'brassStab', gain: 0.26, reverb: 0.22, drive: 0.35, pan: 0.12, delay: 0.1, duck: 0.3 },
-    brass: { gain: 0.36, reverb: 0.3, pan: -0.06 },
+    stab: { inst: 'brassStab', gain: 0.26, poly: 5, reverb: 0.22, drive: 0.35, pan: 0.12, delay: 0.1, duck: 0.3 },
+    brass: { gain: 0.44, reverb: 0.3, pan: -0.06 },
     hook: { inst: 'cHook', gain: 0.38, reverb: 0.24, delay: 0.2, drive: 0.3 },
     lead: { inst: 'cHero', gain: 0.8, reverb: 0.22, delay: 0.22 },
     lead2: { inst: 'cOct', gain: 0.34, reverb: 0.2, pan: 0.1, layer: { min: 0.8 } },
@@ -197,7 +203,7 @@ export default {
     introDrone: { step: 16, reese: 'E2 E2 E2 E2 E2 E2 C2 B1', vel: 0.8 },
     introPad: { len: 128, pad: [[0, 'E3+B3+G4', 48, 0.6], [48, 'E3+B3+G4+B4', 48, 0.66], [96, 'C3+G3+E4+G4', 16, 0.7], [112, 'B2+F#3+D#4+F#4', 16, 0.72]] },
     introChoir: { len: 128, choir: [[32, 'E4+B4', 64, 0.5], [96, 'E4+G4', 16, 0.55], [112, 'D#4+F#4', 16, 0.6]] },
-    introAnvil: { len: 128, anvil: [[0, 'E4', 4, 0.8], [32, 'B4', 12, 0.7], [44, 'C5', 2, 0.6], [46, 'B4', 10, 0.66], [56, 'G4', 4, 0.6], [60, 'E4', 4, 0.64], [64, 'E4', 4, 0.8],
+    introAnvil: { len: 128, anvil: [[0, 'E4', 4, 0.8], [32, 'B4', 12, 0.7], [46, 'B4', 10, 0.6], [56, 'G4', 4, 0.6], [60, 'E4', 4, 0.64], [64, 'E4', 4, 0.8],
       [96, 'E5', 4, 0.7], [108, 'C5', 4, 0.6], [112, 'D#5', 4, 0.7], [120, 'B4', 4, 0.66]] },
     introRiff: { len: 64, riff: riffLine('Em Em C B', riffFor, 47, 0.8) },
     introFx: { len: 128, riser: [[64, 'x', 64, 0.75]], rev: [[112, 'x', 16, 0.8]], down: [[0, 'x', 32, 0.5]] },
@@ -206,9 +212,9 @@ export default {
     reeseA: { len: 128, reese: reeseLine(A_H) },
     riffA: { len: 128, riff: riffLine(A_H, riffFor) },
     padA: { len: 128, pad: chordEvents(A_H, { low: 'E3', high: 'B4', voices: 4, vel: 0.66 }) },
-    hookA: { hook: HOOK, lead2: down(HOOK, -12) },
+    hookA: { hook: HOOK, lead2: oct(HOOK, 1) },
     anvilA: { len: 128, anvil: ANVIL_A },
-    counterA: { lead: COUNTER, lead2: down(COUNTER), strings: { n: down(HOOK), vel: 0.62 } },
+    counterA: { lead: COUNTER, lead2: oct(COUNTER, -1), strings: { n: oct(HOOK_HELD, -1), vel: 0.62 } },
     stabA: { len: 128, stab: stab(A_H, { low: 'G3', high: 'E4', voices: 3, vel: 0.72 }) },
     impactA: { impact: 'X' },
 
@@ -217,7 +223,7 @@ export default {
     riffB: { len: 128, riff: riffLine(B_H, OCT8, 47, 0.9) },
     padB: { len: 128, pad: chordEvents(B_H, { low: 'E3', high: 'C5', voices: 4, vel: 0.72 }) },
     choirB: { len: 128, choir: chordEvents(B_H, { low: 'E4', high: 'D5', voices: 3, rootless: true, vel: 0.55 }) },
-    anthemB: { lead: ANTHEM, lead2: down(ANTHEM) },
+    anthemB: { lead: ANTHEM, lead2: oct(ANTHEM, -1) },
     anvilB: { len: 128, anvil: ANVIL_B },
     stabB: { len: 128, stab: stab(B_H, { low: 'G3', high: 'E4', voices: 3, vel: 0.78 }) },
 
@@ -225,21 +231,21 @@ export default {
     reeseBrk: { step: 16, reese: 'E2 - C2 - A1 - B1 B1', vel: 0.7 },
     padBrk: { len: 128, pad: chordEvents(BRK_H, { low: 'E3', high: 'B4', voices: 4, vel: 0.62 }) },
     choirBrk: { len: 128, choir: chordEvents(BRK_H, { low: 'E4', high: 'D5', voices: 3, rootless: true, vel: 0.5 }) },
-    anvilBrk: { len: 128, anvil: [[0, 'B4', 12, 0.72], [12, 'C5', 2, 0.6], [14, 'B4', 10, 0.66], [24, 'G4', 4, 0.6], [28, 'E4', 4, 0.64],
-      [64, 'E5', 12, 0.66], [76, 'F#5', 2, 0.55], [78, 'E5', 10, 0.6], [88, 'C5', 4, 0.56], [92, 'A4', 4, 0.6]] },
+    anvilBrk: { len: 128, anvil: [[0, 'B4', 12, 0.9], [14, 'B4', 10, 0.75], [24, 'G4', 4, 0.78], [28, 'E4', 4, 0.82],
+      [64, 'E5', 12, 0.85], [78, 'E5', 10, 0.72], [88, 'C5', 4, 0.74], [92, 'A4', 4, 0.8]] },
     callBrk: {
       len: 128,
-      brass: [...themeEvents({ tonic: 'E4', scale: 'minor', part: 'call', pickup: true, start: 16, vel: 0.78 }),
-        ...themeEvents({ tonic: 'C5', scale: 'major', part: 'call', pickup: true, start: 48, vel: 0.84 })],
-      strings: [[64, 'C5', 2, 0.64], [66, 'B4', 2, 0.6], [68, 'C5', 2, 0.62], [70, 'D5', 2, 0.64], [72, 'E5', 4, 0.68], [76, 'C5', 4, 0.64], [80, 'A4', 16, 0.62],
+      brass: [...themeEvents({ tonic: 'E4', scale: 'minor', part: 'call', pickup: true, start: 16, vel: 0.95 }),
+        ...themeEvents({ tonic: 'C5', scale: 'major', part: 'call', pickup: true, start: 48, vel: 1 })],
+      strings: [[64, 'A4', 4, 0.6], [68, 'C5', 4, 0.64], [72, 'E5', 6, 0.68], [78, 'D5', 2, 0.62], [80, 'C5', 16, 0.64],
         [96, 'D#4+F#4+B4', 32, 0.62]],
     },
-    brkFx: { len: 128, riser: [[96, 'x', 32, 0.8]], rev: [[104, 'x', 24, 0.85]] },
+    brkFx: { len: 128, riser: [[96, 'x', 32, 0.8]], rev: [[104, 'x', 24, 0.85]], down: [[0, 'x', 32, 0.6]], crash: [[0, 'x', 1, 0.8]] },
     riffBrk: { len: 32, riff: riffLine('B B', riffFor, 47, 0.75) },
 
     // ── climax ──
-    climaxA: { lead: COUNTER, lead2: down(COUNTER), brass: { n: down(COUNTER), vel: 0.7 }, choir: { n: down(HOOK), vel: 0.55 } },
-    climaxB: { lead: ANTHEM, lead2: down(ANTHEM), brass: { n: down(ANTHEM), vel: 0.72 }, strings: { n: ANTHEM, vel: 0.6 } },
+    climaxA: { lead: COUNTER, lead2: oct(COUNTER, -1), brass: { n: oct(COUNTER, -1), vel: 0.85 }, choir: { n: oct(HOOK_HELD, -1), vel: 0.9 } },
+    climaxB: { lead: ANTHEM, lead2: oct(ANTHEM, -1), brass: { n: oct(ANTHEM, -1), vel: 0.85 }, strings: { n: ANTHEM, vel: 0.6 } },
     thunder: { boom: 'X.....x.X.......' },
 
     // ── tag (stop-time on the dominant) ──

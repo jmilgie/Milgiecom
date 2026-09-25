@@ -38,6 +38,9 @@ export function bulletProps(args, out = {}) {
 function shot(sim, x, y, a, v, spr, args, extra) {
   const s = bulletProps(args, { x, y, a, v, spr });
   if (extra) Object.assign(s, extra);
+  // guard: a geometric arg that happens to be called `r` must never become a huge invisible
+  // hitbox (the biggest bullet sprite has r = 6)
+  if (s.r !== undefined && !(s.r > 0 && s.r <= 8)) delete s.r;
   return sim.eb(s);
 }
 
@@ -331,10 +334,12 @@ const LIB = {
   // halo: bullets spawn on a circle around the source moving tangentially and curving
   // around it, then release on their tangent after spinT ticks. k=1 keeps a rotating ring of
   // radius r; k<1 makes the ring "breathe" out to (2/k-1)·r and back while it spins.
-  // {n=12, r=16, v=1.1, dir=1 (1 clockwise, -1 counter), k=0.9, spinT=60, a0=0, spr='eb_orb_v'}
+  // {n=12, r=16 (ring radius), v=1.1, dir=1 (1 clockwise, -1 counter), k=0.9, spinT=60, a0=0,
+  //  spr='eb_orb_v', hitR (optional bullet hit radius; default = the sprite's)}
   orbitRing(sim, x, y, A) {
     const n = A.n || 12, r = A.r || 16, v = A.v ?? 1.1, dir = A.dir || 1, k = A.k ?? 0.9, a0 = A.a0 ?? 0;
-    const extra = { spin: (dir * k * v) / r, spinT: A.spinT ?? 60 };
+    // A.r is the ring radius, NOT the bullet hit radius (bulletProps would pass it through)
+    const extra = { spin: (dir * k * v) / r, spinT: A.spinT ?? 60, r: A.hitR };
     for (let i = 0; i < n; i++) {
       const th = a0 + (TAU * i) / n;
       shot(sim, x + Math.cos(th) * r, y + Math.sin(th) * r, th + dir * HALF, v, A.spr || 'eb_orb_v', A, extra);
@@ -344,12 +349,13 @@ const LIB = {
 
   // bullets materialise on a circle of radius r (flickering, harmless, for `delay` ticks) and
   // converge through the center, then keep flying out the far side:
-  // {n=16, r=90, v=1.0, delay=36, a0=0, spr='eb_small_c'}
+  // {n=16, r=90 (ring radius), v=1.0, delay=36, a0=0, spr='eb_small_c', hitR (optional bullet hit radius)}
   implode(sim, x, y, A) {
     const n = A.n || 16, r = A.r || 90, a0 = A.a0 ?? 0;
     for (let i = 0; i < n; i++) {
       const th = a0 + (TAU * i) / n;
-      shot(sim, x + Math.cos(th) * r, y + Math.sin(th) * r, th + PI, A.v ?? 1.0, A.spr || 'eb_small_c', A, { delay: A.delay ?? 36 });
+      // A.r is the ring radius, NOT the bullet hit radius (bulletProps would pass it through)
+      shot(sim, x + Math.cos(th) * r, y + Math.sin(th) * r, th + PI, A.v ?? 1.0, A.spr || 'eb_small_c', A, { delay: A.delay ?? 36, r: A.hitR });
     }
     voice(sim, A, x, 'enemy_laser_charge', 0.35);
   },

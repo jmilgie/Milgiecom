@@ -6,13 +6,21 @@ import { SHIPS, SHIP_ORDER, SECTORS, VERSION, DEFAULT_SETTINGS } from '../config
 import { TEAM_HEX } from '../art/palette.js';
 import { AudioSys } from '../audio/audio.js';
 import { drawQR } from './qr.js';
+import { drawText, measureText, textHeight } from '../art/font.js';
+import { hudToast, takeHudToasts } from './hud.js';
 
 // ------------------------------------------------------------------ optional modules
 let sfxFn = null;
 import('../audio/sfx.js').then((m) => { sfxFn = typeof m.sfx === 'function' ? m.sfx : null; }).catch(() => {});
 let SPR = null;
 import('../art/sprites.js').then((m) => { SPR = m; }).catch(() => {});
-let NET = null;
+// Network module: only needed for invite URLs, so it is loaded the first time the co-op
+// screen or a lobby opens (solo players never download it from here).
+let NET = null, netP = null;
+function loadNet() {
+  if (!netP) netP = import('../net/session.js').then((m) => { NET = m; return m; }).catch(() => null);
+  return netP;
+}
 
 function snd(name) {
   if (!sfxFn) return;
@@ -30,13 +38,72 @@ const $ = (root, sel) => root.querySelector(sel);
 const $$ = (root, sel) => Array.from(root.querySelectorAll(sel));
 const reduceMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 
-// Score with dim leading zeros: <span class="z">000</span>12345
-function scoreHTML(n) {
-  const s = pad7(n);
-  const i = s.search(/[1-9]/);
-  if (i < 0) return `<span class="z">${s.slice(0, -1)}</span>0`;
-  return i === 0 ? s : `<span class="z">${s.slice(0, i)}</span>${s.slice(i)}`;
+// Digits inside Pixelify Sans copy: that face draws 5 like S, 2 like Z, 8 like B and 0 like
+// O, so runs of digits switch to Silkscreen (.num). Escapes the text.
+const numify = (s) => esc(s).replace(/[0-9]+(?:[.,:][0-9]+)*/g, (m) => `<span class="num">${m}</span>`);
+
+// ------------------------------------------------------------------ device-pixel helpers
+const dprNow = () => Math.max(1, +window.devicePixelRatio || 1);
+// CSS px that cover a whole number of device pixels (nearest to `css`, at least one).
+const devSnap = (css) => { const d = dprNow(); return Math.max(1, Math.round(css * d)) / d; };
+
+// Silkscreen is an 8-units-per-em pixel face: it only renders crisp when one font pixel
+// covers a whole number of device pixels, i.e. at k * 8 / dpr CSS px. Publish the label
+// sizes for this screen as CSS variables (smallest crisp size at or above the target).
+function applyTypeScale() {
+  const d = dprNow();
+  const up = (px) => (Math.ceil((px * d) / 8 - 0.05) * 8) / d;
+  const s = document.documentElement.style;
+  s.setProperty('--fs-xs', up(10).toFixed(3) + 'px');     // fine print, kickers
+  s.setProperty('--fs-sm', up(12).toFixed(3) + 'px');     // status labels
+  s.setProperty('--fs-md', up(15).toFixed(3) + 'px');     // numbers in rows / tables
+  s.setProperty('--fs-lg', up(20).toFixed(3) + 'px');     // big stat values
 }
+
+// Crisp bitmap text (font.js) for room codes and scores — its glyphs keep 2/Z, 5/S, 8/B and
+// 0/O apart. Drawn at 1 art px per canvas px and scaled by CSS in whole device pixels;
+// the scale comes from the element's --pix (CSS px per art px, set by the stylesheet).
+// opt: { font, color, dim (colour for leading zeros; pads to 7 digits), spacing, shadow }
+function pix(cv, str, opt = {}) {
+  if (!cv) return;
+  cv._pix = [str, opt];
+  paintPix(cv);
+}
+function paintPix(cv) {
+  const [raw, o] = cv._pix;
+  const font = o.font || 'big';
+  const spacing = o.spacing | 0;
+  let str = String(raw ?? '');
+  let zeros = '';
+  if (o.dim) {
+    str = pad7(raw);
+    const i = str.search(/[1-9]/);
+    const n = i < 0 ? str.length - 1 : i;
+    zeros = str.slice(0, n); str = str.slice(n);
+  }
+  const zw = zeros ? measureText(zeros, { font, spacing }) + 1 + spacing : 0;
+  const w = Math.max(1, zw + measureText(str, { font, spacing }));
+  const sh = o.shadow === null ? 0 : 1;
+  const W = w + sh, Hh = textHeight({ font }) + sh;
+  if (cv.width !== W) cv.width = W;
+  if (cv.height !== Hh) cv.height = Hh;
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, W, Hh);
+  const shadow = sh ? (o.shadow || '#05040c') : null;
+  if (zeros) drawText(g, zeros, 0, 0, { font, spacing, color: o.dim, shadow });
+  drawText(g, str, zw, 0, { font, spacing, color: o.color || '#ffffff', shadow });
+  let k = parseFloat(getComputedStyle(cv).getPropertyValue('--pix'));
+  if (!(k > 0)) k = o.px || 3;
+  const u = devSnap(k);
+  cv.style.width = (W * u).toFixed(3) + 'px';
+  cv.style.height = (Hh * u).toFixed(3) + 'px';
+}
+function repaintPix(scope) {
+  if (scope) $$(scope, 'canvas.pix').forEach((c) => { if (c._pix) paintPix(c); });
+}
+
+// Score with dim leading zeros, as bitmap text.
+function paintScore(cv, n, color = '#ffffff') { pix(cv, Math.max(0, Math.floor(+n || 0)), { dim: '#3f4c68', color }); }
 
 // Pixel icons: bitmap rows -> crisp SVG path (cached).
 const ICONS = {
@@ -114,27 +181,60 @@ function drawPlaceholderShip(g, cx, cy, team) {
     }
   });
 }
+// Ship icons are drawn at art size into a scratch canvas, then blitted into the icon canvas
+// at its device resolution with a whole-number zoom, so every art pixel is the same size.
+const ICON_ART = 26;            // fits the largest hull (25 px) around a centre pixel
+let iconScratch = null;
 function drawShipIcon(canvas, shipId, team = 0, frame = 2) {
   if (!canvas) return;
-  const g = canvas.getContext('2d');
-  g.imageSmoothingEnabled = false;
-  g.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.dataset.ship = shipId;
+  canvas.dataset.team = team & 3;
+  if (!iconScratch) { iconScratch = document.createElement('canvas'); iconScratch.width = iconScratch.height = ICON_ART; }
+  const s = iconScratch.getContext('2d');
+  s.imageSmoothingEnabled = false;
+  s.clearRect(0, 0, ICON_ART, ICON_ART);
   const def = SHIPS[shipId] || SHIPS.aurora;
-  const cx = canvas.width >> 1, cy = canvas.height >> 1;
+  const c = ICON_ART >> 1;
+  let drawn = false;
   if (hasSpr(def.sprite)) {
     try {
-      SPR.drawSprite(g, def.sprite, frame, cx, cy, { team: team & 3 });
+      SPR.drawSprite(s, def.sprite, frame, c, c, { team: team & 3 });
       if (SPR.drawSpriteEmissive) {
-        g.globalCompositeOperation = 'lighter';
-        g.globalAlpha = 0.55;
-        SPR.drawSpriteEmissive(g, def.sprite, frame, cx, cy, { team: team & 3 });
-        g.globalAlpha = 1;
-        g.globalCompositeOperation = 'source-over';
+        s.globalCompositeOperation = 'lighter';
+        s.globalAlpha = 0.55;
+        SPR.drawSpriteEmissive(s, def.sprite, frame, c, c, { team: team & 3 });
       }
-      return;
+      drawn = true;
     } catch { /* fall through */ }
+    s.globalAlpha = 1;
+    s.globalCompositeOperation = 'source-over';
   }
-  drawPlaceholderShip(g, cx, cy, team);
+  if (!drawn) drawPlaceholderShip(s, c, c, team);
+  // device-resolution backing store sized from the element's CSS box
+  const css = canvas.clientWidth || 0;
+  const d = dprNow();
+  const px = css > 0 ? Math.round(css * d) : ICON_ART;
+  if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
+  // whole-number zoom; only on low-density screens, where that would shrink the icon a lot,
+  // fall back to the (slightly uneven) fractional fit
+  let k = Math.max(1, Math.floor(px / ICON_ART));
+  if (k * ICON_ART < px * 0.8) k = px / ICON_ART;
+  const size = Math.round(ICON_ART * k);
+  const off = (px - size) >> 1;
+  const g = canvas.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, px, px);
+  g.drawImage(iconScratch, 0, 0, ICON_ART, ICON_ART, off, off, size, size);
+  canvas.dataset.px = css > 0 ? px : 0;
+}
+// Redraw icons whose CSS size changed (layout switch, rotation, zoom).
+function refreshIcons(scope) {
+  if (!scope) return;
+  const d = dprNow();
+  $$(scope, 'canvas[data-ship]').forEach((cv) => {
+    const want = Math.round((cv.clientWidth || 0) * d);
+    if (want > 0 && String(want) !== cv.dataset.px) drawShipIcon(cv, cv.dataset.ship, +cv.dataset.team || 0);
+  });
 }
 
 // ------------------------------------------------------------------ copy
@@ -310,7 +410,7 @@ DEF.title = {
       <div class="lf-sub">CO-OP STARFIGHTER</div>
     </div>
     <button type="button" class="title-tap" data-act="start" data-sfx="ui_start" aria-label="Tap to start">
-      <span class="tap-invite" hidden></span>
+      <span class="tap-invite" hidden>${icon('squad')}<span>SQUAD INVITE</span><canvas class="pix inv-code" aria-hidden="true"></canvas></span>
       <span class="tap-text">TAP TO START</span>
       <span class="tap-keys">PRESS <kbd>ENTER</kbd> OR <kbd class="pad-a">A</kbd></span>
     </button>
@@ -324,24 +424,32 @@ DEF.title = {
     const best = data.best ?? profile().bestScore;
     $(el, '.title-best').innerHTML = best > 0 ? `HI <b>${pad7(best)}</b>` : '';
     const inv = $(el, '.tap-invite');
-    const room = data.room || profile().room;
+    const room = String(data.room || profile().room || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
     inv.hidden = !room;
-    if (room) inv.innerHTML = `${icon('squad')} SQUAD INVITE · <b>${esc(room)}</b>`;
+    if (room) pix($(inv, '.inv-code'), room, { color: '#ffffff', spacing: 2 });
     const mouse = matchMedia('(hover: hover) and (pointer: fine)').matches;
-    $(el, '.tap-text').textContent = room ? (mouse ? 'CLICK TO JOIN' : 'TAP TO JOIN') : (mouse ? 'CLICK TO START' : 'TAP TO START');
+    const cta = room ? (mouse ? 'CLICK TO JOIN' : 'TAP TO JOIN') : (mouse ? 'CLICK TO START' : 'TAP TO START');
+    $(el, '.tap-text').textContent = cta;
+    $(el, '.title-tap').setAttribute('aria-label', room ? `${cta} squad ${room.split('').join(' ')}` : cta);
     // Logo: main draws the sprite logo on the canvas; show the CSS fallback when it can't.
     const lf = $(el, '.logo-fallback');
     if (data.logoFallback != null) lf.classList.toggle('on', !!data.logoFallback);
     else if (!lf.dataset.manual) lf.classList.toggle('on', !hasSpr('logo'));
   },
-  act(a) {
+  act(a, b, e, viaPad) {
     if (a !== 'start') return;
     AudioSys.unlock();
+    // A gamepad press is not a user gesture, so browsers keep audio locked: say how to fix it.
+    if (viaPad && !this.padHint) {
+      this.padHint = true;
+      setTimeout(() => { if (!audioRunning()) UI.toast('SOUND IS OFF — TAP OR PRESS ANY KEY TO TURN IT ON', 3600); }, 400);
+    }
     call('onTitleTap');
     if (UI.current === 'title') UI.show('menu');
   },
   key(k) { if (k === 'Enter' || k === ' ') { snd('ui_start'); this.act('start'); return true; } return false; },
 };
+const audioRunning = () => { try { return !!AudioSys.ctx && AudioSys.ctx.state === 'running'; } catch { return false; } };
 
 // ---------- menu
 DEF.menu = {
@@ -357,7 +465,7 @@ DEF.menu = {
           <span class="pc-name"></span>
           <span class="pc-ship"></span>
         </div>
-        <div class="pc-best"><span>HI-SCORE</span><b class="score"></b></div>
+        <div class="pc-best"><span>HI-SCORE</span><canvas class="pix pc-score" role="img"></canvas></div>
       </div>
       <nav class="menu-list" aria-label="Main menu">
         <div class="menu-main stagger">
@@ -377,7 +485,9 @@ DEF.menu = {
     const ship = curShip();
     $(el, '.pc-name').textContent = pilotName() || 'NEW PILOT';
     $(el, '.pc-ship').textContent = `${SHIPS[ship].name} · ${SHIPS[ship].weapon}`;
-    $(el, '.pc-best .score').innerHTML = scoreHTML(p.bestScore || 0);
+    const sc = $(el, '.pc-score');
+    paintScore(sc, p.bestScore || 0, '#ffd966');
+    sc.setAttribute('aria-label', 'Hi-score ' + fmt(p.bestScore || 0));
     drawShipIcon($(el, '.ship-ico'), ship, 0);
   },
   act(a) {
@@ -466,6 +576,8 @@ DEF.hangar = {
   enter(el, data = {}) {
     this.data = data;
     const mode = data.mode || 'pick';
+    // Back cancels: browsing ships only previews them until CONFIRM / LAUNCH
+    this.entryShip = curShip();
     hangar.team = clamp(data.team | 0, 0, 3);
     el.className = el.className.replace(/\bt[0-3]\b/g, '').trim() + ' t' + hangar.team;
     const conf = $(el, '.hg-confirm');
@@ -486,7 +598,7 @@ DEF.hangar = {
   leave() { cancelAnimationFrame(hangar.raf); hangar.raf = 0; },
   renderSector(el) {
     const s = SECTORS[solSector];
-    $(el, '.hg-sec-name').textContent = `${s.n} · ${s.name}`;
+    $(el, '.hg-sec-name').innerHTML = `<span class="num">${s.n}</span> · ${esc(s.name)}`;
     const unlocked = clamp(profile().unlockedSector | 0, 0, SECTORS.length - 1);
     $(el, '[data-act="secprev"]').disabled = solSector <= 0;
     $(el, '[data-act="secnext"]').disabled = solSector >= unlocked;
@@ -528,7 +640,10 @@ DEF.hangar = {
       } else UI.show(this.data?.back || 'menu', this.data?.backData);
     } else if (a === 'back') this.back();
   },
-  back() { UI.show(this.data?.back || 'menu', this.data?.backData); },
+  back() {
+    if (this.entryShip && SHIPS[this.entryShip]) hangarShip = this.entryShip;
+    UI.show(this.data?.back || 'menu', this.data?.backData);
+  },
   key(k) {
     // Left/right cycle ships when focus isn't on a specific control row.
     const f = document.activeElement;
@@ -790,6 +905,7 @@ DEF.coop = {
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
   },
   enter(el) {
+    loadNet();
     $$(el, '.coop-ships canvas').forEach((c, i) => drawShipIcon(c, SHIP_ORDER[i], i));
     const ship = curShip();
     drawShipIcon($(el, '.ship-chip canvas'), ship, 0);
@@ -821,8 +937,8 @@ DEF.join = {
     <div class="col">
       ${head('JOIN SQUAD', { kicker: 'ENTER THE SQUAD CODE' })}
       <div class="join-box panel">
-        <div class="code-cells">${'<span class="cell" aria-hidden="true"></span>'.repeat(5)}
-          <input class="code-input" type="text" inputmode="text" maxlength="64" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-label="Squad code, 5 characters">
+        <div class="code-cells">${'<span class="cell" aria-hidden="true"><canvas class="pix"></canvas></span>'.repeat(5)}
+          <input class="code-input" type="text" inputmode="text" maxlength="300" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-label="Squad code, 5 characters">
         </div>
         <p class="join-hint">5 CHARACTERS · A PASTED INVITE LINK WORKS TOO</p>
         <p class="join-err" role="alert"></p>
@@ -847,24 +963,33 @@ DEF.join = {
   setCode(raw, fromInput) {
     const el = screens.join.el;
     const inp = $(el, '.code-input');
-    let s = String(raw || '');
-    const m = s.match(/[?&#]room=([A-Za-z0-9]+)/);     // pasted invite link
-    if (m) s = m[1];
-    const up = s.toUpperCase();
-    let code = '';
+    const s = String(raw || '');
+    // Several characters at once (paste, drop, a share message): look for the code in it
+    // before falling back to the per-character filter.
+    const bulk = !fromInput || s.length - (this.code || '').length > 1;
+    let code = bulk ? extractCode(s) : null;
     let rejected = false;
-    for (const ch of up) {
-      if (ROOM_ALPHABET.includes(ch)) { if (code.length < 5) code += ch; } else if (/[A-Z0-9]/.test(ch)) rejected = true;
+    const found = code != null;
+    if (!found) {
+      code = '';
+      for (const ch of s.toUpperCase()) {
+        if (ROOM_ALPHABET.includes(ch)) { if (code.length < 5) code += ch; } else if (/[A-Z0-9]/.test(ch)) rejected = true;
+      }
     }
     if (inp.value !== code) inp.value = code;
     $$(el, '.cell').forEach((c, i) => {
-      c.textContent = code[i] || '';
+      const cv = $(c, 'canvas');
+      if (code[i]) { pix(cv, code[i], { color: '#ffffff' }); cv.hidden = false; } else cv.hidden = true;
       c.classList.toggle('filled', !!code[i]);
       c.classList.toggle('cur', i === Math.min(code.length, 4) && code.length < 5);
     });
     $(el, '[data-act="go"]').disabled = code.length !== 5;
     const err = $(el, '.join-err');
-    if (rejected && fromInput) {
+    if (fromInput && bulk && !found && s.trim().length > 6) {
+      err.textContent = 'NO SQUAD CODE IN THAT TEXT — TYPE THE 5 CHARACTERS';
+      snd('ui_error');
+    } else if (rejected && fromInput && !bulk) {
+      // only for characters typed one at a time
       err.textContent = 'CODES NEVER USE I, L, O, 0 OR 1';
       snd('ui_error');
       el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
@@ -895,6 +1020,22 @@ DEF.join = {
   back() { UI.show('coop'); },
 };
 
+// Pull a squad code out of pasted text: an invite link (?room= / ?r=), else the last
+// 5-character word made only of code characters (capitals and digits preferred).
+function extractCode(s) {
+  const ok = (c) => c.length === 5 && [...c].every((ch) => ROOM_ALPHABET.includes(ch));
+  const m = s.match(/[?&#](?:room|r)=([A-Za-z0-9]+)/i);
+  if (m && ok(m[1].toUpperCase())) return m[1].toUpperCase();
+  const toks = s.match(/\b[A-HJKMNP-Z2-9]{5}\b/gi);
+  if (!toks) return null;
+  let best = null, bs = -1;
+  for (const t of toks) {
+    const sc = (t === t.toUpperCase() ? 2 : 0) + (/[0-9]/.test(t) ? 1 : 0);
+    if (sc >= bs) { bs = sc; best = t; }
+  }
+  return best.toUpperCase();
+}
+
 // ---------- lobby
 DEF.lobby = {
   cls: 'scr-lobby',
@@ -902,14 +1043,14 @@ DEF.lobby = {
   html: () => `
     <div class="col">
       <header class="head">
-        <button type="button" class="btn-back" data-act="leave" data-sfx="ui_back" aria-label="Leave squad">${icon('back')}</button>
+        <button type="button" class="btn-back lb-back" data-act="leave" data-sfx="none" aria-label="Leave squad">${icon('back')}</button>
         <div class="head-title"><span class="kicker lb-kind">PRIVATE SQUAD</span><h2>SQUAD LOBBY</h2></div>
         <span class="head-aux lb-count">1/4</span>
       </header>
       <div class="lb-top">
         <div class="lb-code panel">
           <span class="kicker">SQUAD CODE</span>
-          <div class="lb-code-val" aria-live="polite"></div>
+          <div class="lb-code-val" role="img" aria-label="Squad code pending">${'<span><canvas class="pix" hidden></canvas></span>'.repeat(5)}</div>
           ${btn('share', 'SHARE INVITE', { cls: 'btn-sm btn-primary', ico: 'share', aria: 'Share invite link' })}
         </div>
         <button type="button" class="lb-qr panel" data-act="qr" aria-label="Show QR code full screen">
@@ -921,27 +1062,29 @@ DEF.lobby = {
         ${[0, 1, 2, 3].map((i) => `
           <li class="slot t${i} empty" data-slot="${i}">
             <span class="slot-tag">P${i + 1}</span>
-            <canvas class="slot-ship" width="29" height="29" aria-hidden="true"></canvas>
-            <span class="slot-main"><span class="slot-name"></span><span class="slot-sub"></span></span>
+            <canvas class="slot-ship" width="26" height="26" aria-hidden="true"></canvas>
+            <span class="slot-main"><span class="slot-name-row"><span class="slot-name"></span><em class="slot-badge" hidden></em></span><span class="slot-sub"></span></span>
             <span class="slot-state"></span>
           </li>`).join('')}
       </ul>
       <div class="lb-picker" role="radiogroup" aria-label="Your ship">
-        ${SHIP_ORDER.map((id) => `<button type="button" class="lb-ship" role="radio" data-act="lbship" data-ship="${id}" data-sfx="ui_move" aria-label="${SHIPS[id].name}"><canvas width="29" height="29" aria-hidden="true"></canvas><span>${SHIPS[id].name}</span></button>`).join('')}
+        ${SHIP_ORDER.map((id) => `<button type="button" class="lb-ship" role="radio" data-act="lbship" data-ship="${id}" data-sfx="ui_move" aria-label="${SHIPS[id].name}"><canvas width="26" height="26" aria-hidden="true"></canvas><span>${SHIPS[id].name}</span></button>`).join('')}
       </div>
       <p class="lb-status" aria-live="polite"></p>
       <div class="foot lb-actions">
-        ${btn('leave', 'LEAVE', { cls: 'btn-sm btn-ghost', sfx: 'ui_back' })}
+        ${btn('leave', 'LEAVE', { cls: 'btn-sm btn-ghost lb-leave', sub: ' ', sfx: 'none' })}
         ${btn('ready', 'READY', { cls: 'btn-primary btn-xl lb-ready', ico: 'check', attrs: 'data-autofocus' })}
         ${btn('launch', 'LAUNCH', { cls: 'btn-gold btn-xl lb-launch', ico: 'play', sfx: 'ui_start' })}
       </div>
     </div>
-    <div class="qr-modal" hidden data-act="qrclose" data-sfx="ui_back">
+    <div class="qr-modal" hidden data-act="qrclose" data-sfx="ui_back" role="dialog" aria-modal="true" aria-label="Invite QR code">
       <div class="qr-modal-box panel">
-        <span class="kicker">SCAN WITH YOUR CAMERA</span>
         <canvas class="qr-big" aria-hidden="true"></canvas>
-        <div class="qr-modal-code"></div>
-        ${btn('qrclose', 'CLOSE', { cls: 'btn-sm', sfx: 'ui_back' })}
+        <div class="qr-modal-side">
+          <span class="kicker">SCAN WITH YOUR CAMERA</span>
+          <canvas class="pix qr-modal-code" role="img"></canvas>
+          ${btn('qrclose', 'CLOSE', { cls: 'btn-sm', sfx: 'ui_back' })}
+        </div>
       </div>
     </div>`,
   enter(el, data = {}) {
@@ -949,28 +1092,49 @@ DEF.lobby = {
     const lobby = data.lobby || session?.lobby || lobbyState.lobby;
     $(el, '.qr-modal').hidden = true;
     this.qrFor = null;
+    this.armLeave(false);
     renderLobby(lobby, session);
     requestAnimationFrame(() => { if (UI.current === 'lobby') renderLobby(lobbyState.lobby, lobbyState.session); });
+  },
+  leave() { this.armLeave(false); },
+  // Leaving is two-step (the host's leave closes the squad for everyone): the first press
+  // arms LEAVE for 3 s, the second one leaves. Esc / gamepad B only ever arm it.
+  armLeave(on) {
+    const el = screens.lobby?.el;
+    clearTimeout(this.lt);
+    this.leaveArmed = !!on;
+    if (!el) return;
+    el.classList.toggle('leave-armed', this.leaveArmed);
+    const b = $(el, '.lb-leave');
+    b.classList.toggle('armed', this.leaveArmed);
+    b.classList.toggle('btn-danger', this.leaveArmed);
+    b.classList.toggle('btn-ghost', !this.leaveArmed);
+    $(el, '.lb-back').classList.toggle('armed', this.leaveArmed);
+    this.leaveLabel();
+    if (this.leaveArmed) this.lt = setTimeout(() => this.armLeave(false), 3000);
+  },
+  leaveLabel() {
+    const el = screens.lobby?.el;
+    if (!el) return;
+    const host = !!lobbyState.session?.isHost;
+    const b = $(el, '.lb-leave');
+    $(b, '.btn-label').textContent = this.leaveArmed ? (host ? 'CLOSE SQUAD?' : 'LEAVE SQUAD?') : 'LEAVE';
+    $(b, '.btn-sub').textContent = this.leaveArmed ? (root.classList.contains('kbd') ? 'PRESS AGAIN TO CONFIRM' : 'TAP AGAIN TO CONFIRM') : '';
+    b.setAttribute('aria-label', this.leaveArmed ? (host ? 'Confirm: close the squad for everyone' : 'Confirm: leave the squad') : (host ? 'Close squad' : 'Leave squad'));
   },
   act(a, b) {
     const { lobby, session } = lobbyState;
     const me = myEntry(lobby, session);
-    if (a === 'leave') { call('onLeaveLobby'); }
-    else if (a === 'share') { if (session?.code) call('onShare', session.code); }
-    else if (a === 'qr') {
-      const el = screens.lobby.el;
-      const m = $(el, '.qr-modal');
-      m.hidden = false;
-      const url = inviteUrl(session?.code);
-      if (url) sizeQR($(m, '.qr-big'), url, Math.min(innerWidth, innerHeight) * 0.7);
-      $(m, '.qr-modal-code').textContent = session?.code || '';
-      if (root.classList.contains('kbd')) $(m, '[data-act="qrclose"]').focus();
-    } else if (a === 'qrclose') {
+    if (a === 'leave') {
+      if (this.leaveArmed) { snd('ui_back'); this.armLeave(false); call('onLeaveLobby'); }
+      else { snd('ui_move'); this.armLeave(true); }
+    } else if (a === 'share') { if (session?.code) call('onShare', session.code); }
+    else if (a === 'qr') this.openQR();
+    else if (a === 'qrclose') {
       $(screens.lobby.el, '.qr-modal').hidden = true;
       if (root.classList.contains('kbd')) $(screens.lobby.el, '.lb-qr').focus();
     } else if (a === 'lbship') {
       const id = b.dataset.ship;
-      if (me?.ready && !session?.isHost) { snd('ui_error'); UI.toast('UN-READY TO CHANGE SHIPS', 1400); return; }
       hangarShip = id;
       call('onShip', id);
       call('onLobbyShip', id);
@@ -983,16 +1147,32 @@ DEF.lobby = {
       pending = { ship: pending.ship, ready: want, t: performance.now() };
       renderLobby(lobby, session);
     } else if (a === 'launch') {
-      if (b.disabled) return;
       if (me && !me.ready) call('onLobbyReady', true);
       setBusy(b, 'LAUNCHING');
       call('onLaunch');
     }
   },
+  openQR() {
+    const el = screens.lobby.el;
+    const code = lobbyState.session?.code;
+    if (!code) return;
+    const m = $(el, '.qr-modal');
+    m.hidden = false;
+    // big enough to scan across a room, small enough to leave the code + CLOSE on screen
+    const land = innerWidth > innerHeight && innerHeight < 560;
+    const target = land ? Math.min(innerHeight - 64, innerWidth * 0.5) : Math.min(innerWidth * 0.74, innerHeight - 230);
+    sizeQR($(m, '.qr-big'), inviteUrl(code), Math.max(120, target));
+    const c = $(m, '.qr-modal-code');
+    pix(c, code, { color: '#ffffff', spacing: 3 });
+    c.setAttribute('aria-label', 'Squad code ' + code.split('').join(' '));
+    if (root.classList.contains('kbd')) $(m, '[data-act="qrclose"]').focus();
+  },
   back() {
-    const m = $(screens.lobby.el, '.qr-modal');
-    if (!m.hidden) { m.hidden = true; return; }
-    call('onLeaveLobby');
+    const el = screens.lobby.el;
+    const m = $(el, '.qr-modal');
+    if (!m.hidden) { m.hidden = true; if (root.classList.contains('kbd')) $(el, '.lb-qr').focus(); return; }
+    this.armLeave(true);
+    if (root.classList.contains('kbd')) $(el, '.lb-leave').focus();
   },
 };
 
@@ -1013,13 +1193,15 @@ function inviteUrl(code) {
   return u.toString();
 }
 
-// Draw a QR at an integer CSS scale so every module is the same size.
+// Draw a QR (4-module quiet zone, as the spec asks) scaled by a whole number of DEVICE
+// pixels per module, so every module is identical on any screen density.
 function sizeQR(canvas, url, targetCss) {
   try {
-    const qr = drawQR(canvas, url, { margin: 3, dark: '#05040c', light: '#e9f1ff', ecl: 'M' });
-    const n = qr.size + 6;
-    const k = Math.max(1, Math.floor(targetCss / n));
-    canvas.style.width = canvas.style.height = n * k + 'px';
+    const qr = drawQR(canvas, url, { margin: 4, dark: '#05040c', light: '#e9f1ff', ecl: 'M' });
+    const n = qr.size + 8;
+    const d = dprNow();
+    const k = Math.max(1, Math.floor((targetCss * d) / n)) / d;
+    canvas.style.width = canvas.style.height = (n * k).toFixed(3) + 'px';
     return true;
   } catch { return false; }
 }
@@ -1050,20 +1232,28 @@ function renderLobby(lobby, session) {
   el.className = el.className.replace(/\bt[0-3]\b/g, '').trim() + ' t' + (selfSlot & 3);
   $(el, '.lb-kind').textContent = session?.isPublic ? 'PUBLIC SQUAD' : 'PRIVATE SQUAD';
   $(el, '.lb-count').textContent = `${players.length}/4`;
+  // squad code: one bitmap glyph per cell (Pixelify's 2/Z, 5/S and 8/B are too alike)
   const cv = $(el, '.lb-code-val');
   if (cv.dataset.code !== code) {
     cv.dataset.code = code;
-    cv.innerHTML = code ? code.split('').map((c) => `<span>${esc(c)}</span>`).join('') : '<span class="dots">·····</span>';
+    $$(cv, 'canvas').forEach((c, i) => {
+      if (code[i]) { pix(c, code[i], { color: '#ffffff' }); c.hidden = false; } else c.hidden = true;
+    });
+    cv.classList.toggle('pending', !code);
     cv.setAttribute('aria-label', code ? 'Squad code ' + code.split('').join(' ') : 'Squad code pending');
   }
-  // QR only redrawn when the code changes
+  // QR of the invite link, redrawn only when the link or the box size changes
   const qrBtn = $(el, '.lb-qr');
   if (!code) qrBtn.hidden = true;
-  else if (S.def.qrFor !== code && qrBtn.clientWidth > 40) {      // needs layout: sized to its box
-    S.def.qrFor = code;
-    const ok = sizeQR($(el, '.qr-cv'), inviteUrl(code), qrBtn.clientWidth - 16);
-    qrBtn.hidden = !ok;
-  } else if (S.def.qrFor !== code) qrBtn.hidden = false;
+  else {
+    if (!NET) loadNet().then((m) => { if (m && UI.current === 'lobby') renderLobby(lobbyState.lobby, lobbyState.session); });
+    const url = inviteUrl(code);
+    const key = url + '|' + qrBtn.clientWidth + '|' + dprNow();
+    if (S.def.qrFor !== key && qrBtn.clientWidth > 40) {      // needs layout: sized to its box
+      S.def.qrFor = key;
+      qrBtn.hidden = !sizeQR($(el, '.qr-cv'), url, qrBtn.clientWidth - 16);
+    } else if (S.def.qrFor !== key) qrBtn.hidden = false;
+  }
 
   // per-slot transports (host sees each link; clients see their link to the host)
   if (session && transportSession !== session) {
@@ -1091,20 +1281,25 @@ function renderLobby(lobby, session) {
     li.classList.toggle('ready', !!p?.ready);
     li.classList.toggle('self', !!p && i === selfSlot);
     li.classList.toggle('host', !!p && i === 0);
-    const nameEl = $(li, '.slot-name'), subEl = $(li, '.slot-sub'), stEl = $(li, '.slot-state');
+    const nameEl = $(li, '.slot-name'), badge = $(li, '.slot-badge'), subEl = $(li, '.slot-sub'), stEl = $(li, '.slot-state');
     const cvs = $(li, '.slot-ship');
     if (!p) {
       nameEl.textContent = 'OPEN SLOT';
+      badge.hidden = true;
       subEl.textContent = code ? 'WAITING FOR PILOT…' : '';
       stEl.textContent = '';
-      if (cvs.dataset.k !== '') { cvs.getContext('2d').clearRect(0, 0, 29, 29); cvs.dataset.k = ''; }
+      if (cvs.dataset.k !== '') { cvs.getContext('2d').clearRect(0, 0, cvs.width, cvs.height); cvs.dataset.k = ''; delete cvs.dataset.ship; }
       li.setAttribute('aria-label', `Player ${i + 1}: open slot`);
       return;
     }
     if (i !== selfSlot) { others++; if (p.ready) othersReady++; }
     const nm = String(p.name || `PILOT ${i + 1}`).toUpperCase().slice(0, 12);
-    // one tag per row: HOST wins (your own row is already highlighted)
-    nameEl.innerHTML = esc(nm) + (i === 0 ? ' <em class="hosttag">HOST</em>' : i === selfSlot ? ' <em>YOU</em>' : '');
+    nameEl.textContent = nm;
+    // one tag per row, outside the truncating name: HOST wins (your own row is highlighted)
+    const tag = i === 0 ? 'HOST' : i === selfSlot ? 'YOU' : '';
+    badge.hidden = !tag;
+    badge.textContent = tag;
+    badge.classList.toggle('hosttag', i === 0);
     const ship = SHIPS[p.ship] ? p.ship : 'aurora';
     const lk = linkKind(p);
     const ping = typeof p.ping === 'number' && p.ping > 0 && i !== selfSlot ? `${Math.round(p.ping)}MS` : '';
@@ -1112,16 +1307,17 @@ function renderLobby(lobby, session) {
     stEl.innerHTML = p.ready ? `${icon('check')}<span>READY</span>` : '<span>NOT READY</span>';
     const key = ship + ':' + (hasSpr(SHIPS[ship].sprite) ? 1 : 0);
     if (cvs.dataset.k !== key) { drawShipIcon(cvs, ship, i); cvs.dataset.k = key; }
-    li.setAttribute('aria-label', `Player ${i + 1}: ${nm}, ${SHIPS[ship].name}, ${p.ready ? 'ready' : 'not ready'}`);
+    li.setAttribute('aria-label', `Player ${i + 1}${tag ? ' (' + tag.toLowerCase() + ')' : ''}: ${nm}, ${SHIPS[ship].name}, ${p.ready ? 'ready' : 'not ready'}`);
   });
 
-  // ship picker
+  // ship picker (aria-disabled rather than disabled, so a tap can explain why)
   const myShip = SHIPS[me?.ship] ? me.ship : curShip();
+  const locked = !isHost && !!me?.ready;               // the host has no READY toggle
   $$(el, '.lb-ship').forEach((b) => {
     const on = b.dataset.ship === myShip;
     b.setAttribute('aria-checked', on ? 'true' : 'false');
     b.classList.toggle('on', on);
-    b.disabled = !isHost && !!me?.ready;               // the host has no READY toggle
+    setDenied(b, locked ? 'UN-READY TO CHANGE SHIPS' : '');
     const c = $(b, 'canvas');
     const key = (selfSlot & 3) + ':' + (hasSpr(SHIPS[b.dataset.ship].sprite) ? 1 : 0);
     if (c.dataset.k !== key) { drawShipIcon(c, b.dataset.ship, selfSlot & 3); c.dataset.k = key; }
@@ -1135,19 +1331,30 @@ function renderLobby(lobby, session) {
   $(readyBtn, '.btn-label').textContent = me?.ready ? 'READY!' : 'READY';
   readyBtn.setAttribute('aria-pressed', me?.ready ? 'true' : 'false');
   const canLaunch = isHost && othersReady === others && !!lobby && !lobby.started;
-  if (!launchBtn.classList.contains('busy')) launchBtn.disabled = !canLaunch;
+  if (!launchBtn.classList.contains('busy')) {
+    const waiting = others - othersReady;
+    setDenied(launchBtn, canLaunch ? '' : lobby?.started ? 'LAUNCHING…' : `WAITING FOR ${waiting} PILOT${waiting > 1 ? 'S' : ''} TO READY UP`);
+  }
   if (lobby?.started) clearBusy();
+  S.def.leaveLabel?.();
 
   const status = $(el, '.lb-status');
   if (!session) status.textContent = 'CONNECTING…';
   else if (lobby?.started) status.textContent = 'LAUNCHING…';
   else if (isHost) {
-    if (others === 0) status.innerHTML = 'SHARE THE CODE — OR LAUNCH SOLO. PILOTS CAN JOIN LATER.';
+    if (others === 0) status.textContent = 'SHARE THE CODE — OR LAUNCH SOLO. PILOTS CAN JOIN LATER.';
     else if (othersReady < others) status.textContent = `WAITING FOR ${others - othersReady} PILOT${others - othersReady > 1 ? 'S' : ''} TO READY UP`;
     else status.textContent = 'ALL PILOTS READY — LAUNCH WHEN YOU ARE';
   } else {
     status.textContent = me?.ready ? 'WAITING FOR THE HOST TO LAUNCH…' : 'PICK YOUR SHIP, THEN TAP READY';
   }
+}
+
+// Soft-disable a control: it stays focusable and a tap plays the error sound and shows
+// `why` (browsers send no click to a real disabled button, so it could never explain).
+function setDenied(b, why) {
+  if (why) { b.setAttribute('aria-disabled', 'true'); b.dataset.deny = why; }
+  else { b.removeAttribute('aria-disabled'); delete b.dataset.deny; }
 }
 
 // ---------- pause
@@ -1204,7 +1411,7 @@ DEF.gameover = {
         <span class="kicker go-kicker">SIGNAL LOST</span>
         <h2 class="modal-title go-title glitch" data-text="GAME OVER">GAME OVER</h2>
         <p class="go-sector"></p>
-        <div class="big-score"><span class="kicker">SCORE</span><b class="score go-score"></b></div>
+        <div class="big-score"><span class="kicker">SCORE</span><canvas class="pix score go-score" role="img"></canvas></div>
         <p class="go-best"></p>
         <div class="modal-list stagger">
           ${btn('continue', 'CONTINUE', { cls: 'btn-primary btn-xl go-continue', ico: 'play', sub: 'KEEP YOUR SECTOR · SCORE RESETS', sfx: 'ui_start', attrs: 'data-autofocus' })}
@@ -1217,7 +1424,9 @@ DEF.gameover = {
     const solo = data.solo ?? !(data.online || data.multiplayer || data.coop);
     const score = +data.score || 0;
     const best = Math.max(+data.best || +data.hiScore || 0, 0);
-    $(el, '.go-score').innerHTML = scoreHTML(score);
+    const gs = $(el, '.go-score');
+    paintScore(gs, score);
+    gs.setAttribute('aria-label', 'Score ' + fmt(score));
     const sec = data.sector && typeof data.sector === 'object' ? data.sector : SECTORS[(data.sector | 0) - 1] || null;
     $(el, '.go-sector').textContent = sec ? `SECTOR ${sec.n} · ${sec.name}` : (data.sectorName || '');
     const newBest = data.newBest ?? (score > 0 && score >= best);
@@ -1227,7 +1436,7 @@ DEF.gameover = {
     $(el, '.go-continue').hidden = !solo;
     const retry = $(el, '.go-retry');
     const canRetry = data.isHost !== false;
-    retry.disabled = !canRetry;
+    setDenied(retry, canRetry ? '' : 'THE SQUAD HOST DECIDES WHETHER TO RETRY');
     $(retry, '.btn-label').textContent = canRetry ? (solo ? 'RETRY SECTOR' : 'RETRY AS SQUAD') : 'HOST DECIDES';
     if (!solo) retry.classList.add('btn-primary'); else retry.classList.remove('btn-primary');
   },
@@ -1248,18 +1457,20 @@ DEF.results = {
         <span class="kicker res-kicker">SECTOR CLEAR</span>
         <h2 class="modal-title res-title">MISSION COMPLETE</h2>
         <div class="res-totals">
-          <div class="big-score"><span class="kicker">SCORE</span><b class="score res-score"></b></div>
+          <div class="big-score"><span class="kicker">SCORE</span><canvas class="pix score res-score" role="img"></canvas></div>
           <div class="res-bonus"></div>
         </div>
         <div class="res-body"></div>
         <p class="res-wait" hidden>WAITING FOR THE HOST…</p>
         <div class="foot">
+          ${btn('menu', 'MAIN MENU', { cls: 'btn-sm btn-ghost res-menu', ico: 'home', sub: ' ', sfx: 'none' })}
           ${btn('next', 'NEXT SECTOR', { cls: 'btn-primary btn-xl res-next', ico: 'play', sfx: 'ui_start', attrs: 'data-autofocus' })}
         </div>
       </div>
     </div>`,
   enter(el, data = {}) {
     this.data = data;
+    this.armMenu(false);
     const sec = data.sector && typeof data.sector === 'object' ? data.sector : SECTORS[(data.sector | 0) - 1] || null;
     $(el, '.res-kicker').textContent = sec ? `SECTOR ${sec.n} CLEAR` : 'SECTOR CLEAR';
     $(el, '.res-title').textContent = sec ? sec.name : 'MISSION COMPLETE';
@@ -1284,20 +1495,46 @@ DEF.results = {
     const score = +data.score || 0, bonus = +data.bonus || 0;
     $(el, '.res-bonus').innerHTML = bonus ? `CLEAR BONUS <b>+${fmt(bonus)}</b>` : '';
     countUp($(el, '.res-score'), score, 1100, true);
+    $(el, '.res-score').setAttribute('aria-label', 'Score ' + fmt(score));
     $$(body, '.count').forEach((c, i) => setTimeout(() => countUp(c, +c.dataset.to, 700, false, c.dataset.pre, c.dataset.suf), 250 + i * 140));
     const canNext = data.isHost !== false;
     const next = $(el, '.res-next');
     next.hidden = !canNext;
+    el.classList.toggle('res-client', !canNext);
     $(el, '.res-wait').hidden = canNext;
     const last = sec && sec.n >= SECTORS.length;
     $(next, '.btn-label').textContent = last ? 'CONTINUE' : 'NEXT SECTOR';
   },
+  // A way out that never depends on the host: two presses (the run / squad is left behind).
+  armMenu(on) {
+    const el = screens.results?.el;
+    clearTimeout(this.mt);
+    this.menuArmed = !!on;
+    if (!el) return;
+    const online = !!(this.data?.online || this.data?.isHost === false);
+    const b = $(el, '.res-menu');
+    b.classList.toggle('armed', this.menuArmed);
+    b.classList.toggle('btn-danger', this.menuArmed);
+    b.classList.toggle('btn-ghost', !this.menuArmed);
+    $(b, '.btn-label').textContent = this.menuArmed ? (online ? 'LEAVE SQUAD?' : 'QUIT TO MENU?') : (online ? 'LEAVE SQUAD' : 'MAIN MENU');
+    $(b, '.btn-sub').textContent = this.menuArmed ? (root.classList.contains('kbd') ? 'PRESS AGAIN TO CONFIRM' : 'TAP AGAIN TO CONFIRM') : '';
+    if (this.menuArmed) this.mt = setTimeout(() => this.armMenu(false), 3000);
+  },
   act(a) {
+    if (a === 'menu') {
+      if (this.menuArmed) { snd('ui_back'); this.armMenu(false); call('onQuitToMenu'); } else { snd('ui_move'); this.armMenu(true); }
+      return;
+    }
     if (a !== 'next') return;
     if (typeof this.data?.onNext === 'function') this.data.onNext();
     else if (typeof H.onNext === 'function') call('onNext');
     else call('onResume');
   },
+  back() {
+    this.armMenu(true);
+    if (root.classList.contains('kbd')) $(screens.results.el, '.res-menu').focus();
+  },
+  leave() { this.armMenu(false); },
 };
 
 function countUp(el, to, ms, score, pre = '', suf = '') {
@@ -1306,11 +1543,12 @@ function countUp(el, to, ms, score, pre = '', suf = '') {
   const step = (now) => {
     const k = Math.min(1, (now - t0) / ms);
     const v = Math.round(to * (1 - Math.pow(1 - k, 3)));
-    if (score) el.innerHTML = scoreHTML(v); else el.textContent = pre + v + suf;
+    if (score) paintScore(el, v); else el.textContent = pre + v + suf;
     if (k < 1 && el.isConnected) requestAnimationFrame(step);
     else if (!score && k >= 1) { el.classList.add('done'); }
   };
-  if (reduceMotion()) { if (score) el.innerHTML = scoreHTML(to); else el.textContent = pre + to + suf; return; }
+  if (reduceMotion()) { if (score) paintScore(el, to); else el.textContent = pre + to + suf; return; }
+  if (score) paintScore(el, 0);
   requestAnimationFrame(step);
 }
 
@@ -1323,15 +1561,16 @@ DEF.victory = {
       <div class="vic-head">
         <span class="kicker">THE CHOIR IS SILENT</span>
         <h2 class="vic-title" data-text="VICTORY">VICTORY</h2>
-        <div class="big-score"><span class="kicker">FINAL SCORE</span><b class="score vic-score"></b></div>
+        <div class="big-score"><span class="kicker">FINAL SCORE</span><canvas class="pix score vic-score" role="img"></canvas></div>
       </div>
-      <div class="vic-roll" aria-live="off"><div class="vic-roll-inner"></div></div>
+      <div class="vic-roll" aria-live="off"><div class="vic-roll-track"><div class="vic-roll-inner"></div></div></div>
       <div class="foot">
         ${btn('menu', 'RETURN TO BASE', { cls: 'btn-primary btn-xl', ico: 'home', attrs: 'data-autofocus' })}
       </div>
     </div>`,
   enter(el, data = {}) {
     countUp($(el, '.vic-score'), +data.score || 0, 1800, true);
+    $(el, '.vic-score').setAttribute('aria-label', 'Final score ' + fmt(+data.score || 0));
     const rows = Array.isArray(data.stats) ? data.stats : [];
     const pilots = rows.map((r) => `<li class="t${(r.slot | 0) & 3}"><i></i>${esc(String(r.name || `PILOT ${(r.slot | 0) + 1}`).toUpperCase())} <span>· ${esc(SHIPS[r.ship]?.name || '')}</span></li>`).join('');
     const inner = $(el, '.vic-roll-inner');
@@ -1340,7 +1579,12 @@ DEF.victory = {
       (pilots ? `<div class="vic-sec"><span class="kicker">THE NOVA LANCERS</span><ul class="vic-pilots">${pilots}</ul></div>` : '') +
       CREDITS.map(([k, v]) => `<div class="vic-sec"><span class="kicker">${esc(k)}</span><b>${esc(v)}</b></div>`).join('') +
       `<div class="vic-sec vic-end"><b>THANK YOU FOR PLAYING</b><span class="kicker">MILGIE.COM</span></div>`;
-    inner.classList.remove('roll'); void inner.offsetWidth; inner.classList.add('roll');
+    // the roll is two transform animations (track: from 55% down to the top; text: up by its
+    // own height), so it never triggers layout while it plays
+    const track = $(el, '.vic-roll-track');
+    for (const e of [track, inner]) e.classList.remove('roll');
+    void inner.offsetWidth;
+    for (const e of [track, inner]) e.classList.add('roll');
   },
   act(a) { if (a === 'menu') call('onQuitToMenu'); },
 };
@@ -1417,6 +1661,9 @@ DEF.settings = {
       const on = b.getAttribute('aria-checked') !== 'true';
       b.setAttribute('aria-checked', on ? 'true' : 'false');
       saveSetting({ [k]: on });
+    } else if (a === 'toggle-row') {
+      const sw = $(b, '.switch');
+      if (sw) this.act('toggle', sw);
     } else if (a === 'quality') {
       $$(screens.settings.el, '[data-act="quality"]').forEach((x) => x.setAttribute('aria-checked', x === b ? 'true' : 'false'));
       saveSetting({ quality: b.dataset.q });
@@ -1430,8 +1677,9 @@ function slider(k, label, min, max, step) {
   return `<div class="set-row set-slider"><label class="set-k" for="set-${k}">${label}</label>` +
     `<div class="set-ctl"><input id="set-${k}" type="range" min="${min}" max="${max}" step="${step}" data-k="${k}"><output for="set-${k}"></output></div></div>`;
 }
+// The whole row is a tap target (forwarded to the switch), not only the switch itself.
 function toggle(k, label) {
-  return `<div class="set-row"><span class="set-k" id="lbl-${k}">${label}</span>` +
+  return `<div class="set-row set-toggle" data-act="toggle-row" data-sfx="ui_move"><span class="set-k" id="lbl-${k}">${label}</span>` +
     `<button type="button" class="switch" role="switch" data-act="toggle" data-toggle="${k}" data-sfx="ui_move" aria-labelledby="lbl-${k}" aria-checked="false"><span class="knob"></span><span class="sw-on">ON</span><span class="sw-off">OFF</span></button></div>`;
 }
 
@@ -1495,7 +1743,7 @@ function keyList(list) {
   return `<dl class="keys">${list.map((r) => `<div class="key-row"><dt>${r.keys.map((k) => `<kbd>${esc(k)}</kbd>`).join('')}${r.alt ? `<span class="alt">${esc(r.alt)}</span>` : ''}</dt><dd>${esc(r.act)}</dd></div>`).join('')}</dl>`;
 }
 function rule(ico, title, text, art) {
-  return `<article class="rule panel"><div class="rule-art art-${art}" aria-hidden="true">${icon(ico)}</div><div><h4>${title}</h4><p>${esc(text)}</p></div></article>`;
+  return `<article class="rule panel"><div class="rule-art art-${art}" aria-hidden="true">${icon(ico)}</div><div><h4>${title}</h4><p>${numify(text)}</p></div></article>`;
 }
 // Inline pixel illustration: phone, relative drag, the ship offset from the finger, buttons.
 function touchIllustration() {
@@ -1641,6 +1889,18 @@ function onKeyDown(e) {
   if (!dir && !isText && !e.ctrlKey && !e.metaKey && !e.altKey) dir = { w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' }[k];
   if (dir || k === 'Tab') root.classList.add('kbd');
 
+  if (k === 'Tab') {
+    // keep focus inside the active screen (or the QR view on top of the lobby)
+    const list = focusables(scopeEl());
+    if (list.length) {
+      const i = list.indexOf(document.activeElement);
+      const n = i < 0 ? (e.shiftKey ? list.length - 1 : 0) : (i + (e.shiftKey ? -1 : 1) + list.length) % list.length;
+      list[n].focus();
+      list[n].scrollIntoView?.({ block: 'nearest' });
+    }
+    e.preventDefault();
+    return;
+  }
   if (k === 'Escape') {
     // Deferred so the game's own key handler sees this Escape while it is still disabled
     // (otherwise resuming from pause would immediately re-pause).
@@ -1696,11 +1956,11 @@ function padStart() {
       if (edge(d)) { root.classList.add('kbd'); padDir(d); pad.held = d; pad.heldT = now + 380; }
       else if (cur[d] && pad.held === d && now > pad.heldT) { padDir(d); pad.heldT = now + 110; }
     }
-    if (edge('a')) { root.classList.add('kbd'); if (curName === 'title') DEF.title.act('start'); else activate(); }
+    if (edge('a')) { root.classList.add('kbd'); if (curName === 'title') { snd('ui_start'); DEF.title.act('start', null, null, true); } else activate(); }
     if (edge('b')) goBack();
     if (edge('start')) {
       if (curName === 'pause') call('onResume');
-      else if (curName === 'title') DEF.title.act('start');
+      else if (curName === 'title') { snd('ui_start'); DEF.title.act('start', null, null, true); }
       else activate();
     }
     pad.prev = cur;
@@ -1732,8 +1992,8 @@ function scramble(el, text, ms) {
     const n = Math.floor(text.length * k);
     let s = text.slice(0, n);
     for (let i = n; i < text.length; i++) s += text[i] === ' ' ? ' ' : GLITCH_CH[(Math.random() * GLITCH_CH.length) | 0];
-    el.textContent = s;
-    if (k < 1) bannerTimers.push(requestAnimationFrame(step));
+    if (k < 1) { el.textContent = s; bannerTimers.push(requestAnimationFrame(step)); }
+    else el.innerHTML = numify(text);
   };
   bannerTimers.push(requestAnimationFrame(step));
 }
@@ -1769,6 +2029,11 @@ export const UI = {
       const scr = b.closest('.screen');
       if (!scr || scr.dataset.screen !== curName) return;
       if (b.disabled || b.classList.contains('busy')) { snd('ui_error'); return; }
+      if (b.getAttribute('aria-disabled') === 'true') {
+        snd('ui_error');
+        if (b.dataset.deny) UI.toast(b.dataset.deny, 1800);
+        return;
+      }
       AudioSys.unlock();
       const s = b.dataset.sfx || 'ui_select';
       if (s !== 'none') snd(s);
@@ -1784,13 +2049,25 @@ export const UI = {
     }, { passive: true });
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('gamepadconnected', () => { if (curName && curName !== 'none') padStart(); });
+    applyTypeScale();
+    let rz = 0;
     window.addEventListener('resize', () => {
-      if (curName === 'lobby') { screens.lobby.def.qrFor = null; renderLobby(lobbyState.lobby, lobbyState.session); }
+      // DPR can change too (browser zoom, moving the window to another monitor)
+      cancelAnimationFrame(rz);
+      rz = requestAnimationFrame(() => {
+        applyTypeScale();
+        repaintPix(root);
+        const S = screens[curName];
+        if (S) refreshIcons(S.el);
+        if (curName === 'lobby') renderLobby(lobbyState.lobby, lobbyState.session);
+      });
     });
+    // Audio can only start inside a real gesture (gamepad presses don't count): retry on
+    // every tap / key until the context runs.
+    const unlock = () => { if (!audioRunning()) AudioSys.unlock(); };
+    for (const ev of ['pointerdown', 'keydown', 'touchend']) window.addEventListener(ev, unlock, { capture: true, passive: true });
     // iOS: enables :active styles on touch
     document.addEventListener('touchstart', () => {}, { passive: true });
-
-    import('../net/session.js').then((m) => { NET = m; }).catch(() => {});
     this.current = null;
     return this;
   },
@@ -1807,6 +2084,8 @@ export const UI = {
     clearBusy();
     curName = name;
     this.current = name;
+    // in-game messages still on screen move over to the HTML toasts
+    if (name && name !== 'none' && DEF[name]) for (const t of takeHudToasts()) this.toast(t.text, t.ms);
     if (!name || name === 'none' || !DEF[name]) {
       root.classList.remove('has-screen');
       root.dataset.screen = 'none';
@@ -1822,6 +2101,7 @@ export const UI = {
       el.className = `screen ${def.cls || ''}`;
       el.dataset.screen = name;
       el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
       el.setAttribute('aria-label', def.label || name);
       el.innerHTML = def.html();
       layer.appendChild(el);
@@ -1839,6 +2119,8 @@ export const UI = {
     S.el.classList.add('active');
     const sc = $(S.el, '.scroll');
     if (sc && prev !== name) sc.scrollTop = 0;
+    // canvases drawn while the screen was hidden had no CSS size yet
+    requestAnimationFrame(() => { if (curName === name) { refreshIcons(S.el); repaintPix(S.el); } });
     if (root.classList.contains('kbd')) setTimeout(() => { if (curName === name) focusFirst(); }, 30);
     else if (document.activeElement && root.contains(document.activeElement)) document.activeElement.blur();
     padStart();
@@ -1866,9 +2148,11 @@ export const UI = {
 
   toast(msg, ms = 2400) {
     if (!toastEl || msg == null) return;
+    // during play: drawn by the HUD in free space instead of a box over the playfield
+    if (curName === 'none') { hudToast(msg, ms); return; }
     const t = document.createElement('div');
     t.className = 'toast';
-    t.textContent = String(msg);
+    t.innerHTML = numify(String(msg));
     toastEl.appendChild(t);
     while (toastEl.children.length > 3) toastEl.firstElementChild.remove();
     setTimeout(() => {
@@ -1891,7 +2175,7 @@ export const UI = {
     bannerEl.classList.remove('show', 'hide');
     void bannerEl.offsetWidth;
     bannerEl.classList.add('show');
-    if (reduceMotion()) tEl.textContent = T;
+    if (reduceMotion()) tEl.innerHTML = numify(T);
     else { tEl.textContent = ''; bannerTimers.push(setTimeout(() => scramble(tEl, T, 520), 240)); }
     const total = Math.max(1200, +ms || 3000);
     bannerTimers.push(setTimeout(() => bannerEl.classList.add('hide'), total - 450));

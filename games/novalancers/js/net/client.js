@@ -11,7 +11,7 @@
 // Wi-Fi <-> cellular switch.
 
 import {
-  PROTO, VERSION, MAX_PLAYERS, HEARTBEAT_MS, LOST_HIDDEN_MS, LOBBY_HIDDEN_MS, STALE_MS,
+  PROTO, VERSION, MAX_PLAYERS, HEARTBEAT_MS, LOST_MS, LOST_HIDDEN_MS, LOBBY_HIDDEN_MS, STALE_MS,
   RESCUE_MAX, BAD, Bucket, netConfig, randomId, roomPeerId, sanitizeName, sanitizeShip, isObj,
   isInt, isNum, encodeMsg, now, netError, SHIP_ORDER, validInfo,
 } from './common.js';
@@ -57,6 +57,7 @@ export class ClientSession extends Session {
     this._upgrade = null;
     this._rescue = null;
     this._rescueAfter = 0;
+    this._linkOk = false;
     this._wire(this.link);
     setTimeout(() => {
       if (this.closed) return;
@@ -178,6 +179,7 @@ export class ClientSession extends Session {
     const rtt = t - m.t;
     if (rtt < 0 || rtt > 20000) return;
     this.lastPong = t;
+    this._linkOk = false;
     if (this._rescue && !this._rescue.sent) this._endRescue(); // our link came back by itself
     this.rtt = rtt;
     this.samples.push({ rtt, off: m.h + rtt / 2 - t, at: t });
@@ -193,7 +195,10 @@ export class ClientSession extends Session {
   }
 
   _sendPing() {
-    this.link.sendRaw(JSON.stringify({ _: 'ping', t: now(), r: Math.round(this.rtt) }), true);
+    // Report a steady RTT (median of the last 5) for the lobby display; spikes don't churn it.
+    const last = this.samples.slice(-5).map((x) => x.rtt).sort((a, b) => a - b);
+    const r = last.length ? last[last.length >> 1] : this.rtt;
+    this.link.sendRaw(JSON.stringify({ _: 'ping', t: now(), r: Math.round(r) }), true);
   }
 
   // ---- liveness & rescue ----
@@ -210,6 +215,7 @@ export class ClientSession extends Session {
       return;
     }
     const quiet = t - this.lastPong;
+    if (quiet > LOST_MS + RESCUE_MAX && !this.hostHidden) { this._shutdown('NETWORK', false, true); return; }
     if (this.hostHidden) {
       // The host said its page went to the background (phones throttle / freeze it).
       if (quiet > (this.started ? LOST_HIDDEN_MS : LOBBY_HIDDEN_MS)) this._shutdown('NETWORK', false, true);
@@ -252,15 +258,19 @@ export class ClientSession extends Session {
       if (this._rescue !== r) return;
       if (obj._ === 'welcome' && obj.slot === this.selfSlot) this._rescued(r, link, epoch, obj);
       else if (obj._ === 'err') {
-        if (obj.e === 'LINK_OK') this._endRescue(); // the host still hears us fine: stay
+        // LINK_OK: the host still hears us fine (e.g. it merely stalled): stay. If we remain
+        // deaf, the next attempt insists (one-way loss) and the host lets us move.
+        if (obj.e === 'LINK_OK') { this._linkOk = true; this._endRescue(); }
         else this._shutdown('NETWORK', false, true); // it dropped us already
       }
     };
     link.onclose = () => { if (this._rescue === r) this._endRescue(); };
-    const hello = JSON.stringify({
+    const m = {
       _: 'hello', v: PROTO, gv: VERSION, cid: this.cid, re: epoch, pr: rebindProof(this.K, this.cid, epoch),
       hid: typeof document !== 'undefined' && document.hidden ? 1 : 0,
-    });
+    };
+    if (this._linkOk) m.f = 1;
+    const hello = JSON.stringify(m);
     r.sent = true;
     link.sendRaw(hello, true);
     r.timers.push(setInterval(() => link.sendRaw(hello, true), 1500));
@@ -518,7 +528,7 @@ export class Joiner {
       if (info.v !== PROTO || info.gv !== VERSION) { this._fail('VERSION'); return; }
       if (info.st) { this._fail('ALREADY_STARTED'); return; }
       if (info.n >= info.max) { this._fail('ROOM_FULL'); return; }
-      if (p2pDead || !info.p2p) this._commitRelay();
+      if (p2pDead || !info.p2p) this._commitRelay().catch(() => { this.committing = false; this._fail('NETWORK'); });
       return; // host exists: keep waiting for the data channel (until the P2P deadline)
     }
     if (this.relay === 'pending') return;

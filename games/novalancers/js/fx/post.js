@@ -30,9 +30,14 @@ const ORDER = ['high', 'medium', 'low'];
 
 // wave displacement (art px): gameplay-safe cap for |strength| <= 1, bigger for "event" waves
 const WAVE_PX = 7, WAVE_CAP = 3, WAVE_CAP_BIG = 20, WAVE_CAP_MAX = 10;
-// lensing: r = radius of the visible lensing zone (art px). Warp fades to exactly 0 at
-// LENS_OUT*r, deflection soft-saturates at min(LENS_CAP, LENS_CAPK*strength*r) px.
-const LENS_RE = 0.5, LENS_IN = 0.5, LENS_OUT = 1.25, LENS_CAP = 5, LENS_CAPK = 0.09;
+// lensing: s.lensing = { x, y, shadow, strength } (internal art px). shadow = radius of the
+// black disc the background paints; strength 0..1 (1 = ~5 px peak deflection). Point-lens
+// deflection K/d with K = strength*(LENS_RE*R)^2 inside a lensing zone of radius
+// R = LENS_ZONE*shadow; it fades to exactly 0 at LENS_OUT*R and soft-saturates at
+// min(LENS_CAP, LENS_CAPK*strength*R) px. Legacy shape {x, y, r, strength} (no shadow): the
+// old near-field deflection K = strength*(1.6 r)^2 in a zone R = min(9.6 r, 120).
+// Post never darkens anything: the background paints the shadow itself.
+const LENS_ZONE = 3.4, LENS_RE = 0.5, LENS_IN = 0.5, LENS_OUT = 1.25, LENS_CAP = 5, LENS_CAPK = 0.09;
 
 const VS = `
 attribute vec2 aPos;
@@ -139,7 +144,7 @@ void main() {
   vec3 col;
 #ifdef CHROMA
   if (uChroma > 0.002 && inF > 0.0) {
-    vec2 ca = (art / uTexSize - 0.5) * vec2(uTexSize.x / uTexSize.y, 1.0) * (uChroma * 7.0 * inF);
+    vec2 ca = (art / uTexSize - 0.5) * vec2(uTexSize.x / uTexSize.y, 1.0) * (uChroma * 5.0 * inF);
     col = vec3(sharp(uMain, p + ca).r, sharp(uMain, p).g, sharp(uMain, p - ca).b);
   } else {
     col = sharp(uMain, p);
@@ -174,10 +179,12 @@ void main() {
   float l = dot(col, vec3(0.299, 0.587, 0.114));
   col = mix(vec3(l), col, uSatCon.x);
   col = (col - 0.5) * uSatCon.y + 0.5;
-  // flash: exposure kick + faint tinted veil; big flashes blow out toward the flash colour
+  // flash: an exposure kick (multiplicative, so darks stay dark and the frame stays punchy)
+  // with a faint tinted veil; only the top of a big flash (boss death) blows out to the
+  // flash colour, for 2-3 frames, instead of fogging the whole screen
   float fa = uFlash.a;
-  col = col * (1.0 + fa * 1.4) + uFlash.rgb * (fa * 0.22);
-  col = mix(col, uFlash.rgb, fa * fa * 0.75);
+  col = col * (1.0 + fa * 2.2) + uFlash.rgb * (fa * 0.1);
+  col = mix(col, uFlash.rgb, smoothstep(0.65, 1.0, fa) * 0.95);
   vec2 q = gl_FragCoord.xy / uOut - 0.5;
   float vs = clamp(1.0 + fe / 12.0, 0.0, 1.0);          // vignette eases off over the HUD strips
   col *= 1.0 - uVig * dot(q, q) * 2.0 * mix(0.35, 1.0, vs);
@@ -536,10 +543,14 @@ export function createPost(canvas) {
       gl.uniform1f(u.uWaveN, n);
       gl.uniform1f(u.uWaveMax, amax);
       const L = s.lensing;
-      if (L && L.strength > 0 && L.r > 0) {
-        const st = Math.min(1, L.strength), re = L.r * LENS_RE;
-        gl.uniform4f(u.uLens, L.x, L.y, Math.min(LENS_CAP, LENS_CAPK * st * L.r), 1);
-        gl.uniform3f(u.uLensK, st * re * re, L.r * LENS_IN, L.r * LENS_OUT);
+      let R = 0, K = 0;
+      if (L && L.strength > 0) {
+        if (L.shadow > 0) { R = L.shadow * LENS_ZONE; K = Math.min(1, L.strength) * (R * LENS_RE) * (R * LENS_RE); }
+        else if (L.r > 0) { R = Math.min(9.6 * L.r, 120); K = L.strength * 2.56 * L.r * L.r; }
+      }
+      if (R > 0) {
+        gl.uniform4f(u.uLens, L.x, L.y, Math.min(LENS_CAP, LENS_CAPK * Math.min(1, L.strength) * R), 1);
+        gl.uniform3f(u.uLensK, K, R * LENS_IN, R * LENS_OUT);
       } else gl.uniform4f(u.uLens, 0, 0, 0, 0);
     }
     const fl = Math.min(1, Math.max(0, s.flash || 0));

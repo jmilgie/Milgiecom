@@ -312,9 +312,15 @@ export const PATHS = {
     if (p.rot) {
       let hd = L.face;
       if (hd === undefined) {
+        // heading from a short chord of the leader path. Near t = 0 look FORWARD instead of back:
+        // a zero-length chord used to fall back to "down", so rotated members popped up to ~50 px
+        // on their 2nd tick (the host could reap a member that popped outside the field while a
+        // late-joining client never saw it inside → ghost enemy on the client).
         const lx = L.x, ly = L.y;
-        fn(L, Math.max(0, t - 1 / 30), sim);
-        hd = Math.hypot(lx - L.x, ly - L.y) > 1e-3 ? Math.atan2(ly - L.y, lx - L.x) : Math.PI / 2;
+        const back = t >= 1 / 30;
+        fn(L, back ? t - 1 / 30 : t + 1 / 30, sim);
+        const dx = back ? lx - L.x : L.x - lx, dy = back ? ly - L.y : L.y - ly;
+        hd = Math.hypot(dx, dy) > 1e-3 ? Math.atan2(dy, dx) : Math.PI / 2;
         L.x = lx; L.y = ly;
       }
       const r = hd - Math.PI / 2, c = Math.cos(r), s = Math.sin(r);

@@ -5,22 +5,22 @@
 // #11 (D#) on top that makes the whole nebula shimmer.
 //   THE VEIL MELODY  (theremin-like triangle lead, glass doubling): 5 → 1 → 9 rising question,
 //                    a falling answer onto the dorian A#, the question sequenced on E, …
-//   THE AWE MELODY   (glass bells + choir): three rising arpeggios, each one reaching higher
+//   THE AWE MELODY   (FM bells + choir): three rising arpeggios, each one reaching higher
 //                    (B–E–G#, D#–F#–B, C#–E–G#) with the lydian A# at the top of the first.
 // Form (88 bars ≈ 123 s; loops from A, a 112 s cycle):
 //   intro (8)    glass bells and harp shimmer in, choir swell, pad opens; reverse cymbal
 //   A (16)       half-time breakbeat, warm sub, harp arps through the ping-pong delay; the VEIL
 //                melody
 //   B (16)       awe: E lydian, ride wash, choir, strings; the AWE melody on bells + choir
-//   break (8)    drums out; the LANCERS CALL on glass bells in C# dorian, then in E major
+//   break (8)    drums out; the LANCERS CALL on bells in C# dorian, then in E major
 //   build (4)    Amaj7#11 → Bsus4 → B: snare roll accelerates into double time
 //   A2 (16)      full two-step drum & bass: rolling reese, the VEIL melody on lead + strings,
 //                glass sparkles
 //   B2 (16)      the AWE melody on lead, choir, strings and bells over the two-step — the peak
 //                (C#6), then G#7sus4 hands back to…
 //   outro (4)    half time again; the melody's opening echoes on glass, loop to A
-// Intensity: ≥0.7 ride on the half-time grooves, ≥0.75 16th glass sparkles, ≥0.8 a second lead
-// an octave down; <0.15 drops the drums (pad, arps, melody only).
+// Intensity: ≥0.7 ride on the half-time grooves, ≥0.75 16th glass sparkles, ≥0.8 a saw lead
+// doubles the melody in unison; <0.15 drops the drums (pad, bass, arps, melody carry on).
 
 import { arp, chordInfo, midi } from '../music.js';
 import { themeEvents } from './motifs.js';
@@ -64,7 +64,7 @@ function flat(harm, merge = false) {
   return out;
 }
 // sustained chord events from a table column
-const held = (harm, col, vel = 0.66, oct = 0) => flat(harm, true).map(([c, s, l]) => [s, CH[c][col].split('+').map((n) => n.replace(/\d/, (d) => +d + oct)).join('+'), l, vel]);
+const held = (harm, col, vel = 0.66) => flat(harm, true).map(([c, s, l]) => [s, CH[c][col], l, vel]);
 // bass root (the slash bass when there is one) in the window [lo, lo + 11]
 function bassRoot(sym, lo = 37) {
   const c = chordInfo(sym);
@@ -93,8 +93,9 @@ const sparkle = (harm) => arp(pools(harm, SPARK), { rate: 1, len: 16, continue: 
 // ── melodies (16th-step tokens at 172 BPM: *4 = an 8th of the 86 feel, *16 = a half) ────
 // THE VEIL: 5–1–9 question, falling answer onto the dorian A#; the question on E; …; the #11
 // (D#) sung over the Amaj7#11 before the sus4 cadence.
-const VEIL = 'G#4*12 C#5*4 D#5*16 | E5*6 D#5*2 C#5*8 A#4*16 | B4*12 E5*4 F#5*16 | G#5*8 F#5*4 E5*4 D#5*16 |' +
-  ' G#4*12 C#5*4 D#5*8 G#5*8 | F#5*12 E5*4 C#5*16 | D#5*12 C#5*4 G#4*16 | F#5*8 D#5*8 C#5*16';
+// (~ = the lead glides into the note, theremin-style)
+const VEIL = 'G#4*12 ~C#5*4 D#5*16 | E5*6 D#5*2 C#5*8 ~A#4*16 | B4*12 ~E5*4 F#5*16 | G#5*8 F#5*4 E5*4 D#5*16 |' +
+  ' G#4*12 ~C#5*4 D#5*8 ~G#5*8 | F#5*12 E5*4 ~C#5*16 | D#5*12 C#5*4 ~G#4*16 | F#5*8 D#5*8 C#5*16';
 // THE AWE: three rising arpeggios, each reaching higher; the lydian A# crowns the first.
 const AWE = 'B4*8 E5*8 G#5*16 | A#5*12 G#5*4 F#5*16 | D#5*8 F#5*8 B5*16 | G#5*12 F#5*4 D#5*16 |' +
   ' C#5*8 E5*8 G#5*16 | F#5*8 E5*8 D#5*16 | E5*8 G#5*8 C#6*16 | C#6*8 F#5*8 G#5*16';
@@ -103,7 +104,7 @@ const longNotes = (line, min = 16, vel = 0.6) => {
   const ev = [];
   let s = 0;
   for (const t of line.split(/\s+/).filter((x) => x && x !== '|')) {
-    const [n, r] = t.split('*'), l = +r || 1;
+    const [n, r] = t.replace('~', '').split('*'), l = +r || 1;
     if (l >= min) { const m = n.match(/^([A-G][#b]?)(\d)$/); ev.push([s, m[1] + (+m[2] + 1), l, vel]); }
     s += l;
   }
@@ -114,7 +115,7 @@ export default {
   title: 'Veil Nebula',
   bpm: 172,
   key: 'C#', scale: 'dorian',
-  gain: 0.8,
+  gain: 0.83,
   reverb: 1.15,
   delay: { beats: 1.5, feedback: 0.42, lp: 4200, hp: 500 },
   duck: { release: 0.3 },
@@ -138,20 +139,20 @@ export default {
     ride: { gain: 0.2, pan: -0.25, reverb: 0.2, layer: { min: 0.7 } },
     ride2: { inst: 'ride', gain: 0.22, pan: -0.25, reverb: 0.2 },
     crash: { gain: 0.34, reverb: 0.3, pan: 0.2 },
-    tom: { gain: 0.3, reverb: 0.3 },
+    tom: { gain: 0.3, reverb: 0.3, poly: 2 },
     rev: { inst: 'revcym', gain: 0.4, reverb: 0.3 },
     riser: { gain: 0.34, reverb: 0.45 },
     down: { inst: 'downlifter', gain: 0.32, reverb: 0.4 },
-    impact: { gain: 0.4, reverb: 0.4 },
+    impact: { gain: 0.4, reverb: 0.4, poly: 1 },
     bass: { inst: 'bassSoft', gain: 0.62, duck: 0.35 },
-    reese: { inst: 'vReese', gain: 0.4, duck: 0.45, lpf: 1600 },
-    pad: { inst: 'padGlass', gain: 0.26, duck: 0.35, reverb: 0.4, lpf: 20000 },
-    choir: { inst: 'choirOo', gain: 0.5, reverb: 0.55, duck: 0.2 },
-    strings: { gain: 0.3, reverb: 0.45, duck: 0.2, pan: -0.14 },
-    harp: { gain: 0.66, reverb: 0.35, delay: 0.36, pan: 0.2, duck: 0.2, lpf: 20000 },
-    glass: { gain: 0.6, reverb: 0.5, delay: 0.32, pan: -0.18 },
-    sparkle: { inst: 'glass', gain: 0.22, reverb: 0.45, delay: 0.3, pan: 0.3, layer: { min: 0.75 } },
-    bell: { inst: 'vBell', gain: 0.78, reverb: 0.55, delay: 0.3, pan: 0.12 },
+    reese: { inst: 'vReese', gain: 0.62, duck: 0.45, lpf: 1600 },
+    pad: { inst: 'padGlass', gain: 0.26, poly: 8, duck: 0.35, reverb: 0.4, lpf: 20000 },
+    choir: { inst: 'choirOo', gain: 0.5, poly: 4, reverb: 0.55, duck: 0.2 },
+    strings: { gain: 0.3, poly: 3, reverb: 0.45, duck: 0.2, pan: -0.14 },
+    harp: { gain: 0.66, poly: 4, reverb: 0.35, delay: 0.36, pan: 0.2, duck: 0.2, lpf: 20000 },
+    glass: { gain: 0.6, poly: 4, reverb: 0.5, delay: 0.32, pan: -0.18 },
+    sparkle: { inst: 'glass', gain: 0.22, poly: 2, reverb: 0.45, delay: 0.3, pan: 0.3, layer: { min: 0.75 } },
+    bell: { inst: 'vBell', gain: 0.78, poly: 2, reverb: 0.55, delay: 0.3, pan: 0.12 },
     lead: { inst: 'vLead', gain: 0.7, reverb: 0.38, delay: 0.26 },
     lead2: { inst: 'vLead2', gain: 0.34, reverb: 0.3, delay: 0.2, pan: -0.08, layer: { min: 0.8 } },
   },
@@ -194,13 +195,15 @@ export default {
     introChoir: { len: 128, choir: [[32, CH['C#m9'][CHOIR], 32, 0.48], [64, CH['Amaj7#11'][CHOIR], 32, 0.52], [96, CH['G#7sus4'][CHOIR], 32, 0.55]] },
     introBell: { len: 128, bell: [[0, 'G#5', 8, 0.6], [16, 'C#6', 8, 0.5], [32, 'D#6', 16, 0.55], [64, 'C#6', 8, 0.55], [80, 'D#6', 8, 0.5], [96, 'C#6', 16, 0.55], [112, 'F#5', 8, 0.45]] },
     introHarp: { len: 96, harp: harpArp(INTRO_H.split(' ').slice(2).join(' '), { vel: 0.5 }) },   // enters at bar 3
-    introFx: { len: 128, rev: [[112, 'x', 16, 0.8]], bass: [[64, 'A2', 28, 0.6], [96, 'G#2', 28, 0.65]] },
+    introFx: { len: 128, rev: [[112, 'x', 16, 0.8]] },
+    introBass: { len: 128, bass: [[64, 'A2', 28, 0.6], [96, 'G#2', 28, 0.65]] },
 
     // ── A: the veil melody ──
     padA: { len: 256, pad: held(A_H, PAD, 0.64) },
     bassA: { len: 256, bass: htBass(A_H) },
     harpA: { len: 256, harp: harpArp(A_H) },
     veilA: { lead: VEIL, lead2: VEIL, glass: longNotes(VEIL, 16, 0.5) },
+    strA: { len: 128, strings: held(A_H.split(' ').slice(8).join(' '), STR, 0.42) },   // second half of A: strings enter
     sparkA: { len: 256, sparkle: sparkle(A_H) },
 
     // ── B: awe ──
@@ -210,17 +213,18 @@ export default {
     aweB: { bell: AWE, choir: { n: AWE, vel: 0.55 }, strings: held(B_H, STR, 0.5) },
     sparkB: { len: 256, sparkle: sparkle(B_H) },
 
-    // ── break: the Lancers call on glass (C# dorian → E major) ──
+    // ── break: the Lancers call on bells (C# dorian → E major) ──
     padBrk: { len: 128, pad: held(BRK_H, PAD, 0.6) },
-    choirBrk: { len: 128, choir: held(BRK_H, CHOIR, 0.5) },
+    choirBrk: { len: 128, choir: held(BRK_H, CHOIR, 0.38) },
     harpBrk: { len: 128, harp: harpArp(BRK_H, { vel: 0.46 }) },
     callBrk: {
       len: 128,
-      glass: [...themeEvents({ tonic: 'C#5', scale: 'dorian', part: 'call', pickup: true, aug: 2, start: 4, vel: 0.72 }),
-        ...themeEvents({ tonic: 'E5', scale: 'lydian', part: 'call', pickup: true, aug: 2, start: 68, vel: 0.78 }).map((e) => (e[0] + e[2] > 96 ? [e[0], e[1], 96 - e[0], e[3]] : e))],
+      bell: [...themeEvents({ tonic: 'C#5', scale: 'dorian', part: 'call', pickup: true, aug: 2, start: 4, vel: 0.9 }),
+        ...themeEvents({ tonic: 'E5', scale: 'lydian', part: 'call', pickup: true, aug: 2, start: 68, vel: 0.95 }).map((e) => (e[0] + e[2] > 96 ? [e[0], e[1], 96 - e[0], e[3]] : e))],
       strings: [[32, 'E4', 32, 0.5], [96, 'A#3+F#4', 32, 0.55]],
     },
-    brkFx: { len: 128, down: [[0, 'x', 32, 0.6]], rev: [[112, 'x', 16, 0.8]], bass: [[0, 'C#2', 28, 0.6], [32, 'A1', 28, 0.6], [64, 'E2', 28, 0.6], [96, 'E2', 28, 0.62]] },
+    brkFx: { len: 128, down: [[0, 'x', 32, 0.6]], rev: [[112, 'x', 16, 0.8]] },
+    brkBass: { len: 128, bass: [[0, 'C#2', 28, 0.6], [32, 'A1', 28, 0.6], [64, 'E2', 28, 0.6], [96, 'E2', 28, 0.62]] },
 
     // ── build ──
     padBuild: { len: 64, pad: held(BUILD_H, PAD, 0.7) },
@@ -238,7 +242,7 @@ export default {
     reeseA: { len: 256, reese: rollBass(A_H) },
     reeseB: { len: 256, reese: rollBass(B_H) },
     veilA2: { lead: VEIL, lead2: VEIL, strings: { n: VEIL, vel: 0.5 }, glass: longNotes(VEIL, 8, 0.52) },
-    choirA2: { len: 256, choir: held(A_H, CHOIR, 0.5) },
+    choirA2: { len: 256, choir: held(A_H, CHOIR, 0.36) },
     aweB2: { lead: AWE, lead2: AWE, bell: AWE, choir: { n: AWE, vel: 0.58 }, strings: held(B_H, STR, 0.55) },
     impact1: { impact: 'X' },
 
@@ -252,22 +256,22 @@ export default {
   sections: {
     intro: {
       bars: 8, chords: INTRO_H,
-      play: ['introPad', 'introChoir', 'introBell', { p: 'introHarp', at: 2 }, 'introFx'],
+      play: ['introPad', 'introChoir', 'introBell', { p: 'introHarp', at: 2 }, 'introBass', 'introFx'],
       auto: { 'pad.lpf': [[0, 500], [8, 6000]], 'harp.lpf': [[2, 900], [8, 9000]] },
     },
     A: {
       bars: 16, chords: A_H,
-      play: ['padA', 'bassA', 'harpA', 'veilA', 'sparkA', ['crash1', null, null, null, null, null, null, null],
+      play: ['padA', 'bassA', 'harpA', 'veilA', 'sparkA', { p: 'strA', at: 8 }, ['crash1', null, null, null, null, null, null, null],
         ['ht', 'ht', 'ht', 'htFill', 'ht', 'ht', 'ht', 'htFill'], 'htRim', 'rideHT'],
     },
     B: {
       bars: 16, chords: B_H,
-      play: ['padB', 'bassB', 'harpB', 'aweB', 'sparkB', ['crash1', null, null, null, null, null, null, null, 'crash1', null, null, null, null, null, null, null],
+      play: ['padB', 'bassB', 'harpB', 'aweB', 'sparkB', ['crash1', null, null, null, null, null, null, null],
         ['ht', 'ht', 'ht', 'htFill', 'ht', 'ht', 'ht', 'htFill'], 'rideB'],
     },
     break: {
       bars: 8, chords: BRK_H,
-      play: ['padBrk', 'choirBrk', 'harpBrk', 'callBrk', 'brkFx'],
+      play: ['padBrk', 'choirBrk', 'harpBrk', 'callBrk', 'brkBass', 'brkFx'],
       auto: { 'pad.lpf': [[0, 1200], [6, 2500], [8, 7000]], 'harp.lpf': [[0, 1500], [8, 6000]] },
     },
     build: {

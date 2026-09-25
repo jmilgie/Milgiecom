@@ -37,15 +37,36 @@ const states = new WeakMap();
 const newState = () => ({
   last: 0, t: 0,
   score: 0,
+  best: 0, runScore: 0,           // previous best of this run (0 = unknown / first run)
   bossK: 0, bossHp: 1, bossLag: 1, bossName: '', bossPhase: 0, bossFlash: 0,
   chainPop: 0, lastMult: 1,
   lifeFlash: 0, lastLives: -1,
   bombFlash: 0, lastBombs: -1,
   powFlash: 0, lastPower: -1,
   odFull: 0,
-  touchT: 0, touch: false,
+  touchT: 0, touch: false, btn: null,
 });
 let st = newState();
+
+// ------------------------------------------------------------------ in-game messages
+// UI.toast() routes here while the game is on screen: crisp outlined text in free HUD space
+// (bottom strip / side panel / under the top rows) instead of an opaque box over the field.
+const toasts = [];
+const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+export function hudToast(msg, ms = 1400) {
+  const text = String(msg ?? '').replace(/…/g, '...').toUpperCase().trim();
+  if (!text) return;
+  const hot = /\b(1UP|MAX|REVIVED|EXTEND)\b/.test(text);
+  toasts.push({ text, t0: nowMs(), ms: Math.max(900, Math.min(2000, +ms || 1400)), color: hot ? GOLD : INK, hot });
+  while (toasts.length > 3) toasts.shift();
+}
+// Remaining messages (e.g. when a menu opens mid-message) so the UI can show them as HTML.
+export function takeHudToasts() {
+  const now = nowMs();
+  const out = toasts.filter((t) => now - t.t0 < t.ms - 250).map((t) => ({ text: t.text, ms: t.ms - (now - t.t0) }));
+  toasts.length = 0;
+  return out;
+}
 
 // ------------------------------------------------------------------ icons (sprite or fallback)
 const iconCache = new Map();
@@ -110,13 +131,22 @@ function bar(ctx, x, y, w, h, k, fill, back) {
 }
 
 // ------------------------------------------------------------------ layout
+// Whether the touch buttons are showing, plus their measured edges (CSS px). Re-read from the
+// DOM a few times a second: the buttons size themselves to the space under the field.
 function touchVisible(R) {
   if (R && R.touchUI != null) return !!R.touchUI;         // explicit override (dev bench)
   const now = st.last;                                    // performance.now() of this frame
   if (now - st.touchT > 400 || st.touchT === 0) {
     st.touchT = now || 1;
-    const el = typeof document !== 'undefined' ? document.getElementById('touchControls') : null;
+    const doc = typeof document !== 'undefined' ? document : null;
+    const el = doc ? doc.getElementById('touchControls') : null;
     st.touch = !!el && !el.classList.contains('hidden');
+    st.btn = null;
+    if (st.touch) {
+      const rect = (id) => { const e = doc.getElementById(id); const r = e && e.getBoundingClientRect(); return r && r.width > 0 ? r : null; };
+      const n = rect('btnNova'), o = rect('btnOver'), p = rect('btnPause');
+      if (n && o) st.btn = { l: n.right, r: o.left, pl: p ? p.left : 0 };
+    }
   }
   return st.touch;
 }
@@ -135,15 +165,26 @@ function layout(R) {
   L.botH = R.H - safeB - L.botY;
   L.botStrip = !L.side && L.botH >= 30;
   const touch = touchVisible(R);
-  // pause button (css: 40px at 8px from the top-right corner) — keep the top strip clear of it
-  const pauseArt = touch ? Math.ceil(52 / scale) : 0;
-  const rightGap = R.W - (R.fx + FIELD_W);
+  const b = touch && R.touchUI == null ? st.btn : null;
   L.x0 = R.fx + 4;
-  L.x1 = R.fx + FIELD_W - 4 - Math.max(0, pauseArt - rightGap);
-  // bottom strip centre column avoids the NOVA / OVERDRIVE buttons (css: ~72px + 14px margins)
-  const btnArt = touch ? Math.ceil(92 / scale) : 0;
-  L.bx0 = Math.max(R.fx + 4, btnArt);
-  L.bx1 = Math.min(R.fx + FIELD_W - 4, R.W - btnArt);
+  L.x1 = R.fx + FIELD_W - 4;
+  L.bx0 = R.fx + 4;
+  L.bx1 = R.fx + FIELD_W - 4;
+  if (b) {
+    // measured: keep the top strip clear of the pause button, the bottom centre column
+    // clear of the NOVA / OVERDRIVE buttons
+    if (b.pl) L.x1 = Math.min(L.x1, Math.floor((b.pl - 6) / scale));
+    L.bx0 = Math.max(L.bx0, Math.ceil((b.l + 6) / scale));
+    L.bx1 = Math.min(L.bx1, Math.floor((b.r - 6) / scale));
+  } else if (touch) {
+    // same sizing rule as css .tbtn: 56..72 px, as large as the space under the field allows
+    const below = (R.H - L.botY) * scale, beside = R.fx * scale;
+    const size = Math.max(56, Math.min(72, Math.max(below - 14, beside - 20)));
+    const btnArt = Math.ceil((14 + size + 6) / scale);
+    L.x1 -= Math.max(0, Math.ceil(52 / scale) - (R.W - (R.fx + FIELD_W)));
+    L.bx0 = Math.max(L.bx0, btnArt);
+    L.bx1 = Math.min(L.bx1, R.W - btnArt);
+  }
   return L;
 }
 
@@ -165,6 +206,20 @@ export function drawHUD(ctx, lctx, hud, R) {
   drawBoss(ctx, lctx, hud, R, L);
   if (hud.warning > 0) drawWarning(ctx, lctx, hud.warning, R, L);
   if (hud.downed) drawDowned(ctx, lctx, R);
+  if (toasts.length) drawToasts(ctx, lctx, R, L);
+}
+
+// Hi-score shown in the HUD. hud.hiScore is max(best, score), so the previous best is only
+// known while the score is below it: remember it per run. A record needs a previous best
+// above 0 (a first run is not "a new record" from the first kill), and the shown value never
+// runs ahead of the rolled-up SCORE.
+function hiScore(hud) {
+  const score = +hud.score || 0, hi = +hud.hiScore || 0;
+  if (score < st.runScore) st.best = 0;                   // new run / continue
+  st.runScore = score;
+  if (hi > score && hi > st.best) st.best = hi;
+  const rec = st.best > 0 && score > st.best;
+  return { value: Math.max(st.best, Math.floor(st.score)), rec };
 }
 
 function local(hud) {
@@ -268,17 +323,18 @@ function drawStrips(ctx, lctx, hud, R, L) {
 
   // lives (left)
   drawLives(ctx, lctx, me, L.x0, labels ? y0 + 2 : y0, team, 1);
-  // hi-score (right)
-  const hi = Math.max(+hud.hiScore || 0, +hud.score || 0);
-  const newHi = (+hud.score || 0) > 0 && (+hud.score || 0) >= hi;
-  const hiW = measureText('0000000', { font: 'small' });
-  const hiStr = String(Math.floor(hi)).padStart(7, '0');
+  // hi-score (right). Changing numbers are drawn glyph by glyph (cache: false) so they
+  // never churn the string cache.
+  const hi = hiScore(hud);
+  const newHi = hi.rec;
+  const hiStr = String(hi.value).padStart(7, '0');
+  const hiW = measureText(hiStr, { font: 'small' });
   if (labels) {
     drawText(ctx, newHi ? 'HI ★' : 'HI', L.x1, y0, { cache: true, font: 'tiny', color: newHi ? GOLD : DIM, align: 'right' });
-    drawText(ctx, hiStr, L.x1 - hiW, y0 + 7, { cache: true, font: 'small', color: newHi ? GOLD : INK, shadow: DARK });
+    drawText(ctx, hiStr, L.x1 - hiW, y0 + 7, { font: 'small', color: newHi ? GOLD : INK, shadow: DARK });
   } else {
-    drawText(ctx, hiStr, L.x1 - hiW, y0 + 1, { cache: true, font: 'small', color: newHi ? GOLD : INK, shadow: DARK });
-    drawText(ctx, 'HI', L.x1 - hiW - 3, y0 + 2, { cache: true, font: 'tiny', color: newHi ? GOLD : DIM, align: 'right' });
+    drawText(ctx, hiStr, L.x1 - hiW, y0 + 1, { font: 'small', color: newHi ? GOLD : INK, shadow: DARK });
+    drawText(ctx, newHi ? '★' : 'HI', L.x1 - hiW - 3, y0 + 2, { cache: true, font: 'tiny', color: newHi ? GOLD : DIM, align: 'right' });
   }
 
   // second row: bombs (left), chain (centre); power pips go right when there is room
@@ -288,7 +344,7 @@ function drawStrips(ctx, lctx, hud, R, L) {
   drawChain(ctx, lctx, hud, cx, rowB, 1);
   const powerTop = !L.botStrip && L.x1 >= R.fx + FIELD_W - 8;
   if (powerTop) drawPower(ctx, lctx, hud, L.x1, rowB + 1, 'right', 1);
-  if (hud.fps) drawText(ctx, Math.round(hud.fps) + 'FPS', R.fx + 3, R.fy + FIELD_H - 8, { cache: true, font: 'tiny', color: MUTE });
+  if (hud.fps) drawText(ctx, Math.round(hud.fps) + 'FPS', R.fx + 3, R.fy + FIELD_H - 8, { font: 'tiny', color: DIM });
 
   if (L.botStrip) {
     // bottom strip (centre column between the touch buttons): power + overdrive, then roster
@@ -302,9 +358,12 @@ function drawStrips(ctx, lctx, hud, R, L) {
       const room = L.botY + L.botH - by;
       let cols = bw >= 150 ? 2 : 1;
       if (Math.ceil(n / cols) * 10 > room) cols = 2;
-      if (Math.ceil(n / cols) * 10 <= room + 3) drawRoster(ctx, lctx, hud, bx0, by, bw, cols, 1);
+      if (Math.ceil(n / cols) * 10 <= room + 3) { drawRoster(ctx, lctx, hud, bx0, by, bw, cols, 1); by += Math.ceil(n / cols) * 10; }
       else { drawRoster(ctx, lctx, hud, R.fx + 4, R.fy + (L.fieldTop || 0) + 4, 116, 1, 1, true); L.fieldTop = (L.fieldTop || 0) + n * 10 + 4; }
     }
+    // messages use whatever is left of the strip
+    const lines = Math.floor((L.botY + L.botH - 2 - (by + 2)) / 10);
+    if (lines >= 1) L.toast = { x: (bx0 + bx1) >> 1, y: by + 2, w: bw, align: 'center', s: 1, lines };
   } else {
     // no bottom strip: meters overlay the bottom of the field, roster under the top rows
     const fyB = R.fy + FIELD_H;
@@ -356,7 +415,7 @@ function drawBombs(ctx, lctx, hud, x, y, s) {
   const n = Math.max(0, hud.bombs | 0);
   const glowA = st.bombFlash > 0 ? 0.35 + 0.65 * Math.abs(Math.sin(st.bombFlash * 14)) : 0.3;
   withScale(ctx, s, x, y, (ox, oy) => {
-    if (n === 0) { drawText(ctx, 'NO NOVA', ox - 3, oy - 2, { cache: true, font: 'tiny', color: MUTE }); return; }
+    if (n === 0) { drawText(ctx, 'NO NOVA', ox - 3, oy - 2, { cache: true, font: 'tiny', color: DIM }); return; }
     const shown = Math.min(n, 5);
     for (let i = 0; i < shown; i++) drawIcon(ctx, s === 1 ? lctx : null, 'ui_bomb', ox + i * 8, oy, 0, glowA);
     if (n > 5) drawText(ctx, '+' + (n - 5), ox + 5 * 8 - 3, oy - 3, { cache: true, font: 'tiny', color: INK });
@@ -431,9 +490,9 @@ function drawOverdrive(ctx, lctx, hud, x, y, w, s, opt = {}) {
   if (opt.labelRight) {
     const maxW = opt.labelW || w;
     if (measureText(label, { font: 'tiny', size: s }) > maxW) label = active ? 'OD ×2' : full ? 'OD READY' : 'OD ' + Math.floor(k * 100) + '%';
-    drawText(ctx, label, x + w, y + s, { cache: true, font: 'tiny', size: s, color: lcol, align: 'right', lctx: glowTxt ? lctx : null, glow: GOLD2, glowAlpha: 0.7 });
+    drawText(ctx, label, x + w, y + s, { cache: glowTxt, font: 'tiny', size: s, color: lcol, align: 'right', lctx: glowTxt ? lctx : null, glow: GOLD2, glowAlpha: 0.7 });
   } else {
-    drawText(ctx, label, x, y, { cache: true, font: 'tiny', size: s, color: lcol, lctx: glowTxt ? lctx : null, glow: GOLD2, glowAlpha: 0.7 });
+    drawText(ctx, label, x, y, { cache: glowTxt, font: 'tiny', size: s, color: lcol, lctx: glowTxt ? lctx : null, glow: GOLD2, glowAlpha: 0.7 });
   }
   const by = y + 9 * s;
   const fillK = active ? (hud.overdriveLeft != null ? +hud.overdriveLeft : 1) : k;
@@ -514,8 +573,8 @@ function drawNet(ctx, hud, x, y, align, size = 1) {
   }
   if (hud.fps) s = (s ? s + ' · ' : '') + Math.round(hud.fps) + 'FPS';
   if (!s) return;
-  const col = hud.net && hud.net.ping > 180 ? WARN : hud.net && hud.net.ping > 90 ? GOLD : MUTE;
-  drawText(ctx, s, x, y, { cache: true, font: 'tiny', size, color: col, align });
+  const col = hud.net && hud.net.ping > 180 ? WARN : hud.net && hud.net.ping > 90 ? GOLD : DIM;
+  drawText(ctx, s, x, y, { font: 'tiny', size, color: col, align });
 }
 
 // ------------------------------------------------------------------ side panels (wide screens)
@@ -524,7 +583,10 @@ function drawSide(ctx, lctx, hud, R, L) {
   const me = local(hud);
   const team = me ? me.slot & 3 : 0;
   const bigS = Math.min(3, 9 * (s + 1) * (L.scale || 1) <= 44 ? s + 1 : s);
-  const scoreW = measureText('0000000', { font: 'big', size: bigS });
+  const hi = hiScore(hud);
+  // panel width follows the real digit count (4-player runs can pass 9,999,999)
+  const digits = Math.max(7, String(Math.floor(Math.max(+hud.score || 0, hi.value))).length);
+  const scoreW = measureText('0'.repeat(digits), { font: 'big', size: bigS });
   const pw = Math.max(scoreW, 64 * s);
   const gap = 10 * s;
   const pad = 6 * s;
@@ -541,16 +603,19 @@ function drawSide(ctx, lctx, hud, R, L) {
   if (hud.net || hud.fps) rightH += gap + 5 * s;
   sidePanel(ctx, lctx, lx - pad, top - pad, pw + pad * 2, leftH + pad * 2, team, s);
   sidePanel(ctx, lctx, rx - pad, top - pad, pw + pad * 2 + 8 * s, rightH + pad * 2, team, s);
+  // messages go under the left panel
+  const ty = top + leftH + pad + gap;
+  const tl = Math.floor((R.H - (L.safeB || 0) - 4 - ty) / (10 * s));
+  if (tl >= 1) L.toast = { x: lx - pad, y: ty, w: Math.max(pw + pad * 2, R.fx - 8 - (lx - pad)), align: 'left', s, lines: tl };
 
   // left: score, hi, chain, sector
   let y = top;
   lab('SCORE', lx, y);
   drawScore(ctx, lctx, lx, y + 7 * s, st.score, { align: 'left', font: 'big', size: bigS });
   y += 7 * s + 9 * bigS + gap;
-  const hi = Math.max(+hud.hiScore || 0, +hud.score || 0);
-  const newHi = (+hud.score || 0) > 0 && (+hud.score || 0) >= hi;
+  const newHi = hi.rec;
   lab(newHi ? 'HI-SCORE ★' : 'HI-SCORE', lx, y, newHi ? GOLD : DIM);
-  drawText(ctx, String(Math.floor(hi)).padStart(7, '0'), lx, y + 7 * s, { cache: true, font: 'small', size: s, color: newHi ? GOLD : INK, shadow: DARK });
+  drawText(ctx, String(hi.value).padStart(7, '0'), lx, y + 7 * s, { font: 'small', size: s, color: newHi ? GOLD : INK, shadow: DARK });
   y += 7 * s + 7 * s + gap;
   const m = chainMult(hud);
   lab('CHAIN', lx, y);
@@ -682,6 +747,22 @@ function drawBoss(ctx, lctx, hud, R, L) {
 }
 
 // ------------------------------------------------------------------ WARNING hazard bands
+// One pre-rendered hazard band (dark backing + slanted stripes, period 8 px). Drawing a
+// FIELD_W window of it at a moving offset scrolls the stripes with a single drawImage.
+let warnBand = null;
+function hazardBand() {
+  if (warnBand) return warnBand;
+  const c = document.createElement('canvas');
+  c.width = FIELD_W + 8; c.height = 9;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(5,4,12,0.8)';
+  g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = WARN;
+  for (let x0 = -8; x0 < c.width; x0 += 8) for (let r = 0; r < 7; r++) g.fillRect(x0 + r, 1 + r, 4, 1);
+  warnBand = c;
+  return c;
+}
+
 function drawWarning(ctx, lctx, w, R, L) {
   const t = st.t;
   const k = Math.max(0, Math.min(1, w));
@@ -692,17 +773,12 @@ function drawWarning(ctx, lctx, w, R, L) {
   const x = R.fx, y1 = R.fy + Math.max(56, (L && !L.side ? L.fieldTop || 0 : 0) + 36), y2 = R.fy + FIELD_H - 118;
   const bandH = 7;
   const off = (t * 28) | 0;
+  const src = (8 - (off % 8)) % 8;
+  const band = hazardBand();
   const a0 = ctx.globalAlpha;
   for (const by of [y1, y2]) {
     ctx.globalAlpha = a0 * a;
-    rect(ctx, x, by - 1, FIELD_W, bandH + 2, 'rgba(5,4,12,0.8)');
-    ctx.fillStyle = WARN;
-    for (let i = -bandH; i < FIELD_W + bandH; i += 8) {
-      for (let r = 0; r < bandH; r++) {
-        const sx = x + ((i + r + off) % (FIELD_W + bandH * 2)) - bandH;
-        if (sx >= x && sx + 4 <= x + FIELD_W) ctx.fillRect(sx, by + r, 4, 1);
-      }
-    }
+    ctx.drawImage(band, src, 0, FIELD_W, 9, x, by - 1, FIELD_W, 9);
     if (lctx) { lctx.globalAlpha = a * 0.35; rect(lctx, x, by, FIELD_W, bandH, WARN); }
   }
   // red edge pulse
@@ -718,11 +794,38 @@ function drawWarning(ctx, lctx, w, R, L) {
   ctx.globalAlpha = a0;
 }
 
-// Local pilot downed in co-op: a calm, readable prompt near the bottom of the field.
+// Local pilot downed in co-op: a calm, readable prompt across the middle of the field.
 function drawDowned(ctx, lctx, R) {
   const cx = R.fx + (FIELD_W >> 1), y = R.fy + (FIELD_H >> 1) - 12;
   const on = ((st.t * 2) | 0) % 2 === 0;
   rect(ctx, R.fx, y - 6, FIELD_W, 28, 'rgba(5,4,12,0.45)');
   drawText(ctx, 'BEACON ACTIVE', cx, y, { cache: true, font: 'small', color: on ? '#ffffff' : WARN, align: 'center', shadow: DARK, lctx, glow: WARN, glowAlpha: 0.6 });
   drawText(ctx, 'A SQUADMATE CAN REVIVE YOU', cx, y + 11, { cache: true, font: 'tiny', color: INK, align: 'center' });
+}
+
+// In-game messages: newest at the bottom of the stack, outlined (no backing box), a short
+// rise-in and fade-out. Placed in the space the layout left free (see L.toast), otherwise
+// under the top rows / boss bar inside the field.
+function drawToasts(ctx, lctx, R, L) {
+  const now = st.last;
+  for (let i = toasts.length - 1; i >= 0; i--) if (now - toasts[i].t0 >= toasts[i].ms) toasts.splice(i, 1);
+  if (!toasts.length) return;
+  let spot = L.toast;
+  if (!spot) {
+    const bossH = st.bossK > 0 ? Math.round((24 + 6 * (L.side ? L.sz : 1)) * Math.min(1, st.bossK * 1.5)) : 0;
+    spot = { x: R.fx + (FIELD_W >> 1), y: R.fy + (L.fieldTop || 0) + 6 + bossH, w: FIELD_W - 12, align: 'center', s: 1, lines: 3 };
+  }
+  const s = spot.s || 1;
+  const list = toasts.slice(-Math.max(1, spot.lines));
+  let y = spot.y;
+  for (const t of list) {
+    const age = (now - t.t0) / 1000, life = t.ms / 1000;
+    const a = Math.max(0, Math.min(1, age / 0.12) * Math.min(1, (life - age) / 0.35));
+    const rise = Math.round((1 - Math.min(1, age / 0.2)) * 3 * s);
+    let font = 'small', str = t.text;
+    if (measureText(str, { font, size: s }) > spot.w) font = 'tiny';
+    while (str.length > 4 && measureText(str, { font, size: s }) > spot.w) str = str.slice(0, -4) + '...';
+    drawText(ctx, str, spot.x, y + rise, { cache: true, font, size: s, color: t.color, outline: DARK, align: spot.align, alpha: a, lctx: t.hot ? lctx : null, glow: GOLD2, glowAlpha: 0.5 });
+    y += 10 * s;
+  }
 }

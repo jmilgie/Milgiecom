@@ -57,7 +57,12 @@ function prof(label) {
 // scheduler. A job can also be finished synchronously (drain) when its result is needed now.
 // ---------------------------------------------------------------------------
 
-function runGen(it) { let r; do { r = it.next(); } while (!r.done); return r.value; }
+// Yield points inside generation loops: `if (due()) yield;` yields after ~2 ms of work.
+// Whoever resumes a generator resets the clock (resume()).
+let lastYield = 0;
+const due = () => { const t = performance.now(); if (t - lastYield < 2) return false; lastYield = t; return true; };
+const resume = (it) => { lastYield = performance.now(); return it.next(); };
+function runGen(it) { let r; do { r = resume(it); } while (!r.done); return r.value; }
 
 const JOBS = [];
 let pumping = false;
@@ -69,7 +74,7 @@ function pump() {
     const j = JOBS[0];
     if (j.state !== 'run') { JOBS.shift(); continue; }
     let r;
-    try { r = j.it.next(); } catch (e) { JOBS.shift(); j.state = 'error'; j.reject(e); continue; }
+    try { r = resume(j.it); } catch (e) { JOBS.shift(); j.state = 'error'; j.reject(e); continue; }
     if (r.done) { JOBS.shift(); j.state = 'done'; j.value = r.value; j.resolve(r.value); }
     if (nowMs() - t0 >= j.budget) break;
   }
@@ -93,8 +98,6 @@ function drainJob(j) {
   if (j.state === 'run') { j.state = 'done'; j.value = runGen(j.it); j.resolve(j.value); }
   return j.value;
 }
-// yield inside a row loop every `n` rows
-const every = (y, n) => (y % n) === n - 1;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -252,12 +255,16 @@ class Fbm {
 }
 
 // Evaluate fn(x, y, out) (k channels) every `step` px over a region; bilinear sampler.
-function coarseGrid(x0, y0, w, h, step, k, fn) {
+// Generator (yields while sampling): const g = yield* coarseGrid(...)
+function* coarseGrid(x0, y0, w, h, step, k, fn) {
   const cw = Math.ceil(w / step) + 2, ch = Math.ceil(h / step) + 2;
   const data = new Float32Array(cw * ch * k), tmp = new Float32Array(k);
-  for (let gy = 0; gy < ch; gy++) for (let gx = 0; gx < cw; gx++) {
-    fn(x0 + gx * step, y0 + gy * step, tmp);
-    data.set(tmp, (gy * cw + gx) * k);
+  for (let gy = 0; gy < ch; gy++) {
+    if (due()) yield;
+    for (let gx = 0; gx < cw; gx++) {
+      fn(x0 + gx * step, y0 + gy * step, tmp);
+      data.set(tmp, (gy * cw + gx) * k);
+    }
   }
   return {
     get(x, y, out) {
@@ -402,16 +409,31 @@ function ctx2d(c) { const x = c.getContext('2d'); x.imageSmoothingEnabled = fals
 // Draw a canvas once onto a tiny scratch canvas so the browser uploads its texture now
 // (during loading) instead of on the first gameplay frame that uses it.
 let warmCtx = null;
-function warm(v) {
+function warm(v, top = true) {
   if (!v) return;
-  if (Array.isArray(v)) { v.forEach(warm); return; }
-  if (typeof v !== 'object') return;
-  if (v.bands) { v.bands.forEach((b) => warm(b.c)); return; }
-  if (v.getContext) {
+  if (Array.isArray(v)) { v.forEach((x) => warm(x, false)); }
+  else if (typeof v !== 'object') return;
+  else if (v.bands) v.bands.forEach((b) => warm(b.c, false));
+  else if (v.getContext) {
     if (!v.width || !v.height) return;
-    if (!warmCtx) { const c = makeCanvas(2, 2); warmCtx = c.getContext('2d'); }
-    warmCtx.drawImage(v, 0, 0, 1, 1);
-  } else if (v.constructor === Object) for (const k in v) warm(v[k]);
+    if (!warmCtx) { const c = makeCanvas(2, 2); warmCtx = c.getContext('2d', { willReadFrequently: false }); }
+    warmCtx.drawImage(v, 0, 0, 1, 1, 0, 0, 1, 1);
+  } else if (v.constructor === Object) for (const k in v) warm(v[k], false);
+  // a 1-px readback flushes the queued draws, so the uploads happen here
+  if (top && warmCtx) warmCtx.getImageData(0, 0, 1, 1);
+}
+// the same, one canvas at a time (yields between uploads)
+function* warmG(v) {
+  const list = [];
+  const walk = (x) => {
+    if (!x || typeof x !== 'object') return;
+    if (Array.isArray(x)) x.forEach(walk);
+    else if (x.bands) x.bands.forEach((b) => list.push(b.c));
+    else if (x.getContext) { if (x.width && x.height) list.push(x); }
+    else if (x.constructor === Object) for (const k in x) walk(x[k]);
+  };
+  walk(v);
+  for (const c of list) { warm(c); yield; }
 }
 function freeCanvas(c) {
   if (c && c.bands) { c.free(); return; }
@@ -700,6 +722,8 @@ class Stage {
       return;
     }
     if (!this.S && !this.asyncFirst) { this.applyLayout(runGen(this.buildLayout(W, H, fx, fy))); return; }
+    const w = this.want;
+    if (w && w.W === W && w.H === H && w.fx === fx && w.fy === fy && (this.rjob || this._rt)) return;   // already on it
     // Keep drawing the previous layout (translated to follow the field) and rebuild in time
     // slices once the viewport has been stable for a moment (rotations, window drags).
     this.want = { W, H, fx, fy };
@@ -725,8 +749,7 @@ class Stage {
   *buildLayout(W, H, fx, fy) {
     const S = { W, H0: H, LH: H + 48, fx, fy, ax: Math.round(fx + FIELD_W / 2 - TW / 2) };
     yield* this.layout(S);
-    yield;
-    warm(S);
+    yield* warmG(S);
     return S;
   }
   applyLayout(S) {
@@ -778,6 +801,7 @@ class Stage {
     if (!this.A || this.pooled) return;
     this.cancelRelayout();
     this.pooled = true;
+    LIVE.delete(this);
     poolAdd(this);
   }
   // really free the size-dependent canvases (pool eviction)
@@ -800,7 +824,7 @@ function* nebulaTileG(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 
   const coarse = new Float32Array(cw * ch);
   yield;
   for (let y = 0; y < ch; y++) {
-    if (every(y, 12)) yield;
+    if (due()) yield;
     for (let x = 0; x < cw; x++) {
       const px = x * step, py = y * step, i = py * w + px;
       const ox = (wx[i] - 0.5) * warp * 2, oy = (wy[i] - 0.5) * warp * 2;
@@ -812,7 +836,7 @@ function* nebulaTileG(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 
   const r = new Raster(w, h, true);
   const cols = packRamp(ramp), n = cols.length;
   for (let y = 0; y < h; y++) {
-    if (every(y, 64)) yield;
+    if (due()) yield;
     const fy = y / step, y0 = Math.floor(fy), ty = fy - y0, y1 = (y0 + 1) % ch;
     const pr = profile ? profile(y) : 1;
     for (let x = 0; x < w; x++) {
@@ -841,7 +865,7 @@ function* nebula2TileG(rng, w, h, q, { cell = 150, oct = 5, warp = 60, colA, col
   const cw = Math.ceil(w / step), ch = Math.ceil(h / step), K = 3;
   const co = new Float32Array(cw * ch * K);
   for (let y = 0; y < ch; y++) {
-    if (every(y, 8)) yield;
+    if (due()) yield;
     for (let x = 0; x < cw; x++) {
       const px = x * step, py = y * step, i = py * w + px;
       const ox = (wx[i] - 0.5) * warp * 2, oy = (wy[i] - 0.5) * warp * 2, j = (y * cw + x) * K;
@@ -853,7 +877,7 @@ function* nebula2TileG(rng, w, h, q, { cell = 150, oct = 5, warp = 60, colA, col
   const A = hexToRgb(colA), B = hexToRgb(colB), F = hexToRgb(filCol || colA), HT = hot ? hexToRgb(hot) : null;
   const r = new Raster(w, h, true), v = new Float32Array(K);
   for (let y = 0; y < h; y++) {
-    if (every(y, 48)) yield;
+    if (due()) yield;
     const fy = y / step, y0 = Math.floor(fy), ty = fy - y0, y1 = (y0 + 1) % ch, uy = 1 - ty;
     for (let x = 0; x < w; x++) {
       const fx = x / step, x0 = Math.floor(fx), tx = fx - x0, x1 = (x0 + 1) % cw;
@@ -985,7 +1009,7 @@ class TitleStage extends Stage {
     const gx = (fxp + 10 - pcx) / R, gy = (fyp + 16 - pcy) / R, gz = Math.sqrt(Math.max(0, 1 - gx * gx - gy * gy));
 
     // Surface noise on a coarse grid (bilinear) — the dither supplies pixel-level texture.
-    const noise = coarseGrid(0, top - 2, W, H - top + 2, 2, 4, (x, y, o) => {
+    const noise = yield* coarseGrid(0, top - 2, W, H - top + 2, 2, 4, (x, y, o) => {
       let dx = (x - pcx) / R, dy = (y - pcy) / R; const d = Math.hypot(dx, dy);
       if (d > 0.999) { dx *= 0.999 / d; dy *= 0.999 / d; }
       const nz = Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy));
@@ -995,7 +1019,7 @@ class TitleStage extends Stage {
       o[2] = fbm3(dx * 4.5 + 3, dy * 4.5, nz * 4.5, 4, 21);                            // islands
       o[3] = fbm3(dx * 14, dy * 14, nz * 14, 2, 41);                                   // city clusters
     });
-    const nv = new Float32Array(4);
+    const nv = new Float32Array(4), nvx = new Float32Array(4), nvy = new Float32Array(4);
     prof('title noise');
     yield;
 
@@ -1003,7 +1027,7 @@ class TitleStage extends Stage {
     const cityR = hexToRgb('#f0a92a'), cityW = hexToRgb('#fff1c9');
     const gk1 = 1 / (Math.max(W, H) * 0.3), gk2 = 1 / (W * 0.05);
     for (let y = 0; y < H; y++) {
-      if (every(y, 24)) yield;
+      if (due()) yield;
       const ty = y / H;
       for (let x = 0; x < W; x++) {
         const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d2 = dx * dx + dy * dy;
@@ -1061,13 +1085,16 @@ class TitleStage extends Stage {
         // city lights: strung along coastlines across the whole night side, clustered into
         // metropolitan areas (nv[3]) with dim suburbs between them; none under thick cloud
         const dark = 1 - smooth(0.02, 0.25, lit);
-        if (dark > 0 && nv[2] > 0.6 && cloud < 0.7) {
-          const coast = 1 - smooth(0.64, 0.74, nv[2]);               // 1 near the shore, 0 inland
-          const metro = smooth(0.4, 0.72, nv[3]);
-          const dens = dark * (1 - cloud / 0.7) * smooth(0.6, 0.64, nv[2]) * (0.15 + 0.85 * coast) * (0.25 + 0.75 * metro);
+        if (dark > 0 && nv[2] > 0.62 && cloud < 0.7) {
+          // distance to the coastline in px (noise value over its gradient)
+          noise.get(x + 1, y, nvx); noise.get(x, y + 1, nvy);
+          const gx = nvx[2] - nv[2], gy = nvy[2] - nv[2], gl = Math.sqrt(gx * gx + gy * gy) + 1e-5;
+          const shore = 1 - smooth(0.5, 3.5, Math.abs(nv[2] - 0.64) / gl);
+          const metro = smooth(0.45, 0.75, nv[3]);
+          const dens = dark * (1 - cloud / 0.7) * (0.38 * shore * (0.3 + 0.7 * metro) + 0.035 * smooth(0.64, 0.7, nv[2]) * metro);
           const hsh = hash3(x, y, 7, 3);
-          if (hsh < dens * 0.3) {
-            const hot = hsh < dens * 0.05 * (0.4 + metro);
+          if (hsh < dens) {
+            const hot = hsh < dens * 0.18 * (0.4 + metro);
             const c = hot ? cityW : cityR, k = (hot ? 0.95 : 0.4 + 0.3 * metro) * dark;
             R0 = lerp(R0, c[0], k); G0 = lerp(G0, c[1], k); B0 = lerp(B0, c[2], k);
             em.d[y * W + x] = pack(c[0] * k * 0.5, c[1] * k * 0.45, c[2] * k * 0.35);
@@ -1539,7 +1566,7 @@ const M_FAR = () => mat(['#18324a', '#1f3d58', '#284a68', '#335a7a', '#436e8e', 
 const M_MID = () => mat(['#0e121c', '#171d2c', '#232c40', '#34405a', '#4c5c7c', '#71849f'], '#d6e4f4');
 // near girders: lifted mid tones so obsidian Choir hulls (#05040c outline) stay readable on them
 const M_NEAR = () => mat(['#0d1019', '#141a27', '#1e2537', '#283247', '#36435c', '#4e5f7e'], '#ffcf9a');
-const M_HULL = () => mat(['#141a26', '#202938', '#2f3b4f', '#46556c', '#65778f', '#8a9cb3'], '#e6eefa');
+const M_HULL = () => mat(['#10151f', '#1a212e', '#262f41', '#374358', '#4d5d75', '#687b94'], '#dfe8f6');
 const M_HAZ = () => mat(['#3d2106', '#7a430b', '#bf7412', '#f0a92a'], '#ffd966');
 
 // Ocean planet surface + city lights tile (tw x 512, periodic). Flat colour bands with
@@ -1560,7 +1587,7 @@ function* auroraSurfaceG(tw) {
   const LD = packRamp(['#1d3a30', '#2a4f38', '#3d6440', '#5b7a4c', '#8a8a5e', '#b0a070']);
   const amber = hexToRgb('#f0a92a'), hot = hexToRgb('#fff1c9');
   for (let y = 0; y < TH; y++) {
-    if (every(y, 64)) yield;
+    if (due()) yield;
     for (let x = 0; x < tw; x++) {
       const i = y * tw + x, l = il[i];
       let c;
@@ -1568,11 +1595,13 @@ function* auroraSurfaceG(tw) {
       else if (l > 0.63) c = SH[qi((l - 0.63) * 90, x, y, 4)];
       else c = OC[qe(clamp((oc[i] - 0.28) * 9 + (l - 0.5) * 6, 0, 5), x, y, 6, 0.3)];
       surf.d[i] = c;
-      if (l > 0.64 && l < 0.74) {
-        const dens = smooth(0.5, 0.8, ct[i]) * (1 - Math.abs(l - 0.675) * 16);
+      if (l > 0.64) {
+        // coastal cities, strung along the shore, and dimmer towns scattered inland
+        const coast = clamp01(1 - Math.abs(l - 0.68) * 11), metro = smooth(0.42, 0.78, ct[i]);
+        const dens = metro * coast * 0.42 + smooth(0.5, 0.85, ct[i]) * 0.07;
         const hs = hash3(x, y, 3, 77);
-        if (hs < dens * 0.45) {
-          const k = hs < dens * 0.1 ? 1 : 0.6, cc = hs < dens * 0.1 ? hot : amber;
+        if (hs < dens) {
+          const hotp = hs < dens * 0.16, k = hotp ? 1 : 0.35 + 0.35 * metro, cc = hotp ? hot : amber;
           lights.d[i] = pack(cc[0] * k, cc[1] * k, cc[2] * k);
         }
       }
@@ -1590,7 +1619,7 @@ function* auroraCloudsG(tw) {
   const cw = new Fbm(rng, tw, TH * 2, 90, 3, 0.5);
   const dens = new Float32Array(tw * TH);
   for (let y = 0; y < TH; y += 2) {
-    if (every(y >> 1, 24)) yield;
+    if (due()) yield;
     for (let x = 0; x < tw; x += 2) {
       const w = cw.at(x, y * 2);
       const v = cf.at(x + (w - 0.5) * 60, y * 2 + (w - 0.5) * 30);
@@ -1608,7 +1637,7 @@ function* auroraCloudsG(tw) {
   const CL = packRamp(['#4d6d90', '#6384a6', '#7a9aba', '#8eadc8', '#a2bfd6']);
   const shadow = pack(2, 10, 22, 150);
   for (let y = 0; y < TH; y++) {
-    if (every(y, 96)) yield;
+    if (due()) yield;
     for (let x = 0; x < tw; x++) {
       const v = dens[y * tw + x];
       const a = v > 0.12 ? (v > 0.45 ? 1 : bay(x, y) < (v - 0.12) * 3 ? 1 : 0) : 0;
@@ -1779,7 +1808,7 @@ const PAL_AURORA_SKY = [...RAMPS.void, ...RAMPS.ocean, ...RAMPS.dawn, ...RAMPS.s
   '#1a0c26', '#2a1030', '#3a1640', '#5a2458', '#7a2442'];
 // Planet light map (night -> twilight -> dawn -> day), multiplied over the surface. Smooth
 // (not dithered): it is fixed on screen while the surface scrolls under it.
-const AURORA_LM = [[20, 28, 64], [34, 44, 88], [86, 70, 108], [150, 112, 118], [168, 158, 176], [160, 172, 200]].map((c) => c.map((v) => v / 255));
+const AURORA_LM = [[30, 40, 86], [44, 56, 108], [88, 72, 112], [146, 108, 114], [156, 146, 164], [146, 158, 186]].map((c) => c.map((v) => v / 255));
 
 class AuroraStage extends Stage {
   constructor(A) {
@@ -1794,26 +1823,28 @@ class AuroraStage extends Stage {
     const { W, LH: H, ax } = S, q = this.q;
     prof();
     const portrait = H >= W * 1.2;
-    // limb passes through (0, ya) and (W, yb); planet centre lower-left
-    const ya = H * (portrait ? 0.07 : 0.1), yb = H * (portrait ? 0.3 : 0.52);
+    // limb passes through (0, ya) and (W, yb). In portrait it rises toward the sun on the
+    // right, so the limb, the sun and the dawn crescent stay in the top HUD strip and the
+    // field looks down on the twilight and night side (readable behind bullets).
+    const ya = H * (portrait ? 0.13 : 0.1), yb = H * (portrait ? 0.035 : 0.52);
     const R = portrait ? H * 1.25 : W * 1.1;
     const chx = W, chy = yb - ya, cl = Math.hypot(chx, chy);
     const mx = W / 2, my = (ya + yb) / 2, dist = Math.sqrt(Math.max(0, R * R - (cl / 2) ** 2));
     const pcx = mx + (-chy / cl) * dist, pcy = my + (chx / cl) * dist;
     // Sun low behind the upper-right limb: a dawn crescent along the top, the terminator
     // sweeping diagonally through the upper field, night (city lights) below.
-    let L = [0.5, -0.55, -0.67]; const ll = Math.hypot(...L); L = L.map((v) => v / ll);
+    let L = [0.5, -0.5, -0.78]; const ll = Math.hypot(...L); L = L.map((v) => v / ll);
     const s2l = Math.hypot(L[0], L[1]), s2x = L[0] / s2l, s2y = L[1] / s2l;
     const limb = S.limb = new Int16Array(W);
     for (let x = 0; x < W; x++) { const dx = x + 0.5 - pcx; limb[x] = Math.abs(dx) < R ? Math.floor(pcy - Math.sqrt(R * R - dx * dx)) : H; }
     // sun just above the limb near the right edge
-    const sx = W * (portrait ? 0.88 : 0.8), sy = limb[Math.min(W - 1, Math.round(sx))] - (portrait ? 9 : 14);
+    const sx = W * (portrait ? 0.86 : 0.8), sy = limb[Math.min(W - 1, Math.round(sx))] - (portrait ? 6 : 14);
     S.sun = [Math.round(sx), Math.round(sy)];
     const sky = new Raster(W, H), lm = new Raster(W, H), hz = new Raster(W, H), nm = new Raster(W, H), em = new Raster(W, H);
     const LM = AURORA_LM;
     const gk = 1 / (Math.max(W, H) * 0.35);
     for (let y = 0; y < H; y++) {
-      if (every(y, 32)) yield;
+      if (due()) yield;
       for (let x = 0; x < W; x++) {
         const i = y * W + x;
         const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d2 = dx * dx + dy * dy;
@@ -1887,16 +1918,16 @@ class AuroraStage extends Stage {
     ctx.globalCompositeOperation = 'lighter';
     blit(ctx, S.haze, 0, 0);
     // city lights: masked to the night side, hidden under clouds; cached until something moves
-    const key = sOy * 4096 + cOy * 64 + (cDx & 63) + (this.W > TW ? 0.5 : 0);
+    const key = sOy * 4096 + cOy * 64 + (cDx & 63) + (this.L('lights') !== A.lights ? 0.5 : 0);
     if (key !== this.lcKey) {
       this.lcKey = key;
       const lc = S.lcx;
       lc.globalCompositeOperation = 'source-over';
       drawTiled(lc, this.L('lights'), this.axw(this.L('lights').width), sOy, W, H);
+      lc.globalCompositeOperation = 'multiply';          // (while still opaque: multiply onto
+      lc.drawImage(S.nm, 0, 0);                          //  transparent pixels would add the mask)
       lc.globalCompositeOperation = 'destination-out';
       drawTiled(lc, this.L('clouds'), this.axw(this.L('clouds').width) + cDx, cOy, W, H);
-      lc.globalCompositeOperation = 'multiply';
-      lc.drawImage(S.nm, 0, 0);
       lc.globalCompositeOperation = 'source-over';
     }
     ctx.drawImage(S.lc, 0, 0);
@@ -2048,7 +2079,7 @@ function* cinderDustG(tw, h, cell, bias, alphaMax, seed) {
   const f = new Fbm(new Rng(seed + tw), tw, h * 2, cell, 4, 0.5);
   const cw = tw >> 1, ch = h >> 1, co = new Float32Array(cw * ch);
   for (let y = 0; y < ch; y++) {
-    if (every(y, 32)) yield;
+    if (due()) yield;
     for (let x = 0; x < cw; x++) co[y * cw + x] = f.at(x * 2, y * 4);
   }
   const val = new Float32Array(tw * h);
@@ -2062,18 +2093,22 @@ function* cinderDustG(tw, h, cell, bias, alphaMax, seed) {
   }
   yield;
   const r = new Raster(tw, h, true);
-  const BODY = [hexToRgb('#120506'), hexToRgb('#1e0907'), hexToRgb('#2e1109'), hexToRgb('#44190c')];
-  const RIM = hexToRgb('#8a3416');
+  // dense cores are dark (they silhouette against the corona); thinner dust scatters the
+  // red giant's light as a warm haze; the sun-facing slopes catch the most light
+  const BODY = ['#140606', '#200a08', '#2e120a', '#3e1a0e', '#52240f'].map(hexToRgb);
+  const RIM = hexToRgb('#6e2a12');
   for (let y = 0; y < h; y++) {
-    if (every(y, 96)) yield;
+    if (due()) yield;
     for (let x = 0; x < tw; x++) {
       const v = val[y * tw + x], dns = clamp01((v - bias) * 3.2);
       if (dns <= 0) continue;
       const up = val[wr(y - 1, h) * tw + wr(x - 1, tw)], up3 = val[wr(y - 3, h) * tw + wr(x - 3, tw)];
-      if (up <= bias) { r.d[y * tw + x] = pack(RIM[0], RIM[1], RIM[2], 0.85 * 255); continue; }   // sun-facing rim
-      const lit = clamp01((v - up3) * 14);                                                          // slope toward the sun
-      const a = (0.35 + 0.65 * qe(dns * 3, x, y, 4, 0.4) / 3) * alphaMax;
-      const c = BODY[qe(lit * 2.2 + (1 - dns) * 0.8, x, y, 4, 0.4)];
+      const dn3 = val[wr(y + 3, h) * tw + wr(x + 3, tw)];
+      if (up <= bias && dn3 > bias + 0.09) { r.d[y * tw + x] = pack(RIM[0], RIM[1], RIM[2], 0.7 * 255); continue; }   // sun-facing rim on thick edges
+      const lit = clamp01((v - up3) * 10);                                                          // slope toward the sun
+      const a = (0.3 + 0.7 * smooth(0, 0.6, dns)) * alphaMax;
+      const bi = 1.2 + lit * 2.8 - smooth(0.45, 1, dns) * 1.6;
+      const c = BODY[qe(clamp(bi, 0, 4), x, y, 5, 0.45)];
       r.d[y * tw + x] = pack(c[0], c[1], c[2], a * 255);
     }
   }
@@ -2092,7 +2127,7 @@ function* genCinder() {
   {
     const H = 640, r = new Raster(TW, H, true), e = new Raster(TW, H, true);
     for (let i = 0; i < 110; i++) {
-      if (every(i, 16)) yield;
+      if (due()) yield;
       const rad = rng.chance(0.15) ? rng.range(5, 9) : rng.range(1.6, 4.5);
       // concentrate the belt in a diagonal band (periodic in the tile)
       const y = rng.int(0, H), x0 = rng.int(0, TW);
@@ -2265,7 +2300,7 @@ class CinderStage extends Stage {
       return Math.sqrt(f2) - Math.sqrt(f1);
     };
     // surface noise on a 2 px grid (bilinear); dithering supplies per-pixel texture
-    const sn = coarseGrid(0, 0, bw, bh, 2, 6, (x, y, o) => {
+    const sn = yield* coarseGrid(0, 0, bw, bh, 2, 6, (x, y, o) => {
       let dx = (x - cx) / R, dy = (y - cy) / R; const dd = Math.sqrt(dx * dx + dy * dy);
       if (dd > 0.999) { dx *= 0.999 / dd; dy *= 0.999 / dd; }
       const nz = Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy));
@@ -2280,7 +2315,7 @@ class CinderStage extends Stage {
     yield;
     const nv = new Float32Array(6);
     for (let y = 0; y < bh; y++) {
-      if (every(y, 24)) yield;
+      if (due()) yield;
       for (let x = 0; x < bw; x++) {
         const dx = (x + 0.5 - cx) / R, dy = (y + 0.5 - cy) / R, d2 = dx * dx + dy * dy;
         if (d2 >= 1) continue;
@@ -2297,7 +2332,7 @@ class CinderStage extends Stage {
     // that fades out within ~40 px inside the field
     const corC = hexToRgb('#ff6a2a');
     for (let y = 0; y < H; y++) {
-      if (every(y, 32)) yield;
+      if (due()) yield;
       for (let x = 0; x < W; x++) {
         const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.sqrt(dx * dx + dy * dy), h = d - R;
         const i = y * W + x;
@@ -2549,7 +2584,7 @@ function* veilDust(tw) {
   const f = new Fbm(rng, tw, H, 150, 4, 0.55), g = new Fbm(rng, tw, H, 80, 2, 0.5), m = new Fbm(rng, tw, H, 260, 2, 0.5);
   const cw = tw >> 1, ch = H >> 1, co = new Float32Array(cw * ch);
   for (let y = 0; y < ch; y++) {
-    if (every(y, 32)) yield;
+    if (due()) yield;
     for (let x = 0; x < cw; x++) {
       const X = x * 2, Y = y * 2, w = g.at(X, Y);
       co[y * cw + x] = f.ridge(X + (w - 0.5) * 70, Y + (w - 0.5) * 70) * (0.75 + 0.5 * m.at(X, Y));
@@ -2570,7 +2605,7 @@ function* veilDust(tw) {
   const D = [pack(10, 6, 18, 110), pack(8, 5, 15, 170), pack(6, 4, 11, 215), pack(4, 3, 8, 240)];
   const rimM = packHex('#912a58', 200), rimD = packHex('#4e1136', 170);
   for (let y = 0; y < H; y++) {
-    if (every(y, 128)) yield;
+    if (due()) yield;
     for (let x = 0; x < tw; x++) {
       const v = val[y * tw + x];
       const dens = clamp01((v - TH0) * 7);
@@ -2612,9 +2647,10 @@ function* genVeil() {
   {
     const H = 1024, f = new Fbm(rng, TW, H, 44, 4, 0.55), g = new Fbm(rng, TW, H, 18, 2, 0.5), f2 = new Fbm(rng, TW, H, 12, 2, 0.5);
     const r = new Raster(TW, H, true), e = new Raster(TW, H, true);
-    const D = packRamp(['#040209', '#07040e', '#0b0615', '#110a1f', '#190e2b', '#23133a']);
-    const RIM = packRamp(['#23133a', '#3a0b27', '#6c1a45', '#bc4470', '#ffb0c8']);
-    const TEAL = packRamp(['#0b0615', '#0a2226', '#0e3a38', '#1e6a60']);
+    const D = packRamp(['#05030a', '#0a0612', '#100a1c', '#180f28', '#221536', '#2e1c46']);
+    const RIM = packRamp(['#2e1c46', '#3a0b27', '#6c1a45', '#bc4470', '#ffb0c8']);
+    const AMB = packRamp(['#2e1c46', '#3a1640', '#5a2458']);
+    const TEAL = packRamp(['#100a1c', '#0a2226', '#0e3a38', '#1e6a60']);
     // [x, y, rx, ry] — x ± 1.6 rx stays inside the tile so columns can be shifted
     const glob = [[60, 150, 34, 58], [40, 250, 18, 26], [250, 540, 40, 64], [282, 640, 20, 30], [56, 860, 30, 44], [150, 70, 10, 12]];
     const field = new Float32Array(TW * H).fill(-1), gi = new Int8Array(TW * H).fill(-1);
@@ -2627,13 +2663,19 @@ function* genVeil() {
       }
       yield;
     }
-    // distance (in px, up to 8) to the outside, looking up (toward the light) and down
-    const up = new Uint8Array(TW * H), dn = new Uint8Array(TW * H);
+    // distance (px, capped) to the outside looking up (toward the light), down, and sideways
+    const up = new Uint8Array(TW * H), dn = new Uint8Array(TW * H), sd = new Uint8Array(TW * H);
     for (let x = 0; x < TW; x++) {
       let run = 0;
-      for (let y = 0; y < H; y++) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 9) : 0; up[i] = run; }
+      for (let y = 0; y < H; y++) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 30) : 0; up[i] = run; }
       run = 0;
-      for (let y = H - 1; y >= 0; y--) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 9) : 0; dn[i] = run; }
+      for (let y = H - 1; y >= 0; y--) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 30) : 0; dn[i] = run; }
+    }
+    for (let y = 0; y < H; y++) {
+      let run = 0;
+      for (let x = 0; x < TW; x++) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 30) : 0; sd[i] = run; }
+      run = 0;
+      for (let x = TW - 1; x >= 0; x--) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 30) : 0; sd[i] = Math.min(sd[i], run); }
     }
     yield;
     for (let y = 0; y < H; y++) for (let x = 0; x < TW; x++) {
@@ -2641,22 +2683,29 @@ function* genVeil() {
       if (v <= 0) continue;
       const [px, py, rx, ry] = glob[gi[i]];
       const ny = (y - py) / ry, nx = (x - px) / rx, nl = Math.hypot(nx, ny) + 1e-3;
-      const upness = clamp01(-ny / nl * 1.2 + 0.15), downness = clamp01(ny / nl);
-      const du = up[i], dd = dn[i];
+      const upness = clamp01(-ny / nl * 1.2 + 0.1), downness = clamp01(ny / nl);
+      const du = up[i], dd = dn[i], ds = sd[i];
       const tex = g.at(x, y);
-      let c;
-      const rv = (du <= 7 ? Math.pow(1 - (du - 1) / 7, 1.6) : 0) * upness * (0.8 + 0.4 * tex) * 4;
-      const tv = (dd <= 4 ? 1 - (dd - 1) / 4 : 0) * downness * 3;
-      if (rv > 0.6) {
-        const k = qe(rv, x, y, 5, 0.6);
+      // ionisation front: a 1-px hot edge, then a long dithered falloff into the cloud
+      const rv = Math.exp(-(du - 1) / 1.8) * upness * (0.85 + 0.3 * tex) * 4.2;
+      const tv = Math.exp(-(dd - 1) / 1.6) * downness * 2.4;
+      const av = Math.exp(-(ds - 1) / 1.2) * (1 - upness) * 1.9;             // faint ambient rim on the sides
+      let c, a = 255;
+      if (rv > 0.55 && rv >= tv) {
+        const k = qe(Math.min(rv, du <= 1 ? 4 : du === 2 ? 3 : 2.2), x, y, 5, 0.6);
         c = RIM[k];
         if (k >= 3) e.set(x, y, packHex(k === 4 ? '#bc4470' : '#4e1136'));
-      } else if (tv > 0.6) c = TEAL[qe(tv, x, y, 4, 0.6)];
+      } else if (tv > 0.55) c = TEAL[qe(tv, x, y, 4, 0.7)];
+      else if (av > 0.6) c = AMB[qe(av, x, y, 3, 0.7)];
       else {
-        const bil = tex * 1.2 + clamp01(v) * 0.5 - (1 - smooth(0, 0.3, v)) * 0.5 + (du < 12 ? 0.15 * upness : 0);
-        c = D[qe(clamp(bil * 4 - 1, 0, 5), x, y, 6, 0.6)];
+        // mottled interior, a little lighter under the lit front; thin parts let the
+        // nebula glow through (soft edges instead of a cut-out)
+        const bil = (tex - 0.5) * 4.5 + clamp01(v) * 0.8 + rv * 0.6 + 1.6;
+        c = D[qe(clamp(bil, 0, 5), x, y, 6, 0.6)];
+        a = 150 + 100 * smooth(0, 0.45, v);
       }
-      r.d[i] = c;
+      if (v < 0.08 && rv < 0.55 && bay(x, y) > v / 0.08) continue;
+      r.d[i] = a < 255 ? (c & 0xffffff) | ((a & 255) << 24) >>> 0 : c;
     }
     // embedded protostars: a hot pixel in a small dim halo, deep inside the bigger globules
     for (let k = 0; k < glob.length; k++) {
@@ -2666,6 +2715,7 @@ function* genVeil() {
         const x = Math.round(px + rng.range(-0.4, 0.4) * rx), y = Math.round(py + rng.range(-0.2, 0.5) * ry), Y = mod(y, H);
         if (field[Y * TW + x] < 0.5 || up[Y * TW + x] < 8) continue;
         for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) r.set(x + ox, y + oy, packHex('#6c1a45'));
+        for (const [ox, oy] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) r.set(x + ox, y + oy, packHex('#3a0b27'));
         r.set(x, y, packHex('#fff0f6')); e.set(x, y, packHex('#8a3a60'));
       }
     }
@@ -3272,96 +3322,79 @@ class WreckStage extends Stage {
 // ---------------------------------------------------------------------------
 
 const PAL_HOLE = ['#000000', '#05040c', '#0a0818', '#110e26', ...RAMPS.fire, ...RAMPS.ember, ...RAMPS.dawn,
-  '#d6fcff', '#9fe6ff', '#fff5c9', '#ffd966', '#f0a92a', '#bf7412', '#7a430b', '#3d2106', '#2a0a06', '#12060a', '#e8f4ff', '#c4e2ff'];
+  '#d6fcff', '#9fe6ff', '#fff5c9', '#ffd966', '#f0a92a', '#bf7412', '#7a430b', '#3d2106', '#2a0a06', '#12060a', '#e8f4ff', '#c4e2ff',
+  '#5a2a12', '#7a3a14', '#9a4a18', '#b8641e', '#d08030', '#e29c44', '#a8581c', '#6a2e10'];
 const DISK_INC = 0.13;       // projected minor/major axis ratio of the disk
 const PHASES = 4;
+const HOLE_BASE = 0.078 * FIELD_W;        // shadow radius at stage start (same on every device)
 
-// Renders every canvas of the hole at shadow radius rs. Yields between pieces so it can
-// run incrementally inside update(); returns { rs, cw, ch, back[], front[], halo[], glow, shadow }.
+// Renders every canvas of the hole at shadow radius rs. Yields often so it can run
+// incrementally; returns { rs, cw, ch, back[], front[], halo[], glow, shadow, jet }.
 function* renderHole(rs, q) {
-  const rin = rs * 2.05, rout = rs * 6.2, k = DISK_INC;
+  const rin = rs * 2.05, rout = rs * 5.0, k = DISK_INC;
   const cw = Math.ceil(rout * 2 + 8) | 1, ch = Math.ceil(rs * 7.2) | 1;
   const cx = cw / 2, cy = ch / 2;
   const out = { rs, cw, ch, back: [], front: [], halo: [] };
   const col = new Float32Array(3);
-  const tint = (I, dop) => {
-    const hot = clamp01(I), blue = clamp01((dop - 1.15) * 1.6) * hot;
+  // disk colour from intensity: tone-mapped so the part crossing the play field stays below
+  // ~0.6 luma (bullets fly over it); only the thin photon ring gets near white
+  const tint = (I, dop, cap = 0.62) => {
+    const hot = cap * (1 - Math.exp(-I * 1.3)), blue = clamp01((dop - 1.15) * 1.6) * hot;
     const sh = Math.sqrt(hot), h2 = hot * hot;
     col[0] = clamp(255 * sh - 40 * blue, 0, 255);
     col[1] = clamp(250 * hot * Math.sqrt(sh) + 25 * blue, 0, 255);
     col[2] = clamp(240 * h2 * hot + 170 * blue, 0, 255);
   };
-  // lensed background star arcs (same for every phase, rotated slightly per phase)
-  const arng = new Rng(rs * 131 + 7), arcs = [];
-  for (let i = 0; i < 10; i++) arcs.push([rs * arng.range(2.2, 3.4), ((i + arng.range(0.2, 0.8)) / 10) * TAU, arng.range(0.2, 0.6), arng.range(0.25, 0.55)]);
   for (let p = 0; p < PHASES; p++) {
     const ph = (p / PHASES) * 4;
     const back = new Raster(cw, ch), front = new Raster(cw, ch), halo = new Raster(cw, ch);
     const diskH = rout * k + 1, haloR = rs * 2.02;
     for (let y = 0; y < ch; y++) {
-      if ((y & 15) === 15) yield;                     // keep incremental re-renders smooth
+      if ((y & 7) === 7) yield;                      // keep incremental re-renders smooth
       const dyy = y + 0.5 - cy;
       if (Math.abs(dyy) > diskH && Math.abs(dyy) > haloR) continue;
       for (let x = 0; x < cw; x++) {
-      const dx = x + 0.5 - cx, dy = dyy;
-      // --- the disk (flattened ellipse), split into far (above centre) and near halves ---
-      const X = dx, Y = dy / k, rho = Math.sqrt(X * X + Y * Y);
-      if (rho > rin && rho < rout) {
-        const th = Math.atan2(Y, X), u = (rho - rin) / (rout - rin);
-        const qq = rin / rho, sq = Math.sqrt(qq), temp = qq * Math.sqrt(sq), om = qq * sq;
-        const a1 = th + ph * om * 1.5708, a3 = th * 3 + ph * om * 4.712;
-        const tex = 0.5 + 0.5 * vnoise3(rho * 0.6, Math.cos(a1) * 2.2, Math.sin(a1) * 2.2, 3);
-        const tex2 = 0.65 + 0.35 * vnoise3(rho * 1.9, Math.cos(a3) * 1.5, Math.sin(a3) * 1.5, 8);
-        const edge = smooth(0, 0.05, u) * (1 - smooth(0.5, 1, u));
-        const dop = 1 + 0.7 * -Math.cos(th);
-        const I = temp * temp * tex * tex2 * edge * dop * (dy >= 0 ? 1.35 : 1.1);
-        if (I > 0.025) {
-          tint(I, dop);
-          const c = q.dq(col[0], col[1], col[2], x, y, 26);
-          if (dy < 0) back.d[y * cw + x] = c; else front.d[y * cw + x] = c;
+        const dx = x + 0.5 - cx, dy = dyy;
+        // --- the disk (flattened ellipse), split into far (above centre) and near halves ---
+        const X = dx, Y = dy / k, rho = Math.sqrt(X * X + Y * Y);
+        if (rho > rin && rho < rout) {
+          const th = Math.atan2(Y, X), u = (rho - rin) / (rout - rin);
+          const qq = rin / rho, sq = Math.sqrt(qq), temp = qq * Math.sqrt(sq), om = qq * sq;
+          const a1 = th + ph * om * 1.5708, a3 = th * 3 + ph * om * 4.712;
+          const tex = 0.5 + 0.5 * vnoise3(rho * 0.6, Math.cos(a1) * 2.2, Math.sin(a1) * 2.2, 3);
+          const tex2 = 0.65 + 0.35 * vnoise3(rho * 1.9, Math.cos(a3) * 1.5, Math.sin(a3) * 1.5, 8);
+          const edge = smooth(0, 0.06, u) * (1 - smooth(0.45, 1, u));
+          const dop = 1 + 0.7 * -Math.cos(th);
+          const I = temp * temp * tex * tex2 * edge * dop * (dy >= 0 ? 1.35 : 1.1);
+          if (I > 0.03) {
+            tint(I, dop);
+            const c = q.dq(col[0], col[1], col[2], x, y, 26);
+            if (dy < 0) back.d[y * cw + x] = c; else front.d[y * cw + x] = c;
+          }
         }
-      }
-      // --- lensed image of the disk's far side and the photon ring ---
-      const d = Math.sqrt(dx * dx + dy * dy) / rs;
-      if (d > 0.98 && d < 2) {
-        const phi = Math.atan2(dy, dx), up = -Math.sin(phi), dop = 1 + 0.7 * -Math.cos(phi);
-        let Ih = 0;
-        {
+        // --- lensed image of the disk's far side and the photon ring ---
+        const d = Math.sqrt(dx * dx + dy * dy) / rs;
+        if (d > 0.98 && d < 2) {
+          const phi = Math.atan2(dy, dx), up = -Math.sin(phi), dop = 1 + 0.7 * -Math.cos(phi);
           // thick arc over the top, thin one under the bottom
           const w = up > 0 ? 0.14 + 0.5 * up * up : 0.1 + 0.05 * -up;
           const c0 = 1.1 + w * 0.5;
           const ring = Math.max(0, 1 - Math.abs(d - c0) / (w * 0.6 + 0.02));
           const tex = 0.55 + 0.45 * vnoise3(d * 6, Math.cos(phi * 2 + ph * 1.5708) * 3, Math.sin(phi * 2 + ph * 1.5708) * 3, 21);
-          Ih = ring * ring * tex * dop * (up > 0 ? 1 : 0.6);
+          const Ih = ring * ring * tex * dop * (up > 0 ? 0.9 : 0.55);
           const pr = Math.exp(-(((d - 1.03) / 0.028) ** 2)) * 1.25 * (0.75 + 0.25 * dop);   // photon ring
-          Ih = Math.max(Ih, pr);
-        }
-        if (Ih > 0.04) {
-          tint(Ih, dop);
-          halo.d[y * cw + x] = q.dq(col[0], col[1], col[2], x, y, 24);
+          if (pr > 0.3 && pr >= Ih) { tint(pr * 1.6, dop, 0.95); halo.d[y * cw + x] = q.dq(col[0], col[1], col[2], x, y, 24); }
+          else if (Ih > 0.05) { tint(Ih, dop, 0.55); halo.d[y * cw + x] = q.dq(col[0], col[1], col[2], x, y, 24); }
         }
       }
-      }
     }
-    // lensed background starlight: thin blue-white arcs hugging the hole
-    const AC = [packHex('#1b3a66'), packHex('#4c86ff'), packHex('#9dc0ff'), packHex('#e3eeff')];
-    for (const [ar, a0, span, br] of arcs) {
-      const steps = Math.ceil(ar * span * 2);
-      for (let j = 0; j <= steps; j++) {
-        const a = a0 + p * 0.025 + (j / steps - 0.5) * span;
-        if (Math.abs(Math.sin(a)) < 0.25) continue;               // hidden by the disk plane
-        const f = (1 - Math.abs(j / steps - 0.5) * 2) * br;
-        const X = Math.round(cx + Math.cos(a) * ar), Y = Math.round(cy + Math.sin(a) * ar);
-        if (!halo.get(X, Y)) halo.set(X, Y, AC[qi(f * 4.5, X, Y, 4)]);
-      }
-    }
-    out.back.push(banded(back)); out.front.push(banded(front)); out.halo.push(banded(halo));
-    warm([out.back[p], out.front[p], out.halo[p]]);
-    yield;
+    out.back.push(yield* bandedG(back)); out.front.push(yield* bandedG(front)); out.halo.push(yield* bandedG(halo));
+    warm(out.back[p]); yield;
+    warm([out.front[p], out.halo[p]]); yield;
   }
   // soft outer glow (additive) hugging the disk plane
   const gw = Math.ceil(rout * 2.3) | 1, gh = Math.ceil(rout * 0.9) | 1;
-  out.glow = glowSprite(gw, gh, ['#000000', '#100604', '#200a06', '#341208', '#4a1c0a'], (dx, dy) => {
+  out.glow = glowSprite(gw, gh, ['#000000', '#0c0503', '#180805', '#260d06', '#341408'], (dx, dy) => {
     const X = dx / (rout * 1.1), Y = dy / (rout * 0.42); const d = 1 - Math.sqrt(X * X + Y * Y); return d > 0 ? d * d : 0;
   });
   yield;
@@ -3370,8 +3403,43 @@ function* renderHole(rs, q) {
   for (let y = 0; y < sh.h; y++) for (let x = 0; x < sh.w; x++) if (Math.hypot(x + 0.5 - sc, y + 0.5 - sc) <= rs + 0.3) sh.d[y * sh.w + x] = 0xff000000;
   out.shadow = sh.toCanvas();
   yield;
-  warm([out.glow, out.shadow]);
+  // relativistic jets: a dithered cone, 3 px wide at the poles opening to ~9 px, fading out
+  const jl = Math.round(rs * 4.2), jw = 11, jr = new Raster(jw, jl * 2 + 1);
+  const JC = ['#000000', '#140a2e', '#22124a', '#361e6e', '#5634a6', '#8a64e0', '#c9b0ff', '#efe6ff'].map(hexToRgb);
+  for (let y = 0; y <= jl * 2; y++) {
+    const u = Math.abs(y - jl) / jl;
+    if (u < (rs * 0.9) / jl) continue;                       // starts at the shadow edge
+    const hw = 1.5 + 3.5 * u, fall = Math.pow(1 - u, 1.4);
+    for (let x = 0; x < jw; x++) {
+      const a = Math.abs(x + 0.5 - jw / 2) / hw;
+      if (a > 1) continue;
+      const v = (1 - a * a) * fall * (0.85 + 0.15 * Math.sin(y * 0.55)) * 7;
+      const i = qe(v, x, y, 8, 0.5);
+      if (i) { const c = JC[i]; jr.d[y * jw + x] = pack(c[0], c[1], c[2]); }
+    }
+  }
+  out.jet = jr.toCanvas();
+  yield;
+  warm([out.glow, out.shadow, out.jet]);
   return out;
+}
+
+// Mid-depth debris drifting toward the hole: shattered rock and Choir crystal fragments,
+// lit from below by the disk (a warm 1-px rim), plus faint infalling gas wisps.
+function* horizonDebris(rng) {
+  const H = 768, r = new Raster(TW, H, true);
+  const RM = mat(['#06050a', '#0c0a12', '#15101c', '#201826', '#2e2232', '#44303e'], '#d08030');
+  const CM = mat(['#0a0816', '#140f28', '#20183c', '#2e2454', '#433677'], '#e8dcff');
+  for (let k = 0; k < 22; k++) {
+    const x = rng.int(10, TW - 10), y = rng.int(0, H - 1);
+    if (rng.chance(0.65)) kRock(r, null, x, y, rng.range(1.8, 5.5), rng, RM, [0.35, 0.8, 0.45], { craters: 0, rim: '#d08030', squash: rng.range(0.6, 1.2), rot: rng.range(0, TAU), seed: 300 + k });
+    else kCrystal(r, null, x, y, rng.range(0, TAU), rng.range(6, 12), rng.range(2.5, 4), CM, null, 0.4);
+    if (due()) yield;
+  }
+  const deb = yield* bandedG(outlined(r, pack(2, 1, 4, 200)));
+  const gas = yield* nebulaTileG(rng, TW, 512, { cell: 90, oct: 4, warp: 60, bias: 0.56, contrast: 2.6, ridged: 0.7, step: 3,
+    ramp: ['#000000', '#0a0508', '#140a0c', '#22100e', '#341810'] });
+  return { debris: deb, gas };
 }
 
 function* genHorizon() {
@@ -3392,14 +3460,24 @@ function* genHorizon() {
     A.streaks = r.toCanvas();
   }
   A.tw = new Twinkles(rng, 36, TW, 512, 0.02, { bigChance: 0.3 });
-  // lensed star arcs (thin arcs hugging the hole), rendered at runtime scale from this template
-  A.jet = glowSprite(9, 140, ['#000000', '#120a2a', '#241450', '#3a2080', '#6a3fd0', '#c9b0ff'], (dx, dy) => {
-    const u = Math.abs(dy) / 70; return Math.max(0, 1 - Math.abs(dx) / (1.5 + u * 3)) * Math.max(0, 1 - u) ** 1.3 * (0.8 + 0.2 * Math.sin(dy * 0.4));
-  });
+  yield;
+  Object.assign(A, yield* horizonDebris(rng));
   // infalling matter: particles on shrinking elliptical orbits (free-running)
   const N = 40;
   A.inf = { n: N, r0: new Float32Array(N), th0: new Float32Array(N), per: new Float32Array(N), ph: new Float32Array(N) };
-  for (let i = 0; i < N; i++) { A.inf.r0[i] = rng.range(4, 7.5); A.inf.th0[i] = rng.range(0, TAU); A.inf.per[i] = rng.range(5, 11); A.inf.ph[i] = rng.range(0, 1); }
+  for (let i = 0; i < N; i++) { A.inf.r0[i] = rng.range(4, 5.2); A.inf.th0[i] = rng.range(0, TAU); A.inf.per[i] = rng.range(5, 11); A.inf.ph[i] = rng.range(0, 1); }
+  // lensed background starlight: arcs hugging the photon ring, shearing around it
+  const NA = 16;
+  A.arcs = { n: NA, a: new Float32Array(NA), a0: new Float32Array(NA), span: new Float32Array(NA), br: new Float32Array(NA), w: new Float32Array(NA), T: new Float32Array(NA), ph: new Float32Array(NA) };
+  for (let i = 0; i < NA; i++) {
+    const u = rng.next(), a = 1.3 + 1.3 * u * u;                  // radius in shadow radii, dense near the ring
+    A.arcs.a[i] = a; A.arcs.a0[i] = rng.range(0, TAU);
+    A.arcs.span[i] = (0.18 + 0.55 * (1 - (a - 1.3) / 1.3)) * rng.range(0.6, 1.2);
+    A.arcs.br[i] = rng.range(0.5, 1); A.arcs.w[i] = 0.16 * Math.pow(1.3 / a, 1.5) * (rng.chance(0.5) ? 1 : 0.8);
+    A.arcs.T[i] = rng.range(6, 14); A.arcs.ph[i] = rng.next();
+  }
+  // the hole at its starting size (size-independent: shared by every instance)
+  A.hole0 = yield* renderHole(Math.round(HOLE_BASE), A.q);
   return A;
 }
 
@@ -3407,116 +3485,169 @@ class HorizonStage extends Stage {
   constructor(A) {
     super('horizon', A);
     this.scrollSpeed = 30;
-    this.grade = { tint: [1.0, 0.97, 1.05], lift: [0.012, 0.0, 0.024], sat: 1.08, contrast: 1.12 };
-    this.hole = null; this.job = null; this.jobRs = 0; this.lastScroll = 0; this.pulse = 0;
+    this.grade = { tint: [1.0, 0.97, 1.05], lift: [0.012, 0.0, 0.024], sat: 1.08, contrast: 1.08 };
+    this.hole = A.hole0; this.job = null; this.lastScroll = 0; this.pulse = 0;
+    this.lens = { x: 0, y: 0, r: 0, strength: 0, shadow: 0 };
+    this.dis = [null, null, null];
   }
-  // shadow radius grows as the squad closes in (deterministic in scrollY)
-  rsFor(scrollY) {
-    const base = Math.max(14, Math.min(this.W, this.H) * 0.075);
-    return Math.round(base * (1 + 0.5 * smooth(0, 11000, scrollY)));
+  revive() {
+    super.revive();
+    if (this.job) { this.job = null; }
+    if (this.hole !== this.A.hole0) { this.freeHole(this.hole); this.hole = this.A.hole0; }
+    this.lastScroll = 0; this.pulse = 0;
   }
+  // shadow radius grows as the squad closes in (deterministic in scrollY, same on every device)
+  rsFor(scrollY) { return Math.round(HOLE_BASE * (1 + 0.45 * smooth(0, 11000, scrollY))); }
   holeCenter() { return [Math.round(this.cx), Math.round(this.fy + Math.min(FIELD_H * 0.36, this.H * 0.36))]; }
-  layout() {
-    this.freeHole(this.hole); this.hole = null; this.job = null;
-    this.hole = runGen(renderHole(this.rsFor(this.lastScroll), this.A.q));
+  *layout(S) {
     // static sky: one galactic band crossing behind the hole, dust lanes, baked stars
-    const W = this.W, H = this.LH, r = new Raster(W, H), [hx, hy] = this.holeCenter();
+    const { W, LH: H, fx, fy, ax } = S, r = new Raster(W, H);
+    const hx = Math.round(fx + FIELD_W / 2), hy = Math.round(fy + Math.min(FIELD_H * 0.36, S.H0 * 0.36));
     const q = new Quant(['#000000', '#05040c', '#0a0818', '#110e26', '#1a1638', '#252050', '#221247', '#3f2388', '#2a0f2e', '#3a1a3e',
       '#5a1a44', '#3d2106', '#5a3418', '#1a0806', '#0a1a4d', '#132f8c', '#4a2a50', '#6a4a60']);
     const ang = -0.95, ca = Math.cos(ang), sa = Math.sin(ang);
-    const n = coarseGrid(0, 0, W, H, 2, 2, (x, y, o) => {
+    const n = yield* coarseGrid(0, 0, W, H, 2, 2, (x, y, o) => {
       const along = (x - hx) * ca + (y - hy) * sa, across = (x - hx) * -sa + (y - hy) * ca;
       o[0] = fbm3(x * 0.012, y * 0.012, 0.5, 4, 5);
       o[1] = fbm3(along * 0.011, across * 0.05, 2.5, 3, 9);         // dust lanes stretched along the band
     });
+    yield;
     const v2 = new Float32Array(2);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      n.get(x, y, v2);
-      const dd = ((x - hx) * -sa + (y - hy) * ca) / (Math.min(W, H) * 0.32);      // distance from the band's axis
-      const band = Math.exp(-dd * dd) * (0.45 + v2[0] * 0.75);
-      const dust = smooth(0.52, 0.7, v2[1]) * Math.exp(-dd * dd * 2.5);
-      const v = Math.max(0, band * (1 - dust * 0.85));
-      r.d[y * W + x] = q.dq(6 + 58 * v + 40 * v * v, 4 + 30 * v + 34 * v * v, 14 + 46 * v + 10 * v * v, x, y, 12);
+    for (let y = 0; y < H; y++) {
+      if (due()) yield;
+      for (let x = 0; x < W; x++) {
+        n.get(x, y, v2);
+        const dd = ((x - hx) * -sa + (y - hy) * ca) / (Math.min(W, H) * 0.32);      // distance from the band's axis
+        const band = Math.exp(-dd * dd) * (0.45 + v2[0] * 0.75);
+        const dust = smooth(0.52, 0.7, v2[1]) * Math.exp(-dd * dd * 2.5);
+        const v = Math.max(0, band * (1 - dust * 0.85));
+        r.d[y * W + x] = q.dq(6 + 58 * v + 40 * v * v, 4 + 30 * v + 34 * v * v, 14 + 46 * v + 10 * v * v, x, y, 12);
+      }
     }
-    const st = this.A.starsFar, ax = this.ax;
+    const st = this.A.starsFar;
     const sx0 = mod(-ax, st.w);
     for (let y = 0; y < H; y++) for (let x = 0, sx = sx0; x < W; x++, sx = sx + 1 === st.w ? 0 : sx + 1) {
       const s = st.d[(y % st.h) * st.w + sx];
       if (s & 0xffffff) { const i = y * W + x, p = r.d[i]; r.d[i] = pack(Math.min(255, unR(p) + unR(s)), Math.min(255, unG(p) + unG(s)), Math.min(255, unB(p) + unB(s))); }
     }
-    this.S.sky = r.toCanvas();
+    S.sky = r.toCanvas();
   }
-  freeHole(h) { if (!h) return; for (const k of ['back', 'front', 'halo']) h[k].forEach(freeCanvas); freeCanvas(h.glow); freeCanvas(h.shadow); }
+  freeHole(h) { if (!h || h === this.A?.hole0) return; for (const k of ['back', 'front', 'halo']) h[k].forEach(freeCanvas); freeCanvas(h.glow); freeCanvas(h.shadow); freeCanvas(h.jet); }
+  layoutBytes() { return bytesOf(this.S) + (this.hole !== this.A?.hole0 ? bytesOf(this.hole) : 0); }
   step(dt) {
     if (this.pulse > 0) this.pulse = Math.max(0, this.pulse - dt * 0.8);
-    if (!this.W) return;
     const want = this.rsFor(this.lastScroll);
-    if (this.hole && want !== this.hole.rs && !this.job) { this.jobRs = want; this.job = renderHole(want, this.A.q); }
+    if (want !== this.hole.rs && !this.job) {
+      this.job = want === this.A.hole0.rs ? null : renderHole(want, this.A.q);
+      if (!this.job) { this.freeHole(this.hole); this.hole = this.A.hole0; }
+    }
     if (this.job) {
-      // incremental re-render: one disk phase per frame, then swap
-      const r = this.job.next();
+      // incremental re-render: at most ~1.5 ms of work per frame, then swap
+      const t0 = nowMs();
+      let r;
+      do { r = this.job.next(); } while (!r.done && nowMs() - t0 < 1.5);
       if (r.done) { this.freeHole(this.hole); this.hole = r.value; this.job = null; }
     }
   }
   flash() { super.flash(); this.pulse = 1; }
+  // Lens for the post pass. post.js uses r both for its Einstein radius (1.6 r) and to dim
+  // sprites inside r. The shadow is already painted black here, so r is kept at 0.4x the
+  // shadow radius with strength x6.25: the same near-field deflection (s * (1.6 r)^2), a
+  // calmer far field, and only the centre ~8-12 px dims sprites flying over the hole.
+  // shadow: the actual shadow radius. Cached object (no per-frame allocation).
   lensing() {
-    if (!this.hole) return null;
+    const L = this.lens, h = this.hole;
+    if (!h || !this.S) return null;
     const [x, y] = this.holeCenter();
-    return { x, y, r: this.hole.rs * 3.4, strength: 0.55 + 0.25 * smooth(0, 11000, this.lastScroll) };
+    const sh = h.rs + 0.5, k = 0.4;
+    L.x = x; L.y = y; L.shadow = sh; L.r = sh * k;
+    L.strength = (0.06 + 0.06 * smooth(0, 11000, this.lastScroll)) / (k * k);
+    return L;
   }
-  dispose() { this.freeHole(this.hole); this.hole = null; this.job = null; super.dispose(); }
-  render(ctx, lctx, scrollY, t) {
+  dispose() { this.job = null; super.dispose(); }
+  destroy() { this.freeHole(this.hole); this.hole = null; this.dis.forEach((d) => d && d.free()); super.destroy(); }
+  // lensed star arcs, drawn per frame as horizontal pixel runs (a few dozen fillRects)
+  drawArcs(ctx, lctx, cx, cy, rs, t) {
+    const R = this.A.arcs, cols = ['#1b3a66', '#4c86ff', '#9dc0ff', '#e3eeff'];
+    for (let lv = 1; lv < 4; lv++) {
+      ctx.fillStyle = cols[lv]; lctx.fillStyle = cols[lv];
+      for (let i = 0; i < R.n; i++) {
+        const env = Math.sin(Math.PI * fract(t / R.T[i] + R.ph[i]));
+        const b = R.br[i] * env * env * 3.4;
+        if (b < lv - 0.5) continue;
+        const ar = R.a[i] * rs, a0 = R.a0[i] + t * R.w[i], span = R.span[i] * (0.7 + 0.3 * env);
+        // the brightest level covers the middle of the arc, dimmer levels the whole arc
+        const part = lv === 1 ? 1 : lv === 2 ? 0.7 : 0.35;
+        const steps = Math.max(2, Math.ceil(ar * span * part * 1.2));
+        let px = 1e9, py = 1e9, run0 = 0;
+        for (let j = 0; j <= steps; j++) {
+          const a = a0 + (j / steps - 0.5) * span * part;
+          const X = Math.round(cx + Math.cos(a) * ar), Y = Math.round(cy + Math.sin(a) * ar);
+          if (Math.abs(Math.sin(a)) * ar < rs * 0.6) { px = 1e9; continue; }   // hidden behind the disk plane
+          if (Y === py && Math.abs(X - px) <= 1) { px = X; continue; }
+          if (py !== 1e9) { const x0 = Math.min(run0, px); ctx.fillRect(x0, py, Math.abs(px - run0) + 1, 1); if (lv > 1) lctx.fillRect(x0, py, Math.abs(px - run0) + 1, 1); }
+          run0 = X; px = X; py = Y;
+        }
+        if (py !== 1e9 && px !== 1e9) { const x0 = Math.min(run0, px); ctx.fillRect(x0, py, Math.abs(px - run0) + 1, 1); if (lv > 1) lctx.fillRect(x0, py, Math.abs(px - run0) + 1, 1); }
+      }
+    }
+  }
+  render(ctx, lctx, scrollY, t, S) {
     const { W, H, A } = this, h = this.hole;
-    if (!h) return;
     this.lastScroll = scrollY;
     const lop = lctx.globalCompositeOperation;
     const ax = this.ax, [cx, cy] = this.holeCenter();
-    ctx.drawImage(this.S.sky, 0, 0);
+    ctx.drawImage(S.sky, 0, 0);
     A.tw.draw(ctx, lctx, ax, 0, W, H, t);
     ctx.globalCompositeOperation = 'lighter';
     drawTiled(ctx, A.starsMid, ax, Math.round(scrollY * 0.08), W, H);
+    drawTiled(ctx, A.gas, ax, Math.round(scrollY * 0.22), W, H);
+    ctx.globalCompositeOperation = 'source-over';
+    const od = Math.round(scrollY * 0.36);
+    drawTiled(ctx, A.debris, ax, od, W, H, 0.39);
+    ctx.globalCompositeOperation = 'lighter';
     drawTiled(ctx, A.streaks, ax, Math.round(scrollY * 0.5), W, H);
     lctx.globalCompositeOperation = 'lighter';
     // outer glow + jets
     const fl = this.flashT, pu = this.pulse;
     const gx = cx - (h.glow.width >> 1), gy = cy - (h.glow.height >> 1);
-    ctx.globalAlpha = clamp01(0.8 + fl * 0.5); ctx.drawImage(h.glow, gx, gy);
-    lctx.globalAlpha = clamp01(0.4 + fl * 0.6); lctx.drawImage(h.glow, gx, gy);
-    const jl = 0.55 + 0.15 * Math.sin(t * 2.1) + fl * 0.5;
-    const jh = A.jet.height, jsc = h.rs / 18;
-    ctx.globalAlpha = clamp01(jl); lctx.globalAlpha = clamp01(jl * 0.8);
-    const jw = Math.max(5, Math.round(9 * jsc)) | 1, jhh = Math.round(jh * jsc);
-    ctx.drawImage(A.jet, 0, 0, 9, jh >> 1, cx - (jw >> 1), cy - jhh / 2 | 0, jw, jhh >> 1);
-    ctx.drawImage(A.jet, 0, jh >> 1, 9, jh >> 1, cx - (jw >> 1), cy, jw, jhh >> 1);
-    lctx.drawImage(A.jet, 0, 0, 9, jh >> 1, cx - (jw >> 1), cy - jhh / 2 | 0, jw, jhh >> 1);
-    lctx.drawImage(A.jet, 0, jh >> 1, 9, jh >> 1, cx - (jw >> 1), cy, jw, jhh >> 1);
-    // jet knots travelling outward
-    ctx.fillStyle = '#c9b0ff'; lctx.fillStyle = '#9b73ff';
-    for (let i = 0; i < 4; i++) {
-      const u = fract(t * 0.18 + i / 4), d = Math.round(h.rs * 1.3 + u * jhh * 0.45), a = (1 - u) * 0.9;
-      ctx.globalAlpha = a; lctx.globalAlpha = a;
-      ctx.fillRect(cx, cy - d, 1, 2); ctx.fillRect(cx, cy + d - 1, 1, 2);
-      lctx.fillRect(cx - 1, cy - d, 3, 2); lctx.fillRect(cx - 1, cy + d - 1, 3, 2);
+    ctx.globalAlpha = clamp01(0.7 + fl * 0.5); ctx.drawImage(h.glow, gx, gy);
+    lctx.globalAlpha = clamp01(0.3 + fl * 0.6); lctx.drawImage(h.glow, gx, gy);
+    const jl = 0.6 + 0.15 * Math.sin(t * 2.1) + fl * 0.5;
+    const jx = cx - (h.jet.width >> 1), jy = cy - (h.jet.height >> 1);
+    ctx.globalAlpha = clamp01(jl); ctx.drawImage(h.jet, jx, jy);
+    lctx.globalAlpha = clamp01(jl * 0.45); lctx.drawImage(h.jet, jx, jy);
+    // jet knots: single pixels travelling outward
+    ctx.fillStyle = '#efe6ff'; lctx.fillStyle = '#9b73ff';
+    const jlen = h.jet.height >> 1;
+    for (let i = 0; i < 3; i++) {
+      const u = fract(t * 0.16 + i / 3), d = Math.round(h.rs * 0.95 + u * (jlen - h.rs)), a = (1 - u) * 0.8;
+      ctx.globalAlpha = a; lctx.globalAlpha = a * 0.6;
+      ctx.fillRect(cx, cy - d, 1, 1); ctx.fillRect(cx, cy + d, 1, 1);
+      lctx.fillRect(cx, cy - d, 1, 1); lctx.fillRect(cx, cy + d, 1, 1);
     }
-    // disk: crossfade texture phases -> slow differential rotation
+    ctx.globalAlpha = 1; lctx.globalAlpha = 1;
+    this.drawArcs(ctx, lctx, cx, cy, h.rs, t);
+    // disk: Bayer dissolve between texture phases -> slow differential rotation
     const pf = (t * 0.55) % PHASES, p0 = Math.floor(pf), p1 = (p0 + 1) % PHASES, k = pf - p0;
     const dx0 = cx - (h.cw >> 1), dy0 = cy - (h.ch >> 1);
     const bright = 1 + fl * 0.6;
-    const layer = (arr, la) => {
-      ctx.globalAlpha = 1; blit(ctx, arr[p0], dx0, dy0);
-      ctx.globalAlpha = k; blit(ctx, arr[p1], dx0, dy0);
-      lctx.globalAlpha = clamp01(la * bright * (1 - k)); blit(lctx, arr[p0], dx0, dy0);
-      lctx.globalAlpha = clamp01(la * bright * k); blit(lctx, arr[p1], dx0, dy0);
+    const layer = (arr, la, i) => {
+      let d = this.dis[i];
+      if (!d || d.w !== h.cw || d.h !== h.ch) { if (d) d.free(); d = this.dis[i] = new Dissolve(h.cw, h.ch); }
+      d.prep(arr[p0], arr[p1], k, true);
+      ctx.globalAlpha = 1; d.put(ctx, dx0, dy0);
+      lctx.globalAlpha = clamp01(la * bright); d.put(lctx, dx0, dy0);
     };
     ctx.globalCompositeOperation = 'source-over';
-    layer(h.back, 0.45);
-    layer(h.halo, 0.6);
+    layer(h.back, 0.3, 0);
+    layer(h.halo, 0.45, 1);
     // the shadow is pure black on both layers (punch it out of the light layer too)
     ctx.globalAlpha = 1; lctx.globalAlpha = 1;
     const shx = cx - (h.shadow.width >> 1), shy = cy - (h.shadow.height >> 1);
     ctx.drawImage(h.shadow, shx, shy);
-    lctx.globalCompositeOperation = 'source-over'; lctx.drawImage(h.shadow, shx, shy); lctx.globalCompositeOperation = 'lighter';
-    // infalling matter (behind the shadow it's hidden by drawing order: skip those)
+    occlude(lctx, (l) => l.drawImage(h.shadow, shx, shy));
+    // infalling matter (particles passing behind the shadow are skipped)
     const I = A.inf;
     ctx.fillStyle = '#fff0a8'; lctx.fillStyle = '#fdbb3a';
     for (let i = 0; i < I.n; i++) {
@@ -3526,16 +3657,18 @@ class HorizonStage extends Stage {
       const px = Math.round(cx + Math.cos(th) * rho), py = Math.round(cy + Math.sin(th) * rho * DISK_INC);
       if (Math.sin(th) < 0 && Math.abs(px - cx) < h.rs) continue;
       const a = smooth(0, 0.15, u) * (0.5 + 0.5 * u);
-      ctx.globalAlpha = a; ctx.fillRect(px, py, 1, 1);
-      lctx.globalAlpha = a; lctx.fillRect(px, py, 1, 1);
+      ctx.globalAlpha = a * 0.8; ctx.fillRect(px, py, 1, 1);
+      lctx.globalAlpha = a * 0.5; lctx.fillRect(px, py, 1, 1);
     }
     ctx.globalAlpha = 1;
-    layer(h.front, 0.5);
-    // flare pulse ring
+    layer(h.front, 0.35, 2);
+    // flare pulse: an expanding 1-px ring of light
     if (pu > 0) {
       const rr = h.rs * (1.2 + (1 - pu) * 4);
-      lctx.globalAlpha = pu * 0.8; lctx.strokeStyle = '#fff0a8'; lctx.lineWidth = 2;
-      lctx.beginPath(); lctx.ellipse(cx, cy, rr, rr * 0.9, 0, 0, TAU); lctx.stroke();
+      lctx.globalAlpha = pu * 0.9; lctx.fillStyle = '#fff0a8';
+      pixelRing(lctx, cx, cy, rr, rr * 0.9);
+      lctx.globalAlpha = pu * 0.35; lctx.fillStyle = '#f7811e';
+      pixelRing(lctx, cx, cy, rr + 1, rr * 0.9 + 1);
     }
     ctx.globalAlpha = 1; lctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
@@ -3547,68 +3680,182 @@ class HorizonStage extends Stage {
 // Registry, asset cache and public API
 // ---------------------------------------------------------------------------
 
+// key -> [asset generator, Stage class, wide-screen tile generators (tw) => canvas | {name: canvas}]
 const STAGES = {
-  title: [genTitle, TitleStage],
-  aurora: [genAurora, AuroraStage],
-  cinder: [genCinder, CinderStage],
-  veil: [genVeil, VeilStage],
-  wreck: [genWreck, WreckStage],
-  horizon: [genHorizon, HorizonStage],
+  title: [genTitle, TitleStage, null],
+  aurora: [genAurora, AuroraStage, { surf: auroraSurfaceG, clouds: auroraCloudsG }],
+  cinder: [genCinder, CinderStage, { dust1: cinderDust1, dust2: cinderDust2 }],
+  veil: [genVeil, VeilStage, { base: veilBase, nebFar: veilFar, nebMid: veilMid, dust: veilDust }],
+  wreck: [genWreck, WreckStage, null],
+  horizon: [genHorizon, HorizonStage, null],
 };
 export const BG_KEYS = Object.keys(STAGES);
+// the sector that usually follows each key (prebuilt in the background)
+const NEXT = { title: 'aurora', aurora: 'cinder', cinder: 'veil', veil: 'wreck', wreck: 'horizon', horizon: 'title' };
+const TW_WIDE = 640;       // width of the wide-screen variants of noise tiles
 
-const CACHE = new Map();   // key -> { A, refs }
+// Shared, size-independent assets. Kept for the whole session (all six stages are ~15 MB):
+// rebuilding them on every menu <-> game switch was the main source of stalls.
+const CACHE = new Map();   // key -> { A, gen, wide, wideJob }
 let warned = false;
 
-function runGen(it) { let r, n = 0; prof(); do { r = it.next(); prof('step ' + n++); } while (!r.done); return r.value; }
-function freeAssets(A) {
-  for (const k in A) {
-    const v = A[k];
-    if (Array.isArray(v)) v.forEach((x) => { if (x && (x.bands || x.getContext)) freeCanvas(x); });
-    else if (v && (v.bands || v.getContext)) freeCanvas(v);
-  }
-}
-function acquire(key) {
-  let c = CACHE.get(key);
-  if (!c) { c = { A: runGen(STAGES[key][0]()), refs: 0 }; CACHE.set(key, c); }
-  c.refs++;
+function entry(key) { let c = CACHE.get(key); if (!c) { c = { A: null, gen: null, wide: null, wideJob: null }; CACHE.set(key, c); } return c; }
+// generator yielding while the key's assets are built (shared by every caller)
+function* assetsGen(key) {
+  const c = entry(key);
+  if (!c.A && !c.gen) c.gen = (function* () { prof(); const A = yield* STAGES[key][0](); prof('assets ' + key); c.A = A; c.gen = null; return A; })();
+  while (!c.A) { const g = c.gen; if (!g) break; const r = g.next(); if (r.done) break; yield; }
   return c.A;
 }
-function release(key) {
-  const c = CACHE.get(key);
-  if (!c) return;
-  if (--c.refs <= 0) { freeAssets(c.A); CACHE.delete(key); }
+const acquire = (key) => runGen(assetsGen(key));
+
+// Wide-screen variants of the noise tiles, built in the background the first time a wide
+// viewport shows up (until then the 320 px tiles simply repeat — they are periodic).
+function wideTiles(key) {
+  const specs = STAGES[key] && STAGES[key][2], c = entry(key);
+  if (!specs || c.wide || c.wideJob) return;
+  c.wideJob = startJob((function* () {
+    yield* assetsGen(key);
+    const wide = {};
+    for (const k in specs) {
+      const v = yield* specs[k](TW_WIDE);
+      if (v && v.getContext) wide[k] = v; else Object.assign(wide, v);
+      yield;
+    }
+    warm(wide);
+    return wide;
+  })(), 1, 4);
+  c.wideJob.promise.then((w) => { c.wideJob = null; if (w) c.wide = w; });
 }
 
-// Pre-generate stage assets asynchronously (yields between chunks so a loading bar can
-// animate). By default only the title and first sector are built; others are generated
-// lazily by createBackground (< 250 ms each) or ahead of time via prewarmBackground().
+// Pool of disposed stage instances that keep their layout, so returning to a stage (menu,
+// retry, a prebuilt next sector) needs no work at all.
+const POOL = [];
+const POOL_MAX = 3, POOL_BYTES = 48 * 1048576;
+const PREP = new Map();    // key -> job building a pooled instance for the next sector
+const LIVE = new Set();    // instances handed out by createBackground and not disposed
+function poolAdd(st, prebuilt = false) {
+  st.prebuilt = prebuilt;
+  POOL.push(st);
+  // Eviction order: older duplicates of a key, then stages that were just left, then
+  // prebuilt ones (the likely next sector), 'title' (the menu) last.
+  const rank = (s, i) => (POOL.some((o, j) => j > i && o.key === s.key) ? 0 : s.key === 'title' ? 3 : s.prebuilt ? 2 : 1);
+  let bytes = POOL.reduce((n, s) => n + s.layoutBytes(), 0);
+  while (POOL.length > POOL_MAX || (bytes > POOL_BYTES && POOL.length > 1)) {
+    let bi = 0, br = 9;
+    POOL.forEach((s, i) => { const r = rank(s, i); if (r < br) { br = r; bi = i; } });
+    const [old] = POOL.splice(bi, 1);
+    bytes -= old.layoutBytes();
+    old.destroy();
+  }
+}
+function poolTake(key) {
+  // prefer an instance laid out for the current viewport
+  let best = -1;
+  for (let i = POOL.length - 1; i >= 0; i--) {
+    if (POOL[i].key !== key) continue;
+    if (best < 0) best = i;
+    const S = POOL[i].S;
+    if (lastVP && layoutFits(S, lastVP.W, lastVP.H, lastVP.fx, lastVP.fy)) { best = i; break; }
+  }
+  if (best < 0) return null;
+  const [st] = POOL.splice(best, 1);
+  st.pooled = false;
+  return st;
+}
+
+// Build a stage's assets and its layout for the current viewport in time slices, and park
+// the instance in the pool. Called automatically for the sector after the one in use.
+function prebuild(key, pri = 0) {
+  if (!STAGES[key]) return Promise.resolve();
+  if (PREP.has(key)) return PREP.get(key).promise;
+  const vp = lastVP;
+  const have = (s) => s.key === key && (!vp || layoutFits(s.S, vp.W, vp.H, vp.fx, vp.fy));
+  if (POOL.some(have) || [...LIVE].some(have)) return Promise.resolve();
+  const j = startJob((function* () {
+    const A = yield* assetsGen(key);
+    if (!vp) return null;
+    const st = new STAGES[key][1](A);
+    lastVP = lastVP || vp;
+    st.applyLayout(yield* st.buildLayout(vp.W, vp.H, vp.fx, vp.fy));
+    if (vp.W > TW) wideTiles(key);
+    return st;
+  })(), pri, 4);
+  j.key = key;
+  PREP.set(key, j);
+  j.promise.then((st) => { if (PREP.get(key) === j) PREP.delete(key); if (st && j.state === 'done' && !j.adopted) { st.pooled = true; poolAdd(st, true); } });
+  return j.promise;
+}
+let nextTimer = 0;
+function scheduleNext(key) {
+  clearTimeout(nextTimer);
+  const nk = NEXT[key];
+  // give the new stage a few seconds to settle (music start, first frames) before building
+  nextTimer = setTimeout(() => { nextTimer = 0; prebuild(nk); if (nk !== 'title') prebuild('title'); }, 2500);
+}
+
+// Pre-generate stage assets asynchronously (time-sliced so a loading bar can animate).
+// By default the title and first sector; every other stage is prebuilt in the background
+// while the previous one is playing, or built on demand by createBackground.
 export async function buildBackgrounds(onProgress, keys = ['title', 'aurora']) {
   keys = keys.filter((k) => STAGES[k]);
-  let done = 0;
-  for (const key of keys) {
-    if (!CACHE.has(key)) {
-      const it = STAGES[key][0]();
-      let r;
-      while (!(r = it.next()).done) {
-        if (onProgress) onProgress(Math.min(0.99, (done + 0.5) / keys.length));
-        await new Promise((res) => setTimeout(res, 0));
-      }
-      if (!CACHE.has(key)) CACHE.set(key, { A: r.value, refs: 0 });
-    }
-    done++;
-    if (onProgress) onProgress(done / keys.length);
+  for (let i = 0; i < keys.length; i++) {
+    let steps = 0;
+    const j = startJob((function* () {
+      const g = assetsGen(keys[i]);
+      for (;;) { const r = g.next(); if (r.done) return r.value; steps++; if (onProgress) onProgress(Math.min(0.99, (i + Math.min(0.95, steps / 40)) / keys.length)); yield; }
+    })(), 2, 24);
+    await j.promise;
+    if (onProgress) onProgress((i + 1) / keys.length);
   }
 }
 
-// Optional: warm a stage's assets during a quiet moment (e.g. the results screen).
-export function prewarmBackground(key) { return buildBackgrounds(null, [key]); }
+// Build a stage in the background (assets + layout at the current viewport), e.g. during a
+// results screen. Resolves when ready. (Also happens automatically for the next sector.)
+export function prewarmBackground(key) { return prebuild(key, 1); }
 
 export function createBackground(key) {
   if (!STAGES[key]) {
     if (!warned) { console.warn('[backgrounds] unknown key', key); warned = true; }
     key = 'title';
   }
-  const A = acquire(key);
-  return new STAGES[key][1](A);
+  let st = poolTake(key);
+  if (!st && PREP.has(key)) {
+    // a prebuild is in flight: finish its remaining steps right now and adopt it
+    const j = PREP.get(key);
+    j.adopted = true;
+    st = drainJob(j);
+    PREP.delete(key);
+  }
+  if (!st) st = new STAGES[key][1](acquire(key));
+  st.pooled = false;
+  LIVE.add(st);
+  st.revive();
+  scheduleNext(key);
+  return st;
+}
+
+// Dev/test introspection (used by dev/backgrounds.html; not needed by the game).
+export function _bgDebug() {
+  return {
+    assets: [...CACHE].map(([k, c]) => ({ key: k, ready: !!c.A, mb: +(bytesOf(c.A) / 1048576).toFixed(2), wide: !!c.wide })),
+    pool: POOL.map((s) => ({ key: s.key, W: s.W, H: s.H, mb: +(s.layoutBytes() / 1048576).toFixed(2) })),
+    prebuilding: [...PREP.keys()], jobs: JOBS.length,
+  };
+}
+// Dev: run a stage's asset and layout generators step by step and report the longest steps.
+export function _bgProfile(key, W = 240, H = 520, fx = 0, fy = 42) {
+  const steps = [];
+  const time = (label, it) => { let r, i = 0; do { const t0 = nowMs(); r = it.next(); steps.push([label + '#' + i++, +(nowMs() - t0).toFixed(1)]); } while (!r.done); return r.value; };
+  const t0 = nowMs();
+  const A = time('assets', STAGES[key][0]());
+  const t1 = nowMs();
+  const st = new STAGES[key][1](A);
+  time('layout', st.buildLayout(W, H, fx, fy));
+  const t2 = nowMs();
+  const specs = STAGES[key][2];
+  if (specs) for (const k in specs) time('wide:' + k, specs[k](TW_WIDE));
+  const t3 = nowMs();
+  steps.sort((a, b) => b[1] - a[1]);
+  return { assetsMs: +(t1 - t0).toFixed(0), layoutMs: +(t2 - t1).toFixed(0), wideMs: +(t3 - t2).toFixed(0), n: steps.length, top: steps.slice(0, 8) };
 }

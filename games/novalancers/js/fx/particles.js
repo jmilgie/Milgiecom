@@ -1182,7 +1182,7 @@ export function createFX() {
 
   function bossFinal(x, y, p, vx, vy) {
     flashKick(1, WHITE_RGB);
-    chromaKick(1);
+    chromaKick(0.8);
     boom(x, y, 4, p, vx, vy);
     curPal = p;
     for (let k = 0; k < 10; k++) {

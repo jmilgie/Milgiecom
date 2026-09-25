@@ -34,7 +34,7 @@
 </header>
 <div id="views"></div>
 <script type="module">
-import { createBackground, buildBackgrounds, BG_KEYS } from '../js/art/backgrounds.js';
+import { createBackground, buildBackgrounds, prewarmBackground, BG_KEYS, _bgDebug } from '../js/art/backgrounds.js';
 
 // Test page for js/art/backgrounds.js. URL params:
 //   bg=<key>  view=phone,desk,land,tall,narrow,d720  scroll=<px>  t=<s>  speed=<x>
@@ -104,10 +104,14 @@ async function setBg(k) {
   for (const v of V) { if (v.bg) v.bg.dispose(); v.bg = null; }
   if (assetMs[k] === undefined) { const t0 = performance.now(); await buildBackgrounds(null, [k]); assetMs[k] = performance.now() - t0; }
   for (const v of V) {
-    v.bg = createBackground(key);
     const t0 = performance.now();
+    v.bg = createBackground(key);
     v.bg.resize(v.d.W, v.d.H, v.fx, v.fy);
     v.layoutMs = performance.now() - t0;
+    // async layouts (title, relayouts) complete in time slices: wait for them
+    const t1 = performance.now();
+    while ((!v.bg.S || v.bg.want) && performance.now() - t1 < 60000) await new Promise((r) => setTimeout(r, 16));
+    v.layoutAsyncMs = performance.now() - t1;
     v.ms = [];
   }
   memMB = V.map((v) => (v.bg.memory ? (v.bg.memory() / 1048576).toFixed(1) : '?')).join('/');
@@ -166,7 +170,7 @@ function drawLayers(v) {
   v.ms.push(dt); if (v.ms.length > 120) v.ms.shift();
   v.endState = [ctx.globalCompositeOperation, ctx.globalAlpha, lctx.globalCompositeOperation, lctx.globalAlpha].join('/');
   drawOverlay(v, tNow);
-  if (opt('frame')) drawFieldFrame(v);
+  if (opt('frame') && key !== 'title') drawFieldFrame(v);     // main.js frames the field in game only
 }
 
 function renderView(v) {
@@ -211,7 +215,7 @@ function renderView(v) {
 }
 
 function statsLine() {
-  const st = V.map((v) => `${v.name}: layout ${v.layoutMs.toFixed(0)} ms, draw ${(v.ms.reduce((a, b) => a + b, 0) / Math.max(1, v.ms.length)).toFixed(3)} ms`).join('   ');
+  const st = V.map((v) => `${v.name}: layout ${v.layoutMs.toFixed(0)} ms (+${(v.layoutAsyncMs || 0).toFixed(0)} sliced), draw ${(v.ms.reduce((a, b) => a + b, 0) / Math.max(1, v.ms.length)).toFixed(3)} ms`).join('   ');
   return `${key}  scroll ${scroll.toFixed(0)}  t ${tNow.toFixed(1)}  assets ${assetMs[key] !== undefined ? assetMs[key].toFixed(0) : '-'} ms  mem ${memMB} MB   ${st}`;
 }
 
@@ -248,7 +252,7 @@ function fieldLuma(v) {
 window.__bg = {
   keys: BG_KEYS,
   views: V.map((v) => v.name),
-  async set(k) { await setBg(k); return { assetMs: assetMs[k], layoutMs: V.map((v) => v.layoutMs), mem: memMB }; },
+  async set(k) { await setBg(k); return { assetMs: assetMs[k], layoutMs: V.map((v) => v.layoutMs), asyncMs: V.map((v) => v.layoutAsyncMs), mem: memMB }; },
   state(o) { if (o.scroll !== undefined) scroll = o.scroll; if (o.t !== undefined) tNow = o.t; },
   opts(o) { for (const k in o) { const el = document.getElementById(k); if (el) el.checked = !!o[k]; } },
   step(dt, n = 1) { for (let i = 0; i < n; i++) { tNow += dt; for (const v of V) v.bg.update(dt); scroll += dt * V[0].bg.scrollSpeed * speedMul; } for (const v of V) renderView(v); },
@@ -268,6 +272,9 @@ window.__bg = {
     return out;
   },
   resize(i, W, H) { const v = V[i]; const [fx, fy] = fieldOrigin(W, H); v.bg.resize(W, H, fx, fy); return true; },
+  debug() { return _bgDebug(); },
+  prewarm(k) { return prewarmBackground(k); },
+  ready() { return V.every((v) => v.bg && v.bg.S && !v.bg.want); },
   get bgs() { return V.map((v) => v.bg); },
   get sprites() { return !!SP; },
   spritesReady,

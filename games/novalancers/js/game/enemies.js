@@ -688,12 +688,15 @@ R.turret_flak = Object.assign({}, R.turret, {
 function rockSplit(e, sim) {
   const s = e.def.split;
   if (!s) return;
+  // A rock shot while it is sliding off a side/bottom edge would spawn fragments outside the
+  // field that never "enter" it (so the engine only reaps them at maxLife): let it crumble.
+  if (e.x < 2 || e.x > FIELD_W - 2 || e.y > FIELD_H - 8) return;
   const rng = sim.rng;
   const vx = e.p.vx || 0, vy = e.p.vy ?? 32;
   for (let i = 0; i < s.n; i++) {
     const k = s.n === 1 ? 0 : (i / (s.n - 1)) * 2 - 1;
     sim.spawn(s.type, {
-      path: 'drift', x: r1(e.x + k * 6), y: r1(e.y), vx: r1(vx * 0.6 + k * s.spread + (rng.next() - 0.5) * 10),
+      path: 'drift', x: r1(clamp(e.x + k * 6, 3, FIELD_W - 3)), y: r1(e.y), vx: r1(vx * 0.6 + k * s.spread + (rng.next() - 0.5) * 10),
       vy: r1(Math.max(16, vy * 0.9 + rng.next() * 16 - 4)), wob: 2, wobF: r3(0.3 + rng.next() * 0.3), ph: r3(rng.next() * 6), v: rng.int(0, 3),
     });
   }

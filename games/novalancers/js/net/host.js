@@ -135,7 +135,7 @@ export class HostSession extends Session {
     if (this.closed || !this.started) return;
     this.started = false;
     this.startMsg = null;
-    this._pubTryAt = 0;
+    this._pubTryAt = -1e9; // re-register a public slot id right away
     for (let i = 1; i < MAX_PLAYERS; i++) if (this.players[i]) this.players[i].ready = false;
     this._dirty();
   }
@@ -375,8 +375,8 @@ export class HostSession extends Session {
       // host decides: a client that already sent its upgrade hello waits for this answer.
       if (link.kind !== 'p2p') return '';
       if (this.started) return 'ALREADY_STARTED';
-    } else if (!p.link.closed && now() - p.lastSeen < 1000) {
-      return 'LINK_OK'; // a rescue attempt while its link is demonstrably alive: stay
+    } else if (m.f !== 1 && !p.link.closed && now() - p.lastSeen < 1000) {
+      return 'LINK_OK'; // a rescue while its link demonstrably works (we stalled?): stay, unless it insists
     }
     p.epoch = m.re;
     this._retire(p.link, p);
@@ -415,7 +415,9 @@ export class HostSession extends Session {
   _onRelayProbe(cid, b) {
     if (this.closed || !this.probeBucket.take()) return;
     const p = this._byCid(cid);
-    if (p) p.rescueUntil = now() + RESCUE_GRACE; // it is trying to come back over the relay
+    // It is trying to come back over the relay: hold its slot a little longer (bounded, so
+    // probes alone can't keep a dead player's slot forever).
+    if (p) p.rescueUntil = Math.min(now() + RESCUE_GRACE, p.lastSeen + P2P_HOLD_MS + RESCUE_GRACE);
     this.hub.sendDirect(cid, b, [this._infoStr(true)]);
   }
 
@@ -589,7 +591,7 @@ export class HostSession extends Session {
       if (this.started) {
         const arr = this.players.map((p) => (p ? p.ping : null));
         if (arr.some((v, i) => i > 0 && v !== null)) this._broadcastRaw(JSON.stringify({ _: 'pings', p: arr }), false);
-      } else if (this.players.some((p, i) => p && Math.abs(p.ping - (this._lobbyPings[i] ?? -1)) >= Math.max(5, p.ping * 0.2))) {
+      } else if (this.players.some((p, i) => p && Math.abs(p.ping - (this._lobbyPings[i] ?? -1)) >= Math.max(8, p.ping * 0.25))) {
         this._dirty(); // lobby shows pings: refresh when one moved noticeably
       }
     }
