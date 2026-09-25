@@ -43,6 +43,8 @@ const kit = {
   dirs(name) {
     let d = this._dirs.get(name);
     if (d === undefined) {
+      // don't cache lookups for sprites that aren't built yet (lazily built boss art)
+      if (this._has && !this._has(name)) return 1;
       try { d = this._spr ? (this._spr(name).dirs || 1) : 1; } catch { d = 1; }
       this._dirs.set(name, d);
     }
@@ -129,12 +131,26 @@ const env = {
   haptic: (t) => { if (settings.haptics) Haptics.play(t); },
   shake: (a, d) => { if (settings.shake) R.shake(a, d); },
   setSector(sector) {
+    ensureBossArt(sector.boss);
     setBackground(sector.key);
     env.bg = bg;
     playMusic(sector.music, { fade: 1.2 });
   },
   ui: { event: (name, data) => onSimEvent(name, data) },
 };
+
+const bossArtJobs = new Map();
+function ensureBossArt(key, onProgress) {
+  if (!M.bossart?.buildBossArt || !key) return Promise.resolve();
+  let job = bossArtJobs.get(key);
+  if (!job) {
+    job = M.bossart.buildBossArt(onProgress || null, { bosses: [key] })
+      .then(() => { kit._dirs.clear(); })
+      .catch((e) => { console.error('boss art failed', key, e); bossArtJobs.delete(key); });
+    bossArtJobs.set(key, job);
+  }
+  return job;
+}
 
 function setBackground(key) {
   if (bgKey === key && bg) return;
@@ -201,15 +217,17 @@ async function boot() {
   if (sprites?.buildSprites) {
     try {
       await sprites.buildSprites((p) => UI.setLoading(0.08 + p * 0.35, 'Forging sprites'));
-      kit._draw = sprites.drawSprite; kit._drawE = sprites.drawSpriteEmissive; kit._spr = sprites.spr;
+      kit._draw = sprites.drawSprite; kit._drawE = sprites.drawSpriteEmissive; kit._spr = sprites.spr; kit._has = sprites.hasSprite;
       kit.meta = sprites.SHIP_META || {}; kit.emeta = sprites.ENEMY_META || {};
     } catch (e) { console.error('sprites failed', e); }
   }
   UI.setLoading(0.45, 'Waking the Choir');
   const bossart = await tryImport('./art/bossart.js');
+  M.bossart = bossart;
   if (bossart?.buildBossArt) {
-    try { await bossart.buildBossArt((p) => UI.setLoading(0.45 + p * 0.15, 'Waking the Choir')); } catch (e) { console.error('boss art failed', e); }
     env.bossMeta = bossart.BOSS_META || {};
+    // only the first boss at boot; the rest are built in the background when their sector starts
+    try { await ensureBossArt('warden', (p) => UI.setLoading(0.45 + p * 0.15, 'Waking the Choir')); } catch (e) { console.error('boss art failed', e); }
   }
   UI.setLoading(0.62, 'Painting the stars');
   M.bg = await tryImport('./art/backgrounds.js');
@@ -416,6 +434,7 @@ function onSimEvent(name, d = {}) {
       // build the next sector's background while players read the results
       const nk = SECTORS[nextN]?.key;
       if (nk && M.bg?.prewarmBackground) { try { M.bg.prewarmBackground(nk); } catch { /* */ } }
+      if (SECTORS[nextN]) ensureBossArt(SECTORS[nextN].boss);
       setTimeout(() => {
         if (!sim || sim.state !== 'clear') return;
         input.setEnabled(false);
@@ -709,9 +728,24 @@ function render(dt) {
   R.present({
     grade: bg?.grade || null,
     waves: ps.waves, flash: ps.flash, flashColor: ps.flashColor, chroma: ps.chroma,
-    lensing: bg?.lensing ? bg.lensing(R.W, R.H) : null,
+    lensing: currentLensing(dt),
     scanlines: settings.scanlines,
   });
+}
+
+// Gravitational lensing warps the whole composite (gameplay included), so keep it gentle while
+// playing and fade it out completely once the final boss is on screen (readability first).
+let lensFade = 1;
+const lensOut = { x: 0, y: 0, r: 0, strength: 0 };
+function currentLensing(dt) {
+  const L = bg?.lensing ? bg.lensing(R.W, R.H) : null;
+  if (!L) return null;
+  let target = 1;
+  if (mode === 'game' && sim) target = sim.bossIds.length ? 0 : 0.45;
+  lensFade += (target - lensFade) * Math.min(1, dt * 1.5);
+  if (lensFade < 0.02) return null;
+  lensOut.x = L.x; lensOut.y = L.y; lensOut.r = L.r; lensOut.strength = L.strength * lensFade;
+  return lensOut;
 }
 
 function drawFieldFrame(ctx) {

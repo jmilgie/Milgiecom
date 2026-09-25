@@ -436,6 +436,95 @@ export function makeRotator(a, passes = 3) {
   };
 }
 
+// ---------------------------------------------------------------------------------------
+// Lossless direction frames (square, odd-sized frames centered on the middle pixel)
+// ---------------------------------------------------------------------------------------
+// Tiny sprites do not survive arbitrary rotation, so direction sets are built from a few
+// authored/rasterized "base" angles in the first octant (0..45 deg) plus exact pixel
+// permutations: a 90-degree turn and a mirror across the 45-degree diagonal. Every frame
+// then has the same pixel structure as its base, whatever the angle.
+
+// Rotate a square pixel array 90 degrees clockwise (screen space, y down).
+export function rot90Px(px, n) {
+  const o = new px.constructor(n * n);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) o[x * n + (n - 1 - y)] = px[y * n + x];
+  return o;
+}
+
+// Mirror a square pixel array across the up-right diagonal: a direction at angle a
+// (0 = up, clockwise) becomes 90deg - a. Pixel offset (dx, dy) -> (-dy, -dx).
+export function mirrorDiagPx(px, n) {
+  const o = new px.constructor(n * n);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) o[(n - 1 - x) * n + (n - 1 - y)] = px[y * n + x];
+  return o;
+}
+
+function mapArt(a, fn) {
+  return { w: a.w, h: a.h, col: fn(a.col, a.w), emi: a.emi ? fn(a.emi, a.w) : null };
+}
+export const rot90Art = (a) => mapArt(a, rot90Px);
+export const mirrorDiagArt = (a) => mapArt(a, mirrorDiagPx);
+
+// For `dirs` directions (multiple of 8): which first-octant base index (0..dirs/8), whether
+// it is mirrored across the diagonal, and how many clockwise quarter turns follow.
+export function dirSymmetry(d, dirs) {
+  const quarter = dirs / 4, eighth = dirs / 8;
+  const q = Math.floor(d / quarter), r = d % quarter;
+  return r <= eighth ? { base: r, mirror: false, turns: q } : { base: quarter - r, mirror: true, turns: q };
+}
+
+// Build `dirs` frames from first-octant bases. makeBase(i, angle) -> T (cached), with
+// angle = i * TAU / dirs. xform(T, 'rot' | 'mirror') -> T applies one exact permutation.
+export function symmetricDirs(dirs, makeBase, xform) {
+  const cache = [];
+  const out = [];
+  for (let d = 0; d < dirs; d++) {
+    const s = dirSymmetry(d, dirs);
+    if (!cache[s.base]) cache[s.base] = makeBase(s.base, (s.base / dirs) * TAU);
+    let t = cache[s.base];
+    if (s.mirror) t = xform(t, 'mirror');
+    for (let k = 0; k < s.turns; k++) t = xform(t, 'rot');
+    out.push(t);
+  }
+  return out;
+}
+
+// Supersampled rasterization of an analytic shape into a square frame, in the shape's local
+// frame (u = across, positive to the shape's right; v = along, positive forward) for a
+// heading `angle` (0 = up, clockwise). shade(u, v) -> [col, emi] | null. A pixel is filled
+// when at least `thr` of its ss x ss subsamples hit the shape; its color comes from the
+// center sample (or the hit closest to the center), so line weight stays even at all angles.
+export function rasterAnalytic(size, angle, shade, ss = 4, thr = 0.45, maxR = Infinity) {
+  const a = newArt(size, size);
+  const c = (size - 1) / 2;
+  const fx = Math.sin(angle), fy = -Math.cos(angle);
+  const need = Math.ceil(thr * ss * ss - 1e-6);
+  const cull = (maxR + 0.75) ** 2;             // skip pixels the shape cannot reach
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if ((x - c) ** 2 + (y - c) ** 2 > cull) continue;
+      let hits = 0, best = null, bd = 1e9;
+      for (let j = 0; j < ss; j++) {
+        for (let i = 0; i < ss; i++) {
+          const dx = x - c + (i + 0.5) / ss - 0.5, dy = y - c + (j + 0.5) / ss - 0.5;
+          const r = shade(dx * -fy + dy * fx, dx * fx + dy * fy);
+          if (!r) continue;
+          hits++;
+          const d2 = (dx - (x - c)) ** 2 + (dy - (y - c)) ** 2;
+          if (d2 < bd) { bd = d2; best = r; }
+        }
+      }
+      if (hits < need || !best) continue;
+      const u = (x - c) * -fy + (y - c) * fx, v = (x - c) * fx + (y - c) * fy;
+      const r = shade(u, v) || best;
+      const i = y * size + x;
+      a.col[i] = r[0];
+      a.emi[i] = r[1] || 0;
+    }
+  }
+  return a;
+}
+
 // Nearest-neighbour upscale (integer factor) — handy for previews and chunky letterforms.
 export function scaleArt(a, k) {
   const o = newArt(a.w * k, a.h * k, !!a.emi);

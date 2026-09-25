@@ -7,10 +7,12 @@
 //
 //   const mq = new MqttClient('wss://broker.emqx.io:8084/mqtt');
 //   await mq.connect();                        // rejects Error('MQTT_TIMEOUT'|'MQTT_CLOSED'|'MQTT_REFUSED'|'MQTT_WS')
-//   mq.onmessage = (topic, text, bytes) => {};
+//   mq.onmessage = (topic, text, payload) => {};   // payload: the raw Uint8Array
 //   mq.onclose = (reason) => {};               // unexpected loss only (not after close())
 //   await mq.subscribe(['a/b', 'a/c']);
 //   mq.publish('a/b', 'hello');                // -> false if not connected / socket backed up
+//   await mq.ping(2500);                       // -> true if the broker answered PINGREQ in time
+//   mq.kill();                                 // drop the socket as if the network died (fires onclose)
 //   mq.close();
 
 const enc = new TextEncoder();
@@ -21,7 +23,7 @@ const T_CONNECT = 1, T_CONNACK = 2, T_PUBLISH = 3, T_PUBACK = 4, T_SUBSCRIBE = 8
 
 const MAX_PACKET = 256 * 1024;        // larger inbound packets are skipped, not buffered
 const MAX_BUFFERED = 1024 * 1024;     // refuse to queue more than this on a stalled socket
-const PING_TIMEOUT = 10000;
+const PING_TIMEOUT = 6000;          // keepalive PINGREQ unanswered this long => connection lost
 
 const ALNUM = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 function randomClientId() {
@@ -71,7 +73,7 @@ export class MqttClient {
   constructor(url, opts = {}) {
     this.url = url;
     this.clientId = opts.clientId || randomClientId();
-    this.keepalive = opts.keepalive || 30; // seconds
+    this.keepalive = opts.keepalive || 20; // seconds (a PINGREQ goes out every keepalive/2)
     this.connected = false;
     this.closed = false;
     this.onmessage = null;
@@ -84,6 +86,7 @@ export class MqttClient {
     this._kaTimer = 0;
     this._lastPing = 0;
     this._pingOut = 0;
+    this._pingWaiters = [];
     this._connack = null;
     this._abort = false;
   }
@@ -142,6 +145,30 @@ export class MqttClient {
     const payload = typeof text === 'string' ? enc.encode(text) : text;
     return this._write(packet((T_PUBLISH << 4) | (retain ? 1 : 0), [utf8Str(topic), payload]));
   }
+
+  /**
+   * On-demand liveness check: resolves true when the broker answers a PINGREQ within
+   * timeoutMs, false otherwise (the connection is left as is; see kill()).
+   */
+  ping(timeoutMs = 2500) {
+    if (!this.connected) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const w = { resolve, timer: 0 };
+      w.timer = setTimeout(() => {
+        const i = this._pingWaiters.indexOf(w);
+        if (i >= 0) this._pingWaiters.splice(i, 1);
+        resolve(false);
+      }, timeoutMs);
+      this._pingWaiters.push(w);
+      if (!this._pingOut) {
+        this._pingOut = this._lastPing = performance.now();
+        this._write(new Uint8Array([T_PINGREQ << 4, 0]));
+      }
+    });
+  }
+
+  /** Treat the connection as dead (e.g. a half-open socket): tears down and fires onclose. */
+  kill() { this._lost('killed'); }
 
   /** Graceful disconnect. Does not fire onclose. */
   close() {
@@ -257,7 +284,7 @@ export class MqttClient {
       const topic = dec.decode(body.subarray(2, 2 + tlen));
       const payload = body.subarray(p);
       if (this.onmessage) {
-        try { this.onmessage(topic, dec.decode(payload), payload.length); } catch (e) { console.error(e); }
+        try { this.onmessage(topic, dec.decode(payload), payload); } catch (e) { console.error(e); }
       }
     } else if (type === T_CONNACK) {
       if (this._connack && body.length >= 2) this._connack(body[1]);
@@ -273,7 +300,14 @@ export class MqttClient {
       if (refused) req.reject(new Error('MQTT_SUB_REFUSED')); else req.resolve();
     } else if (type === T_PINGRESP) {
       this._pingOut = 0;
+      this._resolvePings(true);
     }
+  }
+
+  _resolvePings(ok) {
+    const ws = this._pingWaiters;
+    this._pingWaiters = [];
+    for (const w of ws) { clearTimeout(w.timer); w.resolve(ok); }
   }
 
   _lost(reason) {
@@ -296,6 +330,7 @@ export class MqttClient {
       req.reject(new Error('MQTT_CLOSED'));
     }
     this._pending.clear();
+    this._resolvePings(false);
     const ws = this._ws;
     this._ws = null;
     if (ws) {

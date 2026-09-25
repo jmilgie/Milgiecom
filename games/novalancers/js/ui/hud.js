@@ -636,8 +636,11 @@ function drawBoss(ctx, lctx, hud, R, L) {
   if (st.bossK <= 0) return;
   const k = st.bossK;
   const e = 1 - Math.pow(1 - k, 3);
+  // text scale: follow the side-panel scale on wide/landscape screens when the name still fits
+  let s = L.side ? L.sz : 1;
+  if (s > 1 && measureText(st.bossName || 'BOSS', { font: 'small', size: s }) > FIELD_W - 18) s = 1;
   const baseY = R.fy + 4 + (L.side ? 0 : L.fieldTop || 0);
-  const y = Math.round(baseY - (1 - e) * 24);
+  const y = Math.round(baseY - (1 - e) * 24 * s);
   const x = R.fx + 8, w = FIELD_W - 16;
   const a0 = ctx.globalAlpha;
   // slide in/out from under the top edge of the free field area
@@ -646,11 +649,16 @@ function drawBoss(ctx, lctx, hud, R, L) {
   ctx.rect(R.fx - 4, baseY - 4, FIELD_W + 8, FIELD_H);
   ctx.clip();
   ctx.globalAlpha = a0 * Math.min(1, k * 1.5);
-  shade(ctx, R.fx, y - 3, FIELD_W, 20, true);
+  shade(ctx, R.fx, y - 3, FIELD_W, 14 + 6 * s + 4, true);
   const low = st.bossHp < 0.25 && hud.boss;
-  drawText(ctx, st.bossName || 'BOSS', x, y, { cache: true, font: 'small', color: low && ((st.t * 6) | 0) % 2 ? '#ffffff' : '#ffc4e1', shadow: DARK, lctx: e > 0.92 ? lctx : null, glow: MAG[3], glowAlpha: 0.45 });
-  if (st.bossPhase > 0) drawText(ctx, 'PHASE ' + (st.bossPhase + 1), x + w, y + 1, { cache: true, font: 'tiny', color: MAG[4], align: 'right' });
-  const by = y + 9, h = 5;
+  drawText(ctx, st.bossName || 'BOSS', x, y, { cache: true, font: 'small', size: s, color: low && ((st.t * 6) | 0) % 2 ? '#ffffff' : '#ffc4e1', shadow: DARK, lctx: e > 0.92 ? lctx : null, glow: MAG[3], glowAlpha: 0.45 });
+  if (st.bossPhase > 0) {
+    const ph = 'PHASE ' + (st.bossPhase + 1);
+    const room = w - measureText(st.bossName || 'BOSS', { font: 'small', size: s }) - 6 * s;
+    if (measureText(ph, { font: 'tiny', size: s }) <= room) drawText(ctx, ph, x + w, y + s, { cache: true, font: 'tiny', size: s, color: MAG[4], align: 'right' });
+    else if (measureText('P' + (st.bossPhase + 1), { font: 'tiny', size: s }) <= room) drawText(ctx, 'P' + (st.bossPhase + 1), x + w, y + s, { cache: true, font: 'tiny', size: s, color: MAG[4], align: 'right' });
+  }
+  const by = y + 9 * s, h = 3 + 2 * s;
   rect(ctx, x - 1, by - 1, w + 2, h + 2, DARK);
   rect(ctx, x, by, w, h, '#2a0a1c');
   const lagW = Math.round(w * st.bossLag), hpW = Math.round(w * st.bossHp);

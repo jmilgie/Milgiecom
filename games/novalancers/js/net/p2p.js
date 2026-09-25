@@ -134,7 +134,7 @@ export class P2PLink {
 
 /**
  * One registered PeerJS identity (a Peer) with error routing for outgoing connects.
- * Events: onconnection(link), ondisconnected(), onfatal()
+ * Events: onconnection(link), ondisconnected() (signaling socket lost), onopen() (re-registered)
  */
 export class P2PEndpoint {
   constructor(peer) {
@@ -143,6 +143,7 @@ export class P2PEndpoint {
     this.destroyed = false;
     this.onconnection = null;
     this.ondisconnected = null;
+    this.onopen = null;
     this._connects = new Map(); // remote id -> fail(code)
     peer.on('error', (e) => this._onError(e));
     peer.on('connection', (conn) => {
@@ -153,6 +154,9 @@ export class P2PEndpoint {
     });
     peer.on('disconnected', () => {
       if (!this.destroyed && this.ondisconnected) this.ondisconnected();
+    });
+    peer.on('open', () => {
+      if (!this.destroyed && this.onopen) this.onopen();
     });
   }
 

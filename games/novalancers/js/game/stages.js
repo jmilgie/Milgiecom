@@ -1,6 +1,6 @@
 // Nova Lancers — the five-sector campaign.
 //
-// STAGES[key] = { script: Step[], cues: { name(sim, sim, data) } }
+// STAGES[key] = { script: () => Step[], cues: { name(sim, sim, data) } }
 // Steps are executed by StageRunner (sim.js, host only). Step fields:
 //   dt (seconds after the previous step), and any of:
 //   spawn:type n gap p(object | (i, rng, sim) => object) bonus:'power'|'bomb'|'overdrive'|'life'
@@ -17,13 +17,15 @@
 // "upstream" is exact). That keeps bonus drops honest: the group's power core always drops
 // from the true last kill, never from an early kill while the rest are still queued.
 //
-// Pacing per sector (≈ 2:20–2:45 before the WARNING):
+// Pacing per sector (measured with the debug autopilot: ≈ 2:15–2:25 for a strong player,
+// ≈ 2:30–2:50 for a weaker one who lets the mid-boss run its full stay):
 //   A first contact (teaching)  → B rising (banner)  → C set-piece / mid-boss (+1UP after)
 //   → D peak  → E breather (gem shower)  → WARNING → boss → end.
 // Power cores (bonus:'power' + scripted drops) are placed so a player who collects well is at
 // power 5–6 leaving S1–S2 and at 8 by the end of S3; later sectors give enough to recover.
 
 import { swoop, formationOffsets } from './paths.js';
+import { ENEMIES } from './enemies.js';
 import { FIELD_W, FIELD_H } from '../config.js';
 
 const W = FIELD_W;
@@ -107,14 +109,14 @@ function squad(type, shape, n, lead, o = {}) {
   });
 }
 
-// Individual swoopers on the same curve, one every `gap` seconds.
+// Individual swoopers on the same curve, one every `gap` seconds (o: depth, dur, exitV, gap, dy).
 function swoopers(type, n, side, preset, y, o = {}) {
   const base = swoop(side, preset, y, o.depth ?? 110, o.dur ?? 3.2, o.exitV ?? 110);
   return { spawn: type, n, gap: o.gap ?? 0.4, p: (i) => Object.assign({}, base, { y: y + (o.dy || 0) * i }) };
 }
 
 // Enemies that fly in from the top to hold points, then leave ('hold' path).
-// xs: hold x per member; o: {ty | tys[], y, tin, hold, sway, swayF, bob, gap, ex, ey}
+// xs: hold x per member; o: {ty | tys[], x0 (common entry x), y, tin, hold, sway, swayF, bob, gap, ex, ey}
 function holdRow(type, xs, o = {}) {
   return {
     spawn: type, n: xs.length, gap: o.gap ?? 0.3,
@@ -225,10 +227,11 @@ function bastion(type, o = {}) {
   return { spawn: type, n: 1, p: clean({ path: 'hover', x: o.x ?? CX, y: -46, tx: o.tx ?? CX, ty: o.ty ?? 86, tin: 3, sway: 28, swayF: 0.07, bob: 3, stay: o.stay ?? 55 }) };
 }
 
-// WARNING → boss → end
+// WARNING → boss → end. The WARNING shows the boss's own display name (ENEMIES[bossKey].name,
+// registered by bosses.js; resolved when the runner builds the script) with `name` as fallback.
 function finale(bossKey, name, music = 'boss', lead = 1.2) {
   return [
-    { dt: lead, warning: { name, music } },
+    { dt: lead, warning: { name, music }, bossKey },
     { dt: 3.6, boss: bossKey },
     { dt: 0, wait: 'boss' },
     { dt: 1.5, end: true },
@@ -361,6 +364,7 @@ const aurora = [
 
   // D — peak: squadrons from both flanks, ring-eyes, the last gunship
   ...block(
+    [0, [banner('SQUADRONS INBOUND', 'Both flanks — hold the line'), cue('dawn')]],
     [1.0, squad('dart', 'vee', 5, swoop(-1, 'u', 30, 90, 3.6, 110), { sp: 15 })],
     [1.0, squad('dart', 'vee', 5, swoop(1, 'u', 30, 90, 3.6, 110), { sp: 15 })],
     [4.2, holdRow('eye_ring', [CX], { ty: 78, hold: 6 })],
@@ -389,7 +393,7 @@ const aurora = [
 
 // ======================================================================================
 // S2 — CINDER BELT: asteroid mining belt at a red giant. Rocks drift through everything.
-// lancets, weavers, mines, hornets; BASTION FRIGATE mid-boss; boss: THE WYRM
+// lancets, weavers, mines, hornets; BASTION FRIGATE mid-boss; boss: CINDER WYRM
 // ======================================================================================
 
 const cinder = [
@@ -471,12 +475,12 @@ const cinder = [
     [3.4, cue('flare')],
   ),
   breather(5, 3.2),
-  ...finale('wyrm', 'THE MAGMA WYRM'),
+  ...finale('wyrm', 'CINDER WYRM'),
 ];
 
 // ======================================================================================
 // S3 — VEIL NEBULA: crystal storms in a stellar nursery. Lightning lights the clouds.
-// shards, phantoms, wisps, sentinels, eyes; PRISM BASTION mid-boss; boss: THE PRISM
+// shards, phantoms, wisps, sentinels, eyes; PRISM BASTION mid-boss; boss: PRISM ARRAY
 // ======================================================================================
 
 const veil = [
@@ -556,12 +560,12 @@ const veil = [
   ),
   breather(6, 4),
   { dt: 0.4, ...cue('lightning', 1) },
-  ...finale('prism', 'THE PRISM'),
+  ...finale('prism', 'PRISM ARRAY'),
 ];
 
 // ======================================================================================
 // S4 — LEVIATHAN WRECK: low over the hull of a dead dreadnought. The hull shoots back.
-// hull turrets, seekers, weavers, carapaces; DERELICT BASTION mid-boss; boss: DREADNOUGHT
+// hull turrets, seekers, weavers, carapaces; DERELICT BASTION mid-boss; boss: THE DREADNOUGHT
 // ======================================================================================
 
 const wreck = [
@@ -724,12 +728,21 @@ const horizon = [
   ...finale('heart', 'THE CHOIR HEART', 'finalboss', 1.2),
 ];
 
+// Bosses register their defs after this module loads, so names are looked up per run.
+function withBossNames(steps) {
+  return steps.map((st) => {
+    if (!st.warning || !st.bossKey) return st;
+    const nm = ENEMIES[st.bossKey] && ENEMIES[st.bossKey].name;
+    return nm ? Object.assign({}, st, { warning: Object.assign({}, st.warning, { name: nm }) }) : st;
+  });
+}
+
 export const STAGES = {
-  aurora: { script: aurora, cues: CUES },
-  cinder: { script: cinder, cues: CUES },
-  veil: { script: veil, cues: CUES },
-  wreck: { script: wreck, cues: CUES },
-  horizon: { script: horizon, cues: CUES },
+  aurora: { script: () => withBossNames(aurora), cues: CUES },
+  cinder: { script: () => withBossNames(cinder), cues: CUES },
+  veil: { script: () => withBossNames(veil), cues: CUES },
+  wreck: { script: () => withBossNames(wreck), cues: CUES },
+  horizon: { script: () => withBossNames(horizon), cues: CUES },
 };
 
-void W; void FIELD_H;
+

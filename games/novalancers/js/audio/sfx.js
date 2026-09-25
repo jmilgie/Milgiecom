@@ -727,11 +727,12 @@ function modes(v, t, o) {
 }
 
 // Debris / electric crackle from the shared crackle tables; decaying (debris) or rising (charge)
-// loudness. Split L/R in stereo renders for width.
+// loudness. n = rough grain count over the envelope: picks the sparse or the dense table.
+// Split L/R in stereo renders for width.
 function debris(v, t, d, o) {
   const { n = 30, tau = 0.2, rise = false, hp = 1500, bp, q = 0.9, lvl = 1, rev = 0, pan = 0 } = o;
   const kind = n / (rise ? d : tau * 1.6) > 90 ? 'dense' : 'crackle';
-  const env = rise ? [0.15, d * 0.85, 1, d * 0.15, 1] : [0, 0.002, 1, 'x', tau * 1.3];
+  const env = rise ? [0.15, d * 0.85, 1, Math.max(0.001, d * 0.15 - 0.025), 1, 0.025, 0] : [0, 0.002, 1, 'x', tau * 1.3];
   const D = rise ? d : Math.max(d, envLen(env));
   const k = kind === 'dense' ? 2.2 : 3.5;   // the tables are mostly silence: bring grains up to layer level
   const one = (p, l) => v.out(v.chain(v.noise(kind, t, D), bp ? v.bq('bandpass', bp, q) : v.bq('highpass', hp, 0.707), v.amp(t, env, l * k)), rev, p, t);
@@ -757,7 +758,8 @@ function chord(v, t, d, notes, o = {}) {
   if (v.st) { one(-0.55, lvl * 0.8, -1); one(0.55, lvl * 0.8, 1); } else { one(pan, lvl * 0.7, -1); one(pan, lvl * 0.7, 1); }
 }
 
-// Glass shards / sparkles from the shared shard table with a decaying envelope.
+// Glass shards / sparkles from the shared shard table (2.5–8 kHz partials) with a decaying
+// envelope; tmax sets the decay.
 function grains(v, t, d, o) {
   const { tmax = 0.2, lvl = 1, rev = 0, pan = 0 } = o;
   const env = [0, 0.003, 1, 'x', tmax * 0.6], D = Math.max(d, envLen(env));
@@ -812,12 +814,15 @@ function blips(v, t, o) {
 // s: 0 (popcorn) … 1 (capital ship). Everything scales in weight and length.
 function boom(v, t, s, o = {}) {
   const r = v.r, L = (a, b) => a + (b - a) * s, k = o.lvl ?? 1, pan = o.pan || 0;
-  if (!o.lite) click(v, t, { hp: r.jit(L(2200, 800), 0.2), tau: L(0.005, 0.014), lvl: 1.1 * k, rev: 0.35, pan });
-  const ct = L(0.045, 0.2) * r.range(0.85, 1.2);
-  nz(v, t, ct * 5 + 0.02, { f: r.jit(L(1300, 480), 0.2), q: 0.9, drive: 3, post: ['lowpass', [7500, ct * 3, L(1800, 700)], 0.7], env: [0, 0.0015, 1, 'x', ct], lvl: 0.5 * k, rev: 0.35, pan });
-  const ft = L(0.09, 0.45) * r.range(0.85, 1.2);
-  nz(v, t, ft * 4.5 + 0.03, { color: 'pink', type: 'lowpass', f: [L(3400, 2600), ft * 2.5, L(300, 110)], q: 0.8, env: [0, L(0.005, 0.02), 1, 'x', ft], lvl: 0.75 * k, rev: 0.4, pan });
-  thump(v, t, { f0: r.jit(L(150, 72), 0.1), f1: L(52, 24), sweep: L(0.1, 0.8), tau: L(0.06, 0.38), lvl: 0.6 * k, drive: 2.6, pan });
+  // per-variant character: crunch / fireball / debris balance ±3.5 dB, brightness, decay ±25 %
+  const kc = r.range(0.65, 1.5), kf = r.range(0.65, 1.5), kd = r.range(0.6, 1.6), dk = r.range(0.8, 1.25), br = r.range(0.7, 1.35);
+  if (!o.lite) click(v, t, { hp: r.jit(L(2200, 800), 0.35), tau: L(0.005, 0.014), lvl: 1.1 * k, rev: 0.35, pan });
+  const ct = L(0.045, 0.2) * r.range(0.85, 1.2) * dk;
+  nz(v, t, ct * 5 + 0.02, { f: r.jit(L(1300, 480), 0.2), q: 0.9, drive: 3, post: ['lowpass', [7500, ct * 3, L(1800, 700) * br], 0.7], env: [0, 0.0015, 1, 'x', ct], lvl: 0.5 * k * kc, rev: 0.35, pan });
+  const ft = L(0.09, 0.45) * r.range(0.85, 1.2) * dk;
+  nz(v, t, ft * 4.5 + 0.03, { color: 'pink', type: 'lowpass', f: [L(3400, 2600) * br, ft * 2.5, L(300, 110)], q: 0.8, env: [0, L(0.005, 0.02), 1, 'x', ft], lvl: 0.75 * k * kf, rev: 0.4, pan });
+  // the sweep stops at ≥ 38 Hz: lower is inaudible on phones and laptops and only eats headroom
+  thump(v, t, { f0: r.jit(L(150, 80), 0.1), f1: L(56, 38), sweep: L(0.1, 0.7), tau: L(0.06, 0.34), lvl: L(0.6, 0.45) * k, drive: 2.6, pan });
   if (o.lite) return;   // secondary blasts: the main blast supplies rumble and debris
   const rt = L(0.15, 1.0) * r.range(0.85, 1.2), t2 = t + L(0.008, 0.03), rd = rt * 4.5 + 0.1;
   const rum = nz(v, t2, rd, { color: 'brown', type: 'lowpass', f: [L(1100, 750), rt * 2, L(220, 70)], q: 0.7, env: [0, L(0.03, 0.14), 1, 'x', rt], lvl: 0.6 * k, rev: 0.25, pan, route: s < 0.5 });
@@ -827,8 +832,8 @@ function boom(v, t, s, o = {}) {
     v.chain(v.noise('white', t2, rd), v.bq('lowpass', fr, 0.7), v.gain(0.25 / (0.3 * Math.sqrt(1.11 * fr / (v.sr / 2)))), roll.gain);
     v.out(v.chain(rum, roll), 0.25, pan, t);
   }
-  const dt = L(0.12, 0.8);
-  debris(v, t + 0.006, dt * 3.5, { n: Math.round(L(14, 110)), tau: dt, hp: L(1800, 1100), lvl: 0.35 * k, rev: 0.3, pan });
+  const dt = L(0.12, 0.8) * dk;
+  debris(v, t + 0.006, dt * 3.5, { n: Math.round(L(14, 110)), tau: dt, hp: L(1800, 1100), lvl: 0.35 * k * kd, rev: 0.3, pan });
 }
 
 // Heavy metal clank (hull plates, girders).
@@ -842,7 +847,8 @@ function clank(v, t, o = {}) {
 // Sound definitions.
 //   dur  seconds per variant      n     variants           sr    render rate
 //   st   stereo render            rv    [hangar, void] IR weights of the reverb send (or none)
-//   db   target loudness (phone-weighted short-term, dBFS at the sfx bus)
+//   db   target loudness (phone-weighted short-term, dBFS at the sfx bus; loops: long-term level
+//        of the loop body)       duck  [dB, hold s]: pull the priority 0–1 bus down while it plays
 //   max  voices per name          cd    retrigger cooldown (s)   pj  ± random pitch (semitones)
 //   pri  steal priority (0 spam … 3 critical)
 //   loop loopStart (s) for loopable sounds (loopEnd = dur);  os  one-shot sustain for sfx()
@@ -861,7 +867,7 @@ const S = {
   },
 
   shot_tempest_loop: {
-    dur: 1.25, n: 3, sr: XLO, loop: 0.25, os: 0.22, db: -25, max: 4, cd: 0.08, pj: 0, pri: 1,
+    dur: 1.25, n: 3, sr: XLO, loop: 0.25, os: 0.22, db: -29.5, max: 4, cd: 0.08, pj: 0, pri: 1,
     fn(v, r) {
       // ignition
       click(v, 0, { hp: 2500, tau: 0.003, lvl: 0.5 });
@@ -884,7 +890,7 @@ const S = {
   },
 
   shot_seraph: {
-    dur: 0.46, n: 4, sr: HI, rv: [1, 0], db: -23, max: 3, cd: 0.07, pj: 1, pri: 0,
+    dur: 0.5, n: 4, sr: HI, rv: [1, 0], db: -23, max: 3, cd: 0.07, pj: 1, pri: 0,
     fn(v, r) {
       click(v, 0, { hp: 900, tau: 0.003, lvl: 0.5 });
       thump(v, 0, { f0: 160, f1: 80, sweep: 0.02, tau: 0.012, lvl: 0.35, drive: 2 });
@@ -937,11 +943,11 @@ const S = {
   },
 
   hit_armor: {
-    dur: 0.4, n: 5, sr: HI, rv: [1, 0], db: -24, max: 2, cd: 0.06, pj: 1, pri: 0,
+    dur: 0.46, n: 5, sr: HI, rv: [1, 0], db: -24, max: 2, cd: 0.06, pj: 1, pri: 0,
     fn(v, r) {
       click(v, 0, { hp: 3000, tau: 0.0015, lvl: 0.6 });
       nz(v, 0, 0.05, { f: 700, q: 2, env: [0, 0.0005, 1, 'x', 0.008], lvl: 0.5 });
-      modes(v, 0, { f: r.jit(1250, 0.12), taus: [0.22, 0.16, 0.12, 0.1, 0.08, 0.06, 0.04], amps: [1, 0.8, 0.6, 0.55, 0.4, 0.3, 0.2], pair: 0.003, lvl: 0.45, rev: 0.25 });
+      modes(v, 0, { f: r.jit(1250, 0.12), taus: [0.11, 0.085, 0.07, 0.06, 0.05, 0.04, 0.03], amps: [1, 0.8, 0.6, 0.55, 0.4, 0.3, 0.2], pair: 0.003, lvl: 0.45, rev: 0.25 });
       const w0 = r.jit(3400, 0.1);
       v.out(v.chain(v.osc('triangle', [w0, 0.2, w0 * 0.62], 0.005, 0.4), v.amp(0.005, [0, 0.01, 1, 'x', 0.06], 0.1)), 0.3);
     },
@@ -950,11 +956,14 @@ const S = {
   // ---- explosions -------------------------------------------------------------------------
   explode_small: {
     dur: 0.8, n: 5, sr: LO, rv: [0.6, 0.4], db: -17, max: 4, cd: 0.03, pj: 1.5, pri: 1, sat: 1.2,
-    fn(v) { boom(v, 0, 0); },
+    fn(v, r, i) {
+      boom(v, 0, 0);
+      if (i % 2) boom(v, r.range(0.035, 0.08), 0, { lvl: r.range(0.3, 0.45), lite: 1 });   // secondary pop
+    },
   },
 
   explode_medium: {
-    dur: 1.2, n: 4, sr: LO, st: 1, rv: [0.4, 0.6], db: -14, max: 3, cd: 0.05, pj: 1.2, pri: 1, sat: 1.4,
+    dur: 1.6, n: 4, sr: LO, st: 1, rv: [0.55, 0.45], db: -14, max: 3, cd: 0.05, pj: 1.2, pri: 1, sat: 1.4,
     fn(v, r) {
       boom(v, 0, 0.35);
       if (r() < 0.75) boom(v, r.range(0.08, 0.22), 0.05, { lvl: 0.45, pan: r.range(-0.4, 0.4), lite: 1 });
@@ -962,7 +971,7 @@ const S = {
   },
 
   explode_large: {
-    dur: 1.9, n: 3, sr: XLO, st: 1, rv: [0.3, 0.7], db: -11, max: 2, cd: 0.08, pj: 1, pri: 2, sat: 1.7,
+    dur: 2.3, n: 3, sr: XLO, st: 1, rv: [0.35, 0.65], db: -11, max: 2, cd: 0.08, pj: 1, pri: 2, sat: 2, duck: [-3, 0.3],
     fn(v, r) {
       boom(v, 0, 0.65);
       const n2 = 1 + (r() < 0.5 ? 1 : 0);
@@ -972,18 +981,18 @@ const S = {
   },
 
   explode_boss: {
-    dur: 3.4, n: 3, sr: XLO, st: 1, rv: [0.2, 0.8], db: -9, max: 2, cd: 0.3, pj: 0.6, pri: 3, sat: 2.4,
+    dur: 3.4, n: 3, sr: XLO, st: 1, rv: [0.2, 0.8], db: -10, max: 2, cd: 0.3, pj: 0.6, pri: 3, sat: 3, duck: [-8, 1.4],
     fn(v, r) {
       boom(v, 0, 1);
       let t = 0;
       for (let k = 0; k < 2; k++) { t += r.range(0.16, 0.36); boom(v, t, r.range(0.4, 0.6), { lvl: 0.6, pan: k ? r.range(0.3, 0.7) : r.range(-0.7, -0.3), lite: 1 }); }
-      thump(v, 0.02, { f0: 62, f1: 22, sweep: 1.5, tau: 0.7, lvl: 0.7, drive: 1.6 });
+      thump(v, 0.02, { f0: 66, f1: 38, sweep: 1.2, tau: 0.6, lvl: 0.5, drive: 1.8 });
       // roaring fire storm, slowly modulated
       const fl = am(v, r.range(3, 5), 0.5, 0, 3.7);
       nz(v, 0.05, 3.6, { color: 'pink', f: [900, 2.5, 300], q: 0.6, env: [0, 0.2, 1, 'x', 0.6], lvl: 0.5, route: false }).connect(fl);
       v.out(fl, 0.4);
       for (let k = 0; k < 2; k++) clank(v, r.range(0.1, 1.0), { f: r.range(220, 480), lvl: 0.28, pan: k ? r.range(0.2, 0.8) : r.range(-0.8, -0.2) });
-      grains(v, 0.2, 2.6, { n: 26, fmin: 2500, fmax: 7000, tmax: 1.8, taumin: 0.01, taumax: 0.05, lvl: 0.12, rev: 0.6 });
+      grains(v, 0.2, 2.6, { tmax: 1.8, lvl: 0.12, rev: 0.6 });
     },
   },
 
@@ -1000,9 +1009,9 @@ const S = {
 
   enemy_shot_heavy: {
     dur: 0.45, n: 4, sr: LO, rv: [0.7, 0.3], db: -22, max: 2, cd: 0.1, pj: 1, pri: 1,
-    fn(v, r) {
-      const f = r.jit(430, 0.08);
-      fmTone(v, 0, 0.35, { f: [f, 0.18, f * 0.33], ratio: 1.5, index: [3.2, 0.18, 0.6], env: [0, 0.005, 1, 0.04, 0.7, 'x', 0.07], lvl: 0.55, rev: 0.25, filt: ['lowpass', [5000, 0.2, 900], 1] });
+    fn(v, r, i) {
+      const f = r.jit(430, 0.12);
+      fmTone(v, 0, 0.35, { f: [f, 0.18, f * 0.33], ratio: [1.5, 1.41, 1.63, 1.5][i % 4], index: [r.range(2.6, 3.8), 0.18, 0.6], env: [0, 0.005, 1, 0.04, 0.7, 'x', 0.07], lvl: 0.55, rev: 0.25, filt: ['lowpass', [5000, 0.2, 900], 1] });
       fmTone(v, 0, 0.3, { f: [f * 2.01, 0.18, f * 0.66], ratio: 1, index: 1, env: [0, 0.004, 1, 'x', 0.05], lvl: 0.2 });
       thump(v, 0, { f0: 130, f1: 60, sweep: 0.06, tau: 0.05, lvl: 0.5, drive: 2 });
       nz(v, 0, 0.3, { f: [1400, 0.2, 500], q: 1.6, env: [0, 0.01, 1, 'x', 0.06], lvl: 0.45, rev: 0.2 });
@@ -1011,7 +1020,7 @@ const S = {
   },
 
   enemy_laser_charge: {
-    dur: 1.2, n: 3, sr: XLO, rv: [0.6, 0.4], db: -20, max: 2, cd: 0.2, pj: 0.5, pri: 1,
+    dur: 1.4, n: 3, sr: XLO, rv: [0.8, 0.2], db: -20, max: 2, cd: 0.2, pj: 0.5, pri: 1,
     fn(v, r) {
       const T = 1.0, f0 = r.jit(170, 0.08), f1 = f0 * r.range(7.5, 8.5);
       const mix = saws(v, 0, T + 0.05, { f: [f0, T, f1], n: 2, spread: 9 });
@@ -1025,20 +1034,21 @@ const S = {
   },
 
   enemy_laser_fire: {
-    dur: 1.35, n: 3, sr: XLO, loop: 0.35, os: 0.9, db: -17, max: 2, cd: 0.15, pj: 0, pri: 1,
-    fn(v, r) {
+    dur: 1.35, n: 3, sr: XLO, loop: 0.35, os: 0.9, db: -21.5, max: 2, cd: 0.15, pj: 0, pri: 1,
+    fn(v, r, i) {
       click(v, 0, { hp: 1500, tau: 0.005, lvl: 0.7 });
       thump(v, 0, { f0: 110, f1: 45, sweep: 0.06, tau: 0.045, lvl: 0.6, drive: 2.5 });
-      fmTone(v, 0, 0.2, { f: [3200, 0.12, 420], ratio: 1.5, index: [4, 0.12, 0.5], env: [0, 0.002, 1, 'x', 0.035], lvl: 0.4 });
-      // sustained beam (integer-Hz rates → exactly periodic over the 1 s loop)
-      const b = r.pick([72, 73, 74]), T = 1.4, roar = v.gain(1);
+      fmTone(v, 0, 0.2, { f: [r.jit(3200, 0.1), 0.12, 420], ratio: 1.5, index: [4, 0.12, 0.5], env: [0, 0.002, 1, 'x', 0.035], lvl: 0.4 });
+      // sustained beam: each variant its own pitch, brightness, flutter and whine partials
+      const V = [[66, 2100, 26, 3, 16, 24], [73, 2500, 30, 4, 16, 23], [81, 2900, 35, 5, 14, 21]][i % 3];
+      const b = V[0], T = 1.4, roar = v.gain(1);
       for (const [f, a] of [[b, 0.4], [b + 1, 0.4], [b * 2, 0.25], [b * 2 + 1, 0.25]]) v.chain(v.osc('sawtooth', f, 0.01, T), v.gain(a), roar);
-      const lp = v.bq('lowpass', 2400, 2);
-      v.lfo('sine', 4, 500, lp.frequency, 0.01, T);
-      v.out(v.chain(roar, v.ws(3), lp, am(v, 30, 0.35, 0.01, T), v.amp(0, [0, 0.03, 0.5])));
+      const lp = v.bq('lowpass', V[1], 2);
+      v.lfo('sine', V[3], 500, lp.frequency, 0.01, T);
+      v.out(v.chain(roar, v.ws(3), lp, am(v, V[2], 0.35, 0.01, T), v.amp(0, [0, 0.03, 0.5])));
       v.out(v.chain(v.noise('white', 0, T), v.bq('bandpass', 5200, 1), v.gain(noiseComp('white', 'bandpass', 5200, 1, v.sr)), am(v, 18, 0.8, 0, T), v.amp(0, [0, 0.03, 0.25])));
-      const wh = v.osc('sine', b * 16, 0.01, T), wh2 = v.osc('sine', b * 24, 0.01, T), wm = v.gain(1);
-      v.lfo('sine', 7, b * 16 * 0.005, wh.frequency, 0.01, T);
+      const wh = v.osc('sine', b * V[4], 0.01, T), wh2 = v.osc('sine', b * V[5], 0.01, T), wm = v.gain(1);
+      v.lfo('sine', 7, b * V[4] * 0.005, wh.frequency, 0.01, T);
       wh.connect(wm); v.chain(wh2, v.gain(0.6), wm);
       v.out(v.chain(wm, v.amp(0, [0, 0.05, 0.05])));
     },
@@ -1046,7 +1056,7 @@ const S = {
 
   // ---- player events ----------------------------------------------------------------------
   player_hit: {
-    dur: 0.65, n: 3, sr: LO, rv: [0.7, 0.3], db: -13, max: 2, cd: 0.1, pj: 0.8, pri: 2, sat: 1.3,
+    dur: 0.65, n: 3, sr: LO, rv: [0.7, 0.3], db: -13, max: 2, cd: 0.1, pj: 0.8, pri: 2, sat: 1.3, duck: [-5, 0.3],
     fn(v, r) {
       click(v, 0, { hp: 1400, tau: 0.006, lvl: 0.7, rev: 0.2 });
       thump(v, 0, { f0: 150, f1: 48, sweep: 0.07, tau: 0.07, lvl: 0.6, drive: 3 });
@@ -1057,33 +1067,33 @@ const S = {
   },
 
   player_explode: {
-    dur: 2.1, n: 3, sr: XLO, st: 1, rv: [0.3, 0.7], db: -10, max: 2, cd: 0.2, pj: 0.6, pri: 3, sat: 1.7,
+    dur: 2.3, n: 3, sr: XLO, st: 1, rv: [0.3, 0.7], db: -11, max: 2, cd: 0.2, pj: 0.6, pri: 3, sat: 2.3, duck: [-7, 0.9],
     fn(v, r) {
       boom(v, 0, 0.72);
       const wf = r.jit(1500, 0.08);
       const wh = saws(v, 0, 2, { f: [wf, 0.9, 70], n: 2, spread: 15 });
       v.chain(v.osc('sine', [wf * 2, 0.9, 140], 0, 2), v.gain(0.4), wh);
       v.out(v.chain(wh, v.bq('lowpass', [5000, 0.9, 400], 1.5), v.amp(0, [0, 0.01, 1, 'x', 0.3], 0.22)), 0.4);
-      grains(v, 0.01, 0.6, { n: 16, fmin: 3000, fmax: 8000, tmax: 0.25, taumin: 0.015, taumax: 0.07, lvl: 0.2, rev: 0.3 });
+      grains(v, 0.01, 0.6, { tmax: 0.25, lvl: 0.2, rev: 0.3 });
       clank(v, r.range(0.12, 0.3), { lvl: 0.2, pan: -0.4 });
       clank(v, r.range(0.3, 0.6), { lvl: 0.15, pan: 0.4 });
     },
   },
 
   shield_up: {
-    dur: 0.95, n: 3, sr: LO, rv: [0.3, 0.7], db: -19, max: 2, cd: 0.2, pj: 0.5, pri: 2,
+    dur: 1.55, n: 3, sr: LO, rv: [0.4, 0.6], db: -19, max: 2, cd: 0.2, pj: 0.5, pri: 2,
     fn(v, r) {
       const k = semiToRate(r.pick([0, 1, -1]));
       const sw = saws(v, 0, 0.95, { f: [220 * k, 0.35, 880 * k], n: 2, spread: 10 });
       v.out(v.chain(sw, v.bq('bandpass', [440 * k, 0.35, 1760 * k], 4), v.gain(2), v.amp(0, [0, 0.05, 1, 0.3, 0.6, 'x', 0.1], 0.35)), 0.3);
       nz(v, 0, 0.6, { f: [400, 0.35, 2200], q: 2, env: [0, 0.25, 1, 'x', 0.08], lvl: 0.35, rev: 0.3 });
-      [659.3, 987.8, 1318.5].forEach((f, j) => fmTone(v, 0.22 + j * 0.03, 0.65, { f: f * k, ratio: 3.5, index: [1.2, 0.3, 0.1], env: [0, 0.003, 1, 'x', 0.18], lvl: 0.22, rev: 0.5 }));
-      v.out(v.chain(v.osc('sine', 2637 * k, 0.25, 0.7), am(v, 12, 0.8, 0.25, 0.7), v.amp(0.25, [0, 0.1, 1, 'x', 0.2], 0.07)), 0.5);
+      [659.3, 987.8, 1318.5].forEach((f, j) => fmTone(v, 0.22 + j * 0.03, 0.65, { f: f * k, ratio: 3.5, index: [1.2, 0.3, 0.1], env: [0, 0.003, 1, 'x', 0.15], lvl: 0.22, rev: 0.5 }));
+      v.out(v.chain(v.osc('sine', 2637 * k, 0.25, 0.7), am(v, 12, 0.8, 0.25, 0.7), v.amp(0.25, [0, 0.1, 1, 'x', 0.16], 0.07)), 0.5);
     },
   },
 
   respawn: {
-    dur: 1.15, n: 3, sr: LO, rv: [0.3, 0.7], db: -17, max: 2, cd: 0.3, pj: 0.5, pri: 2,
+    dur: 1.5, n: 3, sr: LO, rv: [0.35, 0.65], db: -17, max: 2, cd: 0.3, pj: 0.5, pri: 2,
     fn(v, r) {
       const T = r.range(0.4, 0.45);
       swell(v, 0, T, { f: [300, T, 3500], q: 1.2, lvl: 0.7, rev: 0.3 });
@@ -1097,26 +1107,26 @@ const S = {
 
   // ---- pickups ------------------------------------------------------------------------------
   pickup_power: {
-    dur: 0.55, n: 3, sr: LO, rv: [0.3, 0.7], db: -17, max: 2, cd: 0.05, pj: 0.3, pri: 1,
-    fn(v, r) {
-      const root = 587.3;
-      [1, 1.5, 2, 3].forEach((m, j) => fmTone(v, j * 0.035, 0.3, { f: root * m, ratio: 2, index: [r.range(2.5, 3.5), 0.06, 0.4], env: [0, 0.002, 1, 'x', 0.07], lvl: 0.3, rev: 0.25 }));
-      v.out(v.chain(v.osc('square', [300, 0.15, 1200], 0, 0.18), v.bq('lowpass', 2500, 1), v.amp(0, [0, 0.01, 1, 0.12, 0.5, 0.05, 0], 0.12)));
+    dur: 0.75, n: 3, sr: LO, rv: [0.6, 0.4], db: -17, max: 2, cd: 0.05, pj: 0.3, pri: 1,
+    fn(v, r, i) {
+      const root = 587.3, gap = r.range(0.03, 0.042);
+      [[1, 1.5, 2, 3], [1, 1.26, 1.5, 2], [1, 1.5, 2, 2.52, 3]][i % 3].forEach((m, j) => fmTone(v, j * gap, 0.3, { f: root * m, ratio: 2, index: [r.range(2.5, 3.5), 0.06, 0.4], env: [0, 0.002, 1, 'x', 0.07], lvl: 0.3, rev: 0.25 }));
+      v.out(v.chain(v.osc('square', [300, 0.15, r.range(1000, 1500)], 0, 0.18), v.bq('lowpass', 2500, 1), v.amp(0, [0, 0.01, 1, 0.12, 0.5, 0.05, 0], 0.12)));
       nz(v, 0.1, 0.2, { type: 'highpass', f: 7000, env: [0, 0.005, 1, 'x', 0.05], lvl: 0.15, rev: 0.4 });
     },
   },
 
   pickup_bomb: {
-    dur: 0.6, n: 3, sr: LO, rv: [0.8, 0.2], db: -16, max: 2, cd: 0.05, pj: 0.5, pri: 1,
+    dur: 0.72, n: 3, sr: LO, rv: [0.8, 0.2], db: -17, max: 2, cd: 0.05, pj: 0.5, pri: 1, sat: 1.5,
     fn(v, r) {
       click(v, 0, { bp: 2600, tau: 0.004, lvl: 0.6 });
       const t2 = r.range(0.045, 0.06);
       nz(v, t2, 0.06, { f: 900, q: 1.5, env: [0, 0.0008, 1, 'x', 0.012], lvl: 0.7, rev: 0.2 });
       modes(v, t2, { f: r.jit(310, 0.08), ratios: [1, 2.32, 3.87, 5.1], taus: [0.12, 0.08, 0.05, 0.03], amps: [1, 0.6, 0.35, 0.2], lvl: 0.5, rev: 0.2 });
-      thump(v, t2, { f0: 140, f1: 70, sweep: 0.04, tau: 0.04, lvl: 0.5, drive: 2 });
+      thump(v, t2, { f0: 140, f1: 75, sweep: 0.04, tau: 0.04, lvl: 0.4, drive: 2 });
       const hum = v.gain(1);
       v.chain(v.osc('sawtooth', [110, 0.25, 220], 0.1, 0.5), hum);
-      v.chain(v.osc('square', [55, 0.25, 110], 0.1, 0.5), v.gain(0.5), hum);
+      v.chain(v.osc('square', [55, 0.25, 110], 0.1, 0.5), v.gain(0.3), hum);
       v.out(v.chain(hum, v.bq('lowpass', [300, 0.25, 2400], 6), v.amp(0.1, [0, 0.03, 1, 0.15, 0.7, 'x', 0.06], 0.3)), 0.2);
       fmTone(v, 0.14, 0.12, { f: 440, ratio: 1, index: 0.8, env: [0, 0.002, 1, 'x', 0.03], lvl: 0.2 });
       fmTone(v, 0.21, 0.25, { f: 660, ratio: 1, index: 0.8, env: [0, 0.002, 1, 'x', 0.06], lvl: 0.22, rev: 0.2 });
@@ -1124,21 +1134,22 @@ const S = {
   },
 
   pickup_gem: {
-    dur: 0.34, n: 5, sr: HI, rv: [0.2, 0.8], db: -24, max: 4, cd: 0.03, pj: 0.2, pri: 0,
+    dur: 0.44, n: 5, sr: HI, rv: [0.65, 0.35], db: -24, max: 4, cd: 0.03, pj: 0.2, pri: 0,
     fn(v, r, i) {
       const f = [2093, 2349.3, 2637, 3136, 3520][i % 5];
       v.out(v.chain(v.osc('sine', [f * 0.7, 0.015, f], 0, 0.03), v.amp(0, [0, 0.002, 1, 0.015, 0.6, 0.01, 0], 0.25)));
-      modes(v, 0.012, { f, ratios: GLASS, taus: [0.16, 0.08, 0.05, 0.025], amps: [1, 0.35, 0.3, 0.15], pair: 0.0015, lvl: 0.45, rev: 0.25 });
+      modes(v, 0.012, { f, ratios: GLASS, taus: [0.1, 0.06, 0.04, 0.02], amps: [1, 0.35, 0.3, 0.15], pair: 0.0015, lvl: 0.45, rev: 0.25 });
       click(v, 0.012, { hp: 6000, tau: 0.001, lvl: 0.2 });
     },
   },
 
   pickup_life: {
-    dur: 1.05, n: 3, sr: LO, rv: [0.2, 0.8], db: -15, max: 1, cd: 0.2, pj: 0, pri: 2,
-    fn(v, r) {
-      [1046.5, 1318.5, 1568, 2093, 2637].forEach((f, j) => {
-        fmTone(v, j * 0.06, 0.5, { f, ratio: 1, index: [r.range(1.2, 1.6), 0.15, 0.2], env: [0, 0.003, 1, 'x', j === 4 ? 0.2 : 0.1], lvl: 0.25, rev: 0.4 });
-        fmTone(v, j * 0.06, 0.2, { f, ratio: 3.01, index: 0.6, env: [0, 0.002, 1, 'x', 0.04], lvl: 0.08 });
+    dur: 1.65, n: 3, sr: LO, rv: [0.35, 0.65], db: -15, max: 1, cd: 0.2, pj: 0, pri: 2,
+    fn(v, r, i) {
+      const gap = r.range(0.052, 0.066);
+      [[1046.5, 1318.5, 1568, 2093, 2637], [1046.5, 1568, 2093, 2637, 3136], [784, 1046.5, 1318.5, 1568, 2093]][i % 3].forEach((f, j) => {
+        fmTone(v, j * gap, 0.5, { f, ratio: 1, index: [r.range(1.2, 1.6), 0.15, 0.2], env: [0, 0.003, 1, 'x', j === 4 ? 0.2 : 0.1], lvl: 0.25, rev: 0.4 });
+        fmTone(v, j * gap, 0.2, { f, ratio: 3.01, index: 0.6, env: [0, 0.002, 1, 'x', 0.04], lvl: 0.08 });
       });
       const pad = saws(v, 0.05, 0.9, { f: 523.25, n: 2, spread: 7 });
       v.chain(saws(v, 0.05, 0.9, { f: 784, n: 2, spread: 7 }), pad);
@@ -1148,38 +1159,40 @@ const S = {
   },
 
   pickup_overdrive: {
-    dur: 0.75, n: 3, sr: LO, rv: [0.4, 0.6], db: -16, max: 2, cd: 0.1, pj: 0.5, pri: 1,
-    fn(v, r) {
-      const car = v.osc('sawtooth', [90, 0.25, 1300], 0, 0.3, 0, true), mod = v.osc('square', 57, 0, 0.3), mg = v.gain(180);
+    dur: 1.2, n: 3, sr: LO, rv: [0.5, 0.5], db: -16, max: 2, cd: 0.1, pj: 0.5, pri: 1,
+    fn(v, r, i) {
+      const [top, c1, c2] = [[1300, 1760, 2637], [1100, 1568, 2349.3], [1600, 1975.5, 2960]][i % 3], T = r.range(0.21, 0.27);
+      const car = v.osc('sawtooth', [90, T, top], 0, T + 0.05, 0, true), mod = v.osc('square', r.range(45, 70), 0, T + 0.05), mg = v.gain(180);
       mod.connect(mg); mg.connect(car.frequency);
-      v.out(v.chain(car, v.bq('bandpass', [300, 0.25, 3000], 3), v.gain(2), v.ws(3), v.amp(0, [0, 0.02, 1, 0.2, 0.8, 0.05, 0], 0.3)), 0.2);
-      debris(v, 0, 0.3, { n: 40, tau: 0.2, rise: true, bp: 4500, lvl: 0.35, rev: 0.2 });
-      click(v, 0.24, { hp: 3000, tau: 0.002, lvl: 0.3 });
-      fmTone(v, 0.24, 0.45, { f: 1760, ratio: 2.76, index: [1.5, 0.2, 0.1], env: [0, 0.003, 1, 'x', 0.16], lvl: 0.3, rev: 0.5 });
-      fmTone(v, 0.25, 0.45, { f: 2637, ratio: 2.76, index: [1.2, 0.2, 0.1], env: [0, 0.003, 1, 'x', 0.14], lvl: 0.18, rev: 0.5 });
+      v.out(v.chain(car, v.bq('bandpass', [300, T, 3000], 3), v.gain(2), v.ws(3), v.amp(0, [0, 0.02, 1, T - 0.05, 0.8, 0.05, 0], 0.3)), 0.2);
+      debris(v, 0, T + 0.05, { n: 40, tau: 0.2, rise: true, bp: 4500, lvl: 0.35, rev: 0.2 });
+      click(v, T - 0.01, { hp: 3000, tau: 0.002, lvl: 0.3 });
+      fmTone(v, T - 0.01, 0.45, { f: c1, ratio: 2.76, index: [1.5, 0.2, 0.1], env: [0, 0.003, 1, 'x', 0.14], lvl: 0.3, rev: 0.5 });
+      fmTone(v, T, 0.45, { f: c2, ratio: 2.76, index: [1.2, 0.2, 0.1], env: [0, 0.003, 1, 'x', 0.12], lvl: 0.18, rev: 0.5 });
     },
   },
 
   powerup_max: {
-    dur: 1.25, n: 3, sr: LO, rv: [0.3, 0.7], db: -14, max: 1, cd: 0.3, pj: 0, pri: 2,
-    fn(v, r) {
-      const T = 0.48;
+    dur: 1.8, n: 3, sr: LO, rv: [0.3, 0.7], db: -14, max: 1, cd: 0.3, pj: 0, pri: 2, sat: 1.4,
+    fn(v, r, i) {
+      const T = r.range(0.43, 0.53);
+      const [notes, tops] = [[[440, 554.4, 659.3, 880], [1760, 2637, 3520]], [[554.4, 659.3, 880, 1108.7], [2217.5, 2637, 3520]], [[329.6, 440, 554.4, 659.3, 880], [1760, 2217.5, 2960]]][i % 3];
       const rs = saws(v, 0, T + 0.02, { f: [200, T, 1600], n: 3, spread: 8 });
       v.out(v.chain(rs, v.bq('lowpass', [700, T, 6000], 1.2), v.amp(0, [0, T * 0.9, 1, T * 0.1, 1, 0.02, 0], 0.22)), 0.3);
       nz(v, 0, T + 0.02, { type: 'highpass', f: [500, T, 6000], env: [0, T, 1, 0.02, 0], lvl: 0.2 });
       click(v, T, { hp: 1500, tau: 0.005, lvl: 0.5, rev: 0.3 });
-      thump(v, T, { f0: 120, f1: 50, sweep: 0.08, tau: 0.07, lvl: 0.6, drive: 2 });
-      const st = v.gain(1);
-      for (const f of [440, 554.4, 659.3, 880]) v.chain(saws(v, T, 0.8, { f, n: 2, spread: 6 }), st);
-      v.out(v.chain(st, v.bq('lowpass', [6000, 0.35, 700], 1), v.amp(T, [0, 0.004, 1, 'x', 0.3], 0.12)), 0.4);
-      for (const f of [1760, 2637, 3520]) fmTone(v, T + 0.02, 0.7, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.35], lvl: 0.12, rev: 0.6 });
+      thump(v, T, { f0: 120, f1: 58, sweep: 0.08, tau: 0.07, lvl: 0.45, drive: 2 });
+      const st = v.gain(1 / Math.sqrt(notes.length / 4));
+      for (const f of notes) v.chain(saws(v, T, 0.8, { f, n: 2, spread: 6 }), st);
+      v.out(v.chain(st, v.bq('lowpass', [6000, 0.35, 700], 1), v.amp(T, [0, 0.004, 1, 'x', 0.27], 0.12)), 0.4);
+      tops.forEach((f, j) => fmTone(v, T + 0.02 + j * 0.012 * i, 0.7, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.3], lvl: 0.12, rev: 0.6 }));
     },
   },
 
   // ---- nova / overdrive ---------------------------------------------------------------------
   nova: {
-    dur: 3.4, n: 3, sr: XLO, st: 1, rv: [0.15, 0.85], db: -8, max: 2, cd: 0.3, pj: 0.4, pri: 3, sat: 1.8,
-    fn(v, r) {
+    dur: 3.4, n: 3, sr: XLO, st: 1, rv: [0.15, 0.85], db: -9, max: 2, cd: 0.3, pj: 0.4, pri: 3, sat: 2.2, duck: [-9, 1.1],
+    fn(v, r, i) {
       const T = r.range(0.3, 0.34);
       // inhale: reverse swell + rising tone
       swell(v, 0, T, { f: [250, T, 3800], q: 1.1, lvl: 0.6, rev: 0.5, pan: -0.3 });
@@ -1188,38 +1201,40 @@ const S = {
       v.out(v.chain(rt, v.bq('lowpass', [400, T, 2500], 1), v.amp(0, [0, T, 1, 0.01, 0], 0.25)), 0.3);
       // detonation
       click(v, T, { hp: 700, tau: 0.016, lvl: 0.8, rev: 0.3 });
-      thump(v, T, { f0: 95, f1: 24, sweep: 1.1, tau: 0.5, lvl: 1, drive: 2.2 });
+      thump(v, T, { f0: 100, f1: 38, sweep: 0.9, tau: 0.45, lvl: 0.75, drive: 2.4 });
       nz(v, T, 2.2, { type: 'lowpass', f: [8000, 1.4, 160], q: 0.8, drive: 3, env: [0, 0.003, 1, 'x', 0.38], lvl: 0.75, rev: 0.45 });
-      nz(v, T + 0.02, 3, { color: 'brown', type: 'lowpass', f: [500, 2, 90], env: [0, 0.06, 1, 'x', 0.8], lvl: 0.45, rev: 0.3, pan: -0.5 });
-      nz(v, T + 0.02, 3, { color: 'brown', type: 'lowpass', f: [520, 2, 95], env: [0, 0.06, 1, 'x', 0.8], lvl: 0.45, rev: 0.3, pan: 0.5 });
-      // shimmering aftermath
-      chord(v, T, 3.4 - T, [587.3, 880, 1480, 2349.3], { att: 0.08, tau: 1.0, det: 0.003, trem: 6, depth: 0.35, lvl: 0.3, rev: 0.7 });
-      debris(v, T + 0.05, 2.5, { n: 60, tau: 0.9, bp: 6000, lvl: 0.18, rev: 0.6, gmin: 0.0002, gmax: 0.001 });
+      nz(v, T + 0.02, 3, { color: 'brown', type: 'lowpass', f: [500, 2, 110], env: [0, 0.06, 1, 'x', 0.8], lvl: 0.36, rev: 0.3, pan: -0.5 });
+      nz(v, T + 0.02, 3, { color: 'brown', type: 'lowpass', f: [520, 2, 115], env: [0, 0.06, 1, 'x', 0.8], lvl: 0.36, rev: 0.3, pan: 0.5 });
+      // shimmering aftermath (a different chord colour per variant)
+      const ch = [[587.3, 880, 1480, 2349.3], [659.3, 987.8, 1318.5, 2637], [523.3, 784, 1174.7, 2093]][i % 3];
+      chord(v, T, 3.4 - T, ch, { att: 0.08, tau: 1.0, det: 0.003, trem: r.range(5, 7), depth: 0.35, lvl: 0.3, rev: 0.7 });
+      debris(v, T + 0.05, 2.5, { n: 60, tau: 0.9, bp: 6000, lvl: 0.18, rev: 0.6 });
     },
   },
 
   overdrive_on: {
-    dur: 1.25, n: 3, sr: LO, rv: [0.3, 0.7], db: -12, max: 1, cd: 0.3, pj: 0.3, pri: 2,
-    fn(v, r) {
-      const T = 0.26;
+    dur: 1.65, n: 3, sr: LO, rv: [0.3, 0.7], db: -12.5, max: 1, cd: 0.3, pj: 0.3, pri: 2, sat: 1.4, duck: [-4, 0.4],
+    fn(v, r, i) {
+      const T = r.range(0.23, 0.29);
+      const [notes, tops] = [[[329.6, 493.9, 659.3], [1318.5, 1975.5]], [[329.6, 415.3, 493.9, 659.3], [1661.2, 2489]], [[246.9, 329.6, 493.9, 659.3], [1318.5, 2637]]][i % 3];
       const tb = saws(v, 0, T + 0.7, { f: [220, T, 1760], n: 2, spread: 12 });
       v.chain(v.osc('square', [110, T, 880], 0, T + 0.7), v.gain(0.5), tb);
       v.out(v.chain(tb, v.bq('bandpass', [440, T, 3500], 5), v.gain(2), v.ws(2), v.amp(0, [0, T, 1, 0.02, 0.3, 'x', 0.15], 0.3)), 0.2);
       click(v, T, { hp: 1200, tau: 0.008, lvl: 0.7, rev: 0.3 });
-      thump(v, T, { f0: 130, f1: 45, sweep: 0.12, tau: 0.09, lvl: 0.6, drive: 2.5 });
+      thump(v, T, { f0: 130, f1: 52, sweep: 0.12, tau: 0.09, lvl: 0.45, drive: 2.5 });
       nz(v, T, 0.6, { f: 900, q: 0.9, drive: 4, env: [0, 0.002, 1, 'x', 0.08], lvl: 0.5, rev: 0.3 });
-      const gc = v.gain(1);
-      for (const f of [329.6, 493.9, 659.3]) v.chain(saws(v, T, 1.0, { f, n: 2, spread: 8 }), gc);
+      const gc = v.gain(Math.sqrt(3 / notes.length));
+      for (const f of notes) v.chain(saws(v, T, 1.0, { f, n: 2, spread: 8 }), gc);
       const lp = v.bq('lowpass', 3000, 1.5);
-      v.lfo('sine', 6, 800, lp.frequency, T, 0.95);
-      v.out(v.chain(gc, lp, v.amp(T, [0, 0.03, 1, 0.2, 0.7, 'x', 0.25], 0.12)), 0.5);
-      for (const f of [1318.5, 1975.5]) fmTone(v, T + 0.01, 0.8, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.4], lvl: 0.28, rev: 0.6 });
+      v.lfo('sine', r.range(5, 7), 800, lp.frequency, T, 0.95);
+      v.out(v.chain(gc, lp, v.amp(T, [0, 0.03, 1, 0.2, 0.7, 'x', 0.22], 0.12)), 0.5);
+      for (const f of tops) fmTone(v, T + 0.01, 0.8, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.32], lvl: 0.28, rev: 0.6 });
       debris(v, T, 0.7, { n: 50, tau: 0.25, bp: 5000, lvl: 0.5, rev: 0.3 });
     },
   },
 
   overdrive_off: {
-    dur: 0.85, n: 3, sr: LO, rv: [0.6, 0.4], db: -18, max: 1, cd: 0.2, pj: 0.3, pri: 2,
+    dur: 0.9, n: 3, sr: LO, rv: [0.6, 0.4], db: -18, max: 1, cd: 0.2, pj: 0.3, pri: 2,
     fn(v) {
       const pd = saws(v, 0, 0.85, { f: [1500, 0.55, 110], n: 2, spread: 12 });
       v.out(v.chain(pd, v.bq('lowpass', [6000, 0.55, 300], 2), v.amp(0, [0, 0.01, 1, 0.3, 0.7, 'x', 0.1], 0.3)), 0.25);
@@ -1239,7 +1254,7 @@ const S = {
   },
 
   chain_up: {
-    dur: 0.28, n: 4, sr: HI, rv: [0.5, 0.5], db: -22, max: 2, cd: 0.05, pj: 0, pri: 1,
+    dur: 0.36, n: 4, sr: HI, rv: [0.7, 0.3], db: -22, max: 2, cd: 0.05, pj: 0, pri: 1,
     fn(v, r) {
       const f = 1046.5;
       fmTone(v, 0, 0.1, { f, ratio: 2, index: [r.range(1.2, 1.6), 0.05, 0.3], type: 'triangle', env: [0, 0.002, 1, 'x', 0.03], lvl: 0.35, rev: 0.15 });
@@ -1250,58 +1265,62 @@ const S = {
 
   // ---- boss -------------------------------------------------------------------------------
   warning: {
-    dur: 2.3, n: 3, sr: XLO, st: 1, rv: [0.7, 0.3], db: -12, max: 1, cd: 1, pj: 0, pri: 3,
-    fn(v, r) {
+    dur: 2.45, n: 3, sr: XLO, st: 1, rv: [0.7, 0.3], db: -12, max: 1, cd: 1, pj: 0, pri: 3, duck: [-4, 1.9],
+    fn(v, r, i) {
       const lo = r.jit(360, 0.03), hi = lo * 2;
+      const [up, dt, sq, eq] = [[0.75, 9, 0.35, 1150], [0.68, 12, 0.5, 1300], [0.72, 7, 0.25, 1000]][i % 3], P = up + 0.24;
       const fEnv = [lo];
-      for (let c = 0; c < 2; c++) fEnv.push(0.75, hi, 0.12, hi * 0.995, 0.12, lo);
-      for (const [pan, det] of [[-0.45, -9], [0.45, 9]]) {
+      for (let c = 0; c < 2; c++) fEnv.push(up, hi, 0.12, hi * 0.995, 0.12, lo);
+      for (const [pan, det] of [[-0.45, -dt], [0.45, dt]]) {
         const m = v.gain(1);
-        v.chain(v.osc('sawtooth', fEnv, 0, 2.05, det), v.gain(0.5), m);
-        v.chain(v.osc('sawtooth', fEnv, 0, 2.05, det + 6), v.gain(0.5), m);
-        v.chain(v.osc('square', envMap(fEnv, (x) => x / 2), 0, 2.05, det), v.gain(0.35), m);
-        v.out(v.chain(m, v.ws(2.5, 0, '2x'), v.bq('peaking', 1150, 1.2, 0, 6), v.bq('lowpass', 3500, 0.9),
-          v.amp(0, [0, 0.03, 1, 0.9, 1, 0.07, 0.15, 0.03, 1, 0.9, 1, 0.1, 0], 0.35)), 0.35, pan);
+        v.chain(v.osc('sawtooth', fEnv, 0, 2 * P + 0.07, det), v.gain(0.5), m);
+        v.chain(v.osc('sawtooth', fEnv, 0, 2 * P + 0.07, det + 6), v.gain(0.5), m);
+        v.chain(v.osc('square', envMap(fEnv, (x) => x / 2), 0, 2 * P + 0.07, det), v.gain(sq), m);
+        v.out(v.chain(m, v.ws(2.5, 0, '2x'), v.bq('peaking', eq, 1.2, 0, 6), v.bq('lowpass', 3500, 0.9),
+          v.amp(0, [0, 0.03, 1, P - 0.09, 1, 0.07, 0.15, 0.03, 1, P - 0.09, 1, 0.1, 0], 0.35)), 0.35, pan);
       }
-      for (let c = 0; c < 2; c++) thump(v, c * 0.99, { f0: 70, f1: 45, sweep: 0.1, tau: 0.18, lvl: 0.6, drive: 1.8 });
+      for (let c = 0; c < 2; c++) thump(v, c * P, { f0: 70, f1: 45, sweep: 0.1, tau: 0.18, lvl: 0.6, drive: 1.8 });
     },
   },
 
   boss_roar: {
-    dur: 2.4, n: 3, sr: XLO, st: 1, rv: [0.25, 0.75], db: -10, max: 1, cd: 0.8, pj: 0.7, pri: 3, sat: 1.6,
-    fn(v, r) {
-      const f0 = r.jit(55, 0.08), T = 2.25;
+    dur: 3.0, n: 3, sr: XLO, st: 1, rv: [0.35, 0.65], db: -11, max: 1, cd: 0.8, pj: 0.7, pri: 3, sat: 2.2, duck: [-6, 1.6],
+    fn(v, r, i) {
+      const f0 = r.jit(58, 0.08), T = 2.25, fk = [1, 0.9, 1.12][i % 3];   // fk: throat size (vowel colour)
       const fe = [f0 * 0.8, 0.28, f0 * 1.3, 0.85, f0 * 1.05, 0.75, f0 * 0.6];
       const src = v.gain(1);
-      const s1 = v.osc('sawtooth', fe, 0, T, 0, true), s2 = v.osc('square', fe, 0, T, 17, true);
-      const jit = v.chain(v.noise('white', 0, T), v.bq('lowpass', 22, 0.7), v.gain(520));   // vocal-fold jitter
-      jit.connect(s1.frequency); jit.connect(s2.frequency);
-      v.chain(s1, v.gain(0.55), src);
-      v.chain(s2, v.gain(0.3), src);
-      v.chain(v.noise('pink', 0, T), v.gain(0.9), src);   // breath
+      const s1 = v.osc('sawtooth', fe, 0, T, 0, true), s2 = v.osc('square', fe, 0, T, 6, true);
+      // an octave-up voice carries the pitch contour into the range phone speakers can play
+      const s3 = v.osc('sawtooth', envMap(fe, (x) => x * 2), 0, T, -3, true);
+      const jit = v.chain(v.noise('white', 0, T), v.bq('lowpass', 22, 0.7), v.gain(60));   // vocal-fold jitter, ~2 %
+      jit.connect(s1.frequency); jit.connect(s2.frequency); v.chain(jit, v.gain(2), s3.frequency);
+      v.chain(s1, v.gain(0.5), src);
+      v.chain(s2, v.gain(0.25), src);
+      v.chain(s3, v.gain(0.55), src);
+      v.chain(v.noise('pink', 0, T), v.gain(0.2), src);   // breath
       const fb = v.gain(1);
       const forms = [[[500, 0.28, 760, 0.9, 640, 0.8, 430], 5, 1], [[900, 0.28, 1250, 1.7, 800], 6, 0.6], [[2500, 1.2, 2800, 0.8, 2200], 9, 0.3]];
-      for (const [fa, q, a] of forms) v.chain(src, v.bq('bandpass', fa, q, 0), v.gain(a * 3), fb);
-      v.chain(src, v.bq('lowpass', 260, 0.9), v.gain(0.8), fb);   // chest
-      const env = [0, 0.3, 1, 1.1, 0.8, 'x', 0.28];
-      const body = v.chain(fb, v.ws(3, 0.12, '2x'), v.bq('lowpass', 4800), am(v, 29, 0.5, 0, T), v.amp(0, env, 0.8));
-      v.out(body, 0.35);
+      for (const [fa, q, a] of forms) v.chain(src, v.bq('bandpass', envMap(fa, (x) => x * fk), q, 0), v.gain(a * 3), fb);
+      v.chain(src, v.bq('lowpass', 260, 0.9), v.gain(0.6), fb);   // chest
+      const env = [0, 0.3, 1, 1.1, 0.8, 'x', 0.26];
+      const body = v.chain(fb, v.ws(2.4, 0.12, '2x'), v.bq('lowpass', 4800), am(v, 29, 0.18, 0, T), v.amp(0, env, 0.8));
+      v.out(body, 0.18);
       const rm = v.gain(0);   // machine layer: ring-modulated copy
       v.lfo('sine', r.jit(173, 0.05), 1, rm.gain, 0, T);
-      v.out(v.chain(body, rm, v.bq('highpass', 300), v.gain(0.45)), 0.3, [-0.4, T, 0.4]);
-      v.out(v.chain(v.osc('sine', envMap(fe, (x) => x / 2), 0, T), v.amp(0, env, 0.45)));
+      v.out(v.chain(body, rm, v.bq('highpass', 300), v.gain(0.32)), 0.2, [-0.4, T, 0.4]);
+      v.out(v.chain(v.osc('sine', fe, 0, T), v.amp(0, env, 0.2)));   // fundamental reinforcement
     },
   },
 
   boss_phase: {
-    dur: 1.9, n: 3, sr: XLO, st: 1, rv: [0.3, 0.7], db: -12, max: 1, cd: 0.5, pj: 0.5, pri: 3, sat: 1.4,
+    dur: 2.7, n: 3, sr: XLO, st: 1, rv: [0.3, 0.7], db: -12, max: 1, cd: 0.5, pj: 0.5, pri: 3, sat: 1.6, duck: [-5, 0.7],
     fn(v, r) {
       click(v, 0, { hp: 1000, tau: 0.01, lvl: 0.6, rev: 0.3 });
-      thump(v, 0, { f0: 90, f1: 28, sweep: 0.4, tau: 0.25, lvl: 0.65, drive: 2.4 });
+      thump(v, 0, { f0: 90, f1: 40, sweep: 0.4, tau: 0.25, lvl: 0.5, drive: 2.4 });
       nz(v, 0, 0.8, { f: 600, q: 0.9, drive: 3, env: [0, 0.002, 1, 'x', 0.12], lvl: 0.45, rev: 0.35 });
       // stressed metal groan through resonant hull modes
-      const g0 = r.jit(95, 0.08), gr = saws(v, 0.05, 1.85, { f: [g0, 1.2, g0 * 0.74], n: 2, spread: 20 }), gm = v.gain(1);
-      for (const [f, q, a] of [[340, 14, 1], [720, 14, 0.7], [1450, 12, 0.4]]) v.chain(gr, v.bq('bandpass', r.jit(f, 0.06), q), v.gain(a * 4), gm);
+      const g0 = r.jit(95, 0.15), gr = saws(v, 0.05, 1.85, { f: [g0, r.range(1, 1.4), g0 * r.range(0.66, 0.8)], n: 2, spread: 20 }), gm = v.gain(1);
+      for (const [f, q, a] of [[340, 14, 1], [720, 14, 0.7], [1450, 12, 0.4]]) v.chain(gr, v.bq('bandpass', r.jit(f, 0.14), q), v.gain(a * 4), gm);
       v.out(v.chain(gm, v.ws(2), v.amp(0.05, [0, 0.15, 1, 0.8, 0.6, 'x', 0.25], 0.4)), 0.4);
       debris(v, 0.05, 1.0, { n: 60, tau: 0.35, bp: 3500, lvl: 0.6, rev: 0.3 });
       zap(v, 0.1, 0.5, { fmin: 150, fmax: 2200, bp: 2200, env: [0, 0.01, 1, 'x', 0.15], lvl: 0.2, rev: 0.3, pan: 0.3 });
@@ -1311,7 +1330,7 @@ const S = {
   },
 
   warp_in: {
-    dur: 0.8, n: 4, sr: LO, rv: [0.3, 0.7], db: -22, max: 2, cd: 0.08, pj: 1.5, pri: 1,
+    dur: 1.0, n: 4, sr: LO, rv: [0.45, 0.55], db: -22, max: 2, cd: 0.08, pj: 1.5, pri: 1,
     fn(v, r) {
       const T = r.range(0.2, 0.26);
       swell(v, 0, T, { color: 'white', f: [1200, T, 5500], q: 1.4, lvl: 0.5, rev: 0.3 });
@@ -1324,29 +1343,30 @@ const S = {
 
   // ---- co-op --------------------------------------------------------------------------------
   revive: {
-    dur: 1.35, n: 3, sr: LO, rv: [0.2, 0.8], db: -15, max: 1, cd: 0.5, pj: 0, pri: 2,
-    fn(v, r) {
-      [440, 554.4, 659.3, 880, 1108.7, 1318.5].forEach((f, j) => fmTone(v, j * 0.065, 0.5, { f, ratio: 2, index: [r.range(1.3, 1.8), 0.08, 0.3], env: [0, 0.003, 1, 'x', j === 5 ? 0.25 : 0.12], lvl: 0.22, rev: 0.45 }));
+    dur: 2.0, n: 3, sr: LO, rv: [0.3, 0.7], db: -15, max: 1, cd: 0.5, pj: 0, pri: 2,
+    fn(v, r, i) {
+      const arp = [[440, 554.4, 659.3, 880, 1108.7, 1318.5], [440, 659.3, 880, 1108.7, 1318.5, 1760], [329.6, 440, 554.4, 659.3, 880, 1108.7]][i % 3], gap = r.range(0.055, 0.075);
+      arp.forEach((f, j) => fmTone(v, j * gap, 0.5, { f, ratio: 2, index: [r.range(1.3, 1.8), 0.08, 0.3], env: [0, 0.003, 1, 'x', j === 5 ? 0.22 : 0.11], lvl: 0.22, rev: 0.45 }));
       const pad = saws(v, 0, 1.35, { f: 220, n: 2, spread: 8 });
       v.chain(saws(v, 0, 1.35, { f: 330, n: 2, spread: 8 }), pad);
       v.out(v.chain(pad, v.bq('lowpass', [400, 0.5, 2600], 1), v.amp(0, [0, 0.3, 1, 0.5, 0.8, 'x', 0.2], 0.1)), 0.5);
       nz(v, 0, 0.6, { f: [500, 0.5, 3200], q: 1.2, env: [0, 0.45, 1, 'x', 0.1], lvl: 0.2, rev: 0.4 });
-      for (const f of [1760, 2637]) fmTone(v, 0.42, 0.8, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.4], lvl: 0.14, rev: 0.6 });
+      for (const f of [1760, 2637]) fmTone(v, 5 * gap + 0.1, 0.8, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.32], lvl: 0.14, rev: 0.6 });
     },
   },
 
   beacon_ping: {
-    dur: 0.8, n: 3, sr: LO, rv: [0.1, 0.9], db: -21, max: 2, cd: 0.3, pj: 0, pri: 1,
+    dur: 1.25, n: 3, sr: LO, rv: [0.25, 0.75], db: -21, max: 2, cd: 0.3, pj: 0, pri: 1,
     fn(v, r, i) {
       const f = 1318.5 * semiToRate([0, -0.3, 0.3][i % 3]);
-      fmTone(v, 0, 0.75, { f: [f, 0.5, f * 0.985], ratio: 1, index: [0.9, 0.5, 0.1], env: [0, 0.003, 1, 'x', 0.16], lvl: 0.4, rev: 0.6 });
+      fmTone(v, 0, 0.75, { f: [f, 0.5, f * 0.985], ratio: 1, index: [0.9, 0.5, 0.1], env: [0, 0.003, 1, 'x', 0.14], lvl: 0.4, rev: 0.6 });
       fmTone(v, 0, 0.4, { f: f * 2.005, ratio: 1, index: 0.3, env: [0, 0.002, 1, 'x', 0.07], lvl: 0.12, rev: 0.5 });
       click(v, 0, { bp: 3000, tau: 0.002, lvl: 0.12 });
     },
   },
 
   player_join: {
-    dur: 0.9, n: 3, sr: LO, rv: [0.3, 0.7], db: -17, max: 2, cd: 0.2, pj: 0, pri: 2,
+    dur: 1.3, n: 3, sr: LO, rv: [0.45, 0.55], db: -17, max: 2, cd: 0.2, pj: 0, pri: 2,
     fn(v, r) {
       blips(v, 0, { n: 6, gap: 0.018, len: 0.011, lvl: 0.07 });
       fmTone(v, 0.1, 0.2, { f: 784, ratio: 2, index: [r.range(1.1, 1.5), 0.1, 0.2], env: [0, 0.003, 1, 0.08, 0.6, 'x', 0.03], lvl: 0.3, rev: 0.3 });
@@ -1356,11 +1376,12 @@ const S = {
   },
 
   player_leave: {
-    dur: 0.9, n: 3, sr: LO, rv: [0.3, 0.7], db: -18, max: 2, cd: 0.2, pj: 0, pri: 2,
-    fn(v, r) {
-      fmTone(v, 0, 0.2, { f: 1174.7, ratio: 1, index: [r.range(0.8, 1.1), 0.1, 0.2], env: [0, 0.003, 1, 0.08, 0.6, 'x', 0.03], lvl: 0.3, rev: 0.3 });
-      fmTone(v, 0.12, 0.5, { f: 784, ratio: 1, index: [r.range(0.8, 1.1), 0.1, 0.2], env: [0, 0.003, 1, 'x', 0.13], lvl: 0.3, rev: 0.4 });
-      v.out(v.chain(v.osc('square', [220, 0.06, 110], 0.34, 0.08), v.bq('lowpass', 1500, 1), v.amp(0.34, [0, 0.003, 1, 0.05, 0.6, 0.02, 0], 0.18)), 0.3);
+    dur: 1.3, n: 3, sr: LO, rv: [0.6, 0.4], db: -18, max: 2, cd: 0.2, pj: 0, pri: 2,
+    fn(v, r, i) {
+      const [ratio, t2, blip] = [[1, 0.12, 220], [2, 0.1, 196], [3, 0.14, 247]][i % 3], ix = r.range(0.8, 1.1) / Math.sqrt(ratio);
+      fmTone(v, 0, 0.2, { f: 1174.7, ratio, index: [ix, 0.1, 0.2], env: [0, 0.003, 1, 0.08, 0.6, 'x', 0.03], lvl: 0.3, rev: 0.3 });
+      fmTone(v, t2, 0.5, { f: 784, ratio, index: [ix, 0.1, 0.2], env: [0, 0.003, 1, 'x', 0.13], lvl: 0.3, rev: 0.4 });
+      v.out(v.chain(v.osc('square', [blip, 0.06, blip / 2], t2 + 0.22, 0.08), v.bq('lowpass', 1500, 1), v.amp(t2 + 0.22, [0, 0.003, 1, 0.05, 0.6, 0.02, 0], 0.18)), 0.3);
     },
   },
 
@@ -1391,56 +1412,64 @@ const S = {
   },
 
   ui_start: {
-    dur: 1.15, n: 3, sr: LO, rv: [0.3, 0.7], db: -14, max: 1, cd: 0.3, pj: 0, pri: 3,
-    fn(v, r) {
-      const T = 0.26;
+    dur: 1.7, n: 3, sr: LO, rv: [0.4, 0.6], db: -14, max: 1, cd: 0.3, pj: 0, pri: 3, sat: 1.4,
+    fn(v, r, i) {
+      const T = r.range(0.23, 0.29);
+      const [notes, tops] = [[[293.7, 440, 587.3, 740], [1174.7, 1760]], [[293.7, 370, 440, 587.3], [1480, 2217.5]], [[293.7, 440, 554.4, 740], [1174.7, 1480]]][i % 3];
       swell(v, 0, T, { f: [400, T, 4200], q: 1.1, lvl: 0.55, rev: 0.3 });
       const rz = saws(v, 0, T + 0.01, { f: [147, T, 587], n: 2, spread: 10 });
       v.out(v.chain(rz, v.bq('lowpass', [500, T, 4000], 1), v.amp(0, [0, T, 1, 0.01, 0], 0.15)), 0.2);
       click(v, T, { hp: 1500, tau: 0.005, lvl: 0.5, rev: 0.3 });
-      thump(v, T, { f0: 120, f1: 45, sweep: 0.1, tau: 0.08, lvl: 0.7, drive: 2.2 });
+      thump(v, T, { f0: 120, f1: 55, sweep: 0.1, tau: 0.08, lvl: 0.4, drive: 2.2 });
       const ch = v.gain(1);
-      for (const f of [293.7, 440, 587.3, 740]) v.chain(saws(v, T, 0.9, { f, n: 2, spread: 6 }), ch);
-      v.out(v.chain(ch, v.bq('lowpass', [6500, 0.3, 800], 1), v.amp(T, [0, 0.004, 1, 'x', 0.28], 0.12)), 0.45);
-      for (const f of [1174.7, 1760]) fmTone(v, T + 0.02, 0.8, { f, ratio: 3.5, index: r.range(0.8, 1.1), env: [0, 0.003, 1, 'x', 0.4], lvl: 0.16, rev: 0.6 });
+      for (const f of notes) v.chain(saws(v, T, 0.9, { f, n: 2, spread: 6 }), ch);
+      v.out(v.chain(ch, v.bq('lowpass', [6500, 0.3, 800], 1), v.amp(T, [0, 0.004, 1, 'x', 0.26], 0.12)), 0.45);
+      for (const f of tops) fmTone(v, T + 0.02, 0.8, { f, ratio: 3.5, index: r.range(0.8, 1.1), env: [0, 0.003, 1, 'x', 0.32], lvl: 0.16, rev: 0.6 });
     },
   },
 
   ui_error: {
-    dur: 0.34, n: 3, sr: HI, rv: [1, 0], db: -20, max: 1, cd: 0.1, pj: 0, pri: 2,
-    fn(v, r) {
-      for (const t of [0, 0.12]) {
-        const m = v.gain(1);
-        v.chain(v.osc('square', r.jit(150, 0.02), t, 0.1), m);
-        v.chain(v.osc('square', 157, t, 0.1), m);
-        v.out(v.chain(m, v.bq('lowpass', 1800, 2), v.amp(t, [0, 0.004, 1, 0.075, 0.9, 0.01, 0], 0.25)), 0.1);
-      }
+    dur: 0.38, n: 3, sr: HI, rv: [1, 0], db: -20, max: 1, cd: 0.1, pj: 0, pri: 2,
+    fn(v, r, i) {
+      // two short buzzes of beating square waves; pitch pair, gap and second-buzz drop vary
+      const [f, bt, gap, drop, lp] = [[150, 7, 0.12, 1, 1800], [141, 9, 0.105, 0.94, 1500], [159, 6, 0.135, 0.89, 2200]][i % 3];
+      [0, gap].forEach((t, k) => {
+        const m = v.gain(1), fk = k ? f * drop : f;
+        v.chain(v.osc('square', r.jit(fk, 0.01), t, 0.1), m);
+        v.chain(v.osc('square', fk + bt, t, 0.1), m);
+        v.out(v.chain(m, v.bq('lowpass', lp, 2), v.amp(t, [0, 0.004, 1, 0.075, 0.9, 0.01, 0], 0.25)), 0.1);
+      });
     },
   },
 
   countdown: {
-    dur: 0.5, n: 3, sr: LO, rv: [0.6, 0.4], db: -17, max: 1, cd: 0.2, pj: 0, pri: 2,
-    fn(v) {
+    dur: 0.62, n: 3, sr: LO, rv: [0.75, 0.25], db: -17, max: 1, cd: 0.2, pj: 0, pri: 2,
+    fn(v, r, i) {
+      // same 880 Hz beep; each variant its own overtone blend, decay and tick (pass pitch for GO)
+      const [tri, oct, tw, tau, bp] = [[0.4, 0.15, 0, 0.05, 4000], [0.25, 0.24, 0.05, 0.058, 3200], [0.55, 0.1, 0.03, 0.044, 5200]][i % 3];
       const m = v.gain(1);
       v.chain(v.osc('sine', 880, 0, 0.35), m);
-      v.chain(v.osc('triangle', 880, 0, 0.35), v.gain(0.4), m);
-      v.chain(v.osc('sine', 1760, 0, 0.35), v.gain(0.15), m);
-      v.out(v.chain(m, v.amp(0, [0, 0.004, 1, 0.11, 0.85, 'x', 0.05], 0.35)), 0.25);
-      click(v, 0, { bp: 4000, tau: 0.001, lvl: 0.15 });
+      v.chain(v.osc('triangle', 880, 0, 0.35), v.gain(tri), m);
+      v.chain(v.osc('sine', 1760, 0, 0.35), v.gain(oct), m);
+      if (tw) v.chain(v.osc('sine', 2640, 0, 0.3), v.gain(tw), m);
+      v.out(v.chain(m, v.amp(0, [0, 0.004, 1, 0.11, 0.85, 'x', tau], 0.35)), 0.25);
+      click(v, 0, { bp, tau: 0.001, lvl: 0.15 });
     },
   },
 
   stage_clear_whoosh: {
-    dur: 2.0, n: 3, sr: XLO, st: 1, rv: [0.2, 0.8], db: -14, max: 1, cd: 0.5, pj: 0.5, pri: 3,
-    fn(v, r) {
+    dur: 2.5, n: 3, sr: XLO, st: 1, rv: [0.2, 0.8], db: -14, max: 1, cd: 0.5, pj: 0.5, pri: 3, duck: [-6, 1.2],
+    fn(v, r, i) {
       const P = r.range(0.8, 0.95), pan = [-0.85, P, 0, 0.6, 0.85];
+      const [top, chime] = [[880, [1760, 2637]], [784, [1568, 2349.3]], [988, [1975.5, 2960]]][i % 3];
       nz(v, 0, 1.8, { color: 'pink', f: [250, P, 3600, 0.8, 700], q: 1.2, env: [0, P, 1, 'x', 0.22], lvl: 0.7, rev: 0.3, pan });
       nz(v, 0, 1.6, { type: 'highpass', f: [2000, P, 7000], env: [0, P, 1, 'x', 0.15], lvl: 0.12, rev: 0.3, pan });
-      const rs = saws(v, 0, 2.1, { f: [110, P, 880], n: 3, spread: 10 });
+      const rs = saws(v, 0, 2.1, { f: [110, P, top], n: 3, spread: 10 });
       v.out(v.chain(rs, v.bq('lowpass', [500, P, 5000], 1), v.amp(0, [0, P, 1, 'x', 0.15], 0.15)), 0.3, pan);
       v.out(v.chain(v.osc('sine', [1300, 0.15, 780], P - 0.05, 0.3), v.amp(P - 0.05, [0, 0.03, 1, 'x', 0.08], 0.08)), 0.3, [0, 0.3, 0.8], P - 0.05);
-      v.out(v.chain(v.osc('sine', 55, 0, 2.1), v.amp(0, [0, P, 1, 'x', 0.2], 0.35)));
-      for (const f of [1760, 2637]) fmTone(v, P, 0.9, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.5], lvl: 0.12, rev: 0.6 });
+      v.out(v.chain(v.osc('sine', 55, 0, 2.1), v.amp(0, [0, P, 1, 'x', 0.2], 0.22)));
+      v.out(v.chain(v.osc('triangle', 110, 0, 2.1), v.amp(0, [0, P, 1, 'x', 0.2], 0.1)));
+      for (const f of chime) fmTone(v, P, 0.9, { f, ratio: 3.5, index: 0.8, env: [0, 0.003, 1, 'x', 0.42], lvl: 0.12, rev: 0.6 });
     },
   },
 };
@@ -1538,7 +1567,7 @@ function finishVariant(def, sr, v) {
   const fi = Math.round(0.0015 * sr);
   for (const d of outs) for (let i = 0; i < fi; i++) d[i] *= smooth(i / fi);
   if (def.loop == null) {
-    const fo = Math.max(Math.round(0.005 * sr), Math.round(Math.min(0.25, def.dur * 0.15) * sr));
+    const fo = Math.max(Math.round(0.005 * sr), Math.round(fadeLen(def) * sr));
     for (const d of outs) for (let i = 0; i < fo; i++) d[n - 1 - i] *= smooth(i / fo);
     // remove any residual mean with a smooth parabolic correction (zero at both ends: no step)
     for (const d of outs) {
@@ -1564,7 +1593,7 @@ function postProcess(def, sr, vars) {
     const pk = peakOf(chs), k = pk > 0 ? PEAK / pk : 1;
     for (const d of chs) for (let i = 0; i < d.length; i++) d[i] *= k;
     out.push(chs);
-    loud.push(loudness(chs, sr));
+    loud.push(loudness(chs, sr, def.loop));
   }
   return { vars: out, loud, ms: [t1 - t0, tf, perfNow() - t1 - tf] };   // reverb / finish / normalize+loudness
 }
@@ -1585,8 +1614,10 @@ function peakOf(chs) {
   return pk;
 }
 
-// Phone-speaker-weighted short-term loudness: 2nd-order high-pass at 150 Hz, max 50 ms RMS.
-function loudness(chs, sr) {
+// Phone-speaker-weighted loudness: 2nd-order high-pass at 150 Hz, then the loudest 50 ms window.
+// Loops (loopSec = loop start) use the long-term level of the loop body instead: a sustained
+// sound is heard far louder than a blip with the same short-term peak.
+function loudness(chs, sr, loopSec) {
   // every other sample is plenty for an energy estimate; 12.5 ms blocks, 50 ms windows
   const n = chs[0].length, a = Math.exp(-TAU * 150 / (sr / 2)), bl = Math.max(1, Math.round(0.0125 * sr / 2));
   const nb = Math.ceil(n / 2 / bl), blocks = new Float64Array(nb);
@@ -1599,9 +1630,17 @@ function loudness(chs, sr) {
     }
   }
   let mx = 0;
-  for (let b = 0; b < nb; b++) { let e = 0, c = 0; for (let k = b; k < b + 4 && k < nb; k++) { e += blocks[k]; c++; } mx = Math.max(mx, e / (c * bl * chs.length)); }
+  if (loopSec != null) {
+    const b0 = Math.min(nb - 1, Math.ceil(loopSec * sr / 2 / bl));
+    let e = 0;
+    for (let b = b0; b < nb - 1; b++) e += blocks[b];   // (last block may be partial)
+    mx = e / (Math.max(1, nb - 1 - b0) * bl * chs.length);
+  } else for (let b = 0; b < nb; b++) { let e = 0, c = 0; for (let k = b; k < b + 4 && k < nb; k++) { e += blocks[k]; c++; } mx = Math.max(mx, e / (c * bl * chs.length)); }
   return 10 * Math.log10(mx + 1e-12);
 }
+
+// End fade of one-shot variants (the recipes leave their tails ≥ 30 dB down by its start).
+function fadeLen(def) { return Math.min(0.25, def.dur * 0.15); }
 
 function toAudioBuffer(chs, sr) {
   const n = chs[0].length;
@@ -1614,7 +1653,7 @@ function toAudioBuffer(chs, sr) {
 
 // Post-processing workers, built from this module's own functions (Blob URL: no extra file).
 // Falls back to the main thread if workers are unavailable.
-const POST_FNS = [mulberry, bpResonate, getIR, soundIR, fftTables, fft, convolveAll, emit, addReverb, dcBlock, finishVariant, postProcess, peakOf, loudness, warmUp];
+const POST_FNS = [mulberry, bpResonate, getIR, soundIR, fftTables, fft, convolveAll, emit, addReverb, dcBlock, fadeLen, finishVariant, postProcess, peakOf, loudness, warmUp];
 let workers = null, allWorkers = [], workerSeq = 0;
 const workerJobs = new Map();
 
@@ -1667,10 +1706,17 @@ function postAsync(def, sr, vars) {
   return Promise.resolve(postProcess(plain, sr, vars));
 }
 
-const bank = new Map();   // name -> { def, bufs, gains, loud, loopStart, loopEnd, last, lastT, voices }
-const stats = { buildMs: 0, jobs: [], offloaded: 0, inline: 0, workers: 0 };
-let buildPromise = null;
+const bank = new Map();   // name -> { def, bufs, gains, loud, loopStart, loopEnd, last, lastT, lastV, lastVol, voices }
+const stats = { coreMs: 0, buildMs: 0, jobs: [], offloaded: 0, inline: 0, workers: 0 };
+let buildPromise = null, allPromise = null;
 let warned = false;
+
+// Rendered after buildSfx() has resolved, in the background, in rough order of first need: sounds
+// nobody can hear in the first seconds after boot (lobby, bombs, overdrive, deaths, bosses, stage
+// end). Each is playable as soon as its own render finishes; until then sfx() returns null.
+const LATE = ['player_join', 'player_leave', 'countdown', 'nova', 'pickup_bomb', 'pickup_overdrive', 'overdrive_on',
+  'overdrive_off', 'player_hit', 'player_explode', 'respawn', 'shield_up', 'pickup_life', 'powerup_max', 'beacon_ping',
+  'revive', 'warning', 'boss_roar', 'boss_phase', 'explode_boss', 'stage_clear_whoosh'];
 
 async function buildOne(name) {
   const def = S[name], list = Array.from({ length: def.n }, (_, i) => i);
@@ -1684,54 +1730,111 @@ async function buildOne(name) {
   catch { workers = null; stats.inline++; res = postProcess(def, g.sr, sliceVariants(rendered, g, def.n)); }   // worker failed: redo inline
   const loud = res.loud, bufs = res.vars.map((chs) => toAudioBuffer(chs, g.sr));
   const mean = loud.reduce((a, b) => a + b, 0) / loud.length;
-  const gains = loud.map((l) => clamp(dbToGain(def.db - (0.5 * l + 0.5 * mean)), 0.02, 1.6));
+  // never above unity: a single voice must not exceed full scale on the bus
+  const gains = loud.map((l) => clamp(dbToGain(def.db - (0.5 * l + 0.5 * mean)), 0.02, 1));
   bank.set(name, {
     name, def, bufs, gains, loud,
     loopStart: def.loop != null ? Math.round(def.loop * g.sr) / g.sr : 0,
     loopEnd: def.loop != null ? Math.round(def.dur * g.sr) / g.sr : 0,
-    last: -1, lastT: -1e9, voices: [],
+    last: -1, lastT: -1e9, lastV: null, lastVol: 0, voices: [],
   });
   stats.jobs.push({ name, graphMs: t1 - t0, renderMs: t2 - t1, postMs: perfNow() - t2, layers: g.j.layers, sr: g.sr, work: res.ms });
 }
 
-export async function buildSfx(onProgress) {
+// Resolves (always with the same promise) once the core set — UI, weapons, hits, explosions up
+// to large, enemy fire, pickups — is playable; onProgress(0..1) tracks that part only.
+export function buildSfx(onProgress) {
   if (!buildPromise) buildPromise = runBuild(onProgress);
   return buildPromise;
 }
 
+const cost = (n) => { const d = S[n]; return d.dur * d.n * (d.sr || LO) / LO * (d.st ? 1.3 : 1) * (d.rv ? 1.2 : 1); };
+
 async function runBuild(onProgress) {
   const t0 = perfNow();
   const report = (p) => { try { if (onProgress) onProgress(p); } catch { /* ignore */ } };
-  if (!(window.OfflineAudioContext || window.webkitOfflineAudioContext) || !(AudioSys.ctx || window.AudioBuffer)) { report(1); return; }
-  const cost = (n) => { const d = S[n]; return d.dur * d.n * (d.sr || LO) / LO * (d.st ? 1.3 : 1) * (d.rv ? 1.2 : 1); };
-  const names = Object.keys(S).sort((a, b) => cost(b) - cost(a));
-  const total = names.reduce((s, n) => s + cost(n), 0);
-  let next = 0, done = 0;
+  if (!(window.OfflineAudioContext || window.webkitOfflineAudioContext) || !(AudioSys.ctx || window.AudioBuffer)) { allPromise = Promise.resolve(); report(1); return; }
+  const late = LATE.filter((n) => S[n]);
+  const core = Object.keys(S).filter((n) => !late.includes(n)).sort((a, b) => cost(b) - cost(a));   // heaviest first
+  const total = core.reduce((s, n) => s + cost(n), 0);
+  let done = 0;
   const hc = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
   if (typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && !_sfxDebug.noWorkers) startWorkers(hc >= 6 ? 3 : 2);
-  const worker = async () => {
-    while (next < names.length) {
-      const name = names[next++];
+  const lane = async (queue, onDone) => {
+    while (queue.length) {
+      const name = queue.shift();
       try { await buildOne(name); } catch (e) {
         if (!warned) { warned = true; console.warn('sfx: failed to render', name, e); }
       }
-      done += cost(name);
-      report(Math.min(1, done / total));
+      onDone(name);
     }
   };
-  await Promise.all(Array.from({ length: clamp(hc, 3, 6) }, worker));
-  stats.buildMs = perfNow() - t0;
-  stats.workers = workers ? workers.length : 0;
-  if (!_sfxDebug.keepWorkers) { for (const w of allWorkers) w.terminate(); allWorkers = []; workers = null; }
+  await Promise.all(Array.from({ length: clamp(hc, 3, 6) }, () => lane(core, (n) => { done += cost(n); report(Math.min(1, done / total)); })));
+  stats.coreMs = perfNow() - t0;
+  // the rest renders in the background with fewer lanes, leaving room for the game's own boot
+  allPromise = Promise.all([lane(late, () => {}), lane(late, () => {})]).then(() => {
+    stats.buildMs = perfNow() - t0;
+    stats.workers = workers ? workers.length : 0;
+    if (!_sfxDebug.keepWorkers) { for (const w of allWorkers) w.terminate(); allWorkers = []; workers = null; }
+  });
   report(1);
 }
 
 // ---------------------------------------------------------------------------------------------
 // Runtime playback
+//
+// Voice management, in order:
+//  1. Per-name retrigger cooldown. Inside it the louder request wins: in co-op the local pilot's
+//     shot (requested at a higher vol) replaces a teammate's quieter one fired a tick earlier.
+//  2. Per-name cap: steal the voice with the least sound left (vol × remaining life²), unless
+//     the new request is clearly quieter than that. Loops have their own per-name and total caps.
+//  3. Global cap: steal the lowest-priority voice, furthest along first. Important one-shots
+//     (pri ≥ 2) may also take the oldest loop. Voices scheduled in the future are never stolen.
+// Priority 0–1 voices (gunfire, hits, small blasts, pickups, loops) play through a duck bus that
+// big moments (nova, boss death, player death …) pull down briefly: they punch through the spam
+// instead of being flattened by the master limiter.
 
 const active = [];   // live voices, oldest first
 const EMPTY = {};
+const LOUDER = 1.25, LOOPS_PER_NAME = 4, LOOPS_MAX = 8;
 const panFor = (x) => (x == null || !isFinite(x) ? 0 : clamp((x / FIELD_W) * 1.6 - 0.8, -0.8, 0.8));
+let unlockT = -1e9, warnedPlay = false;
+AudioSys.onUnlock(() => { unlockT = perfNow(); });
+
+// While the context cannot play (tab hidden, suspended, iOS 'interrupted') its clock is frozen:
+// requests would queue up and burst out together on resume, so drop them. Right after the
+// unlocking tap the context is still resuming; a short grace period lets that tap's sound through.
+function canPlay(ctx) {
+  if (typeof document !== 'undefined' && document.hidden) return false;
+  return ctx.state === 'running' || perfNow() - unlockT < 600;
+}
+
+let duckBus = null, duckUntil = 0, duckDepth = 1;
+function busFor(ctx, pri) {
+  if (pri >= 2) return AudioSys.sfxBus;
+  if (!duckBus) { duckBus = ctx.createGain(); duckBus.connect(AudioSys.sfxBus); }
+  return duckBus;
+}
+
+// Pull the duck bus down to `db` from time t, hold for `hold` s, then recover (overlapping ducks
+// keep the deepest level and the latest end).
+function duck(ctx, t, db, hold) {
+  busFor(ctx, 0);
+  const p = duckBus.gain, holding = ctx.currentTime < duckUntil;
+  const depth = Math.min(holding ? duckDepth : 1, dbToGain(db)), until = Math.max(holding ? duckUntil : 0, t + hold);
+  try {
+    if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t); else { p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); }
+    p.setTargetAtTime(depth, t, 0.015);
+    p.setTargetAtTime(1, until, 0.22);
+    duckDepth = depth; duckUntil = until;
+  } catch { /* ignore */ }
+}
+
+const lifeFrac = (vc, now) => (now - vc.t) / vc.dur;   // share of the voice already played
+function remaining(vc, now) {                          // rough loudness still to come
+  const f = 1 - clamp(lifeFrac(vc, now), 0, 1);
+  return vc.vol * f * f;
+}
 
 function unlink(vc) {
   if (vc.gone) return;
@@ -1754,91 +1857,139 @@ function release(vc, t, fade) {
   unlink(vc);
 }
 
+// Make room for a new voice; false = refuse it.
+function admit(s, d, t, now, vol, asLoop) {
+  if (asLoop) {
+    let own = 0, all = 0, oldOwn = null, oldAll = null;
+    for (const x of active) {
+      if (!x.loop) continue;
+      all++; oldAll = oldAll || x;
+      if (x.s === s) { own++; oldOwn = oldOwn || x; }
+    }
+    if (own >= LOOPS_PER_NAME) release(oldOwn, now, 0.08);
+    else if (all >= LOOPS_MAX) release(oldAll, now, 0.08);
+  } else {
+    if (Math.abs(t - s.lastT) < d.cd) {                     // retrigger cooldown: louder wins
+      if (!(vol > s.lastVol * LOUDER)) return false;
+      if (s.lastV) release(s.lastV, now, 0.01);
+    }
+    let n = 0;
+    for (const x of s.voices) if (!x.loop) n++;
+    while (n >= d.max) {                                    // per-name cap
+      let victim = null, left = Infinity;
+      for (const x of s.voices) {
+        if (x.loop || x.t > now) continue;
+        const r = remaining(x, now);
+        if (r < left) { left = r; victim = x; }
+      }
+      if (!victim || vol * LOUDER < left) return false;
+      release(victim, now, 0.015);
+      n--;
+    }
+  }
+  if (active.length >= MAX_VOICES) {                        // global cap
+    let victim = null;
+    for (const x of active) {
+      if (x.loop || x.t > now || x.pri > d.pri) continue;
+      if (!victim || x.pri < victim.pri || (x.pri === victim.pri && lifeFrac(x, now) > lifeFrac(victim, now))) victim = x;
+    }
+    if (!victim && !asLoop && d.pri >= 2) victim = active.find((x) => x.loop) || null;
+    if (!victim) return false;
+    release(victim, now, 0.015);
+  }
+  return true;
+}
+
 function start(name, opt, asLoop) {
   const ctx = AudioSys.ctx;
-  if (!ctx || !AudioSys.unlocked || !AudioSys.sfxBus) return null;
+  if (!ctx || !AudioSys.unlocked || !AudioSys.sfxBus || !canPlay(ctx)) return null;
   const s = bank.get(name);
   if (!s) return null;
   const d = s.def, now = ctx.currentTime;
   const t = Math.max(now, +opt.when || 0);
-  if (!asLoop) {
-    if (Math.abs(t - s.lastT) < d.cd) return null;                 // retrigger cooldown
-    while (s.voices.length >= d.max) {                              // per-name cap: steal oldest
-      const old = s.voices.find((x) => !x.loop);
-      if (!old) return null;
-      release(old, now, 0.015);
-    }
-  }
-  if (active.length >= MAX_VOICES) {                                // global cap
-    const victim = active.find((x) => !x.loop && x.pri <= d.pri);
-    if (!victim) return null;
-    release(victim, now, 0.015);
-  }
+  const vol = opt.vol == null ? 1 : clamp(+opt.vol || 0, 0, 1.5);
+  if (!admit(s, d, t, now, vol, asLoop)) return null;
   const nb = s.bufs.length;
   let vi = opt.variant;
   if (!(vi >= 0 && vi < nb)) vi = nb < 2 ? 0 : s.last < 0 ? Math.floor(Math.random() * nb) : (s.last + 1 + Math.floor(Math.random() * (nb - 1))) % nb;
   s.last = vi;
   const buf = s.bufs[vi];
-  const dens = d.pri < 2 ? 1 / Math.sqrt(1 + 0.3 * s.voices.length) : 1;   // swarm compensation
-  const vol = opt.vol == null ? 1 : clamp(+opt.vol || 0, 0, 1.5);
-  const base = s.gains[vi] * vol * dens;
-  const src = ctx.createBufferSource(), g = ctx.createGain();
+  const rate = semiToRate((+opt.pitch || 0) + (d.pj ? (Math.random() * 2 - 1) * d.pj : 0));
+  const src = ctx.createBufferSource(), g = ctx.createGain(), bus = busFor(ctx, d.pri);
   src.buffer = buf;
-  src.playbackRate.value = semiToRate((+opt.pitch || 0) + (d.pj ? (Math.random() * 2 - 1) * d.pj : 0));
-  g.gain.value = base;
+  src.playbackRate.value = rate;
   src.connect(g);
   let p = null;
   if ((opt.x != null || asLoop) && typeof ctx.createStereoPanner === 'function') {
     p = ctx.createStereoPanner();
     p.pan.value = panFor(opt.x);
-    g.connect(p); p.connect(AudioSys.sfxBus);
-  } else g.connect(AudioSys.sfxBus);
+    g.connect(p); p.connect(bus);
+  } else g.connect(bus);
+  // StereoPanner pans mono input with an equal-power law (−3 dB of total power anywhere), while
+  // an unpanned mono voice is up-mixed to both speakers at full level: compensate.
+  const pc = p && buf.numberOfChannels === 1 ? Math.SQRT2 : 1;
+  const dens = d.pri < 2 ? 1 / Math.sqrt(1 + 0.3 * s.voices.length) : 1;   // swarm compensation
+  const unit = s.gains[vi] * dens * pc, base = unit * vol;
+  g.gain.value = base;
   const loopDef = d.loop != null;
   if (asLoop || loopDef) {
     src.loop = true;
     src.loopStart = loopDef ? s.loopStart : 0;
     src.loopEnd = loopDef ? s.loopEnd : buf.duration;
   }
+  src.start(t);
+  let dur = Infinity;
   if (!asLoop && loopDef) {             // loopable sound used as a one-shot: sustain, then fade
     const te = t + d.os;
     g.gain.setValueAtTime(base, te);
     g.gain.linearRampToValueAtTime(0, te + 0.18);
-    src.stop(te + 0.2);
-  }
-  src.start(t);
-  const vc = { s, src, g, p, t, pri: d.pri, loop: asLoop, base, gone: false, stopping: false };
+    src.stop(te + 0.2);                 // (stop() may only follow start())
+    dur = d.os + 0.2;
+  } else if (!asLoop) dur = buf.duration / rate;
+  const vc = { s, src, g, p, t, dur, pri: d.pri, loop: asLoop, vol, unit, gone: false, stopping: false };
   src.onended = () => {
     unlink(vc);
     try { src.disconnect(); g.disconnect(); if (p) p.disconnect(); } catch { /* ignore */ }
   };
   active.push(vc);
   s.voices.push(vc);
-  if (!asLoop) s.lastT = t;
+  if (!asLoop) { s.lastT = t; s.lastV = vc; s.lastVol = vol; }
+  if (d.duck && vol > 0.05) duck(ctx, t, d.duck[0] * Math.min(1, vol), d.duck[1]);
   return vc;
 }
 
+function warnPlay(e) {
+  if (!warnedPlay) { warnedPlay = true; console.warn('sfx: playback failed', e); }
+}
+
 // One-shot. opt { x: field x (0..240) → stereo pan, vol: 0..1.5, pitch: semitones, when: ctx time }
+// -> { stop(fadeSec) } | null (not unlocked / unknown or unrendered name / refused by the voice manager)
 export function sfx(name, opt) {
   try {
     const vc = start(name, opt || EMPTY, false);
-    return vc ? { stop: (fade = 0.05) => { try { release(vc, AudioSys.ctx.currentTime, fade); } catch { /* ignore */ } } } : null;
-  } catch {
+    return vc ? { stop: (fade = 0.05) => { try { release(vc, AudioSys.ctx.currentTime, Math.max(0.005, +fade || 0)); } catch { /* ignore */ } } } : null;
+  } catch (e) {
+    warnPlay(e);
     return null;
   }
 }
 
 const NOOP_LOOP = Object.freeze({ playing: false, stop() {}, setVol() {}, setPitch() {}, setX() {} });
 
-// Looping sound -> { stop(fadeSec), setVol(v), setPitch(semi), setX(x) }
+// Looping sound -> { playing, stop(fadeSec), setVol(v), setPitch(semi), setX(x) }
 export function sfxLoop(name, opt) {
   let vc = null;
-  try { vc = start(name, opt || EMPTY, true); } catch { vc = null; }
+  try { vc = start(name, opt || EMPTY, true); } catch (e) { warnPlay(e); vc = null; }
   if (!vc) return NOOP_LOOP;
   const at = () => AudioSys.ctx.currentTime;
   return {
     get playing() { return !vc.stopping; },
     stop(fade = 0.12) { if (!vc.stopping) try { release(vc, at(), Math.max(0.005, +fade || 0)); } catch { /* ignore */ } },
-    setVol(v) { if (!vc.stopping) try { vc.g.gain.setTargetAtTime(vc.base * clamp(+v || 0, 0, 1.5), at(), 0.03); } catch { /* ignore */ } },
+    setVol(v) {
+      if (vc.stopping) return;
+      vc.vol = clamp(+v || 0, 0, 1.5);
+      try { vc.g.gain.setTargetAtTime(vc.unit * vc.vol, at(), 0.03); } catch { /* ignore */ }
+    },
     setPitch(semi) { if (!vc.stopping) try { vc.src.playbackRate.setTargetAtTime(semiToRate(+semi || 0), at(), 0.03); } catch { /* ignore */ } },
     setX(x) { if (!vc.stopping && vc.p) try { vc.p.pan.setTargetAtTime(panFor(x), at(), 0.03); } catch { /* ignore */ } },
   };
@@ -1849,9 +2000,22 @@ export const _sfxDebug = {
   defs: S,
   bank,
   stats,
+  late: LATE,
   voices: () => active.length,
+  voiceList: () => active.map((v) => ({ name: v.s.name, pri: v.pri, loop: v.loop, vol: v.vol, t: v.t })),
+  duckGain: () => (duckBus ? duckBus.gain.value : 1),
+  // resolves when every sound (including the background set) is rendered
+  allDone: () => (buildPromise || Promise.resolve()).then(() => allPromise),
+  fadeLen,
   prof,
   ir: (kind, sr) => getIR(kind, sr),
+  // Re-render one sound from its (possibly edited) definition: finished, normalized variants
+  // (experiments on the dev page; does not touch the bank).
+  async render(name) {
+    const def = S[name], g = buildGraph(name, def, Array.from({ length: def.n }, (_, i) => i));
+    const res = postProcess(def, g.sr, sliceVariants(await renderOAC(g.j.ac), g, def.n));
+    return { sr: g.sr, vars: res.vars, loud: res.loud };
+  },
   // Sequential re-render of every sound with per-stage timings (profiling only).
   async profile() {
     const rows = [];

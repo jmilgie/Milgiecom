@@ -21,7 +21,8 @@
   #bar { width:160px; height:6px; background:#110e26; border:1px solid var(--line); }
   #bar i { display:block; height:100%; width:0; background:var(--acc); }
   #grid { display:flex; flex-wrap:wrap; gap:10px; padding:12px; }
-  .card { background:rgba(12,10,28,.85); border:1px solid var(--line); padding:8px; border-radius:4px; }
+  .card { background:rgba(12,10,28,.85); border:1px solid var(--line); padding:8px; border-radius:4px; max-width:100%; box-sizing:border-box; overflow-x:auto; }
+  #sceneWrap { max-width:100%; overflow:hidden; }
   .card h3 { margin:0 0 4px; font-size:12px; color:var(--acc); }
   .card .meta { color:var(--dim); margin-bottom:6px; }
   .row { display:flex; gap:8px; align-items:flex-end; margin:4px 0; flex-wrap:wrap; }
@@ -124,10 +125,12 @@ function row(label, items) {
 function render() {
   const grid = $('#grid'); grid.innerHTML = '';
   const terms = filterEl.value.trim().split(/\s+/).filter(Boolean);
-  const z = Math.max(1, Math.min(12, +zoomEl.value || 4));
+  const zWant = Math.max(1, Math.min(12, +zoomEl.value || 4));
+  const avail = Math.max(80, document.documentElement.clientWidth - 140);   // keep cards within the phone width
   const names = listSprites().filter((n) => !terms.length || terms.some((t) => n.includes(t)));
   for (const name of names) {
     const s = spr(name);
+    const z = Math.max(1, Math.min(zWant, Math.floor(avail / (s.w + 4))));
     const card = document.createElement('div'); card.className = 'card'; card.dataset.name = name;
     card.innerHTML = `<h3>${name}</h3><div class="meta">${s.w}×${s.h}${s.dirs > 1 ? ` (art ${s.bw}×${s.bh})` : ''} · frames ${s.frames} · dirs ${s.dirs} · fps ${s.fps}` +
       `${s.teamed ? ' · teamed' : ''}${s.emissive ? ' · emissive' : ''}</div>`;
@@ -161,7 +164,7 @@ const SW = 240, SH = 270;
 const SZ = +(q.get('sz') || 3);
 const sceneC = $('#scene');
 sceneC.width = SW * SZ; sceneC.height = SH * SZ;
-sceneC.style.width = Math.min(SW * SZ, innerWidth - 24) + 'px';  // ~phone density on mobile
+sceneC.style.width = Math.min(SW * SZ, document.documentElement.clientWidth - 24) + 'px';  // ~phone density on mobile
 const mainC = document.createElement('canvas'), lightC = document.createElement('canvas');
 mainC.width = lightC.width = SW; mainC.height = lightC.height = SH;
 const g = mainC.getContext('2d'), lg = lightC.getContext('2d'), og = sceneC.getContext('2d');
@@ -191,7 +194,7 @@ function drawScene(t) {
 
   // title
   D('logo', fr('logo', t), 120, 31);
-  D('logo_sub', 0, 120, 62);
+  D('logo_sub', 0, 120, 67);   // main.js: logo center + h/2 + 8
 
   // the Choir
   D('en_bastion', 0, 120, 102);
@@ -241,7 +244,8 @@ function drawScene(t) {
       D(j ? 'pb_wave_l' : 'pb_wave', fr('pb_wave', t), x, y - d, { team });
     }
     const meta = SHIP_META[name];
-    for (const [ex, ey] of meta.engines) D('flame_s', fr('flame_s', t + ex * 0.07), x + ex, y + ey + FLAME_DY, { team });
+    const engines = (meta.enginesByFrame && meta.enginesByFrame[bank]) || meta.engines;   // exact per bank frame
+    for (const [ex, ey] of engines) D('flame_s', fr('flame_s', t + ex * 0.07), x + ex, y + ey + FLAME_DY, { team });
     D(name, bank, x, y, { team });
     for (const side of [-1, 1]) {
       D('option_drone', fr('option_drone', t), x + side * 16, y + 4 + Math.sin(t * 3 + side) * 2, { team });

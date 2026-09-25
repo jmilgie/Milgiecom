@@ -124,7 +124,7 @@ const fakeStats = (n) => [
 ].slice(0, n);
 
 const DATA = {
-  title: () => ({ version: '1.0.0', best: profile.bestScore, room: profile.room }),
+  title: () => Object.assign({ version: '1.0.0', best: profile.bestScore, room: profile.room }, q.get('logo') === '0' ? { logoFallback: true } : {}),
   hangar: () => ({ mode: q.get('mode') || 'solo', back: 'menu' }),
   pause: () => ({ online: q.get('online') === '1' }),
   gameover: () => ({ score: 482150, solo: q.get('coop') !== '1', isHost: q.get('host') !== '0', best: +(q.get('best') ?? 1234500) }),

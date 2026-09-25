@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>Nova Lancers — boss fight lab</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #05040c; overflow: hidden; }
+  #screen { display: block; image-rendering: pixelated; }
+  #bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 6px;
+    font: 10px/1.3 ui-monospace, Menlo, monospace; color: #9fb0d4; background: rgba(5, 4, 12, 0.55); pointer-events: auto; }
+  #bar a { color: #79ecff; text-decoration: none; }
+  #bar button { font: inherit; background: #120f24; color: #cfd6ea; border: 1px solid #2c2650; padding: 1px 5px; }
+  #info { position: fixed; left: 4px; bottom: 4px; z-index: 5; font: 9px/1.25 ui-monospace, Menlo, monospace; color: #b8ff6e;
+    white-space: pre; background: rgba(5, 4, 12, 0.5); padding: 3px 5px; pointer-events: none; }
+  body.clean #bar, body.clean #info { display: none; }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<div id="bar">
+  <b>BOSS LAB</b>
+  <a href="?boss=warden">warden</a><a href="?boss=wyrm">wyrm</a><a href="?boss=prism">prism</a><a href="?boss=dread">dread</a><a href="?boss=heart">heart</a>
+  <button id="bSkip">next phase</button><button id="bKill">kill</button><button id="bPause">pause</button>
+</div>
+<div id="info"></div>
+<script type="module">
+// Dev harness (not shipped). Drives a real Sim (real StageRunner flow: boss → wait boss → end)
+// with the real renderer / sprites / boss art / fx / background / HUD.
+//   ?boss=warden|wyrm|prism|dread|heart   &power=N (default per sector)  &ship=aurora|tempest|seraph|valkyrie
+//   &bot=focus|crude|none (default focus)  &mortal (god off)  &speed=N  &post=0 (2D composite)  &players=N (co-op HP)
+//   &dmg=K (player damage ×K)  &clean (hide overlays)  &paused (step via __B.step)
+//   &det[&delay=N] — host + client Sims over an in-memory delayed net; the CLIENT view is rendered and
+//                    the host↔client enemy position error is shown.
+import { Sim } from '../js/game/sim.js';
+import { Renderer } from '../js/engine/renderer.js';
+import { FIELD_W, FIELD_H, SECTORS, RULES } from '../js/config.js';
+
+const Q = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+if (Q.has('clean')) document.body.classList.add('clean');
+const BOSS = Q.get('boss') || 'warden';
+const SECTOR = { warden: 0, wyrm: 1, prism: 2, dread: 3, heart: 4 }[BOSS] ?? 0;
+const POWER = +(Q.get('power') || [5, 6, 7, 7, 8][SECTOR]);
+const SHIP = Q.get('ship') || 'aurora';
+const BOT = Q.get('bot') || 'focus';
+const SPEED = Math.max(0.25, +(Q.get('speed') || 1));
+const NP = Math.max(1, Math.min(4, +(Q.get('players') || 1)));
+const DMG = +(Q.get('dmg') || 1);
+const DET = Q.has('det');
+const DELAY = +(Q.get('delay') || 6);
+const noop = () => {};
+const imp = async (p) => { try { return await import(p); } catch (e) { console.warn('module failed', p, e); return null; } };
+
+// ---- renderer + art
+const R = new Renderer($('screen'));
+const post = Q.get('post') === '0' ? null : await imp('../js/fx/post.js');
+await R.init(post?.createPost);
+const S = await imp('../js/art/sprites.js');
+if (S) await S.buildSprites();
+const BA = await imp('../js/art/bossart.js');
+if (BA) { try { await BA.buildBossArt(); } catch (e) { console.warn(e); } }
+const P = await imp('../js/fx/particles.js');
+const BG = await imp('../js/art/backgrounds.js');
+if (BG?.buildBackgrounds) { try { await BG.buildBackgrounds(); } catch (e) { console.warn(e); } }
+const HUD = await imp('../js/ui/hud.js');
+const FONT = await imp('../js/art/font.js');
+
+const kit = {
+  meta: S?.SHIP_META || {}, emeta: S?.ENEMY_META || {}, _o: {}, _dirs: new Map(),
+  draw(c, n, f, x, y, o) { if (S) S.drawSprite(c, n, f, x, y, o || {}); },
+  drawE(c, n, f, x, y, o) { if (S) S.drawSpriteEmissive(c, n, f, x, y, o || {}); },
+  dirs(n) { let d = this._dirs.get(n); if (d === undefined) { try { d = S ? (S.spr(n).dirs || 1) : 1; } catch { d = 1; } this._dirs.set(n, d); } return d; },
+  optDir(n, a, team) { const o = this._o; o.team = team; o.white = false; o.flipX = false; o.alpha = undefined; o.dir = this.dirs(n) > 1 ? a + Math.PI / 2 : undefined; return o; },
+  optNone() { const o = this._o; o.team = undefined; o.dir = undefined; o.white = false; o.flipX = false; o.alpha = undefined; return o; },
+  withWhite(o) { return Object.assign({}, o, { white: true }); },
+  teamOpt(t) { return { team: t }; }, teamWhite(t) { return { team: t, white: true }; },
+};
+const glowCache = new Map();
+function glow(l, x, y, r, color, a = 1) {
+  let c = glowCache.get(color);
+  if (!c) {
+    c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, color); grd.addColorStop(0.35, color + '88'); grd.addColorStop(1, color + '00');
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64); glowCache.set(color, c);
+  }
+  l.globalAlpha = a; l.drawImage(c, x - r, y - r, r * 2, r * 2); l.globalAlpha = 1;
+}
+function stubFX() {
+  return new Proxy({ postState: () => ({ waves: [] }), count: 0 }, { get: (t, k) => (k in t ? t[k] : noop) });
+}
+const events = [];
+let bg = null;
+function mkEnv(visual) {
+  let fx = stubFX();
+  if (visual && P?.createFX) { try { fx = P.createFX(); } catch (e) { console.warn(e); } }
+  if (visual && FONT?.drawText && fx.setTextRenderer) fx.setTextRenderer((c, str, x, y, color) => FONT.drawText(c, str, x, y, { color, align: 'center', font: 'small', shadow: '#05040c' }));
+  return {
+    sprites: kit, fx, glow, text: FONT?.drawText || null, hiScore: 0, bossMeta: (BA && BA.BOSS_META) || {},
+    bg: null, music: { play: noop, duck: noop, stinger: noop },
+    sfx: noop, sfxLoop: () => ({ stop: noop, setVol: noop, setPitch: noop, setX: noop }),
+    haptic: noop, shake: (a, d) => { if (visual) R.shake(a, d); },
+    setSector(sec) {
+      if (!visual) return;
+      try { bg = BG?.createBackground ? BG.createBackground(sec.key) : null; bg?.resize(R.W, R.H, R.fx, R.fy); } catch (e) { console.warn(e); bg = null; }
+      this.bg = bg || { scrollSpeed: 30, draw() {}, update() {} };
+    },
+    ui: { event: (n, d) => { if (visual) events.push(`${(sim ? sim.tick / 60 : 0).toFixed(1)}s ${n}${d && d.name ? ' ' + d.name : ''}`); } },
+  };
+}
+R.onResize(() => bg?.resize(R.W, R.H, R.fx, R.fy));
+
+// ---- sims
+const players = [];
+for (let i = 0; i < (DET ? Math.max(2, NP) : NP); i++) players.push({ slot: i, name: 'P' + (i + 1), ship: SHIP });
+let sim, host, client = null, net = null;
+function prep(s) {
+  s.god = !Q.has('mortal');
+  for (const p of s.players) if (p) p.power = POWER;
+}
+if (!DET) {
+  sim = host = new Sim({ mode: 'solo', env: mkEnv(true), players, localSlot: 0, sector: SECTOR, seed: +(Q.get('seed') || 777) });
+} else {
+  net = { tick: 0, hq: [], cq: [], lastEv: -99, samples: 0, maxPos: 0, worst: '' };
+  host = new Sim({ mode: 'host', env: mkEnv(false), players, localSlot: 0, sector: SECTOR, seed: 777,
+    net: { send: (m) => net.hq.push([net.tick + DELAY, JSON.stringify(m)]), hostTime: () => net.tick * 1000 / 60 } });
+  client = new Sim({ mode: 'client', env: mkEnv(true), players, localSlot: 1, sector: SECTOR, seed: 777,
+    net: { send: (m) => net.cq.push([net.tick + DELAY, JSON.stringify(m)]), hostTime: () => net.tick * 1000 / 60 } });
+  const emit = host.emitEvent.bind(host);
+  host.emitEvent = (ev) => { if (['sp', 'f', 'es', 'ph', 'x', 'cu'].includes(ev.k)) net.lastEv = host.tick; return emit(ev); };
+  sim = client;
+}
+for (const s of [host, client]) if (s) prep(s);
+host.runner.steps = [{ dt: 0.4, boss: BOSS }, { dt: 0, wait: 'boss' }, { dt: 1, end: true }];
+host.runner.i = 0; host.runner.timer = 0.4;
+if (DMG !== 1) for (const s of [host, client]) if (s) { const d = s.dealDamage.bind(s); s.dealDamage = (e, dmg, slot) => d(e, dmg * DMG, slot); }
+
+// ---- bots
+function bot(s, me) {
+  const inp = { dx: 0, dy: 0, ax: 0, ay: 0, slow: false, bomb: false, overdrive: me.od >= 1, pause: false };
+  if (!me.alive || BOT === 'none') return inp;
+  const tgt = s.nearestEnemy(me.x, me.y - 200, true);
+  if (BOT === 'focus') {
+    const boss = s.bossIds.length ? s.enemies.get(s.bossIds[0]) : null;
+    const t2 = boss && !boss.armor && boss.y > 0 ? boss : tgt;
+    const ox = me.slot ? (me.slot % 2 ? 22 : -22) : 0;
+    if (t2) {
+      inp.ax = Math.max(-1, Math.min(1, (t2.x + ox - me.x) / 10));
+      inp.ay = Math.max(-1, Math.min(1, (Math.min(340, Math.max(210, t2.y + 120)) - me.y) / 10));
+    }
+    return inp;
+  }
+  let tx = FIELD_W / 2, push = 0;
+  if (tgt) tx = tgt.x;
+  for (const b of s.ebs.list) { const dx = b.x - me.x, dy = b.y - me.y; if (dy > -60 && dy < 12 && Math.abs(dx) < 16) push += dx > 0 ? -1 : 1; }
+  inp.ax = Math.max(-1, Math.min(1, (tx - me.x) / 20)) + Math.max(-1, Math.min(1, push)) * 1.2;
+  inp.ay = Math.max(-1, Math.min(1, (FIELD_H - 70 - me.y) / 20));
+  return inp;
+}
+
+function stepOnce() {
+  if (!DET) { sim.update(bot(sim, sim.me)); sim.env.fx.update?.(1 / 60); return; }
+  net.tick++;
+  host.update(bot(host, host.me));
+  while (net.hq.length && net.hq[0][0] <= net.tick) client.onHostMessage(JSON.parse(net.hq.shift()[1]));
+  client.update(bot(client, client.me));
+  while (net.cq.length && net.cq[0][0] <= net.tick) host.onClientMessage(JSON.parse(net.cq.shift()[1]), 1);
+  client.env.fx.update?.(1 / 60);
+  if (host.tick - net.lastEv > DELAY + 4 && host.tick % 10 === 0) {
+    net.samples++;
+    for (const e of host.elist) {
+      const c = client.enemies.get(e.id);
+      const d = c ? Math.hypot(e.x - c.x, e.y - c.y) : (host.tick - e.t0 > DELAY + 4 ? 999 : 0);
+      if (d > net.maxPos) { net.maxPos = d; net.worst = `${e.type}#${e.id} ph ${e.phase}/${c ? c.phase : '-'}`; }
+    }
+  }
+}
+
+// ---- render (mirrors main.js)
+function drawFrame(dt) {
+  R.beginFrame(dt);
+  if (bg) bg.update?.(dt);
+  sim.draw(R);
+  if (HUD?.drawHUD) {
+    const hud = sim.hudState();
+    hud.fps = 0; hud.net = null;
+    try { HUD.drawHUD(R.ctx, R.lctx, hud, R); } catch (e) { console.warn(e); }
+  }
+  if (Q.has('hit')) {
+    R.beginField(false);
+    const c = R.ctx; c.lineWidth = 1;
+    for (const e of sim.elist) {
+      c.strokeStyle = e.armor || e.def.armor ? 'rgba(121,236,255,0.8)' : 'rgba(184,255,110,0.9)';
+      c.beginPath(); c.arc(e.x, e.y, e.r, 0, Math.PI * 2); c.stroke();
+    }
+    R.endField();
+  }
+  const ps = sim.env.fx.postState();
+  R.present({ grade: bg?.grade || null, waves: ps.waves, flash: ps.flash, flashColor: ps.flashColor, chroma: ps.chroma, lensing: bg?.lensing ? bg.lensing(R.W, R.H) : null, scanlines: true });
+}
+function info() {
+  const b = host.bossIds.length ? host.enemies.get(host.bossIds[0]) : null;
+  const lines = [`${BOSS} p${POWER} ${SHIP} bot=${BOT} t=${(host.tick / 60).toFixed(1)}s state=${host.state} eb=${sim.ebs.list.length} beams=${sim.beams.list.length} fx=${sim.env.fx.count || 0}`];
+  if (b) lines.push(`${b.def.name} phase ${b.phase} hp ${Math.ceil(b.hp)}/${Math.ceil(b.maxHp)} bar ${(host.bossHp(b) * 100).toFixed(1)}% armor ${!!b.armor} parts ${host.elist.filter((c) => c.parent === b.id && c.p.role !== 'plate').length}`);
+  if (DET) lines.push(`DET delay ${DELAY}: samples ${net.samples} maxPosErr ${net.maxPos.toFixed(4)} ${net.worst} | eb H${host.ebs.list.length}/C${client.ebs.list.length}`);
+  lines.push(...events.slice(-4));
+  return lines.join('\n');
+}
+
+let paused = Q.has('paused');
+let last = performance.now(), acc = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (!paused) {
+    acc += dt * SPEED;
+    let n = 0;
+    while (acc >= 1 / 60 && n < 12) { stepOnce(); acc -= 1 / 60; n++; }
+    if (acc > 0.25) acc = 0;
+  }
+  drawFrame(dt);
+  if (!Q.has('clean')) $('info').textContent = info();
+}
+requestAnimationFrame(frame);
+
+function nextPhase() {
+  const b = host.bossIds.length ? host.enemies.get(host.bossIds[0]) : null;
+  if (!b) return;
+  const res = b.maxHp * (b.def.res || 0), eff = b.maxHp - res;
+  // strip the parts that gate phase 0, then drop the core to just below the next threshold
+  for (const c of host.elist) if (c.parent === b.id && c.alive && ['arm', 'tur', 'shard'].includes(c.p.role) && b.phase <= 0) host.kill(c, 0);
+  const th = { warden: [1, 0.5, 0], wyrm: [0.7, 0.35, 0], prism: [1, 0.5, 0], dread: [1, 0.45, 0], heart: [1 - 2300 / 6600, 2000 / 6600, 0] }[BOSS];
+  const f = th[Math.max(0, b.phase)] ?? 0;
+  const target = res + eff * f - 2;
+  if (b.hp > target && f < 1) { b.hp = Math.max(res + 1, target); host.hpDirty.add(b.id); }
+}
+$('bSkip').onclick = nextPhase;
+$('bKill').onclick = () => { const b = host.bossIds.length ? host.enemies.get(host.bossIds[0]) : null; if (b) { b.hp = b.maxHp * (b.def.res || 0) - 1; host.hpDirty.add(b.id); } };
+$('bPause').onclick = () => { paused = !paused; };
+
+window.__B = {
+  get sim() { return sim; }, host, client, net, R,
+  step(n = 1) { for (let i = 0; i < n; i++) stepOnce(); },
+  // run until the host tick reaches `tk` (or the predicate is true), in chunks
+  async until(pred, maxTicks = 60 * 240) { const t0 = host.tick; while (!pred(host) && host.tick - t0 < maxTicks) { for (let i = 0; i < 30; i++) stepOnce(); await new Promise((r) => setTimeout(r)); } return host.tick; },
+  pause(v = true) { paused = v; }, nextPhase, info, events,
+  render() { drawFrame(1 / 60); },
+};
+window.__ready = true;
+</script>
+</body>
+</html>

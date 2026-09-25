@@ -10,10 +10,11 @@
 
 import { RAMPS, TEAM, C } from './palette.js';
 import {
-  TAU, makeCanvas, packHex, withAlpha, scaleRGB, newArt, cloneArt, plot, blit, whiteOf,
-  parseMap, legend, makeRampShifter, recolorMap, recolorArt, outline, rimLight, despeckle,
-  makeRotator, remapColumns, shiftWhere, rng, vnoise, fbm, ditherIndex, sphereLight, lambert,
-  pointInPoly, forEachPixel, emissiveFrom,
+  TAU, LIGHT, makeCanvas, packHex, withAlpha, scaleRGB, newArt, cloneArt, plot, blit, whiteOf,
+  parseMap, legend, makeRampShifter, recolorMap, outline, rimLight,
+  remapColumns, shiftWhere, rng, vnoise, fbm, ditherIndex, sphereLight, lambert,
+  pointInPoly, forEachPixel, emissiveFrom, R_, G_, B_,
+  symmetricDirs, rot90Art, mirrorDiagArt, rasterAnalytic,
 } from './pixel.js';
 
 // =======================================================================================
@@ -34,7 +35,9 @@ function atlasAdd(px, w, h) {
   return ref;
 }
 
-function atlasFlush() {
+// Pack pending frames into atlas pages. Copies in time-sliced batches (yielding through
+// `yielder` when given) so a slow phone never stalls the loading bar for long.
+async function atlasFlush(yielder = null) {
   if (!pending.length) return;
   pending.sort((a, b) => b.h - a.h || b.w - a.w);
   // 1) shelf layout, 2) allocate each page at its used height, 3) copy + upload
@@ -56,10 +59,14 @@ function atlasFlush() {
     const h = Math.max(1, L.used);
     const id = new ImageData(PAGE_W, h);
     const buf = new Uint32Array(id.data.buffer);
+    let t0 = performance.now();
     for (const it of L.items) {
       const { sx, sy } = it.ref;
       for (let r = 0; r < it.h; r++) buf.set(it.px.subarray(r * it.w, r * it.w + it.w), (sy + r) * PAGE_W + sx);
+      it.px = null;
+      if (yielder && performance.now() - t0 > 10) { await yielder.yield(); t0 = performance.now(); }
     }
+    if (yielder) await yielder.yield();
     const cv = makeCanvas(PAGE_W, h);
     cv.getContext('2d').putImageData(id, 0, 0);
     for (const it of L.items) it.ref.img = cv;
@@ -90,16 +97,53 @@ function opaqueBounds(a) {
   return x1 < 0 ? [a.w, a.h] : [x1 - x0 + 1, y1 - y0 + 1];
 }
 
-// Team recolor maps: cyan ramp -> team ramp, including the dimmed emissive intensities
-// used by legends (EMI_K), so glow layers recolor exactly too.
-const EMI_K = [0.75, 0.5, 0.3];
-const TEAM_MAPS = TEAM.map((t) => {
-  const m = recolorMap(RAMPS.cyan, RAMPS[t]);
-  for (const k of EMI_K) {
-    RAMPS.cyan.forEach((h, i) => m.set(scaleRGB(packHex(h), k), scaleRGB(packHex(RAMPS[t][i]), k)));
+// Team recolor: cyan ramp -> team ramp for the color layer. Glow layers hold cyan ramp
+// colors scaled by arbitrary factors (0.3, 0.5, ...), so emissive pixels are matched to
+// "cyan entry i scaled by k" and rebuilt as "team entry i scaled by k" (memoized).
+const CYAN_P = RAMPS.cyan.map((h) => packHex(h));
+const TEAM_MAPS = TEAM.map((t) => recolorMap(RAMPS.cyan, RAMPS[t]));
+const TEAM_EMI = TEAM.map(() => new Map());
+
+function teamEmi(t, p) {
+  const memo = TEAM_EMI[t];
+  const key = p | 0xff000000;
+  let q = memo.get(key);
+  if (q === undefined) {
+    q = TEAM_MAPS[t].get(key);
+    if (q === undefined) {
+      q = key;                                   // not a (scaled) cyan: keep (e.g. white)
+      const r = R_(p), g = G_(p), b = B_(p);
+      for (let i = 0; i < CYAN_P.length; i++) {
+        const c = CYAN_P[i], cr = R_(c), cg = G_(c), cb = B_(c);
+        const k = (r + g + b) / (cr + cg + cb);
+        if (k <= 0 || k > 1.001) continue;
+        if (Math.abs(cr * k - r) <= 2 && Math.abs(cg * k - g) <= 2 && Math.abs(cb * k - b) <= 2) {
+          q = scaleRGB(packHex(RAMPS[TEAM[t]][i]), k) | 0xff000000;
+          break;
+        }
+      }
+    }
+    memo.set(key, q);
   }
-  return m;
-});
+  return withAlpha(q, p >>> 24);
+}
+
+function recolorTeam(a, t) {
+  const m = TEAM_MAPS[t];
+  const col = new Int32Array(a.col.length);
+  for (let i = 0; i < col.length; i++) {
+    const p = a.col[i];
+    if (!p) continue;
+    const q = m.get(p | 0xff000000);
+    col[i] = q === undefined ? p : withAlpha(q, p >>> 24);
+  }
+  let emi = null;
+  if (a.emi) {
+    emi = new Int32Array(a.emi.length);
+    for (let i = 0; i < emi.length; i++) if (a.emi[i]) emi[i] = teamEmi(t, a.emi[i]);
+  }
+  return { w: a.w, h: a.h, col, emi };
+}
 
 // Register generated art. arts: Art[] (dir-major, length frames*dirs), authored with the
 // cyan ramp as the team color when teamed.
@@ -114,7 +158,7 @@ function addArt(name, arts, { frames = arts.length, dirs = 1, fps = 8, teamed = 
   const teams = teamed ? 4 : 1;
   e._col = []; e._emi = hasEmi ? [] : null;
   for (let t = 0; t < teams; t++) {
-    const set = teamed && t > 0 ? arts.map((a) => recolorArt(a, TEAM_MAPS[t])) : arts;
+    const set = teamed && t > 0 ? arts.map((a) => recolorTeam(a, t)) : arts;
     e._col.push(set.map((a) => atlasAdd(a.col, w, h)));
     if (hasEmi) e._emi.push(set.map((a) => atlasAdd(a.emi, w, h)));
   }
@@ -145,11 +189,11 @@ export function registerSprite(name, def) {
   const w = def.w || (list[0] && list[0].width) || 1;
   const h = def.h || (list[0] && list[0].height) || 1;
   const ref = (c) => ({ img: c, sx: 0, sy: 0, w: c ? c.width : w, h: c ? c.height : h });
-  const e = makeEntry(name, w, h, frames, dirs, def.fps || 8, false);
+  const e = makeEntry(name, w, h, frames, dirs, def.fps ?? 8, false);
   const pad = (arr) => { const o = []; for (let i = 0; i < n; i++) o.push(arr[i] || arr[i % Math.max(1, arr.length)]); return o; };
   const cols = pad(list);
   e._col = [cols.map(ref)];
-  if (def.emissive && def.emissive.length) {
+  if (def.emissive && def.emissive.some(Boolean)) {
     e._emi = [pad(def.emissive).map(ref)];
     e.emissive = true;
   }
@@ -467,7 +511,59 @@ function buildShipLevel(def) {
   return a;
 }
 
-// Bank frame: b in -2..2 (negative = banking left). Returns outlined art.
+// Column layout of a bank frame, b in -2..2 (negative = banking left): full[x] = source
+// column copied into column x (-1 empty, -2 / -3 = hull flank on the left / right side).
+// Wing columns listed in def.drop vanish first (foreshortening); hard banks reveal the
+// fuselage flank on the rising side and slide the fuselage 1 px toward the turn.
+function bankColumns(def, w, b) {
+  const cx = (w - 1) >> 1;
+  const n = Math.abs(b);
+  const turnDrop = n === 1 ? 1 : 3;
+  const riseDrop = n === 1 ? 0 : 1;
+  const wingCols = cx - def.fuse;
+  const keepSide = (dropN) => {
+    const dropped = new Set(def.drop.slice(0, dropN));
+    const keep = [];
+    for (let x = 0; x < wingCols; x++) if (!dropped.has(x)) keep.push(x);
+    return keep;
+  };
+  const leftKeep = keepSide(b < 0 ? turnDrop : riseDrop);
+  const rightKeep = keepSide(b < 0 ? riseDrop : turnDrop).map((x) => w - 1 - x).reverse();
+  const map = [...leftKeep];
+  if (n === 2 && b > 0) map.push(-2);
+  for (let x = cx - def.fuse; x <= cx + def.fuse; x++) map.push(x);
+  if (n === 2 && b < 0) map.push(-3);
+  map.push(...rightKeep);
+  const fuseStart = leftKeep.length + (n === 2 && b > 0 ? 1 : 0);
+  let off = (cx - def.fuse) - fuseStart;
+  if (n === 2) off += b < 0 ? -1 : 1;
+  const full = new Array(w).fill(-1);
+  for (let i = 0; i < map.length; i++) {
+    const tx = i + off;
+    if (tx >= 0 && tx < w) full[tx] = map[i];
+  }
+  return { full, fuseL: fuseStart + off, fuseR: fuseStart + off + def.fuse * 2 };
+}
+
+// Where a level-frame x offset (may be fractional) lands in bank frame b.
+function bankOffset(def, w, b, dx) {
+  if (b === 0) return dx;
+  const cx = (w - 1) >> 1;
+  const { full } = bankColumns(def, w, b);
+  const find = (sc) => {
+    for (let k = 0; k < w; k++) {
+      // a dropped column collapses onto its nearest surviving neighbour toward the fuselage
+      const c = sc < cx ? sc + k : sc - k;
+      const i = full.indexOf(c);
+      if (i >= 0) return i;
+    }
+    return sc;
+  };
+  const x = cx + dx;
+  return (find(Math.floor(x)) + find(Math.ceil(x))) / 2 - cx;
+}
+
+// Bank frame art (outlined).
 function buildShipBank(level, def, b) {
   const w = level.w, cx = (w - 1) >> 1;
   let a;
@@ -475,48 +571,21 @@ function buildShipBank(level, def, b) {
     a = cloneArt(level);
   } else {
     const n = Math.abs(b);
-    const turnDrop = n === 1 ? 1 : 3;
-    const riseDrop = n === 1 ? 0 : 1;
-    // columns of the left half (0..cx-fuse-1) that survive, per side
-    const wingCols = cx - def.fuse;
-    const keepSide = (dropN) => {
-      const dropped = new Set(def.drop.slice(0, dropN));
-      const keep = [];
-      for (let x = 0; x < wingCols; x++) if (!dropped.has(x)) keep.push(x);
-      return keep;
-    };
-    const leftKeep = keepSide(b < 0 ? turnDrop : riseDrop);
-    const rightKeep = keepSide(b < 0 ? riseDrop : turnDrop).map((x) => w - 1 - x).reverse();
-    const fuseCols = [];
-    for (let x = cx - def.fuse; x <= cx + def.fuse; x++) fuseCols.push(x);
-    // flank column on the rising side for hard banks
-    const map = [];
-    for (const x of leftKeep) map.push(x);
-    if (n === 2 && b > 0) map.push(-2); // flank on the left side (rising left wing)
-    for (const x of fuseCols) map.push(x);
-    if (n === 2 && b < 0) map.push(-3); // flank on the right side
-    for (const x of rightKeep) map.push(x);
-    // center the fuselage: shift toward the turning side by 1 on hard banks
-    const fuseStart = leftKeep.length + (n === 2 && b > 0 ? 1 : 0);
-    let off = (cx - def.fuse) - fuseStart;
-    if (n === 2) off += b < 0 ? -1 : 1;
-    const full = new Array(w).fill(-1);
-    for (let i = 0; i < map.length; i++) {
-      const tx = i + off;
-      if (tx >= 0 && tx < w) full[tx] = map[i];
-    }
+    const { full, fuseL, fuseR } = bankColumns(def, w, b);
     const flankL = full.indexOf(-2), flankR = full.indexOf(-3);
-    const src = full.map((v) => (v < 0 ? -1 : v));
-    a = remapColumns(level, src, w);
-    // dipping wing falls into shadow, rising wing catches more light
-    const fuseL = fuseStart + off, fuseR = fuseL + def.fuse * 2;
-    for (let y = 0; y < a.h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = y * w + x, p = a.col[i];
-        if (!p || !isSteel(p) || (x >= fuseL && x <= fuseR)) continue;
-        const dipping = (b < 0) === (x < fuseL);
-        const d = n === 2 ? (dipping ? -1 : 1) : 0;
-        if (d) a.col[i] = SHIFT.shift(p, d);
+    a = remapColumns(level, full.map((v) => (v < 0 ? -1 : v)), w);
+    // hard banks: the dipping wing falls into shadow (never darker than steel[2], so a
+    // shaded wing still reads as metal), the rising wing catches more light
+    if (n === 2) {
+      for (let y = 0; y < a.h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = y * w + x, p = a.col[i];
+          if (!p || !isSteel(p) || (x >= fuseL && x <= fuseR)) continue;
+          const dipping = (b < 0) === (x < fuseL);
+          if (!dipping) { a.col[i] = SHIFT.shift(p, 1); continue; }
+          const idx = SHIFT.info(p).i;
+          if (idx > 2) a.col[i] = SHIFT.shift(p, -1);
+        }
       }
     }
     // flank: the side of the hull, copied from the fuselage edge column and darkened
@@ -547,12 +616,17 @@ function buildShip(name) {
  *  under the nozzle): draw flame_s at (x + dx, y + dy + FLAME_DY). */
 export const FLAME_DY = 4;
 
-/** Mount points per player ship, px from the sprite center in the level frame:
- *  engines = nozzle exit points (see FLAME_DY), guns = muzzle points (bullet spawn / flash).
+/** Mount points per player ship, px from the sprite center:
+ *  engines = nozzle exit points (see FLAME_DY), guns = muzzle points (bullet spawn / flash),
+ *  both for the level frame; enginesByFrame[f] / gunsByFrame[f] give the exact points for
+ *  bank frame f (0 = hard left .. 4 = hard right), since banking moves wing-mounted parts.
  *  Keyed by sprite name ('ship_aurora') and by ship id ('aurora'). */
 export const SHIP_META = {};
 for (const k in SHIPS) {
-  SHIP_META[k] = { engines: SHIPS[k].engines, guns: SHIPS[k].guns };
+  const def = SHIPS[k];
+  const w = def.rows[0].length * 2 - 1;
+  const byFrame = (pts) => [-2, -1, 0, 1, 2].map((b) => pts.map(([dx, dy]) => [bankOffset(def, w, b, dx), dy]));
+  SHIP_META[k] = { engines: def.engines, guns: def.guns, enginesByFrame: byFrame(def.engines), gunsByFrame: byFrame(def.guns) };
   SHIP_META[k.slice(5)] = SHIP_META[k];
 }
 
@@ -568,22 +642,21 @@ const emi = (p, k = 1) => (k === 1 ? p : scaleRGB(p, k));
 const L_GLOW = legend(['a', CY, true], ['A', CY, 0.75], SPECIAL);
 
 function flameFrames() {
-  // teardrop plume; the top row hides under the nozzle. Side flickers ('c' at the edges)
-  // make the 4-frame loop feel turbulent.
+  // teardrop plume; the top row hides under the nozzle. The plume stays 7-9 rows long and
+  // flickers through small core offsets and tail alpha rather than big length jumps.
   const F = [
-    ['.e*e.', '.f*f.', 'cefe.', '.dfd.', '.ded.', '..d..', '..c..', '..b..', '.....'],
-    ['.e*e.', '.f*f.', '.efe.', '.ded.', '..d..', '..c..', '.....', '.....', '.....'],
-    ['.e*e.', '.f*f.', '.fff.', '.efec', '.ded.', '..e..', '..d..', '..c..', '..b..'],
-    ['.e*e.', '.f*f.', '.efe.', '.ded.', '..d..', '..d..', '..c..', '.....', '.....'],
+    ['.e*e.', '.f*f.', '.efe.', '.dfd.', '.ded.', '..d..', '..c..', '..b..', '.....'],
+    ['.e*e.', '.f*f.', '.fff.', '.efe.', '.ded.', '..d..', '..c..', '.....', '.....'],
+    ['.e*e.', '.f*f.', '.efe.', '.dfd.', '.ded.', '..e..', '..d..', '..c..', '..b..'],
+    ['.e*e.', '.f*f.', '.efe.', '.ded.', '.dd..', '..d..', '..c..', '..b..', '.....'],
   ];
-  return F.map((rows) => {
+  const tail = [150, 185, 130, 165];
+  return F.map((rows, f) => {
     const a = parseMap(rows, L_GLOW);
-    for (let y = 0; y < a.h; y++) {
+    for (let y = 4; y < a.h; y++) {
       for (let x = 0; x < a.w; x++) {
         const i = y * a.w + x;
-        if (!a.col[i]) continue;
-        const edge = x === 0 || x === 4;
-        if (edge || y >= 4) a.col[i] = withAlpha(a.col[i], edge ? 130 : y >= 6 ? 140 : 200);
+        if (a.col[i]) a.col[i] = withAlpha(a.col[i], y >= 6 ? tail[f] : 205);
       }
     }
     return a;
@@ -601,14 +674,14 @@ function droneFrames() {
       if (r <= 0.5) { plot(a, x, y, WHITE, cyP[5]); return; }
       if (r <= 1.5) { plot(a, x, y, cyP[4], cyP[3]); return; }
       if (r <= 2.3) { plot(a, x, y, stP[lit > 0.2 ? 6 : lit > -0.4 ? 4 : 2]); return; }
-      if (r > 3.7) return;
-      // four rotating arms
+      if (r > 4.1) return;
+      // four rotating arms with glowing team tips (same reach in every frame)
       for (let k = 0; k < 4; k++) {
         const ang = ph + k * (Math.PI / 2);
         const ax = Math.sin(ang), ay = -Math.cos(ang);
         const along = dx * ax + dy * ay, across = Math.abs(dx * ay - dy * ax);
-        if (along > 1.5 && across < 0.72) {
-          if (r > 3.1) plot(a, x, y, cyP[3], emi(cyP[3], 0.75));
+        if (along > 1.5 && along < 3.75 && across < 0.72) {
+          if (along > 2.9) plot(a, x, y, cyP[3], emi(cyP[3], 0.75));
           else plot(a, x, y, stP[lit > 0 ? 6 : 4]);
           return;
         }
@@ -625,23 +698,23 @@ function beaconFrames() {
   for (let f = 0; f < 6; f++) {
     const a = newArt(15, 15);
     const t = f / 6;
-    const R = 2.5 + t * 4.6;                 // expanding pulse ring
+    const R = 3.8 + t * 3.4;                 // expanding pulse ring (always a closed ring)
     forEachPixel(a, (x, y, dx, dy) => {
       const r = Math.hypot(dx, dy);
-      if (Math.abs(r - R) < 0.55 && r > 3.2) {
+      if (Math.abs(r - R) < 0.6) {
         const k = 1 - t;
         const c = k > 0.6 ? cyP[4] : k > 0.3 ? cyP[3] : cyP[2];
         plot(a, x, y, withAlpha(c, 110 + 145 * k | 0), emi(c, k > 0.5 ? 1 : 0.5));
       }
     });
-    // escape pod: small steel capsule with a blinking team light
+    // escape pod: small steel capsule with a steady team-lit window; the center blinks
     const pod = parseMap([
       '.....', '.656.', '65+54', '5E*E3', '45a42', '.343.', '.....',
     ], L_SHIP);
-    if (f >= 3) { plot(pod, 2, 3, cyP[3], 0); plot(pod, 1, 3, stP[5], 0); plot(pod, 3, 3, stP[3], 0); }
+    if (f >= 3) plot(pod, 2, 3, cyP[5], emi(cyP[4], 0.75));
     outline(pod, OUT);
     blit(a, pod, 5, 4);
-    // four chevrons pointing at the pod (static, dim)
+    // four chevrons pointing at the pod
     for (const [cx, cy] of [[7, 1], [7, 13], [1, 7], [13, 7]]) {
       const on = (f & 1) === 0;
       plot(a, cx, cy, withAlpha(cyP[on ? 4 : 3], 200), on ? cyP[3] : 0);
@@ -699,91 +772,134 @@ function shieldFrames() {
 // PLAYER BULLETS (team colored, lighter/less saturated + translucent so enemy fire pops)
 // =======================================================================================
 
-// Rotate a base art into `dirs` square frames and finish each (outline/rim) with `post`.
-function bakeDirs(base, dirs, size, post) {
-  const rot = makeRotator(base);
-  const out = [];
-  for (let d = 0; d < dirs; d++) {
-    const ang = (d / dirs) * TAU;
-    let a;
-    if (d === 0) {
-      a = newArt(size, size);
-      blit(a, base, ((size - base.w) >> 1), ((size - base.h) >> 1));
-    } else {
-      a = rot(ang, size, size);
-    }
-    out.push(post ? post(a, d) || a : a);
+// Direction frames for analytic shapes: supersampled rasterization at the first-octant
+// angles, exact pixel permutations for the rest (see pixel.js symmetricDirs), then `post`
+// (outline etc.) per frame. shade(u, v) must be mirror-symmetric in u.
+function bakeAnalytic(size, dirs, shade, post, ss = 4, thr = 0.45) {
+  const frames = symmetricDirs(dirs, (i, ang) => rasterAnalytic(size, ang, shade, ss, thr, (size - 1) / 2),
+    (t, op) => (op === 'rot' ? rot90Art(t) : mirrorDiagArt(t)));
+  return frames.map((a, d) => (post ? post(cloneArt(a), d) || a : a));
+}
+
+// Label-based direction frames for lit sprites: rasterize small integer labels at the
+// first-octant angles (labelShade(u, v) -> label | 0), permute exactly (mirroring swaps
+// left/right labels via `swap`), then paint(labels, heading) each frame with lighting from
+// its true heading, so the key light stays top-left in all directions.
+function bakeLabeled(size, dirs, labelShade, swap, paint, overlay = null, maxR = Infinity) {
+  const frames = symmetricDirs(dirs, (i, ang) => {
+    const a = rasterAnalytic(size, ang, (u, v) => { const l = labelShade(u, v); return l ? [l, 0] : null; }, 4, 0.5, maxR);
+    if (overlay) overlay(a, ang);
+    return a;
+  }, (t, op) => {
+    if (op === 'rot') return rot90Art(t);
+    const m = mirrorDiagArt(t);
+    for (let i = 0; i < m.col.length; i++) if (swap[m.col[i]] !== undefined) m.col[i] = swap[m.col[i]];
+    return m;
+  });
+  return frames.map((lab, d) => paint(lab, (d / dirs) * TAU));
+}
+
+// Unit vector of the sprite's local +u (its right side) in screen space for a heading.
+const acrossVec = (ang) => [Math.cos(ang), Math.sin(ang)];
+// Light (0..1) on a face whose normal leans `tilt` toward local side s (-1 left, +1 right).
+function faceLight(ang, s, tilt = 0.6) {
+  const [ax, ay] = acrossVec(ang);
+  const nz = Math.sqrt(1 - tilt * tilt);
+  return lambert(ax * s * tilt, ay * s * tilt, nz);
+}
+
+// Paint a 1-px line of `label` along the heading axis (v0..v1, pixel units), one pixel per
+// row (headings in the first octant are y-major), so thin spines never break or double.
+function axisLabel(a, ang, v0, v1, label, inside = true) {
+  const n = a.w, c = (n - 1) / 2;
+  const fx = Math.sin(ang), fy = -Math.cos(ang);
+  for (let y = 0; y < n; y++) {
+    const dy = y - c;
+    const t = dy / fy;                              // distance along the axis for this row
+    const v = t;
+    if (v < Math.min(v0, v1) || v > Math.max(v0, v1)) continue;
+    const x = Math.round(c + fx * t);
+    const i = y * n + x;
+    if (inside && !a.col[i]) continue;
+    a.col[i] = label;
   }
-  return out;
 }
 
 // translucent team pixel: color index i, alpha, emissive factor
-function tp(a, x, y, i, al = 255, k = 0.5) {
+function tp(a, x, y, i, al = 255, k = 0.3) {
   plot(a, x, y, withAlpha(cyP[i], al), k ? emi(cyP[i], k) : 0);
 }
 
-// Bake `dirs` square frames by sampling an analytic shape at every pixel center in the
-// bullet's local frame: shade(across, along) -> [color, emissive] | null, along > 0 = forward.
-function bakeAnalytic(size, dirs, shade, post) {
-  const out = [];
-  const c = (size - 1) / 2;
-  for (let d = 0; d < dirs; d++) {
-    const th = (d / dirs) * TAU;
-    const fx = Math.sin(th), fy = -Math.cos(th);
-    const a = newArt(size, size);
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const dx = x - c, dy = y - c;
-        const along = dx * fx + dy * fy, across = dx * -fy + dy * fx;
-        const r = shade(across, along, dx, dy);
-        if (r) plot(a, x, y, r[0], r[1] || 0);
-      }
-    }
-    out.push(post ? post(a, d) || a : a);
-  }
-  return out;
-}
-
-// Vulcan tracer: 3-px white-hot head, 1-px team body fading into a translucent tail.
+// Vulcan tracer: single white-hot tip, pale team core, faint translucent sheath with no
+// glow of its own; the whole round glows at ~30% so enemy bullets always out-shine it.
 function vulcanShade(big) {
-  const L = big ? 5.4 : 4.6;                     // half length
-  const R = big ? 1.55 : 1.05;                   // half width (3 or 5 px)
+  const HEAD = big ? 6.3 : 5.4, TAIL = big ? -5.4 : -4.4;   // 12 / 10 px long
+  const R = big ? 2.05 : 1.05;                               // 5 / 3 px wide
+  const CORE = big ? 1.05 : 0.5;                             // 3 / 1 px hot core
   return (u, v) => {
+    if (v > HEAD || v < TAIL) return null;
     const au = Math.abs(u);
-    if (v > L || v < -L) return null;
-    const t = (L - v) / (2 * L);                 // 0 at the head .. 1 at the tail
-    const r = v > L - 0.9 ? R * 0.5 : R * (1 - Math.max(0, t - 0.55) * 1.2);
-    if (au > r) return null;
-    const core = au < (big ? 0.95 : 0.5);
-    if (core) {
-      if (t < 0.32) return [WHITE, cyP[4]];
-      const i = t < 0.55 ? 5 : t < 0.8 ? 4 : 3;
-      return [withAlpha(cyP[i], Math.round(255 * (1 - t * 0.45))), emi(cyP[Math.max(2, i - 1)], 0.5)];
+    const t = (HEAD - v) / (HEAD - TAIL);                    // 0 at the head .. 1 at the tail
+    let r;
+    if (big) {
+      // teardrop: rounded plasma head, long tapering tail
+      const hc = HEAD - R;
+      r = v > hc ? R * Math.sqrt(Math.max(0, 1 - ((v - hc) / R) ** 2)) + 0.25 : R * (1 - Math.max(0, t - 0.35) * 1.15);
+    } else {
+      r = v > HEAD - 1 ? R * 0.5 : R * (1 - Math.max(0, t - 0.5) * 1.1);
     }
-    // translucent sheath around the hot core
-    const i = t < 0.4 ? 4 : 3;
-    return [withAlpha(cyP[i], Math.round(200 * (1 - t * 0.9))), emi(cyP[2], 0.5)];
+    if (au > r) return null;
+    if (au < CORE) {
+      if (v > HEAD - (big ? 2.2 : 1) && au < 0.5) return [WHITE, emi(cyP[4], 0.3)];
+      if (t < 0.4) return [withAlpha(cyP[5], 225), emi(cyP[3], 0.3)];
+      const i = t < 0.68 ? 4 : 3;
+      return [withAlpha(cyP[i], Math.round(225 * (1 - t * 0.5))), t < 0.68 ? emi(cyP[2], 0.3) : 0];
+    }
+    return [withAlpha(cyP[t < 0.4 ? 4 : 3], Math.round(165 * (1 - t * 0.75))), 0];
   };
 }
 
-// Micro-missile: steel body, team nose band, tail fins, glowing team exhaust.
-function missileShade(u, v) {
-  const au = Math.abs(u);
-  if (v > 3.4 || v < -4.6) return null;
-  if (v > 2.2) return au < 0.55 ? [stP[7]] : null;                          // nose tip
-  if (v > -2.2) {
-    if (au > 1.05) return null;
-    if (v > 1.2) return [u < 0 ? cyP[4] : cyP[3], 0];                        // team band
-    return [stP[u < -0.4 ? 6 : u > 0.4 ? 3 : 5]];
+// Micro-missile labels: steel body halves, team nose band, tail fins, glowing exhaust.
+const MS = { bodyL: 1, bodyR: 2, bandL: 3, bandR: 4, finL: 5, finR: 6, nose: 7, hot: 8, tail: 9 };
+const MS_SWAP = { 1: 2, 2: 1, 3: 4, 4: 3, 5: 6, 6: 5 };
+function missileLabel(u, v) {
+  const au = Math.abs(u), L = u < 0;
+  if (v > 4.3 || v < -4.4) return 0;
+  if (v > 2.8) return au < 0.5 + (4.3 - v) * 0.25 ? MS.nose : 0;                    // nose cone
+  if (v > -2.0) {
+    if (au > 1.05) return 0;
+    if (v > 1.6) return L ? MS.bandL : MS.bandR;                                       // team band
+    return L ? MS.bodyL : MS.bodyR;
   }
-  if (v > -3.3) {                                                           // fins
-    if (au > 1.9) return null;
-    return [stP[au > 1.05 ? (u < 0 ? 5 : 3) : 4]];
+  if (v > -3.5) {
+    if (au <= 1.05) return L ? MS.bodyL : MS.bodyR;
+    return au <= 1.05 + (-2.0 - v) * 1.25 ? (L ? MS.finL : MS.finR) : 0;               // swept fins
   }
-  if (au < 0.6) return [v > -4 ? WHITE : withAlpha(cyP[4], 210), v > -4 ? cyP[5] : cyP[3]];
-  return null;
+  if (au < 0.55) return v > -3.9 ? MS.hot : MS.tail;
+  return 0;
 }
-
+function missilePaint(lab, ang) {
+  const a = newArt(lab.w, lab.h);
+  const lL = faceLight(ang, -1), lR = faceLight(ang, 1);
+  const litL = lL >= lR;
+  for (let i = 0; i < lab.col.length; i++) {
+    const l = lab.col[i];
+    if (!l) continue;
+    const leftSide = l === MS.bodyL || l === MS.bandL || l === MS.finL;
+    const lit = leftSide === litL;
+    let c = 0, e = 0;
+    switch (l) {
+      case MS.bodyL: case MS.bodyR: c = stP[lit ? 6 : 4]; break;
+      case MS.bandL: case MS.bandR: c = cyP[lit ? 4 : 3]; break;
+      case MS.finL: case MS.finR: c = stP[lit ? 5 : 3]; break;
+      case MS.nose: c = stP[7]; break;
+      case MS.hot: c = WHITE; e = emi(cyP[4], 0.75); break;
+      case MS.tail: c = withAlpha(cyP[4], 200); e = emi(cyP[3], 0.5); break;
+    }
+    a.col[i] = c; a.emi[i] = e;
+  }
+  return outline(a, OUT);
+}
 
 function laserBodyFrames() {
   const out = [];
@@ -794,10 +910,10 @@ function laserBodyFrames() {
       const s = 0.5 + 0.5 * Math.sin(((y + f * 2) / 8) * TAU);
       for (let x = 0; x < 7; x++) {
         const d = Math.abs(x - 3);
-        if (d === 0) plot(a, x, y, WHITE, cyP[3]);
-        else if (d === 1) tp(a, x, y, s > 0.45 ? 5 : 4, 235, 0.5);
-        else if (d === 2) tp(a, x, y, s > 0.6 ? 4 : 3, 170, 0.5);
-        else if (s > 0.55 || ((y + f) & 3) === 0) tp(a, x, y, 3, 90, 0.3);
+        if (d === 0) plot(a, x, y, withAlpha(cyP[5], 235), emi(cyP[3], 0.5));
+        else if (d === 1) tp(a, x, y, s > 0.45 ? 4 : 3, 200, s > 0.6 ? 0.3 : 0);
+        else if (d === 2) tp(a, x, y, s > 0.6 ? 4 : 3, 130, 0);
+        else if (s > 0.55 || ((y + f) & 3) === 0) tp(a, x, y, 3, 70, 0);
       }
     }
     out.push(a);
@@ -815,20 +931,21 @@ function laserHeadFrames() {
       const ax = Math.abs(dx), ay = Math.abs(dy);
       let i = -1, al = 255;
       if (r <= 1.2) i = 6;
-      else if (r <= 2.3) i = 5;
-      else if (r <= 3.1 && f !== 3) { i = 4; al = 200; }
-      else if ((ax === 0 && ay <= len) || (ay === 0 && ax <= len)) { i = Math.max(ay, ax) > 3 ? 3 : 4; al = 230; }
-      else if (ax === ay && ax <= dlen) { i = 3; al = 170; }
+      else if (r <= 2.3) { i = 5; al = 215; }
+      else if (r <= 3.1 && f !== 3) { i = 4; al = 150; }
+      else if ((ax === 0 && ay <= len) || (ay === 0 && ax <= len)) { i = Math.max(ay, ax) > 3 ? 3 : 4; al = 190; }
+      else if (ax === ay && ax <= dlen) { i = 3; al = 140; }
       if (i < 0) return;
-      if (i === 6) plot(a, x, y, WHITE, cyP[5]);
-      else tp(a, x, y, i, al, 1);
+      if (i === 6) plot(a, x, y, WHITE, emi(cyP[4], 0.5));
+      else tp(a, x, y, i, al, i >= 5 && r <= 1.5 ? 0.3 : 0);
     });
     out.push(a);
   }
   return out;
 }
 
-// Plasma crescent (convex side forward/up). w,h frame size.
+// Plasma crescent (convex side forward/up). w,h frame size. Pale and translucent: the
+// crest is the team's lightest tone (never white) and only glows at 30%.
 function waveFrames(w, h, seed) {
   const out = [];
   const cx = (w - 1) / 2, cy = h - 0.6;               // ellipse center below the bottom edge
@@ -844,13 +961,12 @@ function waveFrames(w, h, seed) {
       if (e > 1 || e < 1 - th) return;
       const k = (1 - e) / th;                           // 0 outer .. 1 inner
       const n = vnoise(x * 0.8 + f * 5.3, y * 0.9, seed);
-      let i, al = 255;
-      if (k < 0.34) i = up > 0.35 && n > 0.3 ? 6 : 5;
-      else if (k < 0.7) i = n > 0.55 ? 5 : 4;
-      else { i = n > 0.5 ? 4 : 3; al = 185; }
-      if (up < 0.25) { i = Math.min(i, 4); al = Math.min(al, 200); }
-      if (i === 6) plot(a, x, y, withAlpha(WHITE, 240), cyP[4]);
-      else tp(a, x, y, i, al, 0.75);
+      let i, al;
+      if (k < 0.34) { i = up > 0.35 && n > 0.3 ? 5 : 4; al = 205; }
+      else if (k < 0.7) { i = n > 0.55 ? 4 : 3; al = 175; }
+      else { i = n > 0.5 ? 3 : 2; al = 140; }
+      if (up < 0.25) { i = Math.min(i, 4); al = Math.min(al, 165); }
+      tp(a, x, y, i, al, k < 0.34 && i >= 5 ? 0.3 : 0);   // only the crest glows
     });
     out.push(a);
   }
@@ -864,8 +980,8 @@ function optionShot() {
     const c = a.col[i];
     if (!c) continue;
     const y = (i / a.w) | 0;
-    a.col[i] = withAlpha(c, y > 4 ? 150 : 225);
-    a.emi[i] = emi(c | 0xff000000, 0.5);
+    a.col[i] = withAlpha(c === WHITE ? cyP[5] : c, y > 4 ? 140 : 215);
+    a.emi[i] = y === 1 ? emi(cyP[4], 0.3) : 0;
   }
   return a;
 }
@@ -875,52 +991,74 @@ function optionShot() {
 // darker colored ring, 1-px dark rim, strong glow. Four color families.
 // =======================================================================================
 
-const EB_RAMPS = { p: MG, o: EM, v: PL, c: CR };
-const rampP = (r) => r.map(P);
+// Each family has a main ramp R and a glow ramp G. Interiors glow at reduced strength so
+// main + light never clips to a common pink-white; the saturated ring and the white-hot
+// center feed the bloom. Violet glows from the bluer violet ramp so it stays far from
+// magenta after the additive pass, and carries a shape cue (dark inner ring) as well.
+const VI = RAMPS.violet;
+const EB_FAM = {
+  p: { R: MG, G: MG },
+  o: { R: EM, G: EM },
+  v: { R: PL, G: [VI[0], VI[1], VI[2], VI[3], VI[3], VI[4]] },
+  c: { R: CR, G: CR },
+};
+const famP = (k) => ({ k, R: EB_FAM[k].R.map(P), G: EB_FAM[k].G.map(P) });
 
-// Concentric radial painter. bands: [[maxR, rampIndex|'w'], ...] (ascending radius).
-function radial(size, bands, R, opt = {}) {
+// Concentric radial painter. bands: [[maxR, color, emissive], ...] (ascending radius).
+function radial(size, bands, spec = null, S = null) {
   const a = newArt(size, size);
-  const { spec = null, emiK = 1 } = opt;
   forEachPixel(a, (x, y, dx, dy) => {
     const d = Math.hypot(dx, dy);
-    for (const [mr, idx] of bands) {
-      if (d <= mr) {
-        if (idx === 'w') plot(a, x, y, WHITE, R[4]);
-        else plot(a, x, y, R[idx], emi(R[Math.max(1, Math.min(idx, 5) - 1)], emiK));
-        return;
-      }
+    for (const [mr, c, e] of bands) {
+      if (d <= mr) { if (c) plot(a, x, y, c, e); return; }
     }
   });
-  if (spec) plot(a, spec[0], spec[1], WHITE, R[4]);
+  if (spec) plot(a, spec[0], spec[1], WHITE, S);
   outline(a, OUT);
   return a;
 }
 
-function ebSmall(R) {
+// Glow recipe shared by the round bullets: the white-hot center and pale inner band carry
+// the bloom in the family's saturated light tone (those pixels may clip to white); the
+// saturated bands only glow as much as keeps main + light from clipping to a common pink.
+const ebGlow = (G) => ({ core: G[4], inner: scaleRGB(G[4], 0.5), band: scaleRGB(G[2], 0.5), ring: scaleRGB(G[2], 0.42) });
+
+function ebSmall(F) {
+  const { R, G } = F;
+  const E = ebGlow(G);
   const f0 = newArt(5, 5), f1 = newArt(5, 5);
   const L0 = ['.....', '.ebe.', '.bwb.', '.ebe.', '.....'];
   const L1 = ['.....', '.cbc.', '.bwb.', '.cbc.', '.....'];
   const put = (a, rows) => rows.forEach((r, y) => [...r].forEach((ch, x) => {
-    if (ch === 'w') plot(a, x, y, WHITE, R[5]);
-    else if (ch === 'b') plot(a, x, y, R[5], R[4]);
-    else if (ch === 'c') plot(a, x, y, R[3], R[3]);
-    else if (ch === 'd') plot(a, x, y, R[4], R[3]);
-    else if (ch === 'e') plot(a, x, y, R[2], R[2]);
+    if (ch === 'w') plot(a, x, y, WHITE, E.core);
+    else if (ch === 'b') plot(a, x, y, F.k === 'v' ? R[4] : R[5], E.inner);
+    else if (ch === 'c') plot(a, x, y, R[3], E.band);
+    else if (ch === 'e') plot(a, x, y, R[2], E.ring);
   }));
   put(f0, L0); put(f1, L1);
   outline(f0, OUT); outline(f1, OUT);
   return [f0, f1];
 }
 
-function ebOrb(R) {
+function ebOrb(F) {
+  const { R, G } = F;
+  const E = ebGlow(G);
+  if (F.k === 'v') {
+    // violet: hot core, dark inner ring, bright outer ring ("donut", kin of eb_ring_v)
+    return [
+      radial(9, [[0.9, WHITE, E.core], [1.5, R[4], E.inner], [2.3, R[1], 0], [3.0, R[3], E.band], [3.6, R[2], E.ring]], [3, 2], E.core),
+      radial(9, [[1.2, WHITE, E.core], [1.5, R[4], E.inner], [2.3, R[1], scaleRGB(G[1], 0.5)], [3.0, R[3], E.band], [3.6, R[3], E.ring]], [3, 2], E.core),
+    ];
+  }
   return [
-    radial(9, [[0.9, 'w'], [1.9, 5], [2.75, 4], [3.6, 2]], R, { spec: [3, 2] }),
-    radial(9, [[1.2, 'w'], [2.2, 5], [3.0, 4], [3.6, 3]], R, { spec: [3, 2] }),
+    radial(9, [[0.9, WHITE, E.core], [1.9, R[5], E.inner], [2.75, R[3], E.band], [3.6, R[2], E.ring]], [3, 2], E.core),
+    radial(9, [[1.2, WHITE, E.core], [2.2, R[5], E.inner], [3.0, R[3], E.band], [3.6, R[2], E.ring]], [3, 2], E.core),
   ];
 }
 
-function ebBig(R) {
+function ebBig(F) {
+  const { R, G } = F;
+  const E = ebGlow(G);
   const out = [];
   for (let f = 0; f < 4; f++) {
     const a = newArt(15, 15);
@@ -928,34 +1066,53 @@ function ebBig(R) {
     forEachPixel(a, (x, y, dx, dy) => {
       const d = Math.hypot(dx, dy);
       if (d > 6.4) return;
+      if (F.k === 'v') {
+        // violet pulsar: small hot core, concentric ripples travelling outward
+        if (d <= 1.0) return plot(a, x, y, WHITE, E.core);
+        if (d <= 2.0) return plot(a, x, y, R[4], E.inner);
+        if (d > 5.6) return plot(a, x, y, R[2], E.ring);
+        const w = Math.cos((d - 2.0) * 2.0 - f * (Math.PI / 2));
+        if (w > 0.35) plot(a, x, y, R[3], E.band);
+        else if (w > -0.3) plot(a, x, y, R[2], E.ring);
+        else plot(a, x, y, R[1], 0);
+        return;
+      }
+      if (d <= 1.4) return plot(a, x, y, WHITE, E.core);
+      if (d <= 2.6) return plot(a, x, y, R[5], E.inner);
+      if (d > 5.6) return plot(a, x, y, R[2], E.ring);
       const th = Math.atan2(dy, dx);
-      if (d <= 1.4) return plot(a, x, y, WHITE, R[4]);
-      if (d <= 2.6) return plot(a, x, y, R[5], R[3]);
-      if (d > 5.6) return plot(a, x, y, R[2], R[1]);
       const arm = Math.sin(3 * th + d * 1.15 - ph * 3);
-      if (arm > 0.35) plot(a, x, y, R[4], R[3]);
-      else if (arm > -0.45) plot(a, x, y, R[3], R[2]);
-      else plot(a, x, y, R[2], R[2]);
+      if (arm > 0.35) plot(a, x, y, R[4], E.band);
+      else if (arm > -0.45) plot(a, x, y, R[3], E.band);
+      else plot(a, x, y, R[2], E.ring);
     });
-    plot(a, 5, 4, WHITE, R[4]); plot(a, 6, 4, R[5], R[4]);
+    if (F.k !== 'v') { plot(a, 5, 4, WHITE, E.core); plot(a, 6, 4, R[5], E.inner); }
     outline(a, OUT);
     out.push(a);
   }
   return out;
 }
 
-// needle/shard: 1-px hot core along the flight direction
-function ebNeedleShade(R) {
+// Needle / shard: a 3-px shard (5 px with its dark rim) with a white-hot core, clearly
+// fatter and brighter than any player tracer at the same angle.
+function ebNeedleShade(F) {
+  const { R, G } = F;
+  const E = ebGlow(G);
   return (u, v) => {
-    if (Math.abs(u) > 0.56 || v > 3.9 || v < -3.9) return null;
-    if (v > 2.6) return [R[5], R[4]];
-    if (v > -0.4) return [WHITE, R[4]];
-    if (v > -2.2) return [R[4], R[3]];
-    return [R[3], R[3]];
+    if (v > 4.4 || v < -4.1) return null;
+    const au = Math.abs(u);
+    const hw = v > 3.0 ? 1.05 * (4.4 - v) / 1.4 + 0.1 : v < -3.0 ? 0.5 : 1.05;
+    if (au > hw) return null;
+    if (au < 0.5 && v > -1.8 && v < 2.6) return [WHITE, E.core];
+    if (v > 2.6) return [R[5], E.inner];
+    if (v < -2.2) return [R[2], E.ring];
+    return [R[3], E.band];
   };
 }
 
-function ebStar(R) {
+// 4-point spinning star; coverage-rasterized so every spin phase keeps its points.
+function ebStar(F) {
+  const { R, G } = F;
   const out = [];
   for (let f = 0; f < 4; f++) {
     const a = newArt(9, 9);
@@ -963,26 +1120,46 @@ function ebStar(R) {
     const pts = [];
     for (let k = 0; k < 8; k++) {
       const ang = ph + (k * Math.PI) / 4;
-      const r = k & 1 ? 1.55 : 3.95;
+      const r = k & 1 ? 2.0 : 4.3;
       pts.push([4.5 + Math.sin(ang) * r, 4.5 - Math.cos(ang) * r]);
     }
-    for (let y = 0; y < 9; y++) {
-      for (let x = 0; x < 9; x++) {
-        if (!pointInPoly(x + 0.5, y + 0.5, pts)) continue;
+    for (let y = 1; y < 8; y++) {
+      for (let x = 1; x < 8; x++) {
+        let hit = 0;
+        for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) if (pointInPoly(x + (i + 0.5) / 3, y + (j + 0.5) / 3, pts)) hit++;
+        if (hit < 4) continue;
         const d = Math.hypot(x - 4, y - 4);
-        if (d < 0.7) plot(a, x, y, WHITE, R[5]);
-        else if (d < 1.8) plot(a, x, y, R[5], R[4]);
-        else if (d < 2.9) plot(a, x, y, R[4], R[4]);
-        else plot(a, x, y, R[3], R[3]);
+        const E = ebGlow(G);
+        if (d < 0.7) plot(a, x, y, WHITE, E.core);
+        else if (d < 1.8) plot(a, x, y, R[5], E.inner);
+        else if (d < 2.9) plot(a, x, y, R[3], E.band);
+        else plot(a, x, y, R[2], E.ring);
       }
     }
+    if (f === 2) {
+      // the 45-degree phase is hand-pixeled: an X star with 2-px arms (rasterizing it
+      // collapses the points into a square)
+      a.col.fill(0); a.emi.fill(0);
+      const X = ['.........', '.#.....#.', '.##...##.', '..#####..', '...###...', '..#####..', '.##...##.', '.#.....#.', '.........'];
+      const E = ebGlow(G);
+      X.forEach((row, y) => [...row].forEach((ch, x) => {
+        if (ch !== '#') return;
+        const d = Math.hypot(x - 4, y - 4);
+        if (d < 0.7) plot(a, x, y, WHITE, E.core);
+        else if (d < 1.5) plot(a, x, y, R[5], E.inner);
+        else if (d < 3.0) plot(a, x, y, R[3], E.band);
+        else plot(a, x, y, R[2], E.ring);
+      }));
+    }
+    if (f === 3) { out.push(mirrorDiagArt(out[1])); continue; }
     outline(a, OUT);
     out.push(a);
   }
   return out;
 }
 
-function ebRing(R) {
+function ebRing(F) {
+  const { R, G } = F;
   const out = [];
   for (let f = 0; f < 2; f++) {
     const a = newArt(11, 11);
@@ -991,9 +1168,10 @@ function ebRing(R) {
       if (d < 2.3 || d > 4.3) return;
       const lit = (-dx - dy) / (d * 1.414);          // -1..1, 1 toward the upper left
       const hot = f === 0 ? lit > 0.72 : lit < -0.72;
-      if (hot) plot(a, x, y, WHITE, R[4]);
-      else if (d < 3.1) plot(a, x, y, R[5], R[3]);
-      else plot(a, x, y, f ? R[4] : R[3], R[2]);
+      const E = ebGlow(G);
+      if (hot) plot(a, x, y, WHITE, E.core);
+      else if (d < 3.1) plot(a, x, y, R[4], E.inner);
+      else plot(a, x, y, f ? R[3] : R[2], E.band);
     });
     outline(a, OUT);
     out.push(a);
@@ -1002,17 +1180,17 @@ function ebRing(R) {
 }
 
 function buildEnemyBulletFamily(k) {
-  const R = rampP(EB_RAMPS[k]);
-  addArt('eb_small_' + k, ebSmall(R), { frames: 2, fps: 12 });
-  addArt('eb_orb_' + k, ebOrb(R), { frames: 2, fps: 10 });
-  if (k !== 'c') addArt('eb_big_' + k, ebBig(R), { frames: 4, fps: 12 });
-  if (k !== 'v') addArt('eb_needle_' + k, bakeAnalytic(11, 32, ebNeedleShade(R), (a) => outline(a, OUT)), { frames: 1, dirs: 32 });
+  const F = famP(k);
+  addArt('eb_small_' + k, ebSmall(F), { frames: 2, fps: 12 });
+  addArt('eb_orb_' + k, ebOrb(F), { frames: 2, fps: 10 });
+  if (k !== 'c') addArt('eb_big_' + k, ebBig(F), { frames: 4, fps: 12 });
+  if (k !== 'v') addArt('eb_needle_' + k, bakeAnalytic(11, 32, ebNeedleShade(F), (a) => outline(a, OUT)), { frames: 1, dirs: 32 });
 }
 
 const T_ENEMY_BULLETS = [
   ...['p', 'o', 'v', 'c'].map((k) => ['eb_*_' + k, () => buildEnemyBulletFamily(k)]),
-  ['eb_star_o', () => addArt('eb_star_o', ebStar(rampP(EM)), { frames: 4, fps: 16 })],
-  ['eb_ring_v', () => addArt('eb_ring_v', ebRing(rampP(PL)), { frames: 2, fps: 8 })],
+  ['eb_star_o', () => addArt('eb_star_o', ebStar(famP('o')), { frames: 4, fps: 16 })],
+  ['eb_ring_v', () => addArt('eb_ring_v', ebRing(famP('v')), { frames: 2, fps: 8 })],
 ];
 
 // =======================================================================================
@@ -1026,11 +1204,35 @@ const isSolid = (p) => SOLID.has(p | 0xff000000);
 const isCrystal = inRamp(CR);
 const isCara = (p) => SOLID.has(p | 0xff000000) || isCrystal(p);
 
+const isCarapace = inRamp(CA);
+const CHOIR_RIM = scaleRGB(P(MG[2]), 0.42);
+
 // Rim light (key light upper-left) on solid materials + 1-px dark outline.
+// opt.choir: the Choir's obsidian needs more separation from dark space and plum nebulae:
+// a stronger top-left rim (+2), small bodies lifted one ramp step, and a faint magenta
+// underglow on the lower-right silhouette edge (emissive only), as if lit by their cores.
 function finish(a, opt = {}) {
-  if (opt.rim !== false) rimLight(a, SHIFT, { lit: 1, shade: -1, test: opt.test || isSolid });
+  if (opt.choir) {
+    if (opt.small) shiftWhere(a, SHIFT, 1, (x, y, p) => isCarapace(p));
+    rimLight(a, SHIFT, { lit: 2, shade: -1, test: isCarapace });
+    choirRim(a);
+  } else if (opt.rim !== false) {
+    rimLight(a, SHIFT, { lit: 1, shade: -1, test: opt.test || isSolid });
+  }
   outline(a, OUT, opt);
   return a;
+}
+
+function choirRim(a) {
+  const { w, h, col, emi: E } = a;
+  const empty = (x, y) => x < 0 || y < 0 || x >= w || y >= h || !col[y * w + x];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (!col[i] || E[i] || !isCarapace(col[i])) continue;
+      if ((empty(x + 1, y) || empty(x, y + 1)) && !empty(x - 1, y) && !empty(x, y - 1)) E[i] = CHOIR_RIM;
+    }
+  }
 }
 
 // Ellipsoid light at offset (dx,dy) inside radii (rx,ry): 0..1, or -1 outside.
@@ -1108,59 +1310,74 @@ function miteFrames() {
     ['......', '.54...', '.65445', '.34356', '...245', '...1BE', '....1C', '....2.', '......'],
     ['......', '......', '....45', '..5456', '.54245', '.431BE', '.2..1C', '....2.', '......'],
   ];
-  return F.map((rows) => finish(enemyMap(rows)));
+  return F.map((rows) => finish(enemyMap(rows), { choir: true, small: true }));
 }
 
-// ---- en_dart: arrowhead fighter, 16 dirs ---------------------------------------------
-const DART = [
-  '.......', '......6', '.....46', '.....35', '....435', '....32D', '...432E', '...342D',
-  '..43435', '..32345', '.432134', '.321.2C', '.21..1E', '......B', '.......',
-];
-// ---- en_lancet: dive-bomber spike, 16 dirs --------------------------------------------
-const LANCET = [
-  '........', '.......6', '.......6', '......46', '......45', '......35', '......3C',
-  '.....43D', '.....42D', '.....32E', '....432E', '....4335', '...44345', '..543234',
-  '.5432134', '.4321.23', '.32...2B', '.2....1E', '.......C', '.......B', '........',
-];
+// ---- en_dart / en_lancet: rotating fighters, 16 dirs ----------------------------------
+// Vector silhouettes rasterized at 0 / 22.5 / 45 degrees and permuted exactly for the
+// other 13 directions (same pixel structure at every angle); the magenta spine is a
+// continuous 1-px line, and the two hull facets are lit from each frame's true heading.
+const FT = { L: 1, R: 2, spine: 3, engine: 4, exhaust: 5, tipL: 6, tipR: 7 };
+const FT_SWAP = { 1: 2, 2: 1, 6: 7, 7: 6 };
 
-function rotatedEnemy(rows, dirs, size) {
-  const base = parseMap(rows, L_EN, { mirror: true });
-  shiftWhere(base, SHIFT, 1, (x, y, p) => isSolid(p));
-  return bakeDirs(base, dirs, size, (a) => {
-    despeckle(a);
-    rimLight(a, SHIFT, { lit: 2, shade: -1, test: isSolid });
-    return outline(a, OUT);
-  });
+const mirrorPoly = (half) => [...half, ...half.slice().reverse().map(([u, v]) => [-u, v])];
+const DART_POLY = mirrorPoly([[0, 6.9], [5.55, -3.3], [5.55, -5.55], [4.5, -5.55], [2.45, -3.5], [1.55, -4.45], [1.55, -5.55], [0.55, -6.55], [0, -6.55]]);
+const LANCET_POLY = mirrorPoly([[0, 9.95], [1.55, 4.0], [3.55, -1.4], [6.55, -4.1], [6.55, -7.55], [2.45, -4.5], [1.55, -5.45], [1.55, -7.55], [0.55, -9.55], [0, -9.55]]);
+
+function fighterDirs(poly, size, o) {
+  // right half closed along the axis (u = 0), for a cheaper symmetric inside test
+  const half = poly.filter(([u]) => u >= 0);
+  const shape = (u, v) => {
+    if (!pointInPoly(Math.max(1e-6, Math.abs(u)), v, half)) return 0;   // symmetric: test one half
+    if (v < o.tipV && Math.abs(u) > o.tipU) return u < 0 ? FT.tipL : FT.tipR;
+    return u < 0 ? FT.L : FT.R;
+  };
+  const overlay = (a, ang) => {
+    axisLabel(a, ang, o.spine[0], o.spine[1], FT.spine);
+    axisLabel(a, ang, o.engine[0], o.engine[1], FT.engine);
+    axisLabel(a, ang, o.engine[1], o.exhaust, FT.exhaust);
+  };
+  const paint = (lab, ang) => {
+    const a = newArt(size, size);
+    const lL = faceLight(ang, -1, 0.55), lR = faceLight(ang, 1, 0.55);
+    const tone = (l) => (l > 0.62 ? 5 : l > 0.38 ? 4 : 3);
+    for (let i = 0; i < lab.col.length; i++) {
+      switch (lab.col[i]) {
+        case FT.L: a.col[i] = caP[tone(lL)]; break;
+        case FT.R: a.col[i] = caP[tone(lR)]; break;
+        case FT.spine: a.col[i] = mgP[4]; a.emi[i] = mgP[3]; break;
+        case FT.engine: a.col[i] = mgP[5]; a.emi[i] = mgP[4]; break;
+        case FT.exhaust: a.col[i] = mgP[3]; a.emi[i] = mgP[2]; break;
+        case FT.tipL: case FT.tipR: a.col[i] = mgP[3]; a.emi[i] = scaleRGB(mgP[3], 0.75); break;
+      }
+    }
+    return finish(a, { choir: true });
+  };
+  const maxR = Math.max(...poly.map(([u, v]) => Math.hypot(u, v)));
+  return bakeLabeled(size, 16, shape, FT_SWAP, paint, overlay, maxR);
 }
 
-// ---- en_wisp: pulsing plasma orb with curling tendrils -----------------------------
+// ---- en_wisp: plasma spore held by four curling carapace claws ----------------------
+// The dark claws (with glowing tips) and the slit pupil mark it as a creature, never a
+// bullet; only the orb radius and the claws' curl breathe, so all 4 frames read as one.
 function wispFrames() {
   const out = [];
   for (let f = 0; f < 4; f++) {
     const a = newArt(13, 13);
     const ph = (f / 4) * TAU;
-    const R = 2.9 + 0.45 * Math.sin(ph);
+    const R = 2.55 + 0.4 * Math.sin(ph);
+    const curl = 1.05 + 0.3 * Math.sin(ph + 1.2);
     for (let k = 0; k < 4; k++) {
-      const base = (k / 4) * TAU + 0.4;
+      const a0 = (k / 4) * TAU + Math.PI / 4;
       let px = null, py = null;
-      for (let s = 0; s <= 1.0001; s += 0.1) {
-        const r = R * 0.9 + s * (5.4 - R * 0.9);
-        const ang = base + s * 1.25 + Math.sin(s * 3.5 + ph) * 0.3;
+      for (let st = 0; st <= 24; st++) {
+        const t = st / 24;
+        const r = 3.0 + t * 2.45;
+        const ang = a0 + t * curl;
         const x = Math.round(6 + Math.cos(ang) * r), y = Math.round(6 + Math.sin(ang) * r);
-        const put = (xx, yy) => {
-          if (s > 0.78) plot(a, xx, yy, mgP[4], mgP[3]);
-          else if (s > 0.35) plot(a, xx, yy, mgP[2], emi(mgP[2], 0.75));
-          else plot(a, xx, yy, mgP[3], emi(mgP[2], 0.75));
-        };
-        if (px === null) put(x, y);
-        else {
-          // connect with a 4-connected step so the tendril never breaks
-          let cx2 = px, cy2 = py;
-          while (cx2 !== x || cy2 !== y) {
-            if (cx2 !== x) cx2 += Math.sign(x - cx2); else cy2 += Math.sign(y - cy2);
-            put(cx2, cy2);
-          }
-        }
+        if (x === px && y === py) continue;
+        const tip = t > 0.9;
+        plot(a, x, y, tip ? mgP[4] : caP[t > 0.5 ? 4 : 5], tip ? mgP[3] : 0);
         px = x; py = y;
       }
     }
@@ -1168,11 +1385,12 @@ function wispFrames() {
       const d = Math.hypot(dx, dy);
       if (d > R) return;
       const l = sphereLight(dx / (R + 0.4), dy / (R + 0.4), 0.7);
-      if (l > 0.93) return plot(a, x, y, WHITE, mgP[4]);
-      const idx = l > 0.72 ? 5 : l > 0.5 ? 4 : l > 0.3 ? 3 : 2;
-      plot(a, x, y, mgP[idx], mgP[Math.max(1, idx - 2)]);
+      const idx = l > 0.85 ? 5 : l > 0.62 ? 4 : l > 0.38 ? 3 : 2;
+      plot(a, x, y, mgP[idx], mgP[Math.max(1, idx - 1)]);
     });
-    out.push(finish(a, { rim: false }));
+    // slit pupil (vertical), only while the orb is wide open
+    if (R > 2.4) { plot(a, 6, 5, caP[0], 0); plot(a, 6, 6, caP[0], 0); plot(a, 6, 7, caP[0], 0); }
+    out.push(finish(a, { choir: true }));
   }
   return out;
 }
@@ -1209,7 +1427,7 @@ function eyeFrames() {
       }
     });
     if (ry > 1.5) plot(a, 7, 7, WHITE, 0);
-    out.push(finish(a));
+    out.push(finish(a, { choir: true }));
   }
   return out;
 }
@@ -1220,7 +1438,10 @@ function carapaceFrames() {
   for (let f = 0; f < 2; f++) {
     const a = newArt(25, 21);
     // legs / side thrusters
-    stamp(a, ['.2', '32', '...', '...', '.3', '43', '.3', '...', '...', '32', '.2'], L_EN, 1, 3, 12);
+    // three jointed legs per side, rooted in the shell edge (drawn first, shell on top)
+    for (const [x, y, c] of [[3, 5, 3], [2, 4, 3], [1, 3, 2], [2, 8, 4], [1, 8, 3], [1, 9, 2], [3, 11, 3], [2, 12, 3], [1, 13, 2]]) {
+      plot(a, x, y, caP[c]); plot(a, 24 - x, y, caP[Math.max(1, c - 1)]);
+    }
     dome(a, 12, 7.8, 9.6, 7.2, caP, 1, 6, 0.75);
     // elytra plates: dark seams with a lit lip above
     for (const ry of [5, 10]) {
@@ -1256,7 +1477,7 @@ function carapaceFrames() {
       '42....',
       f ? 'E1....' : 'C1....',
     ], L_EN, 7, 13, 12);
-    out.push(finish(a));
+    out.push(finish(a, { choir: true }));
   }
   return out;
 }
@@ -1306,7 +1527,7 @@ function weaverFrames() {
     stamp(a, [f ? 'CF' : 'BE'], L_EN, 10, 3, 11);
     stamp(a, ['.b.', 'bEb', '.b.'], L_EN, 10, 9);
     if (f) plot(a, 11, 10, WHITE, mgP[5]);
-    out.push(finish(a));
+    out.push(finish(a, { choir: true }));
   }
   return out;
 }
@@ -1325,7 +1546,7 @@ function mineFrames() {
       plot(a, 6, 6, mgP[2], mgP[1]);
       for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) plot(a, 6 + ox, 6 + oy, mgP[1], 0);
     }
-    out.push(finish(a));
+    out.push(finish(a, { choir: true, small: true }));
   }
   return out;
 }
@@ -1356,7 +1577,7 @@ function hornetFrames() {
     plot(a, 9, 9, WHITE, mgP[4]);
     for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) plot(a, 9 + ox, 9 + oy, mgP[4], mgP[3]);
     for (const [ox, oy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) plot(a, 9 + ox, 9 + oy, mgP[2], mgP[1]);
-    out.push(finish(a));
+    out.push(finish(a, { choir: true }));
   }
   return out;
 }
@@ -1371,7 +1592,7 @@ function seekerFrames() {
     plot(a, 4, 4, f ? WHITE : mgP[5], f ? mgP[5] : mgP[3]);
     for (const [ox, oy] of [[1, 0], [0, 1]]) plot(a, 4 + ox, 4 + oy, mgP[3], mgP[3]);
     plot(a, 3, 4, mgP[4], mgP[3]); plot(a, 4, 3, mgP[4], mgP[3]);
-    out.push(finish(a));
+    out.push(finish(a, { choir: true, small: true }));
   }
   return out;
 }
@@ -1473,7 +1694,7 @@ function bastionArt() {
   for (let k = 0; k < 5; k++) plot(a, 20 + k, 15 + (k < 2 ? 2 - k : 0), caP[6]);
   // running lights
   for (const [x, y] of [[3, 18], [45, 18], [15, 7], [33, 7], [16, 25], [32, 25]]) plot(a, x, y, mgP[4], mgP[4]);
-  return finish(a);
+  return finish(a, { choir: true });
 }
 
 // ---- en_shard: crystal drone (Veil) ---------------------------------------------------
@@ -1562,20 +1783,41 @@ function turretBase() {
   return finish(a);
 }
 
-// ---- en_turret_gun: twin barrels on a round cap, 16 dirs -----------------------------
-function turretGunShade(u, v, dx, dy) {
-  const r = Math.hypot(dx, dy);
-  const au = Math.abs(u);
-  // twin barrels (drawn over the cap edge so they read at every angle)
-  if (au >= 0.45 && au <= 1.55 && v > 1.2 && v <= 4.7) {
-    if (v > 3.5) return [mgP[4], mgP[3]];
-    return [hullP[u < 0 ? 6 : 4]];
-  }
-  if (r <= 2.6) {
-    if (r < 0.7) return [mgP[4], mgP[3]];
-    return [hullP[pickIdx(domeLight(dx, dy, 3.0, 3.0), 2, 6)]];
-  }
-  return null;
+// ---- en_turret_gun: one 3-px barrel on a domed cap, 16 dirs ----------------------------
+// Barrel = lit edge | dark bore | shaded edge with a glowing 2-px muzzle; it reaches 2 px
+// past the cap so the aim reads at 1x in every direction.
+const TG = { cap: 1, L: 2, R: 3, bore: 4, muzzle: 5, sensor: 6 };  // labels
+const TG_SWAP = { 2: 3, 3: 2 };
+function turretGunDirs() {
+  const size = 13, c = 6;
+  const shape = (u, v) => {
+    if (v >= -0.5 && v <= 5.45 && Math.abs(u) <= 1.5) return u < 0 ? TG.L : TG.R;
+    return Math.hypot(u, v) <= 3.05 ? TG.cap : 0;
+  };
+  const overlay = (a, ang) => {
+    axisLabel(a, ang, 0.6, 3.9, TG.bore);
+    axisLabel(a, ang, 3.9, 5.45, TG.muzzle);
+    axisLabel(a, ang, -1.4, -2.2, TG.sensor);
+  };
+  const paint = (lab, ang) => {
+    const a = newArt(size, size);
+    const litL = faceLight(ang, -1) >= faceLight(ang, 1);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        switch (lab.col[i]) {
+          case TG.cap: a.col[i] = hullP[pickIdx(domeLight(x - c, y - c, 3.4, 3.4), 1, 4)]; break;
+          case TG.L: a.col[i] = hullP[litL ? 6 : 4]; break;
+          case TG.R: a.col[i] = hullP[litL ? 4 : 6]; break;
+          case TG.bore: a.col[i] = hullP[0]; break;
+          case TG.muzzle: a.col[i] = mgP[4]; a.emi[i] = mgP[3]; break;
+          case TG.sensor: a.col[i] = mgP[3]; a.emi[i] = mgP[2]; break;
+        }
+      }
+    }
+    return finish(a);
+  };
+  return bakeLabeled(size, 16, shape, TG_SWAP, paint, overlay);
 }
 
 // ---- asteroids (Cinder Belt): lumpy rock, craters, molten cracks ---------------------
@@ -1683,16 +1925,16 @@ function sentinelFrames() {
         plot(a, x, y, mgP[l > 0.7 ? 5 : l > 0.45 ? 4 : 3], mgP[2]);
       }
     });
-    out.push(finish(a));
+    out.push(finish(a, { choir: true }));
   }
   return out;
 }
 
 const T_ENEMIES = [
   ['en_mite', () => addArt('en_mite', miteFrames(), { frames: 2, fps: 16 })],
-  ['en_dart', () => addArt('en_dart', rotatedEnemy(DART, 16, 21), { frames: 1, dirs: 16 })],
+  ['en_dart', () => addArt('en_dart', fighterDirs(DART_POLY, 21, { spine: [3.7, -3.0], engine: [-3.6, -5.2], exhaust: -6.6, tipU: 4.4, tipV: -4.7 }), { frames: 1, dirs: 16 })],
   ['en_wisp', () => addArt('en_wisp', wispFrames(), { frames: 4, fps: 8 })],
-  ['en_lancet', () => addArt('en_lancet', rotatedEnemy(LANCET, 16, 27), { frames: 1, dirs: 16 })],
+  ['en_lancet', () => addArt('en_lancet', fighterDirs(LANCET_POLY, 27, { spine: [7.2, -2.5], engine: [-5.2, -7.6], exhaust: -9.6, tipU: 5.5, tipV: -6.6 }), { frames: 1, dirs: 16 })],
   ['en_eye', () => addArt('en_eye', eyeFrames(), { frames: 4, fps: 8 })],
   ['en_carapace', () => addArt('en_carapace', carapaceFrames(), { frames: 2, fps: 4 })],
   ['en_weaver', () => addArt('en_weaver', weaverFrames(), { frames: 2, fps: 6 })],
@@ -1706,7 +1948,7 @@ const T_ENEMIES2 = [
   ['en_shard', () => addArt('en_shard', shardFrames(), { frames: 2, fps: 4 })],
   ['en_phantom', () => addArt('en_phantom', phantomFrames(), { frames: 4, fps: 6 })],
   ['en_turret', () => addArt('en_turret', [turretBase()], { frames: 1 })],
-  ['en_turret_gun', () => addArt('en_turret_gun', bakeAnalytic(11, 16, turretGunShade, (a) => finish(a)), { frames: 1, dirs: 16 })],
+  ['en_turret_gun', () => addArt('en_turret_gun', turretGunDirs(), { frames: 1, dirs: 16 })],
   ['en_sentinel', () => addArt('en_sentinel', sentinelFrames(), { frames: 4, fps: 8 })],
 ];
 
@@ -1721,12 +1963,14 @@ const T_ROCKS = [
 // =======================================================================================
 
 // red capsule ramp (plum -> crimson -> hot red), all palette colors
-const REDX = [P('#3a0822'), P('#700f40'), P('#b3175f'), P('#e0565b'), P(C.warn), P('#ffc4e1')];
+// warm red capsule ramp (ember shadows -> coral -> warning red -> warm highlight), all palette
+// colors; no magenta, so the bomb never glows in the enemy-bullet pink
+const REDX = [P(EM[0]), P(EM[1]), P(RAMPS.fire[2]), P(RAMPS.dawn[3]), P(C.warn), P(RAMPS.dawn[5])];
 
 const GLYPH = {
   P: ['###', '#.#', '###', '#..', '#..'],
   B: ['##.', '#.#', '###', '#.#', '##.'],
-  Z: ['...##', '..##.', '.##..', '#####', '..##.', '.##..', '##...'],   // lightning bolt
+  Z: ['..##', '.##.', '####', '..##', '.##.', '.#..'],                // lightning bolt
   1: ['.#', '##', '.#', '.#', '.#'],
   U: ['#.#', '#.#', '#.#', '#.#', '###'],
 };
@@ -1745,7 +1989,7 @@ function glyph(a, g, x0, y0, col, shadow, e = 0, ring = false) {
 }
 
 // Round capsule: steel frame ring + shaded colored core + glyph; glint orbits the ring.
-function capsuleFrames(ramp, g, top = 4) {
+function capsuleFrames(ramp, g, top = 4, glyphE = null, emiK = 0.6) {
   const out = [];
   for (let f = 0; f < 6; f++) {
     const a = newArt(11, 11);
@@ -1762,10 +2006,10 @@ function capsuleFrames(ramp, g, top = 4) {
       }
       const l = sphereLight(dx / 3.6, dy / 3.6, 0.5);
       const i = Math.min(top, l > 0.8 ? 4 : l > 0.55 ? 3 : l > 0.3 ? 2 : 1);
-      plot(a, x, y, ramp[i], emi(ramp[Math.max(1, i - 1)], 0.6));
+      plot(a, x, y, ramp[i], emi(ramp[Math.max(1, i - 1)], emiK));
     });
     const gw = GLYPH[g][0].length, gh = GLYPH[g].length;
-    glyph(a, g, 5 - (gw >> 1), gh > 5 ? 2 : 3, WHITE, ramp[0], emi(ramp[3], 0.5), gh > 5);
+    glyph(a, g, 5 - (gw >> 1), gh > 5 ? 2 : 3, WHITE, ramp[0], glyphE || emi(ramp[3], 0.5), gh > 6);
     // sweeping specular band across the core
     const bx = -5 + (f / 6) * 14;
     forEachPixel(a, (x, y, dx, dy) => {
@@ -1845,8 +2089,8 @@ function gemFrames(ramp, big) {
 
 const T_PICKUPS = [
   ['pk_power', () => addArt('pk_power', capsuleFrames(EM.map(P), 'P'), { frames: 6, fps: 10 })],
-  ['pk_bomb', () => addArt('pk_bomb', capsuleFrames(REDX, 'B'), { frames: 6, fps: 10 })],
-  ['pk_overdrive', () => addArt('pk_overdrive', capsuleFrames(CY.map(P), 'Z', 3), { frames: 6, fps: 10 })],
+  ['pk_bomb', () => addArt('pk_bomb', capsuleFrames(REDX, 'B', 4, null, 0.5), { frames: 6, fps: 10 })],
+  ['pk_overdrive', () => addArt('pk_overdrive', capsuleFrames(CY.map(P), 'Z', 4, P(CY[4])), { frames: 6, fps: 10 })],
   ['pk_life', () => addArt('pk_life', lifeFrames(), { frames: 6, fps: 10 })],
   ['pk_gem_s', () => addArt('pk_gem_s', gemFrames(RAMPS.emerald, false), { frames: 4, fps: 8 })],
   ['pk_gem_l', () => addArt('pk_gem_l', gemFrames(RAMPS.sapphire, true), { frames: 4, fps: 8 })],
@@ -1943,19 +2187,27 @@ function logoWord(mask, W, word, x0, y0, s, gap) {
 
 function wordWidth(word, s, gap) { return word.length * Math.round(8 * s) + (word.length - 1) * gap; }
 
-function logoFrames() {
+// Built in several small tasks (base, then one per frame) so the loader never stalls.
+let LOGO = null;
+
+// Letters, 80s horizon chrome, energy underline, speed-line wings and a 3-px extrusion.
+function logoBase() {
   const W = 200, H = 56;
   const mask = new Uint8Array(W * H);
   const s1 = 4, g1 = 5, s2 = 2.6, g2 = 3;
   const w1 = wordWidth('NOVA', s1, g1), w2 = wordWidth('LANCERS', s2, g2);
-  const y1 = 3, h1 = 7 * s1, y2 = y1 + h1 + 5, h2 = Math.round(7 * s2);
+  const y1 = 2, h1 = 7 * s1, y2 = y1 + h1 + 5, h2 = Math.round(7 * s2);
   const x1 = (W - w1) >> 1, x2 = (W - w2) >> 1;
   logoWord(mask, W, 'NOVA', x1, y1, s1, g1);
   logoWord(mask, W, 'LANCERS', x2, y2, s2, g2);
   const M = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : mask[y * W + x];
+  const DW = RAMPS.dawn.map(P);
 
-  // Chrome face bands (relative row -> steel index), cyan energy at the bottom
-  const bands = (t) => t < 0.1 ? 7 : t < 0.32 ? 6 : t < 0.45 ? 5 : t < 0.5 ? 4 : t < 0.55 ? 2 : t < 0.68 ? 3 : t < 0.8 ? 4 : t < 0.88 ? 5 : -1;
+  // Chrome face: a cool sky reflection above a dark horizon line, the warm dawn below it,
+  // and a glowing cyan energy edge at the bottom. tone(t) -> [ramp, index] | null (energy).
+  const tone = (t) => t < 0.1 ? [stP, 7] : t < 0.3 ? [stP, 6] : t < 0.42 ? [stP, 5] : t < 0.5 ? [stP, 4] :
+    t < 0.55 ? [stP, 1] : t < 0.63 ? [DW, 2] : t < 0.72 ? [DW, 3] : t < 0.8 ? [DW, 4] : t < 0.87 ? [DW, 5] : null;
+  const at = (ramp, i) => ramp[Math.max(0, Math.min(ramp.length - 1, i))];
   const base = newArt(W, H);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
@@ -1971,16 +2223,25 @@ function logoFrames() {
         if (lE === 99 && !M(x - k, y)) lE = k;
         if (rE === 99 && !M(x + k, y)) rE = k;
       }
+      const tn = tone(t);
       let c, e = 0;
-      const b = bands(t);
-      if (b < 0) { c = cyP[t > 0.94 ? 3 : 4]; e = emi(cyP[3], 0.9); }
-      else c = stP[b];
-      if (upE === 1) c = stP[7];
-      else if (lE === 1) c = stP[b < 0 ? 6 : Math.min(7, Math.max(6, b + 1))];
-      else if (upE === 2) c = stP[6];
-      if (dnE === 1) { c = b < 0 || t > 0.8 ? cyP[5] : stP[2]; e = b < 0 || t > 0.8 ? emi(cyP[4], 0.9) : 0; }
-      else if (rE === 1 && upE !== 1) { c = b < 0 ? cyP[2] : stP[Math.max(1, (b < 0 ? 3 : b) - 2)]; }
-      else if (rE === 2 && big && b >= 0 && upE > 1) c = stP[Math.max(1, b - 1)];
+      if (!tn) {
+        c = cyP[t > 0.94 ? 3 : 4]; e = emi(cyP[3], 0.9);
+        if (dnE === 1) { c = cyP[5]; e = emi(cyP[4], 0.9); }
+        else if (rE === 1) c = cyP[2];
+        else if (upE === 1 || lE === 1) c = cyP[5];
+      } else {
+        const [ramp, i] = tn;
+        const warm = ramp === DW;
+        c = ramp[i];
+        if (upE === 1) c = warm ? DW[6] : stP[7];
+        else if (lE === 1) c = at(ramp, i + 1);
+        else if (upE === 2) c = warm ? DW[5] : stP[6];
+        if (dnE === 1) {
+          if (t > 0.8) { c = cyP[5]; e = emi(cyP[4], 0.9); } else c = warm ? DW[1] : stP[2];
+        } else if (rE === 1 && upE !== 1) c = at(ramp, i - 2);
+        else if (rE === 2 && big && upE > 1) c = at(ramp, i - 1);
+      }
       plot(base, x, y, c, e);
     }
   }
@@ -2000,44 +2261,68 @@ function logoFrames() {
       plot(base, x1 + w1 + 4 + k, yy, withAlpha(c, 255 - k * 6), emi(c, 0.8));
     }
   }
-  // drop shadow (down-right), then outline
+  // extrusion (down-right, 3 px deep) under the outlined letters so they lift off any backdrop
   const shadowed = newArt(W, H);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (mask[y * W + x] && x + 2 < W && y + 2 < H) plot(shadowed, x + 2, y + 2, P(RAMPS.void[2]));
+  const ex = [P(RAMPS.void[4]), P(RAMPS.void[4]), P(RAMPS.void[3])];
+  for (let k = 3; k >= 1; k--) {
+    for (let y = 0; y < H - k; y++) for (let x = 0; x < W - k; x++) {
+      if (mask[y * W + x]) plot(shadowed, x + k, y + k, ex[k - 1]);
+    }
   }
   outline(base, OUT);
   blit(shadowed, base, 0, 0);
+  // the nova: a star living in the O's counter (between pixels: the counter is 16 px wide)
+  const LW = Math.round(8 * s1);
+  const nova = { x: x1 + LW + g1 + 15.5, y: y1 + 13.5 };
+  return { W, H, mask, base: shadowed, nova, frames: [] };
+}
 
-  const out = [];
-  for (let f = 0; f < 8; f++) {
-    const a = cloneArt(shadowed);
-    if (f < 6) {
-      // diagonal light sweep across the chrome
-      const c = -30 + f * 50;
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          if (!mask[y * W + x]) continue;
-          const d = (x + y * 0.55) - c;
-          const i = y * W + x;
-          if (Math.abs(d) < 1.6) { a.col[i] = WHITE; a.emi[i] = emi(WHITE, 0.55); }
-          else if (Math.abs(d) < 5) { a.col[i] = SHIFT.shift(a.col[i], 2); if (!a.emi[i]) a.emi[i] = emi(cyP[3], 0.35); }
+// Nova star centered between pixels: 2x2 white core, 2-px arms of length L, short diagonals.
+function drawNova(a, cx, cy, L, diag) {
+  const x0 = Math.floor(cx), y0 = Math.floor(cy);           // core = (x0..x0+1, y0..y0+1)
+  const put = (x, y, c, e) => plot(a, x, y, c, e);
+  for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) put(x0 + i, y0 + j, WHITE, WHITE);
+  for (let k = 1; k <= L; k++) {
+    const f = k / L;
+    const c = f < 0.35 ? WHITE : f < 0.6 ? cyP[5] : f < 0.85 ? cyP[4] : cyP[3];
+    const e = f < 0.35 ? emi(WHITE, 0.9) : emi(f < 0.6 ? cyP[5] : cyP[4], f < 0.85 ? 0.9 : 0.6);
+    const al = f < 0.85 ? 255 : 200;
+    for (let i = 0; i < 2; i++) {
+      put(x0 + i, y0 - k, withAlpha(c, al), e); put(x0 + i, y0 + 1 + k, withAlpha(c, al), e);
+      put(x0 - k, y0 + i, withAlpha(c, al), e); put(x0 + 1 + k, y0 + i, withAlpha(c, al), e);
+    }
+  }
+  for (let k = 1; k <= diag; k++) {
+    const c = k === diag ? cyP[4] : cyP[5], e = emi(c, 0.8);
+    put(x0 - k, y0 - k, c, e); put(x0 + 1 + k, y0 - k, c, e);
+    put(x0 - k, y0 + 1 + k, c, e); put(x0 + 1 + k, y0 + 1 + k, c, e);
+  }
+}
+
+// Frame f: 0 = rest (shown most of the time), 1..7 = a light sweep crossing the chrome;
+// the sweep ignites the nova as it passes the O (frames 3..5).
+function logoFrame(L, f) {
+  const { W, H, mask } = L;
+  const a = cloneArt(L.base);
+  if (f > 0) {
+    const c = 20 + (f - 1) * 33;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (!mask[y * W + x]) continue;
+        const d = Math.abs(x + y * 0.55 - c);
+        if (d >= 11) continue;
+        const i = y * W + x;
+        if (d < 2) { a.col[i] = WHITE; a.emi[i] = emi(WHITE, 0.55); }
+        else {
+          a.col[i] = SHIFT.shift(a.col[i], d < 6 ? 2 : 1);
+          if (!a.emi[i] && d < 6) a.emi[i] = emi(cyP[3], 0.3);
         }
       }
     }
-    // star glint at the top-right of the 'A' (frames 5..7)
-    const gx = x1 + w1 - 3, gy = y1 + 1;
-    const gl = [0, 0, 0, 0, 0, 2, 4, 2][f];
-    if (gl) {
-      plot(a, gx, gy, WHITE, WHITE);
-      for (let k = 1; k <= gl; k++) {
-        const col = k === gl ? cyP[4] : WHITE;
-        for (const [ox, oy] of [[k, 0], [-k, 0], [0, k], [0, -k]]) plot(a, gx + ox, gy + oy, col, emi(cyP[4], k === gl ? 0.5 : 1));
-      }
-      if (gl >= 4) for (const [ox, oy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) plot(a, gx + ox, gy + oy, cyP[5], cyP[3]);
-    }
-    out.push(a);
   }
-  return out;
+  const arms = [3, 3, 4, 7, 12, 8, 5, 4][f], diag = [1, 1, 1, 2, 3, 2, 1, 1][f];
+  drawNova(a, L.nova.x, L.nova.y, arms, diag);
+  return a;
 }
 
 // logo_sub "CO-OP STARFIGHTER": 5x7 small caps
@@ -2080,7 +2365,9 @@ function logoSub() {
 }
 
 const T_LOGO = [
-  ['logo', () => addArt('logo', logoFrames(), { frames: 8, fps: 10 })],
+  ['logo base', () => { LOGO = logoBase(); }],
+  ...[0, 1, 2, 3, 4, 5, 6, 7].map((f) => ['logo f' + f, () => LOGO.frames.push(logoFrame(LOGO, f))]),
+  ['logo', () => { addArt('logo', LOGO.frames, { frames: 8, fps: 10 }); LOGO = null; }],
   ['logo_sub', () => addArt('logo_sub', [logoSub()], { frames: 1 })],
 ];
 
@@ -2094,7 +2381,7 @@ const T_PLAYER_EXTRAS = [
 const T_PLAYER_BULLETS = [
   ['pb_vulcan', () => addArt('pb_vulcan', bakeAnalytic(11, 16, vulcanShade(false)), { frames: 1, dirs: 16, teamed: true })],
   ['pb_vulcan_big', () => addArt('pb_vulcan_big', bakeAnalytic(13, 16, vulcanShade(true)), { frames: 1, dirs: 16, teamed: true })],
-  ['pb_missile', () => addArt('pb_missile', bakeAnalytic(11, 16, missileShade, (a) => outline(a, OUT)), { frames: 1, dirs: 16, teamed: true })],
+  ['pb_missile', () => addArt('pb_missile', bakeLabeled(11, 16, missileLabel, MS_SWAP, missilePaint), { frames: 1, dirs: 16, teamed: true })],
   ['pb_laser_body', () => addArt('pb_laser_body', laserBodyFrames(), { frames: 4, fps: 24, teamed: true })],
   ['pb_laser_head', () => addArt('pb_laser_head', laserHeadFrames(), { frames: 4, fps: 20, teamed: true })],
   ['pb_wave', () => addArt('pb_wave', waveFrames(17, 7, 11), { frames: 3, fps: 15, teamed: true })],
@@ -2125,7 +2412,7 @@ export const ENEMY_META = {
   en_shard: { r: 5.5, core: [0, 0] },
   en_phantom: { r: 7 },
   en_turret: { r: 8 },
-  en_turret_gun: { r: 3, muzzle: 4.5 },        // barrel length along the aim direction
+  en_turret_gun: { r: 3, muzzle: 5 },          // barrel tip distance along the aim direction
   en_rock_s: { r: 4.5 },
   en_rock_m: { r: 7.5 },
   en_rock_l: { r: 12 },
@@ -2203,9 +2490,11 @@ async function runBuild(onProgress) {
     }
   }
   const tf = performance.now();
-  atlasFlush();
-  work += performance.now() - tf;
-  buildStats.tasks.push({ name: 'atlasFlush', ms: performance.now() - tf });
+  if (onProgress) onProgress(0.96);
+  await atlasFlush(yielder);
+  const tfe = performance.now() - tf;
+  work += tfe;
+  buildStats.tasks.push({ name: 'atlasFlush (incl. yields)', ms: tfe });
   buildStats.ms = performance.now() - tStart;
   buildStats.work = work;
   yielder.close();

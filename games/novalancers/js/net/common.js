@@ -4,7 +4,7 @@ import { SHIP_ORDER, VERSION, MAX_PLAYERS } from '../config.js';
 
 export { SHIP_ORDER, VERSION, MAX_PLAYERS };
 
-export const PROTO = 1;                          // wire protocol version (bump on breaking changes)
+export const PROTO = 2;                          // wire protocol version (bump on breaking changes)
 export const NS = 'nvl1';
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_LEN = 5;
@@ -23,8 +23,12 @@ export const NAME_MAX = 12;
 export const P2P_TIMEOUT = 6500;                 // data channel must open within this (ms from join start)
 export const HEARTBEAT_MS = 1000;
 export const LOST_MS = 6000;                     // silence before a peer is declared lost
-export const LOST_HIDDEN_MS = 12000;             // ... when it told us its page went hidden
+export const LOST_HIDDEN_MS = 12000;             // ... when it told us its page went hidden (in game)
+export const LOBBY_HIDDEN_MS = 30000;            // ... same, while still in the lobby
 export const STALE_MS = 2500;                    // silence before lobby shows connected:false
+export const RESCUE_MAX = 8000;                  // a client's link-rescue attempt (P2P -> relay) budget
+export const RESCUE_GRACE = 8000;                // host holds a slot this long after a rescue probe
+export const P2P_HOLD_MS = 8000;                 // silence before a rescue-capable P2P player is dropped
 
 export const DEFAULT_BROKERS = [
   'wss://broker.emqx.io:8084/mqtt',
@@ -46,6 +50,7 @@ export const DEFAULT_ICE = [
 //   ?forcerelay=1                                                clients skip P2P
 //   ?p2p=0                                                       no PeerJS at all (relay only)
 //   ?ice=none                                                    no STUN servers (LAN / local tests)
+//   ?auth=0                                                      unauthenticated relay (tests only)
 
 let overrides = {};
 let cached = null;
@@ -98,6 +103,7 @@ export function netConfig() {
     brokers,
     forceRelay: flag('forcerelay'),
     p2p: q.get('p2p') !== '0',
+    auth: q.get('auth') !== '0',                 // ?auth=0: no relay authentication (tests only)
     p2pTimeout: P2P_TIMEOUT,
     ...overrides,
   };
@@ -165,18 +171,40 @@ export function validInfo(m) {
 /** Marker for inbound data that failed validation. */
 export const BAD = Object.freeze({ _bad: 1 });
 
-/** Parse one inbound JSON message; returns a plain object or BAD. Never throws. */
-export function parseMsg(s) {
-  if (typeof s !== 'string' || s.length > MAX_IN || s.includes('__proto__')) return BAD;
+// JSON.parse makes "__proto__" an own data property (no pollution by itself), but a consumer
+// that later Object.assign()s a message would hit the setter. Such keys are dropped at any
+// depth; the reviver only runs when the text could contain one (literal or \u-escaped).
+const PROTO_RISK = /__proto__|\\u/;
+const dropProto = (k, v) => (k === '__proto__' ? undefined : v);
+
+/** JSON.parse that strips "__proto__" keys; returns undefined on malformed input. */
+export function safeJson(s) {
   try {
-    const o = JSON.parse(s);
-    return isObj(o) ? o : BAD;
+    return PROTO_RISK.test(s) ? JSON.parse(s, dropProto) : JSON.parse(s);
   } catch {
-    return BAD;
+    return undefined;
   }
 }
 
-const enc = new TextEncoder();
+/** Parse one inbound JSON message; returns a plain object or BAD. Never throws. */
+export function parseMsg(s) {
+  if (typeof s !== 'string' || s.length > MAX_IN) return BAD;
+  const o = safeJson(s);
+  return isObj(o) ? o : BAD;
+}
+
+/** UTF-8 byte length of a string (no allocation). */
+export function utf8Len(s) {
+  let n = s.length;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) continue;
+    if (c < 0x800) n += 1;
+    else if (c >= 0xd800 && c < 0xdc00 && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) { n += 2; i++; }
+    else n += 2;
+  }
+  return n;
+}
 
 /** Serialize an outbound message; returns null if not an object or too large. */
 export function encodeMsg(msg) {
@@ -184,7 +212,7 @@ export function encodeMsg(msg) {
   let s;
   try { s = JSON.stringify(msg); } catch { return null; }
   if (typeof s !== 'string') return null;
-  if (s.length > MAX_MSG / 3 && enc.encode(s).length > MAX_MSG) return null;
+  if (s.length > MAX_MSG / 3 && utf8Len(s) > MAX_MSG) return null;
   return s;
 }
 

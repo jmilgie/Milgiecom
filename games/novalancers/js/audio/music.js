@@ -72,7 +72,8 @@
 //                                    use C4maj / C4M for a major triad). Qualities: CHORD_TYPES.
 //        A3m7^1                     inversion (^1 first, ^2 second…)
 //        E3+B3+D4+G4               explicit voicing (notes joined with +)
-//        x X o g                    drum hits (in a token line)
+//        x X o g                    drum hits (in a token line); a compact run like 'x.x.xxxx'
+//                                    expands to one token per char, e.g. '.*32 o.o.o.o.x.x.xxxx'
 //        suffixes:  !  accent (vel 1.0)   ?  soft (×0.6)   @0.65  explicit velocity
 //        prefix:    ~  glide/slide from the previous note (mono lead/acid: legato portamento)
 //        repeat:    *n  the token lasts n slots, e.g. 'A4*6 C5*2' == 'A4 - - - - - C5 -'
@@ -149,10 +150,10 @@
 //  memory ~1–4 MB and render time, so prefer library patches and small variations).
 //
 //  INTEGRATION (main.js): Music.init() resolves once the title's first section is rendered
-//  (~1 s); the rest renders in the background by priority. play() waits for the first section of
-//  its track (a fade covers the gap), so it can be called any time. Music.preload(['cinder',
-//  'boss']) during a results screen avoids render work while the next sector is being played.
-//  Stingers are transposed to the current song's key and duck it while they play.
+//  (~1 s); the rest renders in the background by priority. play() can be called any time: the
+//  old track keeps playing until the new track's first-section instruments are rendered, then
+//  they crossfade. Music.preload(['cinder', 'boss']) during a results screen moves that render
+//  work out of gameplay. Stingers are transposed to the current song's key and duck the music.
 //
 //  DEV TOOLS: dev/music.html — play/stop per track, intensity, stingers, offline render with
 //  level plot, spectrogram, piano roll, harmony checker and per-channel level table. Programmatic:
@@ -167,7 +168,7 @@
 //                  pad: { gain: 0.4, duck: 0.6, reverb: 0.4 }, arp: { inst: 'pluck', delay: 0.3 } },
 //      patterns: {
 //        beat: { kick: 'x...x...x...x...', hat: '..x...x...x...x.' },
-//        bass: { step: 2, bass: 'A1 A1 A2 A1 F1 F1 F2 F1 | C2 C2 C3 C2 G1 G1 G2 G1' },
+//        bass: { step: 4, bass: 'A1 A1 A2 A1 | F1 F1 F2 F1 | C2 C2 C3 C2 | G1 G1 G2 G1' },
 //        pad:  { step: 16, pad: 'A3m F3maj C4maj G3maj' },
 //        arp:  { arp: arp(voiceLead(['Am', 'F', 'C', 'G'], { low: 'A4', high: 'A5', voices: 3 }), { rate: 2 }) },
 //      },
@@ -2059,14 +2060,15 @@ class Deck {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────
-// 8. Stingers (short one-shot cues, written in C and transposed to the current song's key)
+// 8. Stingers (short one-shot cues, written in C and transposed to the current song's key).
+//    They deliberately reuse instruments the title/sector songs already render (no extra memory).
 // ─────────────────────────────────────────────────────────────────────────────────────
 
 const STINGERS = {
   // 1UP: a bright rising sparkle
   extend: {
     bpm: 150, key: 'C', loop: false, gain: 0.95, duck: 0.35,
-    channels: { bell: { inst: 'glass', gain: 0.55, reverb: 0.45, delay: 0.25 }, harp: { gain: 0.6, reverb: 0.3, pan: -0.2 }, pad: { inst: 'padBright', gain: 0.3, reverb: 0.5 } },
+    channels: { bell: { inst: 'glass', gain: 0.55, reverb: 0.45, delay: 0.25 }, harp: { gain: 0.6, reverb: 0.3, pan: -0.2 }, pad: { inst: 'strings', gain: 0.22, reverb: 0.5 } },
     delay: { beats: 0.5, feedback: 0.3 },
     patterns: {
       a: {
@@ -2085,7 +2087,7 @@ const STINGERS = {
       lead: { inst: 'leadBright', gain: 0.95, reverb: 0.3, delay: 0.18 },
       brass: { gain: 0.43, reverb: 0.35 },
       strings: { gain: 0.26, reverb: 0.4, pan: 0.15 },
-      bass: { gain: 0.55 },
+      bass: { inst: 'bassSoft', gain: 0.55 },
       taiko: { gain: 0.4, reverb: 0.25 },
       crash: { gain: 0.45, reverb: 0.2 },
       rev: { inst: 'revcym', gain: 0.4 },
@@ -2116,7 +2118,7 @@ const STINGERS = {
       choir: { gain: 0.33, reverb: 0.5 },
       brass: { gain: 0.5, reverb: 0.35 },
       lead: { inst: 'leadBright', gain: 0.88, reverb: 0.35, delay: 0.2 },
-      bass: { gain: 0.55 },
+      bass: { inst: 'bassSoft', gain: 0.55 },
       taiko: { gain: 0.47, reverb: 0.25 },
       crash: { gain: 0.45, reverb: 0.2 },
       rev: { inst: 'revcym', gain: 0.4 },
@@ -2142,8 +2144,8 @@ const STINGERS = {
   game_over: {
     bpm: 72, key: 'C', scale: 'minor', loop: false, gain: 0.8, duck: 0.9,
     channels: {
-      pad: { inst: 'padDark', gain: 0.36, reverb: 0.5 },
-      choir: { inst: 'choirOo', gain: 0.3, reverb: 0.6 },
+      pad: { inst: 'strings', gain: 0.3, reverb: 0.5, lpf: 1800 },
+      choir: { gain: 0.26, reverb: 0.6, lpf: 2400 },
       lead: { inst: 'leadSoft', gain: 0.78, reverb: 0.45, delay: 0.25 },
       bass: { inst: 'bassSoft', gain: 0.4 },
     },
@@ -2289,26 +2291,29 @@ export const Music = {
     }
   },
 
-  /** opt { fade = 1, restart = false, section (dev: start at a named section) } */
+  /** opt { fade = 1, restart = false, section (dev: start at a named section) }.
+   *  The old track keeps playing until the new one's first section is rendered, then they
+   *  crossfade — never a gap of silence (an unknown track fades to silence + one warning). */
   play(track, opt = {}) {
     if (!this.enabled) return;
     const fade = Math.max(0, opt.fade ?? 1.0);
     if (!opt.restart && track === this.current && this._main && !this._main.ended) return;
     this.current = track || null;
     const token = ++this._token;
-    const had = !!this._main;
-    if (this._main) { this._fadeOut(this._main, fade); this._main = null; }
-    if (!track) return;
     const go = async () => {
       await this.init();
-      const { song, err } = await loadSong(track, 'first', null, 0);
-      if (token !== this._token) return;
+      if (!this.enabled || token !== this._token) return;
+      const { song, err } = track ? await loadSong(track, 'first', null, 0) : { song: null, err: null };
+      if (token !== this._token) return;          // superseded: the newer call owns the old deck
+      const old = this._main;
+      if (old) this._fadeOut(old, fade);
+      this._main = null;
       if (!song) {
-        if (!warned.has(track)) { warned.add(track); console.warn(`[music] track "${track}" unavailable (${err && err.message}); playing silence`); }
+        if (track && !warned.has(track)) { warned.add(track); console.warn(`[music] track "${track}" unavailable (${err && err.message}); playing silence`); }
         return;
       }
       this._key = song.key;
-      const deck = new Deck(this._core, song, { fadeIn: had ? fade : 0.02, log: this.debug, section: opt.section });
+      const deck = new Deck(this._core, song, { fadeIn: old ? fade : 0.02, log: this.debug, section: opt.section });
       this._main = deck;
       this._decks.add(deck);
       this._startTimer();

@@ -414,6 +414,7 @@ h2, h3, h4 { margin: 0; font-weight: 700; }
 @keyframes tap-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .28; } }
 .tap-keys { display: none; font: 400 10px/1 var(--f-label); letter-spacing: .18em; color: var(--dim); }
 .tap-keys kbd { font: inherit; color: var(--ink); padding: 3px 5px; background: var(--bg3); box-shadow: 0 2px 0 var(--line); }
+.tap-keys kbd.pad-a { border-radius: 50%; min-width: 17px; padding: 3px 4px; color: #6fd23f; box-shadow: 0 0 0 1px #6fd23f; }
 @media (hover: hover) and (pointer: fine) { .tap-keys { display: block; } }
 .tap-invite {
   display: flex; align-items: center; gap: 8px;
@@ -460,7 +461,7 @@ h2, h3, h4 { margin: 0; font-weight: 700; }
 .pc-name { font: 700 20px/1 var(--f-head); letter-spacing: .08em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pc-ship { font: 400 9px/1.2 var(--f-label); letter-spacing: .06em; color: var(--t-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pc-best { text-align: right; display: flex; flex-direction: column; gap: 5px; }
-.pc-best span { font: 400 9px/1 var(--f-label); letter-spacing: .2em; color: var(--dim); }
+.pc-best > span { font: 400 9px/1 var(--f-label); letter-spacing: .2em; color: var(--dim); }
 .pc-best b { font: 700 20px/1 var(--f-head); letter-spacing: .06em; color: var(--gold-hi); text-shadow: 0 0 10px rgba(240,169,42,.45); }
 
 /* ------------------------------------------------------------------ hangar */
@@ -935,7 +936,7 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 28px; border: 0; bo
 .key-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; border-bottom: 2px dotted var(--line2); padding-bottom: 6px; }
 .key-row dt { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .key-row dd { margin: 0; font: 400 10px/1.2 var(--f-label); letter-spacing: .1em; color: var(--ink); text-align: right; }
-.key-row .alt { font: 400 8px/1 var(--f-label); color: var(--dim); margin-left: 4px; letter-spacing: .06em; }
+.key-row .alt { font: 400 9px/1 var(--f-label); color: var(--dim); margin-left: 4px; letter-spacing: .06em; }
 kbd {
   display: inline-grid; place-items: center;
   min-width: 30px; height: 30px; padding: 0 7px;
@@ -1350,4 +1351,11 @@ kbd {
   .screen.active, .screen.active .stagger > *, .tap-text, .tbtn.ready, .glitch::before, .glitch::after,
   .vic-title, .coop-ships canvas, .rule-art .ico, .touch-ill g { animation: none !important; }
   .vic-roll-inner.roll { animation-duration: 90s; }
+}
+
+/* mouse/keyboard players: on-screen buttons stay available but step back visually */
+@media (hover: hover) and (pointer: fine) {
+  #touchControls .tbtn { opacity: .72; }
+  #touchControls .tbtn:hover, #touchControls .tbtn.active { opacity: 1; }
+  #touchControls .tbtn.disabled { opacity: .3; }
 }

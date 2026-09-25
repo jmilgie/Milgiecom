@@ -68,12 +68,15 @@ window.__bossStats = { ms, sprites: Object.keys(S).length, canvases: nCanvas, pr
 
 // ---- optional real modules (owned by other agents; used read-only for in-game previews)
 const tryImport = async (p) => { try { return await import(p); } catch (e) { return null; } };
-const [BG, PO, SPR] = await Promise.all([
-  SHOW.includes('game') ? tryImport('../js/art/backgrounds.js') : null,
-  SHOW.includes('game') ? tryImport('../js/fx/post.js') : null,
-  BULLETS ? tryImport('../js/art/sprites.js') : null,
-]);
-if (SPR?.buildSprites) { try { await SPR.buildSprites(() => {}); } catch (e) { console.error(e); } }
+let BG = null, PO = null, SPR = null, gameMods = null;
+function loadGameMods() {
+  return gameMods || (gameMods = (async () => {
+    [BG, PO, SPR] = await Promise.all([tryImport('../js/art/backgrounds.js'), tryImport('../js/fx/post.js'), BULLETS ? tryImport('../js/art/sprites.js') : null]);
+    if (SPR?.buildSprites) {
+      try { await SPR.buildSprites(() => {}); } catch (e) { console.error('sprites.js build failed (bullet preview off):', e.message); SPR = null; }
+    }
+  })());
+}
 const SECTOR = { warden: 'aurora', wyrm: 'cinder', prism: 'veil', dread: 'wreck', heart: 'horizon' };
 const BULLET_SET = { warden: ['eb_orb_p', 'eb_small_v', 'eb_small_p'], wyrm: ['eb_orb_o', 'eb_small_o', 'eb_star_o'],
   prism: ['eb_orb_c', 'eb_needle_c', 'eb_small_v'], dread: ['eb_orb_o', 'eb_small_p', 'eb_big_o'], heart: ['eb_orb_p', 'eb_big_p', 'eb_small_v'] };
@@ -139,7 +142,7 @@ function starfield(ctx, W, H, seed = 7) {
 // point enemy bullets fan out from (for the ?bullets=1 preview)
 const player = { x: 150, y: 330 };
 const SCENES = {
-  warden: { h: 250, parts: ['boss_warden', 'boss_warden_arm', 'boss_warden_arm_r', 'boss_warden_turret', 'boss_warden_core'], fn(ctx, t, em) {
+  warden: { h: 250, parts: ['boss_warden', 'boss_warden_arm', 'boss_warden_arm_r', 'boss_warden_turret', 'boss_warden_core', 'boss_warden_hatch'], fn(ctx, t, em) {
     const M = BOSS_META.warden;
     const hx = 120, hy = 70 + Math.round(Math.sin(t * 0.8) * 2);
     draw(ctx, 'boss_warden', Math.floor(t * 3), hx, hy, { em });
@@ -152,6 +155,8 @@ const SCENES = {
     else draw(ctx, 'boss_warden_arm', 0, rx, ry, { em, flipX: true });
     for (const [x, y] of M.turrets) draw(ctx, 'boss_warden_turret', 0, hx + x, hy + y, { em, dir: aim(hx + x, hy + y, player.x, player.y) });
     draw(ctx, 'boss_warden_core', Math.floor(t * 8), hx + M.core[0], hy + M.core[1], { em });
+    // bay doors cycle shut -> open -> shut every 4 s (frame = round(open * 4))
+    if (M.hatch) draw(ctx, M.hatch.sprite, Math.round(4 * Math.min(1, Math.max(0, 1.5 - Math.abs(((t / 4) % 1) * 4 - 2)))), hx + M.core[0], hy + M.core[1], { em });
     rects(ctx, em, hx, hy, M.rects);
     mark(ctx, em, hx + M.core[0], hy + M.core[1], '#0ff', M.coreR);
     mark(ctx, em, hx + M.bay[0], hy + M.bay[1], '#ff0');
@@ -219,13 +224,14 @@ const SCENES = {
     }
     return [cx + M.eye[0], cy + M.eye[1]];
   } },
-  dread: { h: 250, parts: ['boss_dread', 'boss_dread_shadow', 'boss_dread_cannon', 'boss_dread_turret', 'boss_dread_hatch'], fn(ctx, t, em) {
+  dread: { h: 250, parts: ['boss_dread', 'boss_dread_shadow', 'boss_dread_cannon', 'boss_dread_turret', 'boss_dread_hatch', 'boss_dread_shutter'], fn(ctx, t, em) {
     const M = BOSS_META.dread;
     const hx = 120, hy = 80;
     if (!em && M.shadow && S[M.shadow.sprite]) draw(ctx, M.shadow.sprite, 0, hx + M.shadow.dx, hy + M.shadow.dy);
     draw(ctx, 'boss_dread', Math.floor(t * 2), hx, hy, { em });
     M.hatches.forEach(([x, y], k) => draw(ctx, 'boss_dread_hatch', (Math.floor(t) + k) % 2, hx + x, hy + y, { em }));
     draw(ctx, 'boss_dread_cannon', Math.floor(t * 3) % 4, hx + M.cannon[0], hy + M.cannon[1], { em });
+    if (M.shutter) draw(ctx, M.shutter.sprite, Math.round(4 * Math.min(1, Math.max(0, 1.5 - Math.abs(((t / 4) % 1) * 4 - 2)))), hx + M.shutter.at[0], hy + M.shutter.at[1], { em });
     for (const [x, y] of M.turrets) draw(ctx, 'boss_dread_turret', 0, hx + x, hy + y, { em, dir: aim(hx + x, hy + y, player.x, player.y) });
     rects(ctx, em, hx, hy, M.rects);
     mark(ctx, em, hx + M.bridge[0], hy + M.bridge[1], '#f0f', M.bridgeR);
@@ -296,6 +302,7 @@ function bulletFan(d, name, x0, y0, t) {
 }
 // renders one in-game frame into `dst` (a 2D canvas of size W*k x H*k)
 async function renderGame(name, t, dst, k = 3) {
+  await loadGameMods();
   const sc = SCENES[name], W = 240, H = sc.h;
   const main = document.createElement('canvas'); main.width = W; main.height = H;
   const light = document.createElement('canvas'); light.width = W; light.height = H;
@@ -305,7 +312,7 @@ async function renderGame(name, t, dst, k = 3) {
   if (bg) {
     bg.resize(W, H, 0, 0);
     bg.update(1 / 60);
-    bg.draw(ctx, lctx, 9000 + t * (bg.scrollSpeed || 20), t);
+    bg.draw(ctx, lctx, 900 + t * (bg.scrollSpeed || 20), t);
   } else starfield(ctx, W, H, 11);
   const [bx, by] = sc.fn(ctx, t, false);
   sc.fn(lctx, t, true);

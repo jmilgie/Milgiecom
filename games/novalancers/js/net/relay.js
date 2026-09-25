@@ -1,30 +1,43 @@
 // Nova Lancers — relay transport over public MQTT brokers (fallback when WebRTC can't connect).
 //
-// Topics (all under milgie/nvl1/):
-//   <CODE>/h          host inbox: clients publish envelopes {"f":cid,"m":[msg,...]}
-//   <CODE>/c/<cid>    one client's inbox: host publishes {"m":[msg,...]}
-//   <CODE>/b          room broadcast (every relay client subscribes): {"m":[msg,...]}
-//   lobby             public-room announcements (quick match discovery)
+// Topics live under milgie/nvl1/<room>, where <room> is the first 16 hex digits of
+// SHA-256('nvl1:' + CODE), so room codes can't simply be read off the broker firehose:
+//   <room>/h          host inbox: clients publish envelopes
+//   <room>/b          host -> admitted clients: broadcasts plus items addressed to one cid
+//                     (a single stream, so everything the host sends stays in order)
+//   <room>/c/<cid>    host -> one client that isn't admitted yet (probe answers, errors,
+//                     the kick for a player that was already dropped)
+//   milgie/nvl1/lobby public-room announcements (quick match discovery)
+//
+// Envelope = optional tag header, '\n', JSON body:
+//   client -> host  <cid>:<tag>\n{"f":"<cid>","q":<seq>,"m":[msg,...]}
+//   host -> client  <cid>:<tag>,<cid>:<tag>\n{"q":<seq>,"m":[msg | {"@":"<cid>","x":msg},...]}
+// tag = 128-bit HMAC of the body bytes under that player's link key (see auth.js). Once a
+// link has keys, envelopes without a valid tag or with a non-increasing seq are dropped, so
+// other broker users can neither inject, replay nor spoof messages. Links without keys
+// (no WebCrypto: insecure contexts only) simply omit the header.
 //
 // The host listens on every reachable broker; a client probes all brokers in parallel and
 // keeps the first one on which the host answers. Messages queued in the same task share one
-// publish, and a token bucket paces publishes (≤ 25/s per direction per link on average),
-// keeping the load on the free public brokers low.
+// publish, and a token bucket paces publishes (≤ 25/s per direction per link on average).
 
 import { MqttClient } from './mqtt.js';
+import { sha256, hex, sameTag } from './auth.js';
 import {
-  TOPIC_ROOT, LOBBY_TOPIC, MAX_ENVELOPE, CID_RE, BAD, isObj, now, sleep, validInfo,
+  TOPIC_ROOT, LOBBY_TOPIC, MAX_ENVELOPE, CID_RE, BAD, isObj, isInt, now, sleep, safeJson, utf8Len,
 } from './common.js';
 
 const PUB_RATE = 25;          // sustained publishes/s per link direction (token bucket)
 const PUB_BURST = 3;
-const SPLIT = 12000;          // start a new envelope beyond this many chars
+const ITEM_BUDGET = MAX_ENVELOPE - 512;   // bytes of messages per envelope (header + wrapper fit in the rest)
+const MAX_HEAD = 400;         // tag header (≤ 3 relay players)
 const MAX_QUEUE = 512;        // outbound backlog cap while a broker is reconnecting
-const MAX_PENDING_CIDS = 32;  // unbound relay peers the host tracks at once
 const PROBE_WAIT = 2200;      // how long a client waits for the host on one broker
+const MAX_SEQ = 2 ** 52;
+const te = new TextEncoder();
 
 export function roomTopics(code) {
-  const root = `${TOPIC_ROOT}/${code}`;
+  const root = `${TOPIC_ROOT}/${hex(sha256(`nvl1:${code}`)).slice(0, 16)}`;
   return { h: `${root}/h`, b: `${root}/b`, c: (cid) => `${root}/c/${cid}` };
 }
 
@@ -53,43 +66,50 @@ class Pacer {
   }
 }
 
-/** Pack pre-serialized messages into one or more envelopes. */
-function envelopes(prefix, items) {
+/** Group serialized items into bodies of at most ITEM_BUDGET UTF-8 bytes each. */
+function pack(items) {
   const out = [];
   let cur = [], size = 0;
   for (const s of items) {
-    if (cur.length && size + s.length > SPLIT) {
-      out.push(prefix + cur.join(',') + ']}');
-      cur = [];
-      size = 0;
-    }
+    const n = utf8Len(s) + 1;
+    if (cur.length && size + n > ITEM_BUDGET) { out.push(cur); cur = []; size = 0; }
     cur.push(s);
-    size += s.length + 1;
+    size += n;
   }
-  if (cur.length) out.push(prefix + cur.join(',') + ']}');
+  if (cur.length) out.push(cur);
   return out;
 }
 
-function parseEnvelope(text, bytes) {
-  if (bytes > MAX_ENVELOPE || text.includes('__proto__')) return null;
-  try {
-    const o = JSON.parse(text);
-    if (!isObj(o) || !Array.isArray(o.m) || o.m.length > 256) return null;
-    return o;
-  } catch {
-    return null;
-  }
+/** Split a payload into { head, body, off } (off = byte offset of the body); null if malformed. */
+function splitFrame(text) {
+  const nl = text.indexOf('\n');
+  if (nl < 0) return { head: '', body: text, off: 0 };
+  if (nl > MAX_HEAD) return null;
+  return { head: text.slice(0, nl), body: text.slice(nl + 1), off: nl + 1 }; // header is ASCII
+}
+
+/** The tag for `cid` in a header "cid:tag,cid:tag" (or null). */
+function findTag(head, cid) {
+  if (!head) return null;
+  let i = head.indexOf(`${cid}:`);
+  while (i > 0 && head[i - 1] !== ',') i = head.indexOf(`${cid}:`, i + 1);
+  if (i < 0) return null;
+  const s = i + cid.length + 1;
+  const e = head.indexOf(',', s);
+  return head.slice(s, e < 0 ? head.length : e);
+}
+
+function parseEnvelope(body) {
+  const o = safeJson(body);
+  if (!isObj(o) || !Array.isArray(o.m) || o.m.length > 256) return null;
+  return o;
 }
 
 /** Parse a lobby announcement / probe answer payload (validated by the caller). */
 export function parseJson(text, bytes) {
-  if (bytes > 4096 || text.includes('__proto__')) return null;
-  try {
-    const o = JSON.parse(text);
-    return isObj(o) ? o : null;
-  } catch {
-    return null;
-  }
+  if (bytes > 4096) return null;
+  const o = safeJson(text);
+  return isObj(o) ? o : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,22 +122,50 @@ class RelayHostLink {
     this.hub = hub;
     this.cid = cid;
     this.b = broker;          // broker record the peer was last heard on
-    this.bound = false;       // true once it is a player (receives broadcasts)
+    this.bound = false;       // true once it is a player (receives the /b stream)
     this.open = true;
     this.closed = false;
     this.slot = null;
+    this.auth = null;         // LinkAuth once keys are agreed
+    this.verifying = false;   // key agreement in progress: incoming envelopes are dropped
+    this.rq = 0;              // last accepted sequence number
+    this.first = null;        // the envelope that created the link (verified once keys exist)
     this.onmessage = null;
     this.onclose = null;
   }
-  sendRaw(str, urgent = false) {
-    if (this.closed) return false;
-    this.hub.enqueue(str, this, urgent);
+
+  /** Check the envelope that opened this link against `auth`; on success adopt the keys. */
+  adopt(auth) {
+    const f = this.first;
+    this.first = null;
+    if (!f) return false;
+    const tag = findTag(f.head, this.cid);
+    if (!tag || !sameTag(tag, auth.c2h.tag(f.body)) || !isInt(f.q, 1, MAX_SEQ)) return false;
+    this.auth = auth;
+    this.rq = f.q;
     return true;
   }
+
+  _accept(fr, raw, env) {
+    const tag = findTag(fr.head, this.cid);
+    if (!tag || !sameTag(tag, this.auth.c2h.tag(raw.subarray(fr.off)))) return false;
+    if (!isInt(env.q, this.rq + 1, MAX_SEQ)) return false; // replayed or reordered
+    this.rq = env.q;
+    return true;
+  }
+
+  sendRaw(str, urgent = false) {
+    if (this.closed) return false;
+    if (this.bound) this.hub.enqueue(str, this, urgent);
+    else this.hub.sendDirect(this.cid, this.b, [str], this.auth);
+    return true;
+  }
+
   close() {
     if (this.closed) return;
     this.closed = true;
     this.open = false;
+    this.bound = false;
     this.onmessage = null;
     if (this.hub.links.get(this.cid) === this) this.hub.links.delete(this.cid);
   }
@@ -127,12 +175,16 @@ export class RelayHub {
   constructor(code, urls) {
     this.code = code;
     this.t = roomTopics(code);
-    this.brokers = urls.map((url) => ({ url, mq: null, state: 'idle', retryAt: 0, backoff: 4000 }));
-    this.links = new Map();
-    this.onlink = null;       // (link) => void, first valid envelope from an unknown cid
+    this.brokers = urls.map((url) => ({ url, mq: null, state: 'idle', retryAt: 0, backoff: 4000, checkAt: 0 }));
+    this.links = new Map();   // cid -> RelayHostLink
+    this.onhello = null;      // (link) => void   an unknown cid sent a hello (link created)
+    this.onprobe = null;      // (cid, broker) => void   an unknown cid asks for room info
+    this.onstray = null;      // (cid, broker) => void   other traffic from an unknown cid
     this.q = [];
     this.flushTimer = 0;
     this.pacer = new Pacer();
+    this.seq = 0;
+    this.troubleAt = -1e9;    // last time a broker connection was found dead
     this.closed = false;
     this._lobbyFn = null;
   }
@@ -165,7 +217,7 @@ export class RelayHub {
     try {
       await mq.connect(6000);
       if (this.closed) throw new Error('closed');
-      mq.onmessage = (topic, text, bytes) => this._onMsg(b, topic, text, bytes);
+      mq.onmessage = (topic, text, raw) => this._onMsg(b, topic, text, raw);
       await mq.subscribe(this._lobbyFn ? [this.t.h, LOBBY_TOPIC] : [this.t.h]);
       if (this.closed) throw new Error('closed');
     } catch {
@@ -183,6 +235,7 @@ export class RelayHub {
       b.mq = null;
       b.state = 'down';
       b.retryAt = now() + 1000;
+      this.troubleAt = now();
     };
     return true;
   }
@@ -193,27 +246,57 @@ export class RelayHub {
     for (const b of this.brokers) if (b.state === 'down' && t >= b.retryAt) this._connect(b);
   }
 
-  _onMsg(b, topic, text, bytes) {
+  /**
+   * Verify broker connections now (half-open sockets after a network change send and
+   * receive nothing without ever closing): a broker that doesn't answer PINGREQ is dropped
+   * and reconnected by maintain(). `b` = one broker record, or all when omitted.
+   */
+  check(b = null) {
+    if (this.closed) return;
+    const t = now();
+    for (const x of b ? [b] : this.brokers) {
+      if (x.state !== 'up' || !x.mq || t - x.checkAt < 4000) continue;
+      x.checkAt = t;
+      const mq = x.mq;
+      mq.ping(2500).then((ok) => { if (!ok && x.mq === mq && !this.closed) mq.kill(); });
+    }
+  }
+
+  _onMsg(b, topic, text, raw) {
     if (this.closed) return;
     if (topic === LOBBY_TOPIC) {
       if (this._lobbyFn) {
-        const a = parseJson(text, bytes);
+        const a = parseJson(text, raw.length);
         if (a) this._lobbyFn(a);
       }
       return;
     }
-    if (topic !== this.t.h) return;
-    const env = parseEnvelope(text, bytes);
+    if (topic !== this.t.h || raw.length > MAX_ENVELOPE) return;
+    const fr = splitFrame(text);
+    const env = fr && parseEnvelope(fr.body);
     if (!env || typeof env.f !== 'string' || !CID_RE.test(env.f)) return;
-    let link = this.links.get(env.f);
-    if (!link) {
-      let pending = 0;
-      for (const l of this.links.values()) if (!l.bound) pending++;
-      if (pending >= MAX_PENDING_CIDS) return;
-      link = new RelayHostLink(this, env.f, b);
-      this.links.set(env.f, link);
-      if (this.onlink) this.onlink(link);
-      if (link.closed) return;
+    const cid = env.f;
+    let link = this.links.get(cid);
+    if (link) {
+      if (link.verifying) return;
+      if (link.auth && !link._accept(fr, raw, env)) return;
+    } else {
+      let hello = false, probe = false;
+      for (const m of env.m) {
+        if (!isObj(m)) continue;
+        if (m._ === 'hello') hello = true;
+        else if (m._ === 'probe') probe = true;
+      }
+      if (!hello) {
+        // Probes are answered without keeping any state (a probe flood can't fill tables).
+        if (probe) { if (this.onprobe) this.onprobe(cid, b); } else if (this.onstray) this.onstray(cid, b);
+        return;
+      }
+      link = new RelayHostLink(this, cid, b);
+      link.first = { head: fr.head, body: raw.slice(fr.off), q: env.q };
+      this.links.set(cid, link);
+      if (this.onhello) this.onhello(link);
+      if (link.closed || !link.onmessage) { link.close(); return; }
     }
     link.b = b; // answer on the broker we last heard it on (handles client broker failover)
     for (const m of env.m) {
@@ -222,7 +305,14 @@ export class RelayHub {
     }
   }
 
-  /** Queue a message: to = RelayHostLink (direct) or null (broadcast to bound links). */
+  /** Publish right away to one client's inbox (clients that aren't admitted yet). */
+  sendDirect(cid, b, items, auth = null) {
+    if (this.closed || !b || !b.mq) return;
+    const body = `{"q":${++this.seq},"m":[${items.join(',')}]}`;
+    b.mq.publish(this.t.c(cid), auth ? `${cid}:${auth.h2c.tag(body)}\n${body}` : body);
+  }
+
+  /** Queue for the /b stream: to = a bound RelayHostLink (addressed item) or null (broadcast). */
   enqueue(str, to, urgent = false) {
     if (this.closed) return;
     if (this.q.length >= MAX_QUEUE) this.q.shift();
@@ -237,27 +327,43 @@ export class RelayHub {
     if (!q.length) return;
     this.q = [];
     this.pacer.take();
-    let allBroadcast = true;
-    for (const e of q) if (e.to) { allBroadcast = false; break; }
-    if (allBroadcast) {
-      // One publish per broker that has at least one bound relay player.
-      const brokers = new Set();
-      for (const l of this.links.values()) if (l.bound && !l.closed) brokers.add(l.b);
-      if (!brokers.size) return;
-      const envs = envelopes('{"m":[', q.map((e) => e.s));
-      for (const b of brokers) if (b.mq) for (const env of envs) b.mq.publish(this.t.b, env);
-      return;
+    const players = [];
+    for (const l of this.links.values()) if (l.bound && !l.closed) players.push(l);
+    if (!players.length) return;
+    // Pack in order; an envelope is tagged for every player it carries something for.
+    let items = [], size = 0, all = false;
+    const to = new Set();
+    const emit = () => {
+      if (items.length) this._publishStream(items, all ? players : Array.from(to));
+      items = [];
+      size = 0;
+      all = false;
+      to.clear();
+    };
+    for (const e of q) {
+      if (e.to && (!e.to.bound || e.to.closed)) continue;
+      const s = e.to ? `{"@":"${e.to.cid}","x":${e.s}}` : e.s;
+      const n = utf8Len(s) + 1;
+      if (items.length && size + n > ITEM_BUDGET) emit();
+      items.push(s);
+      size += n;
+      if (e.to) to.add(e.to); else all = true;
     }
-    // Mixed batch: per-recipient envelopes on their own topic, preserving order.
-    const recipients = new Set();
-    for (const l of this.links.values()) if (l.bound && !l.closed) recipients.add(l);
-    for (const e of q) if (e.to) recipients.add(e.to);
-    for (const r of recipients) {
-      const items = [];
-      for (const e of q) if (e.to === r || (!e.to && r.bound && !r.closed)) items.push(e.s);
-      if (!items.length || !r.b.mq) continue;
-      for (const env of envelopes('{"m":[', items)) r.b.mq.publish(this.t.c(r.cid), env);
+    emit();
+  }
+
+  _publishStream(items, targets) {
+    const body = `{"q":${++this.seq},"m":[${items.join(',')}]}`;
+    let head = '', bytes = null;
+    const brokers = new Set();
+    for (const r of targets) {
+      brokers.add(r.b);
+      if (!r.auth) continue;
+      if (!bytes) bytes = te.encode(body);
+      head += `${head ? ',' : ''}${r.cid}:${r.auth.h2c.tag(bytes)}`;
     }
+    const payload = head ? `${head}\n${body}` : body;
+    for (const b of brokers) if (b.mq) b.mq.publish(this.t.b, payload);
   }
 
   /** Publish a public-room announcement on every connected broker. */
@@ -296,21 +402,25 @@ export class RelayHub {
 
 /**
  * Client's discovery of a room on the relay: connects to every broker in parallel,
- * subscribes to its own inbox + the room broadcast, and asks the host for room info.
+ * subscribes to its own inbox + the room stream, and asks the host for room info.
  *   onInfo(info, mq, url)  host answered (first answer wins)
  *   onDone(state)          'negative' (brokers reachable, no host) | 'unreachable' (no broker)
+ * persistent: keep re-probing every second until stop() (link rescue); 'negative' is still
+ * reported once after PROBE_WAIT.
  */
 export class RelayProber {
-  constructor(code, cid, urls, onInfo, onDone) {
+  constructor(code, cid, urls, onInfo, onDone, persistent = false) {
     this.code = code;
     this.cid = cid;
     this.urls = urls;
     this.t = roomTopics(code);
     this.onInfo = onInfo;
     this.onDone = onDone;
+    this.persistent = persistent;
     this.clients = new Set();
     this.found = false;
     this.stopped = false;
+    this.reported = false;
     this.failed = 0;
     this.settled = 0;
     this.reachable = 0;
@@ -318,7 +428,7 @@ export class RelayProber {
   }
 
   start() {
-    if (!this.urls.length) { this.onDone('unreachable'); return; }
+    if (!this.urls.length) { this._report('unreachable'); return; }
     for (const url of this.urls) this._try(url);
   }
 
@@ -329,12 +439,13 @@ export class RelayProber {
     try {
       await mq.connect(5000);
       if (this.stopped) throw new Error('stopped');
-      mq.onmessage = (topic, text, bytes) => {
-        if (topic !== inbox || this.stopped || this.found) return;
-        const env = parseEnvelope(text, bytes);
+      mq.onmessage = (topic, text, raw) => {
+        if (topic !== inbox || this.stopped || this.found || raw.length > MAX_ENVELOPE) return;
+        const fr = splitFrame(text);
+        const env = fr && parseEnvelope(fr.body);
         if (!env) return;
         for (const m of env.m) {
-          if (isObj(m) && m._ === 'info' && m.code === this.code && validInfo(m)) {
+          if (isObj(m) && m._ === 'info' && m.code === this.code) {
             this.found = true;
             this.onInfo(m, mq, url);
             return;
@@ -353,36 +464,46 @@ export class RelayProber {
     }
     this.reachable++;
     const probe = `{"f":"${this.cid}","m":[{"_":"probe"}]}`;
-    mq.publish(this.t.h, probe);
-    this.timers.push(setTimeout(() => { if (!this.stopped && !this.found) mq.publish(this.t.h, probe); }, 800));
+    const send = () => { if (!this.stopped && !this.found && mq.connected) mq.publish(this.t.h, probe); };
+    send();
+    if (this.persistent) this.timers.push(setInterval(send, 1000));
+    else this.timers.push(setTimeout(send, 800));
     this.timers.push(setTimeout(() => { this.settled++; this._check(); }, PROBE_WAIT));
   }
 
+  _report(state) {
+    if (this.reported || this.stopped || this.found) return;
+    this.reported = true;
+    this.onDone(state);
+  }
+
   _check() {
-    if (this.stopped || this.found) return;
-    if (this.failed + this.settled >= this.urls.length) this.onDone(this.reachable ? 'negative' : 'unreachable');
+    if (this.failed + this.settled >= this.urls.length) this._report(this.reachable ? 'negative' : 'unreachable');
   }
 
   /** Stop probing; close every broker connection except `keep`. */
   stop(keep = null) {
     this.stopped = true;
-    for (const t of this.timers) clearTimeout(t);
+    for (const t of this.timers) { clearTimeout(t); clearInterval(t); }
     for (const mq of this.clients) if (mq !== keep) mq.close();
     this.clients.clear();
   }
 }
 
-/** Client's link to the host through one broker (fails over to other brokers if it drops). */
+/**
+ * Client's link to the host through one broker. Fails over to the other brokers when the
+ * connection drops, and on recover() (the session heard nothing from the host lately).
+ */
 export class RelayClientLink {
-  constructor(mq, url, code, cid, urls) {
+  constructor(mq, url, code, cid, urls, auth = null) {
     this.kind = 'relay';
     this.code = code;
     this.cid = cid;
     this.urls = urls;
     this.url = url;
+    this.auth = auth;
     this.t = roomTopics(code);
     this.inbox = this.t.c(cid);
-    this.prefix = `{"f":"${cid}","m":[`;
     this.open = true;
     this.closed = false;
     this.onmessage = null;
@@ -390,23 +511,59 @@ export class RelayClientLink {
     this.q = [];
     this.flushTimer = 0;
     this.pacer = new Pacer();
+    this.seq = 0;
+    this.rq = { b: 0, c: 0 };   // last accepted host sequence per topic
     this.reconnecting = false;
+    this.rotating = false;
+    this.recoverAt = -1e9;
     this._bind(mq, url);
   }
+
+  get secure() { return !!this.auth; }
 
   _bind(mq, url) {
     this.mq = mq;
     this.url = url;
-    mq.onmessage = (topic, text, bytes) => {
-      if (this.closed || (topic !== this.inbox && topic !== this.t.b)) return;
-      const env = parseEnvelope(text, bytes);
-      if (!env) return;
-      for (const m of env.m) {
-        if (this.closed || !this.onmessage) break;
+    mq.onmessage = (topic, text, raw) => this._onPublish(topic, text, raw);
+    mq.onclose = () => { if (this.mq === mq) this._reconnect(); };
+  }
+
+  _onPublish(topic, text, raw) {
+    if (this.closed || raw.length > MAX_ENVELOPE) return;
+    const key = topic === this.t.b ? 'b' : topic === this.inbox ? 'c' : null;
+    if (!key) return;
+    const fr = splitFrame(text);
+    if (!fr) return;
+    if (this.auth) {
+      const tag = findTag(fr.head, this.cid);
+      if (!tag || !sameTag(tag, this.auth.h2c.tag(raw.subarray(fr.off)))) return; // not for us / forged
+    }
+    const env = parseEnvelope(fr.body);
+    if (!env) return;
+    if (this.auth) {
+      if (!isInt(env.q, this.rq[key] + 1, MAX_SEQ)) return; // replayed or reordered
+      this.rq[key] = env.q;
+    }
+    for (const m of env.m) {
+      if (this.closed || !this.onmessage) break;
+      if (isObj(m) && m['@'] !== undefined) {
+        if (m['@'] === this.cid) this.onmessage(isObj(m.x) ? m.x : BAD);
+      } else {
         this.onmessage(isObj(m) ? m : BAD);
       }
-    };
-    mq.onclose = () => { if (this.mq === mq) this._reconnect(); };
+    }
+  }
+
+  async _connectTo(url) {
+    const mq = new MqttClient(url);
+    try {
+      await mq.connect(5000);
+      await mq.subscribe([this.inbox, this.t.b]);
+      return mq;
+    } catch {
+      mq.close();
+      return null;
+    }
   }
 
   async _reconnect() {
@@ -417,22 +574,16 @@ export class RelayClientLink {
     const deadline = now() + 20000;
     while (!this.closed && now() < deadline) {
       for (const url of order) {
-        if (this.closed) return;
-        const mq = new MqttClient(url);
-        try {
-          await mq.connect(5000);
-          await mq.subscribe([this.inbox, this.t.b]);
-        } catch {
-          mq.close();
-          continue;
-        }
-        if (this.closed) { mq.close(); return; }
+        if (this.closed) break;
+        const mq = await this._connectTo(url);
+        if (!mq) continue;
+        if (this.closed) { mq.close(); break; }
         this.reconnecting = false;
         this._bind(mq, url);
         this.flush();
         return;
       }
-      await sleep(1000);
+      if (!this.closed) await sleep(1000);
     }
     this.reconnecting = false;
     if (!this.closed) {
@@ -440,6 +591,42 @@ export class RelayClientLink {
       this.open = false;
       if (this.onclose) this.onclose();
     }
+  }
+
+  /**
+   * The host has gone quiet: make sure our broker connection is alive (a half-open socket
+   * never closes by itself), and if it is, move to the next broker — the host listens on
+   * all of them, so one of its own broker connections may be the broken one.
+   */
+  recover() {
+    const t = now();
+    if (this.closed || this.reconnecting || t - this.recoverAt < 4000) return;
+    this.recoverAt = t;
+    const mq = this.mq;
+    if (!mq) return;
+    mq.ping(2000).then(async (ok) => {
+      if (this.closed || this.mq !== mq) return;
+      if (!ok) { mq.kill(); return; } // -> onclose -> _reconnect()
+      if (this.urls.length < 2 || this.rotating) return;
+      const i = this.urls.indexOf(this.url);
+      const order = [...this.urls.slice(i + 1), ...this.urls.slice(0, Math.max(0, i))];
+      this.rotating = true;
+      try {
+        for (const url of order) {
+          const next = await this._connectTo(url);
+          if (!next) continue;
+          // Our socket may have died meanwhile (then _reconnect() owns the link): discard.
+          if (this.closed || this.mq !== mq || this.reconnecting) { next.close(); return; }
+          mq.onclose = null;
+          mq.close();
+          this._bind(next, url);
+          this.flush();
+          return;
+        }
+      } finally {
+        this.rotating = false;
+      }
+    });
   }
 
   sendRaw(str, urgent = false) {
@@ -453,11 +640,14 @@ export class RelayClientLink {
 
   flush() {
     if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = 0; }
-    if (!this.mq || !this.q.length) return;
+    if (!this.mq || !this.mq.connected || !this.q.length) return;
     this.pacer.take();
     const items = this.q;
     this.q = [];
-    for (const env of envelopes(this.prefix, items)) this.mq.publish(this.t.h, env);
+    for (const group of pack(items)) {
+      const body = `{"f":"${this.cid}","q":${++this.seq},"m":[${group.join(',')}]}`;
+      this.mq.publish(this.t.h, this.auth ? `${this.cid}:${this.auth.c2h.tag(body)}\n${body}` : body);
+    }
   }
 
   close() {

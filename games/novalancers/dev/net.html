@@ -68,6 +68,7 @@
     <button id="bReady" disabled>READY</button>
     <button id="bStart" disabled>START</button>
     <button id="bStress" disabled>STRESS 20/s</button>
+    <button id="bDrop" disabled title="Simulate a network switch: kill this client's link without a goodbye">DROP LINK</button>
     <button class="warn" id="bLeave" disabled>LEAVE</button>
   </div>
 </div>
@@ -86,10 +87,15 @@
 
 <script type="module">
 import * as Net from '../js/net/session.js';
+import * as mqtt from '../js/net/mqtt.js';
+import * as relay from '../js/net/relay.js';
+import * as auth from '../js/net/auth.js';
+import * as p2p from '../js/net/p2p.js';
+import * as common from '../js/net/common.js';
 import { SHIP_ORDER } from '../js/config.js';
 
 const $ = (id) => document.getElementById(id);
-const T = (window.NT = { Net, s: null, events: [], stress: null });
+const T = (window.NT = { Net, s: null, events: [], stress: null, mods: { mqtt, relay, auth, p2p, common } });
 let s = null, ready = false, stressTimer = 0;
 
 for (const sh of SHIP_ORDER) $('ship').add(new Option(sh.toUpperCase(), sh));
@@ -141,6 +147,7 @@ function renderLobby(l) {
 function setUi(active) {
   for (const id of ['bHost', 'bHostPub', 'bQuick', 'bJoin']) $(id).disabled = active;
   for (const id of ['bReady', 'bStress', 'bLeave', 'bSend', 'bInvite']) $(id).disabled = !active;
+  $('bDrop').disabled = !active || !(s && !s.isHost);
   $('bStart').disabled = !active || !(s && s.isHost);
 }
 
@@ -216,6 +223,16 @@ $('bHostPub').onclick = () => run('host public', () => Net.hostSession({ ...opts
 $('bQuick').onclick = () => run('quick match', () => Net.quickMatch(opts()));
 $('bJoin').onclick = () => run('join', () => Net.joinSession($('code').value, opts()));
 $('bLeave').onclick = () => { if (s) s.close(); };
+// Network-switch simulation: the link dies without a goodbye (P2P: the WebRTC connection is torn
+// down; relay: the broker socket is dropped). The session should rescue itself.
+T.dropLink = () => {
+  if (!s || s.isHost) return;
+  const link = s.link;
+  log(`dropping ${link.kind} link`, 'err');
+  if (link.kind === 'p2p') { try { link.conn.peerConnection.close(); } catch {} link._gone(); }
+  else if (link.mq) link.mq.kill();
+};
+$('bDrop').onclick = () => T.dropLink();
 $('bReady').onclick = () => {
   if (!s) return;
   ready = !ready;
@@ -263,7 +280,14 @@ $('bStress').onclick = () => (stressTimer ? stopStress() : T.startStress(20));
 
 setInterval(() => {
   if (!s) return;
-  $('vTransport').textContent = s.transportKind;
+  let sec = '';
+  if (s.isHost) {
+    const relays = s.players.filter((p, i) => i > 0 && p && p.link.kind === 'relay');
+    if (relays.length) sec = ` · relay ${relays.filter((p) => p.link.auth).length}/${relays.length} signed`;
+  } else if (s.link.kind === 'relay') {
+    sec = s.link.auth ? ' · signed' : ' · UNSIGNED';
+  }
+  $('vTransport').textContent = s.transportKind + sec;
   $('vPing').textContent = s.isHost ? s.lobby.players.map((p) => `${p.slot}:${s.ping(p.slot)}`).join(' ') : s.ping() + ' ms';
   $('vTime').textContent = (s.hostTime() / 1000).toFixed(2) + ' s';
   const parts = [];

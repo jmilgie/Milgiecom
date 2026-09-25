@@ -312,7 +312,7 @@ DEF.title = {
     <button type="button" class="title-tap" data-act="start" data-sfx="ui_start" aria-label="Tap to start">
       <span class="tap-invite" hidden></span>
       <span class="tap-text">TAP TO START</span>
-      <span class="tap-keys">PRESS <kbd>ENTER</kbd> OR <kbd>Ⓐ</kbd></span>
+      <span class="tap-keys">PRESS <kbd>ENTER</kbd> OR <kbd class="pad-a">A</kbd></span>
     </button>
     <div class="title-foot">
       <a class="title-back" href="../" data-sfx="ui_back">${icon('back')}<span>MILGIE.COM GAMES</span></a>
@@ -327,7 +327,8 @@ DEF.title = {
     const room = data.room || profile().room;
     inv.hidden = !room;
     if (room) inv.innerHTML = `${icon('squad')} SQUAD INVITE · <b>${esc(room)}</b>`;
-    $(el, '.tap-text').textContent = room ? 'TAP TO JOIN' : 'TAP TO START';
+    const mouse = matchMedia('(hover: hover) and (pointer: fine)').matches;
+    $(el, '.tap-text').textContent = room ? (mouse ? 'CLICK TO JOIN' : 'TAP TO JOIN') : (mouse ? 'CLICK TO START' : 'TAP TO START');
     // Logo: main draws the sprite logo on the canvas; show the CSS fallback when it can't.
     const lf = $(el, '.logo-fallback');
     if (data.logoFallback != null) lf.classList.toggle('on', !!data.logoFallback);
@@ -555,7 +556,7 @@ DEF.hangar = {
 // Animated hangar preview: parallax stars, hologram pad, banking ship, engine flames and a
 // looping weapon demo, with a cheap two-mip bloom from a separate light canvas.
 function drawHangar(dt) {
-  const { g, lg, cv, lc } = hangar;
+  const { g, lg, lc } = hangar;
   const W = PREV_W, Hh = hangar.H || PREV_H;
   hangar.t += dt;
   hangar.swapT = Math.min(1, (hangar.swapT || 0) + dt * 3);
@@ -569,9 +570,12 @@ function drawHangar(dt) {
   lg.imageSmoothingEnabled = false;
 
   // background
-  const grd = g.createLinearGradient(0, 0, 0, Hh);
-  grd.addColorStop(0, '#05040c'); grd.addColorStop(0.7, '#0e0b22'); grd.addColorStop(1, '#171236');
-  g.fillStyle = grd; g.fillRect(0, 0, W, Hh);
+  if (!hangar.grd || hangar.grdH !== Hh) {
+    hangar.grd = g.createLinearGradient(0, 0, 0, Hh);
+    hangar.grd.addColorStop(0, '#05040c'); hangar.grd.addColorStop(0.7, '#0e0b22'); hangar.grd.addColorStop(1, '#171236');
+    hangar.grdH = Hh;
+  }
+  g.fillStyle = hangar.grd; g.fillRect(0, 0, W, Hh);
   lg.globalCompositeOperation = 'source-over';
   lg.fillStyle = '#000'; lg.fillRect(0, 0, W, Hh);
   for (const s of hangar.stars) {
@@ -719,7 +723,6 @@ function drawHangar(dt) {
   const sy = Math.round(((t * 36) % (Hh + 30)) - 15);
   g.fillStyle = hexA(col, 0.07);
   g.fillRect(0, sy, W, 2);
-  void cv;
 }
 
 // Soft light cone rising from the hologram pad (pre-rendered once per team colour).
@@ -933,7 +936,7 @@ DEF.lobby = {
         ${btn('launch', 'LAUNCH', { cls: 'btn-gold btn-xl lb-launch', ico: 'play', sfx: 'ui_start' })}
       </div>
     </div>
-    <div class="qr-modal" hidden>
+    <div class="qr-modal" hidden data-act="qrclose" data-sfx="ui_back">
       <div class="qr-modal-box panel">
         <span class="kicker">SCAN WITH YOUR CAMERA</span>
         <canvas class="qr-big" aria-hidden="true"></canvas>
@@ -947,6 +950,7 @@ DEF.lobby = {
     $(el, '.qr-modal').hidden = true;
     this.qrFor = null;
     renderLobby(lobby, session);
+    requestAnimationFrame(() => { if (UI.current === 'lobby') renderLobby(lobbyState.lobby, lobbyState.session); });
   },
   act(a, b) {
     const { lobby, session } = lobbyState;
@@ -971,10 +975,13 @@ DEF.lobby = {
       call('onShip', id);
       call('onLobbyShip', id);
       // optimistic update so the picker feels instant
-      if (me) { me.ship = id; renderLobby(lobby, session); }
+      pending = { ship: id, ready: pending.ready, t: performance.now() };
+      renderLobby(lobby, session);
     } else if (a === 'ready') {
-      call('onLobbyReady', !me?.ready);
-      if (me) { me.ready = !me.ready; renderLobby(lobby, session); }
+      const want = !me?.ready;
+      call('onLobbyReady', want);
+      pending = { ship: pending.ship, ready: want, t: performance.now() };
+      renderLobby(lobby, session);
     } else if (a === 'launch') {
       if (b.disabled) return;
       if (me && !me.ready) call('onLobbyReady', true);
@@ -992,7 +999,9 @@ DEF.lobby = {
 function myEntry(lobby, session) {
   if (!lobby || !Array.isArray(lobby.players)) return null;
   const slot = session ? session.selfSlot | 0 : 0;
-  return lobby.players.find((p) => p && p.slot === slot) || null;
+  const me = lobby.players.find((p) => p && p.slot === slot) || null;
+  if (!me || !pending.t) return me;
+  return Object.assign({}, me, pending.ship !== undefined ? { ship: pending.ship } : null, pending.ready !== undefined ? { ready: pending.ready } : null);
 }
 
 function inviteUrl(code) {
@@ -1015,14 +1024,25 @@ function sizeQR(canvas, url, targetCss) {
   } catch { return false; }
 }
 
+// Optimistic local changes (ship / ready) shown until the session's lobby echoes them back,
+// so taps feel instant even over a slow relay. The session's own objects are never mutated.
+let pending = { ship: undefined, ready: undefined, t: 0 };
+
 function renderLobby(lobby, session) {
   lobbyState = { lobby, session };
   const S = screens.lobby;
   if (!S || !S.el) return;
   const el = S.el;
-  const players = (lobby && Array.isArray(lobby.players)) ? lobby.players.filter((p) => p && p.connected !== false) : [];
   const isHost = !!session?.isHost;
   const selfSlot = session ? session.selfSlot | 0 : 0;
+  let players = (lobby && Array.isArray(lobby.players)) ? lobby.players.filter((p) => p && p.connected !== false) : [];
+  if (pending.t) {
+    const raw = players.find((p) => p.slot === selfSlot);
+    const echoed = raw && (pending.ship === undefined || raw.ship === pending.ship) && (pending.ready === undefined || !!raw.ready === pending.ready);
+    if (echoed || performance.now() - pending.t > 4000) pending = { ship: undefined, ready: undefined, t: 0 };
+    else players = players.map((p) => (p.slot !== selfSlot ? p : Object.assign({}, p,
+      pending.ship !== undefined ? { ship: pending.ship } : null, pending.ready !== undefined ? { ready: pending.ready } : null)));
+  }
   const me = players.find((p) => p.slot === selfSlot) || null;
   const code = session?.code || '';
 
@@ -1038,15 +1058,17 @@ function renderLobby(lobby, session) {
   }
   // QR only redrawn when the code changes
   const qrBtn = $(el, '.lb-qr');
-  if (S.def.qrFor !== code) {
+  if (!code) qrBtn.hidden = true;
+  else if (S.def.qrFor !== code && qrBtn.clientWidth > 40) {      // needs layout: sized to its box
     S.def.qrFor = code;
-    const ok = code && sizeQR($(el, '.qr-cv'), inviteUrl(code), qrBtn.clientWidth > 40 ? qrBtn.clientWidth - 16 : 112);
+    const ok = sizeQR($(el, '.qr-cv'), inviteUrl(code), qrBtn.clientWidth - 16);
     qrBtn.hidden = !ok;
-  }
+  } else if (S.def.qrFor !== code) qrBtn.hidden = false;
 
   // per-slot transports (host sees each link; clients see their link to the host)
   if (session && transportSession !== session) {
     transports.clear();
+    pending = { ship: undefined, ready: undefined, t: 0 };
     transportSession = session;
     try {
       session.on?.('transport', (ev) => {
@@ -1061,7 +1083,7 @@ function renderLobby(lobby, session) {
     return k === 'relay' || k === 'p2p' ? k : '';
   };
 
-  let readyCount = 0, others = 0, othersReady = 0;
+  let others = 0, othersReady = 0;
   $$(el, '.slot').forEach((li) => {
     const i = +li.dataset.slot;
     const p = players.find((q) => q.slot === i);
@@ -1079,7 +1101,6 @@ function renderLobby(lobby, session) {
       li.setAttribute('aria-label', `Player ${i + 1}: open slot`);
       return;
     }
-    if (p.ready) readyCount++;
     if (i !== selfSlot) { others++; if (p.ready) othersReady++; }
     const nm = String(p.name || `PILOT ${i + 1}`).toUpperCase().slice(0, 12);
     // one tag per row: HOST wins (your own row is already highlighted)
@@ -1127,7 +1148,6 @@ function renderLobby(lobby, session) {
   } else {
     status.textContent = me?.ready ? 'WAITING FOR THE HOST TO LAUNCH…' : 'PICK YOUR SHIP, THEN TAP READY';
   }
-  void readyCount;
 }
 
 // ---------- pause
