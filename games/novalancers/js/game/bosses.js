@@ -78,11 +78,22 @@ const OUTLINE = '#05040c';
 // Simulation-critical offsets are resolved on the host and shipped in spawn params.
 // ---------------------------------------------------------------------------------------
 const META_FB = {
-  warden: { armL: [-53, -18], armR: [53, -18], armPivot: [0, -20], armTip: [0, 26], turrets: [[-24, -22], [24, -22], [-31, 21], [31, 21]], core: [0, 8], coreR: 9, bay: [0, 24], hullRadius: 46 },
-  wyrm: { segSpacing: 19, segR: 12, headR: 15, tailR: 8, mouth: [0, -18], eyes: [[-8, -3], [8, -3]] },
-  prism: { shardOrbitR: 40, eye: [0, -3], coreR: 7, shardR: 5, shardLen: 26, bodyRx: 15, bodyRy: 27 },
-  dread: { cannon: [0, 25], cannonMuzzle: [0, 21], turrets: [[-61, -12], [61, -12], [-38, 4], [38, 4], [-23, 27], [23, 27]], hatches: [[-45, -27], [45, -27], [-73, 1], [73, 1]], bridge: [0, -7], bridgeR: 9, hullRadius: 70 },
-  heart: { iris: [0, 2], coreR: 7, eyeR: 23, haloR: 47, haloBand: 6, petalR: 64, petalLen: 36, petalW: 7, core2R: 10 },
+  warden: {
+    armL: [-53, -18], armR: [53, -18], armPivot: [0, -20], armTip: [0, 26], armRSprite: 'boss_warden_arm_r',
+    armCapsule: { from: [0, -20], to: [0, 26], r: 6 }, turrets: [[-24, -22], [24, -22], [-31, 21], [31, 21]], turretMuzzle: 6.5,
+    core: [0, 8], coreR: 9, hatch: { sprite: 'boss_warden_hatch', frames: 5 }, bay: [0, 24], hullRadius: 46,
+  },
+  wyrm: {
+    segSpacing: 19, tailSpacing: 15, segR: 12, headR: 15, tailR: 8, mouth: [0, -22], eyes: [[-6, -7], [6, -7]],
+    segVariants: ['boss_wyrm_seg', 'boss_wyrm_seg_b', 'boss_wyrm_seg_c'],
+  },
+  prism: { shardOrbitR: 40, eye: [0, -3], coreR: 8, shardR: 5, shardLen: 28, bodyRx: 17, bodyRy: 30 },
+  dread: {
+    cannon: [0, 25], cannonMuzzle: [0, 21], turrets: [[-61, -12], [61, -12], [-38, 4], [38, 4], [-23, 27], [23, 27]], turretMuzzle: 7.5,
+    hatches: [[-45, -27], [45, -27], [-73, 1], [73, 1]], bridge: [0, -7], bridgeR: 9, hullRadius: 70,
+    shutter: { sprite: 'boss_dread_shutter', at: [0, -10], frames: 5 }, shadow: { sprite: 'boss_dread_shadow', dx: 6, dy: 8 },
+  },
+  heart: { iris: [0, 2], coreR: 7, eyeR: 23, haloR: 44, haloBand: 3.5, petalR: 64, petalLen: 36, petalW: 7, petalTip: 18, core2R: 11 },
 };
 let metaSrc = null, metaCache = {};
 function meta(sim, key) {
@@ -118,6 +129,8 @@ function sp(sim, ctx, lctx, name, fr, x, y, dir, flip, alpha, flash) {
   }
   if (lctx) S.drawE(lctx, name, fr, x, y, OPT);
 }
+// sprite registered yet? (boss art is built lazily; fall back to drawn shapes until it is)
+function hasSp(sim, name) { const S = sim.env.sprites; return !!(S && S._has && S._has(name)); }
 function glow(sim, lctx, x, y, r, col, a) {
   if (a > 0.02 && sim.env.glow && r > 0.5) sim.env.glow(lctx, x, y, r, col, Math.min(1, a));
 }
@@ -540,6 +553,13 @@ function wardenHp(e, sim) {
 
 // hatch shutters over the core: they retract sideways as `open` goes 0 → 1
 function wardenHatch(ctx, lctx, sim, cx, cy, open) {
+  const H0 = meta(sim, 'warden').hatch;
+  if (H0 && hasSp(sim, H0.sprite)) {
+    const fr = Math.round(clamp(open, 0, 1) * ((H0.frames || 5) - 1));
+    sp(sim, ctx, lctx, H0.sprite, fr, cx, cy);
+    if (fr === 0) { const k = 0.5 + 0.5 * Math.sin(sim.tick * 0.2); glow(sim, lctx, cx, cy, 5 + 2 * k, COL.p, 0.3 + 0.2 * k); }
+    return;
+  }
   const HW = 11, H = 15, w = Math.round(HW * (1 - open));
   if (w <= 0) return;
   const top = Math.round(cy) - 7, L = Math.round(cx) - HW, R = Math.round(cx) + HW;
@@ -652,7 +672,9 @@ function wardenArmDraw(e, ctx, lctx, sim) {
     }
   }
   const flash = e.flash > 0;
-  sp(sim, ctx, lctx, 'boss_warden_arm', 0, cx, cyy, 0, side > 0, 1, flash);
+  const armR = side > 0 && meta(sim, 'warden').armRSprite;
+  if (armR && hasSp(sim, armR)) sp(sim, ctx, lctx, armR, 0, cx, cyy, 0, false, 1, flash);
+  else sp(sim, ctx, lctx, 'boss_warden_arm', 0, cx, cyy, 0, side > 0, 1, flash);
   // arm turret (tracks the nearest player, glows before its fan)
   const tx = cx + (side < 0 ? 1 : -1), ty = cyy - 8;
   sp(sim, ctx, lctx, 'boss_warden_turret', 0, tx, ty, aimDir(sim, tx, ty), false, 1, flash);
@@ -1109,7 +1131,10 @@ function wyrmSegDraw(e, ctx, lctx, sim) {
       dotLine(ctx, x, y, tx, ty, 3, (sim.tick >> 1) + 1, RAMPS.ember[2], 0.8);
     }
   }
-  sp(sim, ctx, lctx, 'boss_wyrm_seg', molten ? 1 : 0, x, y, 0, false, 1, e.flash > 0);
+  const vars = meta(sim, 'wyrm').segVariants || ['boss_wyrm_seg'];
+  let sn = vars[(e.p.k || 0) % vars.length];
+  if (!hasSp(sim, sn)) sn = 'boss_wyrm_seg';
+  sp(sim, ctx, lctx, sn, molten ? 1 : 0, x, y, (e.face ?? -HALF) + HALF, false, 1, e.flash > 0);
   if (molten && h) {
     const g = tele(stepClock(h, sim, Y_SCRIPT[Math.max(0, h.phase)], 'spit'), 30, 10);
     const k = 0.5 + 0.5 * Math.sin(sim.tick * 0.12 + e.p.k);
@@ -1545,10 +1570,15 @@ function dreadDraw(e, ctx, lctx, sim) {
   const k0 = e._settled ? 0.35 : 0.9;
   for (const dx of [-54, -30, 30, 54]) glow(sim, lctx, bx + dx, by - 44, 8, COL.v, k0 * (0.7 + 0.3 * Math.sin(sim.tick * 0.25 + dx)));
   if (!e._settled && (sim.tick & 1)) for (const dx of [-54, 54]) sim.env.fx.trail?.(bx + dx, by - 46, 'plasma', 2);
+  const SH = M.shadow;
+  if (SH && hasSp(sim, SH.sprite)) sp(sim, ctx, null, SH.sprite, 0, bx + SH.dx, by + SH.dy);
   sp(sim, ctx, lctx, 'boss_dread', Math.floor(t * 2), bx, by);
   // bridge windows: shuttered (armored) until opened
   const open = e.tOpen !== undefined ? smooth(clamp((sim.tick - e.tOpen) / 45, 0, 1)) : 0;
-  const w = 20, h = Math.round(7 * (1 - open));
+  const SHU = M.shutter;
+  const shut = SHU && hasSp(sim, SHU.sprite);
+  if (shut) sp(sim, ctx, lctx, SHU.sprite, Math.round(open * ((SHU.frames || 5) - 1)), bx + SHU.at[0], by + SHU.at[1]);
+  const w = 20, h = shut ? 0 : Math.round(7 * (1 - open));
   if (h > 0) {
     const sx = Math.round(x) - w / 2, sy = Math.round(y) - 4;
     ctx.fillStyle = OUTLINE; ctx.fillRect(sx, sy, w, h);

@@ -105,7 +105,7 @@ const HOOK_HI =
 // and a two-8th pickup; the last bar climbs out on the dominant.
 const B_LO =
   'Eb5*12 D5*2 C5*2 | Eb5*12 C5*2 A4*2 | D5*12 C5*2 Bb4*2 | D5*12 Bb4*2 G4*2 | ' +
-  'C5*12 Bb4*2 A4*2 | C5*12 A4*2 F#4*2 | Bb4*8 G4*4 A4*4 | F#4*8 A4*4 D5*4';
+  'C5*12 Bb4*2 A4*2 | C5*12 A4*2 F#4*2 | Bb4*8 D5*4 G4*4 | F#4*8 A4*4 D5*4';
 // bridge: a siren-like chromatic slide, one semitone per bar
 const SIREN = 'G5*16 ~Ab5*16 ~A5*16 ~Bb5*16 ~B5*16 ~C6*16 ~C#6*16 ~D6*16';
 

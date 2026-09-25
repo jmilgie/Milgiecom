@@ -289,7 +289,7 @@ function lancetBrain(e, sim) {
 function lancetPhase(e, ph, sim) {
   if (ph === 1) sim.env.sfx('enemy_laser_charge', { x: e.x, vol: 0.3, pitch: 9 });
   else if (ph === 2) {
-    sim.env.sfx('shot_seraph', { x: e.x, vol: 0.45, pitch: -6 });
+    sim.env.sfx('enemy_shot_heavy', { x: e.x, vol: 0.45 });
     sim.env.fx.spark?.(e.x, e.y, (e.face ?? HALF) + PI, 'magenta', 4);
   }
 }
