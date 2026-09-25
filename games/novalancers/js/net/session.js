@@ -28,6 +28,7 @@ export { configureNet, netConfig, loadPeerJS };
 const ERR_CODES = ['ROOM_NOT_FOUND', 'ROOM_FULL', 'ALREADY_STARTED', 'NETWORK', 'VERSION'];
 const NET_KINDS = ['host', 'p2p', 'relay'];
 const PENDING_TTL = 15000;
+const RELAY_PROBE_DELAY = 700;
 const MAX_PENDING = 24;
 
 // ---------------------------------------------------------------------------
@@ -707,18 +708,20 @@ class Joiner {
         return;
       }
       this._startP2P();
-      this._startRelay();
+      // Give P2P a head start so quick P2P joins never touch the public brokers.
+      this.timers.push(setTimeout(() => this._startRelay(), RELAY_PROBE_DELAY));
     });
   }
 
   async _startP2P() {
     const cfg = netConfig();
-    if (!cfg.p2p || cfg.forceRelay) { this.p2p = 'OFF'; this._decide(); return; }
+    if (!cfg.p2p || cfg.forceRelay) { this.p2p = 'OFF'; this._startRelay(); return; }
     let ep;
     try {
       ep = await openEndpoint(null, P2P_TIMEOUT);
     } catch {
       this.p2p = 'NETWORK';
+      this._startRelay();
       this._decide();
       return;
     }
@@ -729,11 +732,12 @@ class Joiner {
     this.p2pLink = link;
     done.then(
       () => { this.p2p = 'open'; this._decide(); },
-      (e) => { if (this.p2p === 'pending') this.p2p = e.message; this._decide(); },
+      (e) => { if (this.p2p === 'pending') this.p2p = e.message; this._startRelay(); this._decide(); },
     );
   }
 
   _startRelay() {
+    if (this.prober || this.done || this.link) return;
     const cfg = netConfig();
     this.prober = new RelayProber(this.code, this.cid, cfg.brokers,
       (info, mq, url) => { this.relayInfo = info; this.relayMq = mq; this.relayUrl = url; this._decide(); },

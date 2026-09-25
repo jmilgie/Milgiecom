@@ -128,6 +128,7 @@ function initMats() {
   M.rock = mat(r.smoke, { amb: 0.1, dif: 0.95, dither: 0.7 });
   M.iron = mat(['#0b0708', r.rust[0], r.rust[1], r.rust[2], r.rust[3], r.rust[4], r.rust[5]], { amb: 0.1, dif: 0.95, spec: 0.95 });
   M.rust = mat(r.rust, { amb: 0.1, dif: 0.95 });
+  M.gmetal = mat(['#0c0a0c', '#1c1719', '#2e2729', '#463b3b', '#655450', '#8c7466', '#b89a82'], { amb: 0.1, dif: 0.95, spec: 0.94 });
   M.crysT = mat([r.crystal[0], r.crystal[1], r.crystal[2], r.crystal[3], r.crystal[4], r.crystal[5]], { amb: 0.12, dif: 0.95, spec: 0.9, edge: 0 });
   M.crysV = mat([r.plasma[0], r.plasma[1], r.plasma[2], r.plasma[3], r.plasma[4], r.plasma[5]], { amb: 0.12, dif: 0.95, spec: 0.9 });
   M.void = mat([r.void[0], r.void[1], r.void[2], r.void[3], r.void[4], r.void[5]], { amb: 0.1, dif: 0.9, spec: 0.96 });
@@ -992,108 +993,126 @@ function basalt(u, v, o, seed, scale, nu, nv, nz, seamW) {
 
 function wyrmSeg(g, f) {
   const open = f === 1;
-  const R = 12.8;
-  // iron collar with bolts
-  g.circ(0, 0, R, { m: M.iron, z: 1, h: 3 });
-  for (let k = 0; k < 10; k++) {
-    const a = (k / 10) * TAU + 0.3;
-    g.px(Math.cos(a) * 11.9, Math.sin(a) * 11.9, { dt: 2 });
+  // iron collar with a ring of short spines (reads as legs/spines along the chained body)
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * TAU + TAU / 16;
+    g.save().rot(a);
+    beam(g, 0, -10.5, 0, -14, 4.2, 0.6, { m: M.gmetal, z: 1.5, bev: 0.9, bk: 1.3 });
+    g.restore();
   }
-  // basalt carapace: closed = a few hot seams; open = the plates split over a molten core
-  const rr = open ? 11.2 : 10.8;
-  g.fill(-rr, -rr, rr, rr, { m: M.rock, z: 4, sp: open ? SP.fireS : SP.ember }, (u, v, o) => {
+  g.circ(0, 0, 12, { m: M.gmetal, z: 2, h: 3 });
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * TAU + TAU / 16;
+    g.px(Math.sin(a) * 11, -Math.cos(a) * 11, { dt: 2 });
+  }
+  // basalt carapace with radial magma cracks from a central vent
+  const rr = open ? 10.4 : 10;
+  g.fill(-rr, -rr, rr, rr, { m: M.rock, z: 5, sp: open ? SP.fireS : SP.ember }, (u, v, o) => {
     const d = Math.hypot(u, v) / rr;
     if (d > 1) return false;
     const w = Math.sqrt(1 - d * d);
-    const heat = basalt(u, v, o, 303, 0.17, (u / rr) * 1.2, (v / rr) * 1.2, w + 0.15, open ? 0.2 : 0.075);
-    o.z = 4 + 5 * w;
-    if (open && d < 0.32) { o.em = glow('fire', 0.95 - d * 1.1); return true; }
+    const heat = basalt(u, v, o, 303, 0.16, 0, 0, 1, open ? 0.22 : 0.09);
+    o.nu = o.nu * 0.6 + (u / rr) * 1.25; o.nv = o.nv * 0.6 + (v / rr) * 1.25; o.nz = w + 0.12;
+    o.z = 5 + 5 * w;
+    // radial crack arms
+    const ang = Math.atan2(u, -v), arm = Math.abs(((ang / TAU) * 5 + 10.25) % 1 - 0.5) * 2; // 0 at arm center
+    const radial = arm < 0.13 / Math.max(0.25, d) && d < (open ? 1 : 0.78);
+    if (d < (open ? 0.36 : 0.2)) { o.em = glow('fire', open ? 1 - d * 1.2 : 0.8); return true; }
+    if (radial) { o.em = open ? glow('fire', 0.85 - d * 0.35) : glow('ember', 0.75 - d * 0.35); return true; }
     if (heat > 0) {
-      if (open) o.em = glow('fire', clamp(0.35 + heat * (0.75 - d * 0.35), 0, 1));
-      else if (d < 0.75 && hash2(Math.round(u / 4), Math.round(v / 4), 9) > 0.45) o.em = glow('ember', 0.4 + heat * 0.35);
+      if (open) o.em = glow('fire', clamp(0.3 + heat * (0.7 - d * 0.3), 0, 1));
       else o.t -= 2;
     }
     return true;
   });
-  if (!open) g.circ(0, 0, 1.2, { decal: true, em: glow('ember', 0.6), sp: SP.ember });
 }
 
 function wyrmHead(g, f) {
   const open = f === 1;
-  // horns sweeping back along the flanks
+  // swept-back cheek spikes and a crown of short spines at the rear of the skull
   g.sym(() => {
-    const H = [[-9, -1], [-14, 5], [-17, 12], [-16.5, 19]];
-    const r = [2.9, 2.3, 1.4];
-    for (let k = 0; k < 3; k++) g.cyl(H[k][0], H[k][1], H[k + 1][0], H[k + 1][1], r[k], { m: M.iron, z: 4 - k * 0.5 });
+    beam(g, -10, 6, -13.5, 17, 5, 0.5, { m: M.gmetal, z: 4, bev: 1.1, bk: 1.3 });
+    beam(g, -5, 12, -6.5, 19.5, 4, 0.5, { m: M.gmetal, z: 3.5, bev: 1, bk: 1.3 });
   });
-  // molten maw between the mandibles
-  g.ell(0, -13.5, open ? 6 : 3, open ? 6.5 : 4, { m: M.dark, z: 2, em2: (r2) => glow('fire', clamp(1.05 - r2 * 0.8, 0.3, 1)), sp: SP.fireS });
+  beam(g, 0, 13, 0, 20.5, 4, 0.5, { m: M.gmetal, z: 3.5, bev: 1, bk: 1.3 });
+  // molten maw at the snout tip
+  g.ell(0, -16, open ? 6 : 3, open ? 6 : 3.4, { m: M.dark, z: 2, em2: (r2) => glow('fire', clamp(1.05 - r2 * 0.8, 0.3, 1)), sp: SP.fireS });
   if (open) {
-    g.ell(0, -12, 2.2, 2.6, { decal: true, em: WHITE });
-    g.sym(() => { for (let k = 0; k < 3; k++) g.poly([[-5.5 + k * 0.5, -16 + k * 3], [-3 + k * 0.5, -15 + k * 3], [-5.2 + k * 0.5, -14 + k * 3]], { m: M.bone, z: 3 }); });
+    g.ell(0, -15, 2.4, 2.4, { decal: true, em: WHITE });
+    g.sym(() => { for (let k = 0; k < 2; k++) g.poly([[-5.6 + k * 0.4, -19 + k * 3], [-3.2 + k * 0.4, -18 + k * 3], [-5.4 + k * 0.4, -17 + k * 3]], { m: M.bone, z: 3 }); });
   }
-  // mandibles: pivot on the cheeks, swing outward when open
+  // sickle mandibles hinged beside the snout, swinging outward when open
   g.sym(() => {
-    g.save().tr(-6.5, -8.5).rot(open ? -0.62 : 0);
-    g.poly([[2, 1.5], [-2.5, 0.5], [-4.5, -3], [-4.5, -7.5], [-2.5, -11], [1.5, -13], [5.5, -12.5], [3, -10.5], [2.2, -7], [2.8, -3]], { m: M.iron, z: 6, bev: 1.4, bk: 1.3 });
-    for (let k = 0; k < 3; k++) g.poly([[2.4, -2.8 - k * 3], [4.4, -4 - k * 3], [2.4, -5.2 - k * 3]], { m: M.bone, z: 6.5 });
-    g.line(-3.3, -3, -2, -9.5, { dt: 1 });
+    g.save().tr(-5.5, -9.5).rot(open ? -0.75 : 0);
+    g.poly([[1.5, 1.2], [-1.8, 0.5], [-3, -3], [-2.6, -7], [-0.8, -10], [2, -11.8], [5, -12], [2.6, -9.8], [1.2, -6.5], [1, -3], [1.8, -1]], { m: M.gmetal, z: 6, bev: 1.2, bk: 1.3 });
+    for (let k = 0; k < 3; k++) g.poly([[1.2, -2 - k * 2.8], [2.8, -3 - k * 2.8], [1.3, -4.1 - k * 2.8]], { m: M.bone, z: 6.5 });
+    g.px(4.2, -11.8, { em: glow('ember', open ? 0.9 : 0.55), sp: SP.ember });
     g.restore();
   });
-  // skull: basalt wedge
-  const skull = mirror([[0, -13.5], [-3.5, -13], [-6.5, -9.5], [-9.5, -4], [-12, 2], [-12.5, 8], [-10, 13.5], [-5, 16.5], [0, 17]]);
+  // skull: broad basalt wedge with a pointed snout
+  const skull = mirror([[0, -17.5], [-3, -17], [-6, -12.5], [-9, -7], [-12, -1], [-13.5, 5], [-12, 11], [-7, 15], [0, 16]]);
   const SX = new Float64Array(skull.map((p) => p[0])), SY = new Float64Array(skull.map((p) => p[1]));
-  g.fill(-13, -14, 13, 17.5, { m: M.rock, z: 7, sp: SP.ember }, (u, v, o) => {
+  g.fill(-14, -18, 14, 16.5, { m: M.rock, z: 7, sp: SP.ember }, (u, v, o) => {
     if (!inPolyF(SX, SY, SX.length, u, v)) return false;
-    const a = u / 12.5, b = (v - 3) / 16;
-    const r2 = Math.min(0.96, a * a + b * b), w = Math.sqrt(1 - r2);
-    const heat = basalt(u, v, o, 404, 0.2, a * 1.2, b * 1.0, w + 0.25, 0.07);
+    const hw = v < 0 ? 3 + (v + 17.5) * 0.6 : 13.5;
+    const a = clamp(u / hw, -0.97, 0.97), b = (v - 2) / 16;
+    const w = Math.sqrt(Math.max(0.05, 1 - a * a * 0.8 - b * b * 0.5));
+    const heat = basalt(Math.abs(u), v, o, 404, 0.2, 0, 0, 1, 0.07);
+    if (u < 0) o.nu = -o.nu;
+    o.nu = o.nu * 0.6 + a * 1.3; o.nv = o.nv * 0.6 + b * 0.9; o.nz = w + 0.2;
     o.z = 7 + 5 * w;
     if (heat > 0) o.t -= 2;
     return true;
   });
-  // hand-placed molten cracks running back from the brows
+  // glowing magma fissures along the skull
   g.sym(() => {
-    g.polyline([[-3, -6], [-5, -1], [-4.5, 4], [-7, 9], [-6, 13]], { em: glow('ember', 0.55), sp: SP.ember });
-    g.px(-5, -1, { em: glow('ember', 0.8) });
+    g.polyline([[-5, -4], [-7, 1], [-6.5, 6], [-8.5, 11]], { em: glow('ember', 0.55), sp: SP.ember });
+    g.polyline([[-7, 1], [-10.5, 3]], { em: glow('ember', 0.45), sp: SP.ember });
+    g.px(-7, 1, { em: glow('ember', 0.85) });
   });
-  // machine plating at the back of the skull
-  g.poly(mirror([[0, 7], [-5.5, 8], [-7.5, 12], [-5, 15.5], [0, 16.5]]), { m: M.iron, z: 12.5, bev: 1.3, bk: 1.3 });
-  g.line(0, 8, 0, 16, { dt: -2 });
-  rivets(g, -4, 10, -4, 14, 2.5); rivets(g, 4, 10, 4, 14, 2.5);
-  // snout plate + nostrils
-  g.poly(mirror([[0, -13.5], [-3, -13], [-4, -9], [-2, -6], [0, -6]]), { m: M.iron, z: 12, bev: 1, bk: 1.2 });
-  g.sym(() => g.px(-1.5, -11.5, { em: glow('ember', 0.85), sp: SP.ember }));
-  // brow ridges
-  g.sym(() => beam(g, -2.5, -8, -11, -1.5, 3, 2.2, { m: M.rock, z: 12.5, bev: 1, bk: 1.3, t: 1 }));
-  // eyes: slits under the brows
+  // machine plating: spine crest + cheek plates
+  for (let k = 0; k < 5; k++) {
+    const v0 = -13 + k * 5.6;
+    g.poly(mirror([[0, v0], [-1.5 - k * 0.45, v0 + 0.6], [-1.9 - k * 0.5, v0 + 4.6], [0, v0 + 5.3]]), { m: M.gmetal, z: 12 + k * 0.2, bev: 0.9, bk: 1.3 });
+  }
   g.sym(() => {
-    g.line(-5.5, -4.5, -9.5, -1.5, { em: glow('fire', 0.85), sp: SP.fireS });
-    g.px(-6.5, -4, { em: glow('fire', 1) });
+    g.poly([[-13.2, 3], [-10.5, 1.5], [-10, 9], [-12, 10.5]], { m: M.gmetal, z: 11, bev: 0.9, bk: 1.2 });
+    g.px(-11.6, 4, { dt: 2 }); g.px(-11.2, 8, { dt: 2 });
+  });
+  g.px(0, 13.5, { em: glow('ember', 0.75), sp: SP.ember });
+  // brow ridges + big burning eyes
+  g.sym(() => beam(g, -2.5, -10, -10, -5, 2.6, 2.2, { m: M.rock, z: 12.5, bev: 0.9, bk: 1.3, t: 1 }));
+  g.sym(() => {
+    g.poly([[-4, -8.3], [-9, -5], [-8.5, -3.5], [-4, -6.6]], { m: M.dark, z: 12, em: glow('fire', 0.8), sp: SP.fireS });
+    g.px(-5, -7.6, { em: glow('fire', 1) }); g.px(-6, -7, { em: glow('fire', 1) });
+    g.px(-10.5, -1.5, { em: glow('fire', 0.65), sp: SP.fire });
   });
 }
 
 function wyrmTail(g) {
-  // tip points up (dir 0)
-  g.poly(mirror([[0, -1], [-4.5, 0], [-6.5, 4], [-5.5, 8], [0, 9.5]]), { m: M.iron, z: 1, bev: 1.5 });
+  // tip points up (dir 0): two basalt scutes over an iron core, ending in a glowing stinger
+  g.poly(mirror([[0, -1], [-4.5, 0], [-6.5, 4], [-5.5, 8], [0, 9.5]]), { m: M.gmetal, z: 1, bev: 1.5 });
   g.fill(-6.5, -6, 6.5, 9, { m: M.rock, z: 3, sp: SP.ember }, (u, v, o) => {
     const k = (v + 6) / 15;
     const hw = 1.5 + k * 5;
     if (Math.abs(u) > hw || v > 8.5) return false;
-    const heat = basalt(u, v, o, 505, 0.24, (u / hw) * 0.9, -0.3, 0.8, 0.08);
+    const heat = basalt(Math.abs(u), v, o, 505, 0.24, 0, 0, 1, 0.08);
+    if (u < 0) o.nu = -o.nu;
+    o.nu = o.nu * 0.6 + (u / hw) * 1.0; o.nv = o.nv * 0.6 - 0.3; o.nz = 0.8;
     o.z = 3 + 3 * (1 - Math.abs(u / hw));
     if (heat > 0) o.t -= 2;
     return true;
   });
   g.line(-4, 2.5, 4, 2.5, { em: glow('ember', 0.75), sp: SP.ember });
-  g.poly([[0, -9.5], [-2.2, -4], [-1.2, -2], [1.2, -2], [2.2, -4]], { m: M.iron, z: 8, bev: 1, bk: 1.4 });
+  g.sym(() => beam(g, -4.5, 5, -8.5, 8.5, 2.6, 0.4, { m: M.gmetal, z: 4, bev: 0.8 }));
+  g.poly([[0, -9.5], [-2.2, -4], [-1.2, -2], [1.2, -2], [2.2, -4]], { m: M.gmetal, z: 8, bev: 1, bk: 1.4 });
   g.px(0, -4, { em: glow('fire', 0.9), sp: SP.fire });
 }
 
 function makeWyrm() {
   const seg = build(29, 29, { frames: 2, fps: 4 }, wyrmSeg);
-  const head = build(45, 45, { frames: 2, dirs: 32, fps: 4 }, wyrmHead);
-  const tail = build(21, 21, { dirs: 32 }, wyrmTail);
+  const head = build(45, 45, { frames: 2, dirs: 32, fps: 4, sym: true }, wyrmHead);
+  const tail = build(21, 21, { dirs: 32, sym: true }, wyrmTail);
   BOSS_META.wyrm = WYRM;
   return { boss_wyrm_head: head, boss_wyrm_seg: seg, boss_wyrm_tail: tail };
 }

@@ -102,14 +102,17 @@ const SCENES = {
   } },
   wyrm: { h: 300, parts: ['boss_wyrm_head', 'boss_wyrm_seg', 'boss_wyrm_tail'], fn(ctx, t, em) {
     const M = BOSS_META.wyrm; if (!M) return;
+    // sample a winding path by arc length so segments sit exactly segSpacing apart
     const n = 9, pts = [];
-    for (let k = 0; k <= n + 1; k++) {
-      const s = k * M.segSpacing;
-      pts.push([120 + Math.sin(s * 0.028 - t * 1.4) * 60, 250 - s * 0.9 + Math.cos(s * 0.02 + t) * 8 - 10]);
+    const path = (s) => [120 + Math.sin(s * 0.03 - t * 1.4) * 55, 262 - s * 0.82];
+    let s = 0, prev = path(0); pts.push(prev);
+    while (pts.length < n + 2) {
+      s += 0.5; const p = path(s);
+      if (Math.hypot(p[0] - prev[0], p[1] - prev[1]) >= (pts.length === n + 1 ? M.segSpacing * 0.8 : M.segSpacing)) { pts.push(p); prev = p; }
     }
     // tail at end, head at pts[0] -> draw tail first
-    const last = pts[n + 1], prev = pts[n];
-    draw(ctx, 'boss_wyrm_tail', 0, last[0], last[1], { em, dir: aim(prev[0], prev[1], last[0], last[1]) });
+    const last = pts[n + 1], pre = pts[n];
+    draw(ctx, 'boss_wyrm_tail', 0, last[0], last[1], { em, dir: aim(pre[0], pre[1], last[0], last[1]) });
     for (let k = n; k >= 1; k--) draw(ctx, 'boss_wyrm_seg', (k === 4 || k === 5) ? 1 : 0, pts[k][0], pts[k][1], { em });
     const hd = aim(pts[1][0], pts[1][1], pts[0][0], pts[0][1]);
     draw(ctx, 'boss_wyrm_head', Math.floor(t * 1.5) % 2, pts[0][0], pts[0][1], { em, dir: hd });

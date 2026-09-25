@@ -1064,7 +1064,7 @@ function kSolar(r, x, y, w, h, sheen = 0.3) {
     if (xx === 0 || yy === 0 || xx === w - 1 || yy === h - 1) c = frame;
     else if (xx % 3 === 0 || yy % 4 === 0) c = grid;
     else {
-      const band = Math.exp(-(((xx / w + yy / h) - 1 + sheen) * 3.2) ** 2);
+      const band = Math.exp(-((((xx / w + yy / h) - 1 + sheen) * 3.2) ** 2));
       c = cell[qi(clamp(1 + band * 3.2, 0, 4), x + xx, y + yy, 5)];
     }
     r.set(x + xx, y + yy, c);
@@ -1159,6 +1159,7 @@ function* genAurora() {
   const il = new Fbm(rng, TW, TH, 80, 5, 0.55).field(2);
   const ct = new Fbm(rng, TW, TH, 12, 2, 0.5).field(1);
   const surf = new Raster(TW, TH, true), lights = new Raster(TW, TH, true);
+  lights.d.fill(0xff000000);   // opaque black: multiply by the night mask must not accumulate
   const OC = packRamp(['#041526', '#062238', '#08304e', '#0c4166', '#115680', '#18709c']);
   const SH = packRamp(['#12628c', '#1c86ab', '#3aa6c4', '#7cc9d8']);
   const LD = packRamp(['#1d3a30', '#2a4f38', '#3d6440', '#5b7a4c', '#8a8a5e', '#b0a070']);
@@ -1197,7 +1198,7 @@ function* genAurora() {
     dens[y * TW + x] = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
   }
   const cl = new Raster(TW, TH, true);
-  const CL = packRamp(['#4d6d90', '#7b9cbc', '#aecae0', '#dcebf7', '#f7fbff']);
+  const CL = packRamp(['#4d6d90', '#7394b4', '#a2bfd6', '#cadcec', '#e8f1f9']);
   const shadow = pack(2, 10, 22, 150);
   for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
     const v = dens[y * TW + x];
@@ -1387,7 +1388,7 @@ class AuroraStage extends Stage {
     const sx = W * (portrait ? 0.86 : 0.8), sy = this.limb[Math.min(W - 1, Math.round(sx))] - (portrait ? 10 : 14);
     this.sun = [Math.round(sx), Math.round(sy)];
     const sky = new Raster(W, H), lm = new Raster(W, H), hz = new Raster(W, H), nm = new Raster(W, H), em = new Raster(W, H);
-    const LM = [[30, 40, 84], [52, 62, 112], [120, 96, 128], [205, 150, 140], [236, 214, 206], [242, 244, 250]];
+    const LM = [[26, 36, 78], [46, 56, 104], [110, 88, 122], [188, 140, 134], [210, 196, 196], [218, 222, 236]];
     const gk = 1 / (Math.max(W, H) * 0.35);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x;

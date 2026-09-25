@@ -80,26 +80,17 @@ function icon(name, cls = '') {
     });
     iconCache.set(name, path);
   }
-  return `<svg class="ico ico-${name} ${cls}" viewBox="0 0 ${rows[0].length} ${rows.length}" width="${rows[0].length}" height="${rows.length}" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="${path}"/></svg>`;
+  return `<svg class="ico ico-${name} ${cls}" viewBox="0 0 ${rows[0].length} ${rows.length}" width="${rows[0].length * 2}" height="${rows.length * 2}" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="${path}"/></svg>`;
 }
 
 // Ship art for mini canvases (sprites if built, else a stylised placeholder).
-const PH_SHIP = [
-  '......o......',
-  '.....oto.....',
-  '.....oTo.....',
-  '....osTso....',
-  '....osssо....',
-  '.o..ossssо..o',
-  'oto.osssso.oto',
-];
 const PH = [
   '.......o.......',
   '......oso......',
   '......oTo......',
   '.....osTso.....',
-  '.....osssо.....',
-  '..o.osssssо.o..',
+  '.....ossso.....',
+  '..o.ossssso.o..',
   '.oto.ossso.oto.',
   '.oso.osdso.oso.',
   'ossssosdsossss.',
@@ -108,14 +99,13 @@ const PH = [
   '....oteoeto....',
   '.....o...o.....',
 ];
-void PH_SHIP;
 function drawPlaceholderShip(g, cx, cy, team) {
   const col = { o: '#05040c', s: '#7c8fb3', d: '#36425f', t: TEAM_HEX[team & 3], T: '#ffffff', e: TEAM_HEX[team & 3] };
   const w = PH[0].length, h = PH.length;
   const x0 = Math.round(cx - w / 2), y0 = Math.round(cy - h / 2);
   PH.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) {
-      const ch = row[x] === 'о' ? 'o' : row[x];
+      const ch = row[x];
       if (!col[ch]) continue;
       g.fillStyle = col[ch];
       g.fillRect(x0 + x, y0 + y, 1, 1);
@@ -770,8 +760,8 @@ DEF.coop = {
   },
   act(a, b) {
     const ship = curShip();
-    if (a === 'host') { setBusy(b, 'OPENING CHANNEL…'); call('onHost', { ship, isPublic: false }); }
-    else if (a === 'quick') { setBusy(b, 'SEARCHING…'); call('onQuickMatch', { ship }); }
+    if (a === 'host') { setBusy(b, 'OPENING CHANNEL'); call('onHost', { ship, isPublic: false }); }
+    else if (a === 'quick') { setBusy(b, 'SEARCHING'); call('onQuickMatch', { ship }); }
     else if (a === 'join') UI.show('join');
     else if (a === 'ship') UI.show('hangar', { mode: 'pick', back: 'coop' });
     else if (a === 'back') this.back();
@@ -793,8 +783,9 @@ DEF.join = {
     <div class="col">
       ${head('JOIN SQUAD', { kicker: 'ENTER THE SQUAD CODE' })}
       <div class="join-box panel">
-        <div class="code-cells" aria-hidden="true">${'<span class="cell"></span>'.repeat(5)}</div>
-        <input class="code-input" type="text" inputmode="text" maxlength="64" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-label="Squad code, 5 characters">
+        <div class="code-cells">${'<span class="cell" aria-hidden="true"></span>'.repeat(5)}
+          <input class="code-input" type="text" inputmode="text" maxlength="64" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-label="Squad code, 5 characters">
+        </div>
         <p class="join-hint">5 CHARACTERS · A PASTED INVITE LINK WORKS TOO</p>
         <p class="join-err" role="alert"></p>
       </div>
@@ -856,7 +847,7 @@ DEF.join = {
     if (a === 'go') {
       if ((this.code || '').length !== 5) { snd('ui_error'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return; }
       $(el, '.code-input').blur();
-      setBusy(b, 'CONNECTING…');
+      setBusy(b, 'CONNECTING');
       call('onJoin', { code: this.code, ship: curShip() });
     } else if (a === 'paste') {
       navigator.clipboard.readText().then((txt) => this.setCode(txt, true)).catch(() => UI.toast('CLIPBOARD NOT AVAILABLE — TYPE THE CODE', 2000));
@@ -951,7 +942,7 @@ DEF.lobby = {
     } else if (a === 'launch') {
       if (b.disabled) return;
       if (me && !me.ready) call('onLobbyReady', true);
-      setBusy(b, 'LAUNCHING…');
+      setBusy(b, 'LAUNCHING');
       call('onLaunch');
     }
   },
@@ -1145,7 +1136,6 @@ DEF.pause = {
     }
   },
   back() { call('onResume'); },
-  key(k) { if (k === 'resume') { call('onResume'); return true; } return false; },
 };
 
 // ---------- game over

@@ -85,6 +85,7 @@ export class MqttClient {
     this._lastPing = 0;
     this._pingOut = 0;
     this._connack = null;
+    this._abort = false;
   }
 
   /** Open the socket and complete the CONNECT handshake. */
@@ -96,9 +97,9 @@ export class MqttClient {
         settled = true;
         clearTimeout(timer);
         this._connack = null;
-        if (err) { this._teardown(null); reject(err); } else resolve(this);
+        if (err) { this._teardown(); reject(err); } else resolve(this);
       };
-      const timer = setTimeout(() => finish(new Error('MQTT_TIMEOUT')), timeoutMs);
+      const timer = setTimeout(() => { this._abort = true; finish(new Error('MQTT_TIMEOUT')); }, timeoutMs);
       let ws;
       try {
         ws = new WebSocket(this.url, ['mqtt']);
@@ -146,7 +147,7 @@ export class MqttClient {
   close() {
     if (this.closed) return;
     if (this.connected) this._write(new Uint8Array([T_DISCONNECT << 4, 0]));
-    this._teardown(null);
+    this._teardown();
   }
 
   // ---- internals ----
@@ -278,13 +279,13 @@ export class MqttClient {
   _lost(reason) {
     if (this.closed) return;
     const wasConnected = this.connected;
-    this._teardown(reason);
+    this._teardown();
     if (wasConnected && this.onclose) {
       try { this.onclose(reason); } catch (e) { console.error(e); }
     }
   }
 
-  _teardown(reason) {
+  _teardown() {
     if (this.closed) return;
     this.closed = true;
     this.connected = false;
@@ -298,10 +299,16 @@ export class MqttClient {
     const ws = this._ws;
     this._ws = null;
     if (ws) {
-      ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
-      try { ws.close(1000); } catch { /* already closing */ }
+      ws.onmessage = ws.onerror = ws.onclose = null;
+      if (ws.readyState === 0 && !this._abort) {
+        // Closing a CONNECTING socket makes browsers log a warning; let it open, then close.
+        // (A connect timeout aborts for real: a stuck socket would block others to that host.)
+        ws.onopen = () => { try { ws.close(1000); } catch { /* ignore */ } };
+      } else {
+        ws.onopen = null;
+        try { ws.close(1000); } catch { /* already closing */ }
+      }
     }
-    void reason;
   }
 }
 
