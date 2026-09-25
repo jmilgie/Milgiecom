@@ -806,7 +806,7 @@ function crystalCluster(g, u, v, dir, n, size, seed, S = {}) {
   }
   items.sort((a, b) => a.len - b.len);
   const z = S.z || 0;
-  const coreC = S.core ?? glow('magenta', 0.6);
+  const coreC = S.core ?? glow('magenta', 0.45);
   items.forEach((it, k) => {
     g.save().tr(u + it.du, v + it.dv).rot(it.a);
     shard(g, it.len, it.hw, { m: S.m || M.crysM, z: z + 1 + k * 1.2, core: it.len > 6 ? coreC : 0, sp: S.sp ?? SP.mag, tip: it.main ? S.tip : 0 });
@@ -814,7 +814,9 @@ function crystalCluster(g, u, v, dir, n, size, seed, S = {}) {
   });
 }
 
-// Choir crust: glossy organic carapace growth spreading over a surface, with glowing pores
+// Choir crust: glossy organic carapace growth spreading over a surface, with glowing pores.
+// (All the small Choir details stay at dim magenta[1..2]: bright magenta specks would read as
+// enemy bullets, which must stay the most readable thing on screen.)
 function crust(g, u, v, r, seed, S = {}) {
   const z = S.z || 0, f = 0.2;
   g.fill(u - r - 2, v - r - 2, u + r + 2, v + r + 2, { m: S.m || M.crust, z }, (uu, vv, o) => {
@@ -827,7 +829,7 @@ function crust(g, u, v, r, seed, S = {}) {
     o.nu = -gx * 6 + (du / r) * 0.9; o.nv = -gy * 6 + (dv / r) * 0.9; o.nz = 1;
     o.z = z + (1 - k) * 2.5;
     const pore = hash2(Math.floor(uu), Math.floor(vv), seed + 5);
-    if (pore > 0.93 && k < 0.75) o.em = glow(S.pore || 'magenta', 0.5);
+    if (pore > 0.93 && k < 0.75) o.em = glow(S.pore || 'magenta', 0.4);
     return true;
   });
 }
@@ -854,7 +856,7 @@ function veins(g, u, v, dir, n, len, seed, S = {}) {
       g.line(pts[q][0], pts[q][1], pts[q + 1][0], pts[q + 1][1], near ? { em: glow('magenta', S.bright ?? 0.4), sp: SP.mag } : { m: M.crysM, t: -3 });
     }
     const end = pts[pts.length - 1];
-    if (R() < 0.6) g.px(end[0], end[1], { em: glow('magenta', 0.6) });
+    if (R() < 0.6) g.px(end[0], end[1], { em: glow('magenta', 0.4) });
   }
 }
 
@@ -897,9 +899,9 @@ function circuit(g, u, v, n, len, seed, S = {}) {
       g.line(x, y, nx, ny, near ? { em: glow('magenta', S.bright ?? 0.45), sp: SP.mag } : { m: M.crysM, t: -3 });
       x = nx; y = ny; walked += step;
       if (R() < 0.55) d = (d + (R() < 0.5 ? 1 : 3)) & 3;
-      if (R() < 0.15) g.px(x, y, { em: glow('magenta', 0.7) });
+      if (R() < 0.15) g.px(x, y, { em: glow('magenta', 0.4) });
     }
-    g.px(x, y, { em: glow('magenta', 0.8), sp: SP.mag });
+    g.px(x, y, { em: glow('magenta', 0.4), sp: SP.mag });
   }
 }
 
@@ -910,7 +912,7 @@ function windows(g, u1, v1, u2, v2, step, seed, S = {}) {
   for (let k = 0; k <= n; k++) {
     const u = lerp(u1, u2, k / n), v = lerp(v1, v2, k / n), r = R();
     if (r < (S.dark ?? 0.25)) g.px(u, v, { m: M.dark, t: 0 });
-    else if (r < (S.dark ?? 0.25) + (S.possessed ?? 0.1)) g.px(u, v, { em: glow('magenta', 0.7), sp: SP.mag });
+    else if (r < (S.dark ?? 0.25) + (S.possessed ?? 0.1)) g.px(u, v, { em: glow('magenta', 0.4), sp: SP.mag });
     else g.px(u, v, { em: glow('gold', r > 0.9 ? 0.9 : 0.65) });
   }
 }

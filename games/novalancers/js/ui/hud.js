@@ -95,7 +95,7 @@ function drawScore(ctx, lctx, x, y, value, opt) {
   let x0 = opt.align === 'center' ? Math.round(x - w / 2) : opt.align === 'right' ? x - w : x;
   const zeros = s.slice(0, i), digits = s.slice(i);
   if (zeros) {
-    drawText(ctx, zeros, x0, y, { font, size, color: MUTE, shadow: DARK, alpha: 0.75 });
+    drawText(ctx, zeros, x0, y, { cache: true, font, size, color: MUTE, shadow: DARK, alpha: 0.75 });
     x0 += measureText(zeros, { font, size }) + size;          // + glyph gap
   }
   drawText(ctx, digits, x0, y, { font, size, color: opt.color || INK, shadow: DARK, lctx, glow: opt.glow || '#79ecff', glowAlpha: opt.glowAlpha ?? 0.35 });
