@@ -123,7 +123,9 @@ body {
   border-right: 1px solid var(--stroke); padding-right: 10px;
   font-family: var(--font-mono); min-width: 0;
   display: grid; grid-template-columns: 38px 1fr; gap: 9px; align-items: center;
+  cursor: help; transition: transform .15s ease;
 }
+.stat:hover .stat-ico { filter: brightness(1.2); }
 .stat:last-child { border-right: none; padding-right: 0; }
 .stat-ico {
   width: 38px; height: 38px; border-radius: 6px;
@@ -197,22 +199,30 @@ body {
 }
 .tab {
   font-family: var(--font-mono); font-size: 11px; font-weight: 800;
-  padding: 8px 10px; background: transparent; border: 1px solid var(--stroke);
+  padding: 8px 12px; background: transparent; border: 1px solid var(--stroke);
   color: var(--muted); cursor: pointer; letter-spacing: 1.5px;
   text-transform: uppercase; border-radius: 3px;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  transition: color .15s, border-color .15s, background .15s;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: color .15s ease, border-color .15s ease, background .15s ease, box-shadow .2s ease, transform .15s ease;
+  position: relative;
 }
+.tab > span:first-child { font-size: 14px; }
 .tab .badge {
   font-size: 8px; padding: 1px 5px; background: rgba(255,106,0,.15);
   border: 1px solid rgba(255,106,0,.4); color: var(--neon1);
   border-radius: 10px; font-weight: 900;
+  animation: badgePulse 2s ease-in-out infinite;
 }
-.tab:hover { color: var(--neon2); border-color: var(--neon2); }
+@keyframes badgePulse {
+  0%,100% { box-shadow: 0 0 0 rgba(255,106,0,0); }
+  50% { box-shadow: 0 0 8px rgba(255,106,0,.6); }
+}
+.tab:hover { color: var(--neon2); border-color: var(--neon2); transform: translateY(-1px); }
 .tab.active {
   color: var(--neon2); border-color: var(--neon2);
-  background: rgba(0,207,255,.08);
+  background: linear-gradient(180deg, rgba(0,207,255,.12), rgba(0,207,255,.04));
   text-shadow: 0 0 6px rgba(0,207,255,.4);
+  box-shadow: 0 0 14px rgba(0,207,255,.25), inset 0 -2px 0 var(--neon2);
 }
 .tab.mission-active { color: var(--neon1); border-color: rgba(255,106,0,.5); }
 .tabbar .home-link {
@@ -227,7 +237,11 @@ body {
 /* Tab panels */
 .tabview { overflow: hidden; min-height: 0; position: relative; }
 .tabpane { display: none; height: 100%; min-height: 0; }
-.tabpane.active { display: grid; }
+.tabpane.active { display: grid; animation: paneFade .26s ease-out; }
+@keyframes paneFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* COMMAND (main game) */
 #pane-command {
@@ -321,14 +335,27 @@ body {
 .op-unit.active .dot { background: var(--neon3); box-shadow: 0 0 6px var(--neon3); }
 .op-pct { font-size: 9px; font-weight: 900; color: var(--neon2); }
 .op-bar {
-  height: 3px; background: rgba(0,0,0,.4); border-radius: 2px;
-  overflow: hidden; margin-top: 4px;
+  height: 4px; background: rgba(0,0,0,.5); border-radius: 2px;
+  overflow: hidden; margin-top: 4px; position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0,207,255,.08);
 }
 .op-bar .fill {
-  height: 100%; background: var(--neon2); width: 0%;
-  transition: width .2s linear;
+  height: 100%; background: linear-gradient(90deg, var(--neon2), #7dffc1);
+  width: 0%; transition: width .3s ease-out; position: relative;
+  box-shadow: 0 0 8px rgba(0,207,255,.4);
 }
-.op.complete .op-bar .fill { background: var(--neon3); box-shadow: 0 0 6px var(--neon3); }
+.op.assigned .op-bar .fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+  background-size: 80px 100%; animation: opShimmer 1.4s linear infinite;
+}
+@keyframes opShimmer {
+  from { background-position: -80px 0; }
+  to { background-position: calc(100% + 80px) 0; }
+}
+.op.complete .op-bar .fill { background: linear-gradient(90deg, var(--neon3), #c1ffd9); box-shadow: 0 0 10px var(--neon3); }
+.op { transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.op:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,.4), 0 0 10px rgba(0,207,255,.15); }
 .panel-footer {
   padding: 8px 14px; border-top: 1px solid var(--stroke);
   font-family: var(--font-mono); font-size: 9px; font-weight: 800;
@@ -667,48 +694,165 @@ body {
   text-transform: uppercase; padding-bottom: 4px; border-bottom: 1px solid var(--stroke);
 }
 .research-node {
-  background: rgba(0,207,255,.03); border: 1px solid var(--stroke);
-  border-radius: 3px; padding: 10px; font-family: var(--font-mono);
-  cursor: pointer; transition: border-color .15s, background .15s;
+  background: linear-gradient(180deg, rgba(0,207,255,.05), rgba(0,207,255,.02));
+  border: 1px solid var(--stroke);
+  border-radius: 4px; padding: 12px; font-family: var(--font-mono);
+  cursor: pointer; transition: all .2s ease;
+  position: relative; overflow: hidden;
 }
-.research-node:hover { border-color: var(--neon2); background: rgba(0,207,255,.06); }
-.research-node.done { border-color: var(--neon3); background: rgba(0,255,136,.05); opacity: .95; }
+.research-node::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--stroke); transition: background .2s ease;
+}
+.research-node:hover {
+  border-color: var(--neon2); background: linear-gradient(180deg, rgba(0,207,255,.12), rgba(0,207,255,.04));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.4), 0 0 18px rgba(0,207,255,.2);
+}
+.research-node:hover::before { background: var(--neon2); box-shadow: 0 0 8px var(--neon2); }
+.research-node.done {
+  border-color: rgba(0,255,136,.5); background: linear-gradient(180deg, rgba(0,255,136,.08), rgba(0,255,136,.02));
+  cursor: default;
+}
+.research-node.done::before { background: var(--neon3); box-shadow: 0 0 8px var(--neon3); }
 .research-node.done .r-name { color: var(--neon3); }
-.research-node.locked { opacity: .4; cursor: not-allowed; }
-.research-node.affordable { border-color: var(--neon1); }
-.r-name { font-size: 11px; font-weight: 900; color: var(--neon2); margin-bottom: 3px; letter-spacing: .8px; }
-.r-desc { font-size: 9px; color: var(--muted); line-height: 1.4; margin-bottom: 6px; }
-.r-effect { font-size: 9px; color: var(--ink); font-weight: 700; margin-bottom: 4px; }
-.r-foot { display: flex; justify-content: space-between; font-size: 8px; font-weight: 800; letter-spacing: .8px; }
+.research-node.done:hover { transform: none; }
+.research-node.locked { opacity: .45; cursor: not-allowed; }
+.research-node.locked::before { background: #444; }
+.research-node.locked:hover { transform: none; border-color: var(--stroke); background: linear-gradient(180deg, rgba(0,207,255,.05), rgba(0,207,255,.02)); box-shadow: none; }
+.research-node.affordable {
+  border-color: var(--neon1);
+  background: linear-gradient(180deg, rgba(255,106,0,.1), rgba(255,106,0,.02));
+  animation: affordablePulse 2.4s ease-in-out infinite;
+}
+.research-node.affordable::before { background: var(--neon1); box-shadow: 0 0 8px var(--neon1); }
+.research-node.affordable .r-name { color: var(--neon1); }
+@keyframes affordablePulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255,106,0,0); }
+  50% { box-shadow: 0 0 14px rgba(255,106,0,.35); }
+}
+.r-name { font-size: 11.5px; font-weight: 900; color: var(--neon2); margin-bottom: 4px; letter-spacing: .8px; }
+.r-desc { font-size: 9.5px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+.r-effect { font-size: 10px; color: var(--ink); font-weight: 700; margin-bottom: 6px; }
+.r-foot { display: flex; justify-content: space-between; font-size: 9px; font-weight: 800; letter-spacing: .8px; }
 .r-cost { color: var(--neon1); }
 .r-status { color: var(--neon3); }
 
 /* CODEX */
-#pane-codex { grid-template-columns: 220px 1fr; }
-.codex-wrap { display: grid; grid-template-columns: 220px 1fr; gap: 10px; padding: 10px; height: 100%; min-height: 0; overflow: hidden; }
+#pane-codex { grid-template-columns: 280px 1fr; }
+.codex-wrap { display: grid; grid-template-columns: 280px 1fr; gap: 10px; padding: 10px; height: 100%; min-height: 0; overflow: hidden; }
+.codex-side { display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.codex-header { display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 0; }
+.codex-title {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 900;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--neon2);
+  text-shadow: 0 0 8px rgba(0,207,255,.3);
+}
+.codex-stats {
+  font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 1px;
+}
+.codex-stats b { color: var(--neon1); font-weight: 900; }
+.codex-progress {
+  height: 3px; background: rgba(0,0,0,.5); border-radius: 2px; overflow: hidden;
+  border: 1px solid var(--stroke);
+}
+.codex-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--neon2), var(--neon1));
+  box-shadow: 0 0 8px rgba(0,207,255,.5);
+  transition: width .4s ease;
+}
+.codex-search {
+  width: 100%; font-family: var(--font-mono); font-size: 11px; padding: 6px 8px;
+  background: rgba(0,0,0,.35); color: var(--ink); border: 1px solid var(--stroke);
+  border-radius: 3px; outline: none; transition: border-color .15s ease, box-shadow .15s ease;
+}
+.codex-search:focus { border-color: var(--neon2); box-shadow: 0 0 0 2px rgba(0,207,255,.15); }
+.codex-search::placeholder { color: var(--muted); }
+.codex-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.codex-filter {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 800;
+  letter-spacing: .8px; text-transform: uppercase;
+  padding: 4px 8px; border: 1px solid var(--stroke); border-radius: 10px;
+  background: rgba(0,207,255,.04); color: var(--muted); cursor: pointer;
+  transition: all .15s ease;
+}
+.codex-filter:hover { border-color: var(--neon2); color: var(--neon2); }
+.codex-filter.active { border-color: var(--neon1); color: var(--neon1); background: rgba(255,106,0,.08); }
 .codex-list {
-  overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
-  font-family: var(--font-mono); min-height: 0;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 3px;
+  font-family: var(--font-mono); min-height: 0; padding: 4px 10px 10px;
 }
 .codex-cat {
+  display: flex; align-items: center; gap: 6px;
   font-size: 9px; color: var(--neon1); font-weight: 800; letter-spacing: 1.4px;
-  text-transform: uppercase; padding: 8px 6px 4px;
+  text-transform: uppercase; padding: 10px 4px 4px;
+}
+.codex-cat-count {
+  margin-left: auto; color: var(--muted); font-weight: 700;
+  font-size: 9px; letter-spacing: .5px;
 }
 .codex-entry {
-  font-size: 11px; padding: 6px 8px; cursor: pointer;
-  border: 1px solid var(--stroke); border-radius: 3px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; padding: 7px 10px; cursor: pointer;
+  border: 1px solid var(--stroke); border-radius: 4px;
   background: rgba(0,207,255,.03); color: var(--ink); font-weight: 700;
+  position: relative; transition: all .15s ease;
 }
-.codex-entry:hover { border-color: var(--neon2); background: rgba(0,207,255,.06); }
-.codex-entry.active { border-color: var(--neon2); background: rgba(0,207,255,.1); color: var(--neon2); }
-.codex-entry.locked { opacity: .4; font-style: italic; }
+.codex-entry::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--neon2); box-shadow: 0 0 6px var(--neon2);
+  flex-shrink: 0;
+}
+.codex-entry.locked::before { background: var(--muted); box-shadow: none; opacity: .4; }
+.codex-entry:hover { border-color: var(--neon2); background: rgba(0,207,255,.08); transform: translateX(2px); }
+.codex-entry.active {
+  border-color: var(--neon2); background: rgba(0,207,255,.12); color: var(--neon2);
+  box-shadow: inset 3px 0 0 var(--neon1);
+}
+.codex-entry.locked { opacity: .5; font-style: italic; cursor: default; color: var(--muted); }
+.codex-entry.locked:hover { transform: none; border-color: var(--stroke); background: rgba(0,207,255,.03); }
+.codex-entry.just-unlocked { animation: codexPop .6s ease; }
+@keyframes codexPop {
+  0% { background: rgba(255,106,0,.25); transform: scale(1.03); }
+  100% { background: rgba(0,207,255,.03); transform: scale(1); }
+}
 .codex-body {
-  overflow-y: auto; padding: 14px 18px; font-family: var(--font-mono);
+  overflow-y: auto; padding: 24px 28px; font-family: var(--font-mono);
   min-height: 0;
+  background:
+    radial-gradient(600px 200px at 20% 0%, rgba(0,207,255,.05), transparent 70%),
+    linear-gradient(180deg, rgba(4,14,22,.6), rgba(4,14,22,.3));
+  border-left: 1px solid var(--stroke);
 }
-.codex-body h3 { font-size: 14px; margin: 0 0 6px; color: var(--neon2); letter-spacing: 1px; }
-.codex-body .cat { font-size: 9px; color: var(--neon1); letter-spacing: 1.3px; text-transform: uppercase; margin-bottom: 14px; }
-.codex-body p { font-size: 11px; color: var(--ink); line-height: 1.6; white-space: pre-line; }
+.codex-body h3 {
+  font-size: 18px; margin: 0 0 6px; color: var(--neon2);
+  letter-spacing: 1px; text-shadow: 0 0 12px rgba(0,207,255,.35);
+  font-weight: 900;
+}
+.codex-body .cat {
+  display: inline-block; font-size: 9px; color: var(--neon1);
+  letter-spacing: 1.3px; text-transform: uppercase; margin-bottom: 20px;
+  padding: 3px 8px; border: 1px solid var(--neon1); border-radius: 10px;
+  background: rgba(255,106,0,.06);
+}
+.codex-body p { font-size: 12px; color: var(--ink); line-height: 1.75; white-space: pre-line; }
+.codex-body-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; min-height: 80%; gap: 10px;
+  color: var(--muted);
+}
+.codex-body-empty h3 { color: var(--neon2); letter-spacing: 2px; margin-top: 10px; }
+.codex-body-empty p { max-width: 400px; font-size: 11px; }
+.codex-hint {
+  margin-top: 14px; padding: 8px 14px; border: 1px dashed var(--neon1);
+  border-radius: 4px; font-size: 10px; color: var(--neon1);
+  letter-spacing: .8px; background: rgba(255,106,0,.04);
+}
+.codex-entry-empty {
+  padding: 14px; font-size: 10px; color: var(--muted);
+  text-align: center; font-style: italic;
+}
 
 /* FACTIONS */
 #pane-factions { grid-template-columns: 1fr; }
@@ -718,6 +862,11 @@ body {
   background: linear-gradient(180deg, rgba(0,207,255,.04), rgba(0,207,255,.015));
   border-radius: 5px; font-family: var(--font-mono);
   overflow: hidden; position: relative;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.faction:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.4), 0 0 14px currentColor;
 }
 .faction::before {
   content:''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
@@ -725,10 +874,25 @@ body {
 }
 .faction-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 14px 6px 18px;
+  padding: 14px 14px 10px 18px;
+}
+.faction-head-left {
+  display: flex; align-items: center; gap: 12px; min-width: 0;
+}
+.faction-emblem {
+  width: 44px; height: 44px; flex-shrink: 0;
+  border: 2px solid currentColor; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900; letter-spacing: 1px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.08), rgba(0,0,0,.2));
+  text-shadow: 0 0 8px currentColor;
+}
+.faction-status {
+  font-size: 9px; font-weight: 800; letter-spacing: 1.3px;
+  color: var(--muted); text-transform: uppercase; margin-top: 2px;
 }
 .faction-name { font-size: 13px; font-weight: 900; letter-spacing: 1px; }
-.faction-rep { font-size: 22px; font-weight: 900; letter-spacing: .5px; font-family: var(--font-mono); }
+.faction-rep { font-size: 26px; font-weight: 900; letter-spacing: .5px; font-family: var(--font-mono); }
 .faction-body { padding: 0 14px 14px 18px; }
 .faction-desc { font-size: 10px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
 .faction-bar {
@@ -752,54 +916,227 @@ body {
 
 /* MISSIONS */
 #pane-missions { grid-template-columns: 1fr; }
-.missions-wrap { padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
+.missions-wrap { padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; }
 .mission {
-  padding: 12px; border: 1px solid var(--stroke);
-  background: rgba(0,207,255,.03); border-radius: 3px;
-  font-family: var(--font-mono);
+  padding: 0; border: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(0,207,255,.04), rgba(0,207,255,.01));
+  border-radius: 5px; font-family: var(--font-mono);
+  overflow: hidden; position: relative;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
-.mission.active { border-color: var(--neon1); background: rgba(255,106,0,.05); }
-.mission.done { border-color: var(--neon3); background: rgba(0,255,136,.05); }
-.mission.locked { opacity: .4; }
-.mission-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.mission-chap { font-size: 9px; letter-spacing: 1.2px; color: var(--neon1); }
-.mission-title { font-size: 14px; font-weight: 900; color: var(--neon2); letter-spacing: .8px; margin-bottom: 4px; }
+.mission:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.4); }
+.mission.active {
+  border-color: var(--neon1);
+  background: linear-gradient(180deg, rgba(255,106,0,.1), rgba(255,106,0,.02));
+  box-shadow: 0 0 0 1px rgba(255,106,0,.2) inset, 0 4px 22px rgba(255,106,0,.12);
+}
+.mission.active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--neon1); box-shadow: 0 0 10px var(--neon1);
+}
+.mission.done {
+  border-color: rgba(0,255,136,.4);
+  background: linear-gradient(180deg, rgba(0,255,136,.06), rgba(0,255,136,.015));
+}
+.mission.done::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--neon3); }
+.mission.locked { opacity: .5; }
+.mission-chap-banner {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 14px 8px 16px;
+  border-bottom: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(0,0,0,.3), transparent);
+}
+.mission-chap-num {
+  font-size: 10px; font-weight: 900; letter-spacing: 2px;
+  color: var(--neon1); text-transform: uppercase;
+  padding: 2px 8px; border: 1px solid var(--neon1);
+  border-radius: 10px; background: rgba(255,106,0,.08);
+}
+.mission-state { font-size: 9px; font-weight: 800; letter-spacing: 1.2px; color: var(--neon3); }
+.mission.locked .mission-state { color: var(--muted); }
+.mission.active .mission-state { color: var(--neon1); }
+.mission-title {
+  font-size: 16px; font-weight: 900; color: var(--neon2); letter-spacing: 1px;
+  padding: 10px 16px 0; text-shadow: 0 0 10px rgba(0,207,255,.25);
+}
 .mission.done .mission-title { color: var(--neon3); }
-.mission-state { font-size: 9px; font-weight: 800; letter-spacing: 1px; color: var(--neon3); }
-.mission-intro { font-size: 10px; color: var(--ink); line-height: 1.5; margin-bottom: 6px; }
+.mission.active .mission-title { color: var(--neon1); text-shadow: 0 0 10px rgba(255,106,0,.3); }
+.mission-intro { font-size: 10.5px; color: var(--ink); line-height: 1.6; margin: 6px 16px 10px; }
 .mission-directive {
-  font-size: 10px; font-weight: 800; color: var(--neon1);
-  padding: 6px 10px; border-left: 3px solid var(--neon1);
-  background: rgba(255,106,0,.05); margin-bottom: 4px;
+  font-size: 11px; font-weight: 700; color: var(--ink);
+  padding: 8px 14px; border-left: 4px solid var(--neon1);
+  background: rgba(255,106,0,.06); margin: 0 16px 8px;
+  border-radius: 2px;
 }
-.mission-outro { font-size: 10px; color: var(--muted); line-height: 1.5; font-style: italic; margin-top: 6px; }
+.mission-directive .dir-label {
+  display: inline-block; font-size: 9px; font-weight: 900;
+  color: var(--neon1); letter-spacing: 1.4px; text-transform: uppercase; margin-right: 6px;
+}
+.mission-outro {
+  font-size: 10px; color: var(--muted); line-height: 1.6; font-style: italic;
+  padding: 8px 16px 12px; border-top: 1px dashed var(--stroke); margin-top: 6px;
+}
+.mission-objs { display: flex; flex-direction: column; gap: 4px; padding: 0 16px 12px; }
+.mission-obj {
+  display: grid; grid-template-columns: 20px 1fr auto; gap: 8px;
+  padding: 6px 10px; border: 1px solid var(--stroke);
+  background: rgba(0,0,0,.25); border-radius: 3px;
+  font-size: 10px; align-items: center;
+  transition: all .15s ease;
+}
+.mission-obj.done {
+  border-color: rgba(0,255,136,.4); background: rgba(0,255,136,.05);
+  color: var(--neon3);
+}
+.mission-obj .obj-check {
+  font-size: 13px; font-weight: 900; color: var(--muted);
+  text-align: center;
+}
+.mission-obj.done .obj-check { color: var(--neon3); }
+.mission-obj .obj-text { color: var(--ink); }
+.mission-obj .obj-sub {
+  font-size: 9px; color: var(--muted); font-weight: 700; letter-spacing: .5px;
+}
+.mission-obj.done .obj-sub { color: var(--neon3); }
 
 /* ACHIEVEMENTS */
 #pane-achievements { grid-template-columns: 1fr; }
 .achievements-wrap { padding: 14px; overflow-y: auto; min-height: 0; }
 .ach-head {
-  display: flex; justify-content: space-between; margin-bottom: 12px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
   font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 1.2px;
 }
 .ach-head .pct { color: var(--neon3); font-weight: 900; }
+.ach-progress {
+  height: 4px; background: rgba(0,0,0,.5); border-radius: 2px; overflow: hidden;
+  margin-bottom: 14px; border: 1px solid var(--stroke);
+}
+.ach-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--neon3), #7dffc1);
+  transition: width .4s ease; box-shadow: 0 0 10px var(--neon3);
+}
 .ach-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;
 }
 .achievement {
-  display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: center;
-  padding: 10px; background: rgba(0,207,255,.03); border: 1px solid var(--stroke);
-  border-radius: 3px; font-family: var(--font-mono);
+  display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center;
+  padding: 12px; background: linear-gradient(180deg, rgba(0,207,255,.04), rgba(0,207,255,.01));
+  border: 1px solid var(--stroke);
+  border-radius: 4px; font-family: var(--font-mono);
+  position: relative; overflow: hidden;
+  transition: all .2s ease;
 }
-.achievement.done { border-color: var(--neon3); background: rgba(0,255,136,.05); }
-.achievement.done .ach-icon { color: var(--neon3); border-color: var(--neon3); background: rgba(0,255,136,.1); }
+.achievement:hover {
+  border-color: var(--neon2); transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.4);
+}
+.achievement.done {
+  border-color: rgba(0,255,136,.4);
+  background: linear-gradient(180deg, rgba(0,255,136,.08), rgba(0,255,136,.02));
+}
+.achievement.done:hover { box-shadow: 0 6px 18px rgba(0,0,0,.4), 0 0 18px rgba(0,255,136,.2); }
+.achievement.done .ach-icon { color: var(--neon3); border-color: var(--neon3); background: rgba(0,255,136,.1); text-shadow: 0 0 10px var(--neon3); }
 .ach-icon {
-  width: 36px; height: 36px; border-radius: 3px;
-  background: rgba(0,0,0,.3); border: 1px solid var(--stroke);
+  width: 44px; height: 44px; border-radius: 6px;
+  background: rgba(0,0,0,.35); border: 1px solid var(--stroke);
   display: flex; align-items: center; justify-content: center;
-  color: var(--muted); font-size: 16px;
+  color: var(--muted); font-size: 22px;
+  flex-shrink: 0;
 }
-.ach-info .n { font-size: 11px; font-weight: 900; color: var(--ink); }
-.ach-info .d { font-size: 9px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.achievement:not(.done) .ach-icon {
+  background:
+    repeating-linear-gradient(45deg, rgba(0,0,0,.3) 0 4px, rgba(0,0,0,.5) 4px 8px);
+}
+.ach-info .n { font-size: 12px; font-weight: 900; color: var(--ink); letter-spacing: .5px; }
+.achievement.done .ach-info .n { color: var(--neon3); }
+.ach-info .d { font-size: 9.5px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.ach-ribbon {
+  position: absolute; top: -2px; right: -2px;
+  width: 28px; height: 28px;
+  background: var(--neon3); color: #001a0a;
+  font-weight: 900; font-size: 13px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 70%, 0 100%);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 2px;
+  box-shadow: 0 0 10px rgba(0,255,136,.5);
+}
+
+/* TOOLTIP */
+.np-tooltip {
+  position: fixed; z-index: 2000; pointer-events: none;
+  max-width: 300px; padding: 8px 12px;
+  font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5;
+  background: linear-gradient(180deg, rgba(8,18,28,.98), rgba(4,14,22,.98));
+  border: 1px solid var(--neon2); border-radius: 4px;
+  color: var(--ink); letter-spacing: .3px;
+  box-shadow: 0 0 20px rgba(0,207,255,.3), 0 6px 24px rgba(0,0,0,.6);
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.np-tooltip.show { opacity: 1; transform: translateY(0); }
+.np-tooltip-title {
+  color: var(--neon2); font-weight: 900; font-size: 11px;
+  letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 3px;
+  text-shadow: 0 0 6px rgba(0,207,255,.4);
+}
+.np-tooltip-hotkey {
+  display: inline-block; margin-left: 8px; padding: 1px 6px;
+  font-size: 9px; color: var(--neon1);
+  border: 1px solid var(--neon1); border-radius: 3px;
+}
+
+/* Info-chip buttons (next to panel headers) */
+.info-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1px solid var(--stroke); background: rgba(0,0,0,.4);
+  font-family: var(--font-mono); font-size: 9px; font-weight: 900;
+  color: var(--muted); cursor: help; margin-left: 6px;
+  transition: all .15s ease; vertical-align: middle;
+}
+.info-chip:hover {
+  border-color: var(--neon2); color: var(--neon2);
+  box-shadow: 0 0 8px rgba(0,207,255,.3);
+}
+
+/* Help launcher button */
+.help-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 6px 10px; border: 1px solid var(--stroke); border-radius: 3px;
+  background: rgba(0,207,255,.06); color: var(--muted); cursor: pointer;
+  transition: all .15s ease;
+}
+.help-btn:hover {
+  border-color: var(--neon2); color: var(--neon2);
+  box-shadow: 0 0 10px rgba(0,207,255,.2);
+}
+
+/* Help modal content */
+.help-sections { display: flex; flex-direction: column; gap: 16px; }
+.help-section { border-left: 2px solid var(--neon2); padding-left: 12px; }
+.help-section h4 {
+  margin: 0 0 6px; font-size: 11px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--neon2); font-weight: 900;
+}
+.help-section p { margin: 0; font-size: 11px; color: var(--ink); line-height: 1.6; }
+.help-list {
+  margin: 0; padding-left: 18px; font-size: 11px;
+  color: var(--ink); line-height: 1.7;
+}
+.help-list li { margin-bottom: 3px; }
+.help-list li b { color: var(--neon1); }
+.help-keys { display: flex; flex-direction: column; gap: 6px; }
+.help-key { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.help-key kbd {
+  display: inline-block; padding: 2px 7px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 800;
+  border: 1px solid var(--stroke); border-bottom-width: 2px; border-radius: 3px;
+  background: rgba(0,0,0,.4); color: var(--neon2); min-width: 22px; text-align: center;
+}
+.help-key span { color: var(--muted); }
 
 /* MODAL */
 .modal-bg {
@@ -1132,7 +1469,7 @@ body {
 
     <div class="panel">
       <div class="stats-row">
-        <div class="stat">
+        <div class="stat" data-tip-title="Quantum Yield" data-tip="Accumulated Q.Y. toward the Consortium's sector target. Completed ops, faction boons, and refinery passive all contribute.">
           <div class="stat-ico c-yield"><svg><use href="#i-yield"/></svg></div>
           <div class="stat-body">
             <div class="stat-label">Quantum Yield</div>
@@ -1140,7 +1477,7 @@ body {
             <div class="stat-sub" id="statYieldSub">Target: 25M</div>
           </div>
         </div>
-        <div class="stat">
+        <div class="stat" data-tip-title="Signal Integrity" data-tip="Station comms health (0-100%). Drops during sensor faults and raids. Below 20% the sector is vulnerable to pirate interdiction.">
           <div class="stat-ico c-signal"><svg><use href="#i-signal"/></svg></div>
           <div class="stat-body">
             <div class="stat-label">Signal Integrity</div>
@@ -1148,7 +1485,7 @@ body {
             <div class="stat-sub" id="statSignalSub">Nominal</div>
           </div>
         </div>
-        <div class="stat">
+        <div class="stat" data-tip-title="Processing Load" data-tip="How saturated your operation slots are. Each concurrent op consumes a slot. Upgrade the Command Spire to unlock more.">
           <div class="stat-ico c-proc"><svg><use href="#i-proc"/></svg></div>
           <div class="stat-body">
             <div class="stat-label">Processing Load</div>
@@ -1156,7 +1493,7 @@ body {
             <div class="stat-sub" id="statProcSub">0 / 6 slots</div>
           </div>
         </div>
-        <div class="stat">
+        <div class="stat" data-tip-title="Threat Index" data-tip="Sector danger level (0-100%). Raises raid frequency and op failure risk. Reduce with Security ops and Marshal rep.">
           <div class="stat-ico c-threat"><svg><use href="#i-threat"/></svg></div>
           <div class="stat-body">
             <div class="stat-label">Threat Index</div>
@@ -1164,7 +1501,7 @@ body {
             <div class="stat-sub" id="statThreatSub">Nominal</div>
           </div>
         </div>
-        <div class="stat">
+        <div class="stat" data-tip-title="Research Points" data-tip="Spend in the Research tab to unlock permanent bonuses. Earned passively, from ops, and from Praxis rewards.">
           <div class="stat-ico c-rp"><svg><use href="#i-rp"/></svg></div>
           <div class="stat-body">
             <div class="stat-label">Research Pts</div>
@@ -1179,11 +1516,12 @@ body {
       <div class="stardate-label">
         <span>STARDATE <span id="stardateVal">2191.08.14</span></span>
         <div class="stardate-icons">
-          <button class="ico" id="speed1x" title="1x">▶</button>
-          <button class="ico" id="speed2x" title="2x">▶▶</button>
-          <button class="ico" id="speed3x" title="3x (locked until Autonomy research)" disabled>▶▶▶</button>
-          <button class="ico" id="pauseBtn" title="Pause / Resume">⏸</button>
-          <button class="ico" id="muteBtn" title="Mute">♪</button>
+          <button class="ico" id="speed1x" data-tip="Normal pace" data-tip-hotkey="1">▶</button>
+          <button class="ico" id="speed2x" data-tip="Double speed" data-tip-hotkey="2">▶▶</button>
+          <button class="ico" id="speed3x" data-tip="Triple speed — locked until Autonomy research" data-tip-hotkey="3" disabled>▶▶▶</button>
+          <button class="ico" id="pauseBtn" data-tip="Pause simulation" data-tip-hotkey="Space">⏸</button>
+          <button class="ico" id="muteBtn" data-tip="Toggle audio" data-tip-hotkey="M">♪</button>
+          <button class="ico" id="helpBtn" data-tip="Handbook, controls, &amp; tips" data-tip-hotkey="?">?</button>
         </div>
       </div>
       <div class="stardate-time" id="stardateTime">10:42</div>
@@ -1217,7 +1555,7 @@ body {
           <div class="ops-list" id="opsList"></div>
           <div class="panel-footer">
             <span id="opsFooterLabel">0 OPS</span>
-            <span class="action" id="opsScanBtn">SCAN NEW OPS →</span>
+            <span class="action" id="opsScanBtn" data-tip-title="Scan sector" data-tip="Use the Orbital Sensor Array to surface a new batch of operations. Better Sensor upgrades = more ops per scan." data-tip-hotkey="S">SCAN NEW OPS →</span>
           </div>
         </div>
 
@@ -1270,7 +1608,7 @@ body {
             </div>
             <div class="advisor-text" id="advisorText">Calibrating systems. Standby.</div>
           </div>
-          <button class="advisor-action-btn" id="advisorBtn">
+          <button class="advisor-action-btn" id="advisorBtn" data-tip-title="ECHO-7 Advisory" data-tip="Cycle through the AI's active recommendations based on your current station state.">
             <span>CYCLE ADVISORY</span><span>→</span>
           </button>
         </div>
@@ -1302,11 +1640,28 @@ body {
     <!-- ============ CODEX ============ -->
     <div class="tabpane" id="pane-codex">
       <div class="panel codex-wrap">
-        <div class="codex-list" id="codexList"></div>
+        <div class="codex-side">
+          <div class="codex-header">
+            <div class="codex-title">Station Archives</div>
+            <div class="codex-stats" id="codexStats">0/30 Discovered</div>
+            <div class="codex-progress"><div class="codex-progress-fill" id="codexProgressFill"></div></div>
+            <input type="text" class="codex-search" id="codexSearch" placeholder="Search archives..." autocomplete="off" />
+            <div class="codex-filters" id="codexFilters"></div>
+          </div>
+          <div class="codex-list" id="codexList"></div>
+        </div>
         <div class="codex-body" id="codexBody">
-          <h3>Station Archives</h3>
-          <div class="cat">Classified access · Consortium Overseer</div>
-          <p>Select an entry from the left to read. New entries unlock as your operations uncover the sector.</p>
+          <div class="codex-body-empty">
+            <svg width="72" height="72" viewBox="0 0 24 24" aria-hidden="true" style="opacity:.3">
+              <path d="M4 4h12l4 4v12H4z" fill="none" stroke="currentColor" stroke-width="1"/>
+              <path d="M16 4v4h4" fill="none" stroke="currentColor" stroke-width="1"/>
+              <path d="M8 12h8M8 15h8M8 18h5" stroke="currentColor" stroke-width="1" fill="none"/>
+            </svg>
+            <h3>Station Archives</h3>
+            <div class="cat">Consortium Overseer Access</div>
+            <p>Select an entry from the left. Classified documents unlock as operations, research, and missions expose the sector.</p>
+            <div class="codex-hint">Start with <b>Overseer Charter</b> — it's your first read-in.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1344,6 +1699,7 @@ body {
             <span>Bragging rights and juice.</span>
             <span class="pct" id="achPct">0%</span>
           </div>
+          <div class="ach-progress"><div class="ach-progress-fill" id="achProgressFill" style="width:0%"></div></div>
           <div class="ach-grid" id="achGrid"></div>
         </div>
       </div>
@@ -1447,7 +1803,7 @@ function freshState() {
     modules: mods,
 
     researchCompleted: [],
-    codexUnlocked: [],
+    codexUnlocked: ['c_welcome','c_station','c_overseer_manual','c_crew_intro'],
     factions: { consortium: 10, fringe: 0, marshal: 5, praxis: 0 },
     missionChapter: 1,
     missionCompleted: [],
@@ -1523,6 +1879,10 @@ function unlockCodex(id) {
     toast(`Codex: ${entry.title}`, 'ok');
     feed('info', `Codex entry unlocked — ${entry.title}`);
     NPAudio.play('codex');
+  }
+  // Live refresh if the codex tab is currently active
+  if (document.getElementById('pane-codex') && document.getElementById('pane-codex').classList.contains('active')) {
+    renderCodex();
   }
   updateBadges();
 }
@@ -1948,6 +2308,10 @@ function renderOps() {
     const unitMini = u && u.img
       ? `<span class="op-unit-mini"><img src="${u.img}" onerror="this.style.display='none'"></span>`
       : `<span class="op-unit-mini"><span style="color:var(--neon3);font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;height:100%">${u ? u.name[0] : '?'}</span></span>`;
+    const roleType = (window.NP_UNIT_TYPES || {})[op.type];
+    const etaTxt = fmtTime(Math.max(0, op.etaS - op.elapsed));
+    el.setAttribute('data-tip-title', op.title);
+    el.setAttribute('data-tip', `<b>Priority:</b> ${op.prio}<br><b>Role needed:</b> ${roleType ? roleType.label : op.type}<br><b>Reward:</b> ${fmtYield(op.reward)} Q.Y.<br><b>ETA:</b> ${etaTxt}<br><b>Assigned:</b> ${u ? u.name : 'Unassigned'}<br><br><i style="color:var(--muted)">Click to ${u ? 'view' : 'assign crew'}.</i>`);
     el.innerHTML = `
       <div class="op-top">
         <div style="display:flex;align-items:center;gap:6px;overflow:hidden;flex:1">
@@ -1992,6 +2356,10 @@ function renderRoster() {
     const imgHtml = u.img ?
       `<img src="${u.img}" alt="${u.name}" onerror="this.style.display='none';this.parentNode.innerHTML+='<span class=placeholder>${u.name[0]}</span>'">`
       : `<span class="placeholder">${u.name[0]}</span>`;
+    const traitStr = (u.traits || []).map(t => (window.NP_TRAITS||{})[t]?.label).filter(Boolean).join(' · ') || '—';
+    const status = busy ? `<i style="color:var(--neon1)">On op:</i> ${op.title}` : (tired ? '<i style="color:#ffd966">Fatigued — let them rest.</i>' : '<i style="color:var(--neon3)">Standby</i>');
+    el.setAttribute('data-tip-title', u.name);
+    el.setAttribute('data-tip', `<b>Role:</b> ${role ? role.label : u.type}<br><b>Level:</b> ${u.level} · <b>Efficiency:</b> ${u.baseEff}%<br><b>Traits:</b> ${traitStr}<br>${status}<br><br><i style="color:var(--muted)">Click for full dossier.</i>`);
     el.innerHTML = `
       <div class="unit-portrait">
         ${imgHtml}
@@ -2033,6 +2401,9 @@ function renderModules() {
       }
       return `<div class="mod-r"><span class="k">${s[0]}</span><span class="v ${cls}">${vtxt}</span></div>`;
     }).join('');
+    el.setAttribute('data-tip-title', m.name);
+    const upgradeHint = m.upgrade && m.upgrade.bonusLabel ? `<br><i style="color:#7dffc1">Upgrade: ${m.upgrade.bonusLabel}</i>` : '';
+    el.setAttribute('data-tip', `${m.desc}${upgradeHint}<br><br><i style="color:var(--muted)">Click to inspect.</i>`);
     el.innerHTML = `
       <div class="mod-title-row">
         <span class="mod-icon"><svg><use href="#m-${m.id}"/></svg></span>
@@ -2126,6 +2497,8 @@ function renderPipeline() {
     const el = document.createElement('div');
     el.className = 'pipe-stage' + (i === activeIdx ? ' active' : '');
     const v = Math.max(50, eff - i * 3);
+    el.setAttribute('data-tip-title', `Stage ${i+1}: ${s.label}`);
+    el.setAttribute('data-tip', s.blurb || 'Pipeline stage.');
     el.innerHTML = `
       <div class="pipe-icon">
         <svg><use href="#p-${s.key}"/></svg>
@@ -2190,13 +2563,18 @@ function renderResearch() {
       const affordable = preOk && !done && state.researchPoints >= n.cost;
       const el = document.createElement('div');
       el.className = 'research-node' + (done ? ' done' : '') + (!preOk ? ' locked' : '') + (affordable ? ' affordable' : '');
+      const preNames = (n.pre || []).map(pid => ((window.NP_RESEARCH||[]).find(r => r.id === pid)||{}).name).filter(Boolean);
+      const preTip = preNames.length ? `<br><b>Requires:</b> ${preNames.join(', ')}` : '';
+      const afford = affordable ? '<br><i style="color:var(--neon3)">You can afford this now.</i>' : !preOk ? '<br><i style="color:#ff6666">Prerequisites not met.</i>' : !done ? `<br><i style="color:#ffd966">Need ${n.cost - Math.floor(state.researchPoints)} more RP.</i>` : '';
+      el.setAttribute('data-tip-title', n.name);
+      el.setAttribute('data-tip', `${n.desc}<br><br><b>Effect:</b> ${n.effect}<br><b>Cost:</b> ${n.cost} RP${preTip}${afford}`);
       el.innerHTML = `
         <div class="r-name">${n.name}</div>
         <div class="r-desc">${n.desc}</div>
         <div class="r-effect">▸ ${n.effect}</div>
         <div class="r-foot">
           <span class="r-cost">${n.cost} RP</span>
-          <span class="r-status">${done ? 'COMPLETE' : preOk ? 'READY' : 'LOCKED'}</span>
+          <span class="r-status">${done ? '✓ COMPLETE' : preOk ? '▸ READY' : '⊘ LOCKED'}</span>
         </div>
       `;
       if (preOk && !done) el.addEventListener('click', () => tryResearch(n.id));
@@ -2206,28 +2584,76 @@ function renderResearch() {
   }
 }
 
+let _codexFilter = 'all';
+let _codexQuery = '';
+let _codexActive = null;
+
 function renderCodex() {
   const entries = window.NP_CODEX || [];
+  const q = (_codexQuery || '').trim().toLowerCase();
   const byCat = {};
   entries.forEach(e => {
     (byCat[e.category] = byCat[e.category] || []).push(e);
   });
+
+  // Progress header
+  const total = entries.length;
+  const found = entries.filter(e => state.codexUnlocked.includes(e.id)).length;
+  const pct = total ? (found / total) * 100 : 0;
+  const statsEl = $('codexStats');
+  if (statsEl) statsEl.innerHTML = `<b>${found}</b>/${total} Discovered · <b>${Math.round(pct)}%</b>`;
+  const fillEl = $('codexProgressFill');
+  if (fillEl) fillEl.style.width = pct + '%';
+
+  // Category filters
+  const fWrap = $('codexFilters');
+  if (fWrap) {
+    const cats = Object.keys(byCat).sort();
+    fWrap.innerHTML = '';
+    const allBtn = document.createElement('div');
+    allBtn.className = 'codex-filter' + (_codexFilter === 'all' ? ' active' : '');
+    allBtn.textContent = `All · ${found}/${total}`;
+    allBtn.addEventListener('click', () => { _codexFilter = 'all'; renderCodex(); });
+    fWrap.appendChild(allBtn);
+    cats.forEach(cat => {
+      const d = byCat[cat].filter(e => state.codexUnlocked.includes(e.id)).length;
+      const b = document.createElement('div');
+      b.className = 'codex-filter' + (_codexFilter === cat ? ' active' : '');
+      b.textContent = `${cat} · ${d}/${byCat[cat].length}`;
+      b.addEventListener('click', () => { _codexFilter = cat; renderCodex(); });
+      fWrap.appendChild(b);
+    });
+  }
+
+  // Entry list
   const list = $('codexList');
   list.innerHTML = '';
-  Object.keys(byCat).sort().forEach(cat => {
+  const cats = Object.keys(byCat).sort();
+  let visibleCount = 0;
+  cats.forEach(cat => {
+    if (_codexFilter !== 'all' && _codexFilter !== cat) return;
+    const items = byCat[cat].filter(e => {
+      if (!q) return true;
+      const unlocked = state.codexUnlocked.includes(e.id);
+      if (!unlocked) return false;
+      return e.title.toLowerCase().includes(q) || e.body.toLowerCase().includes(q);
+    });
+    if (items.length === 0 && q) return;
+    const discovered = byCat[cat].filter(e => state.codexUnlocked.includes(e.id)).length;
     const h = document.createElement('div');
     h.className = 'codex-cat';
-    const discovered = byCat[cat].filter(e => state.codexUnlocked.includes(e.id)).length;
-    h.textContent = `${cat} · ${discovered}/${byCat[cat].length}`;
+    h.innerHTML = `<span>${cat}</span><span class="codex-cat-count">${discovered}/${byCat[cat].length}</span>`;
     list.appendChild(h);
-    byCat[cat].forEach(e => {
+    items.forEach(e => {
       const unlocked = state.codexUnlocked.includes(e.id);
       const el = document.createElement('div');
-      el.className = 'codex-entry' + (unlocked ? '' : ' locked');
-      el.textContent = unlocked ? e.title : '???';
+      el.className = 'codex-entry' + (unlocked ? '' : ' locked') + (_codexActive === e.id ? ' active' : '');
+      el.textContent = unlocked ? e.title : '▒▒▒ CLASSIFIED ▒▒▒';
       if (unlocked) el.addEventListener('click', () => {
+        _codexActive = e.id;
         document.querySelectorAll('.codex-entry').forEach(x => x.classList.remove('active'));
         el.classList.add('active');
+        NPAudio.play('click');
         $('codexBody').innerHTML = `
           <h3>${e.title}</h3>
           <div class="cat">${e.category}</div>
@@ -2235,8 +2661,15 @@ function renderCodex() {
         `;
       });
       list.appendChild(el);
+      visibleCount++;
     });
   });
+  if (visibleCount === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'codex-entry-empty';
+    empty.textContent = q ? 'No entries match that search.' : 'No discovered entries in this category yet.';
+    list.appendChild(empty);
+  }
 }
 
 function renderFactions() {
@@ -2251,9 +2684,17 @@ function renderFactions() {
     const ptr = ((rep + 100) / 200) * 100;
     const rewards = Object.keys(f.rewards || {}).sort((a,b) => (+a) - (+b));
     const penalties = Object.keys(f.penalties || {}).sort((a,b) => (+b) - (+a));
+    const initials = f.short ? f.short.substring(0,2).toUpperCase() : f.name.substring(0,2).toUpperCase();
+    const repStatus = rep >= 70 ? 'ALLIED' : rep >= 40 ? 'FRIENDLY' : rep >= 10 ? 'WARM' : rep > -10 ? 'NEUTRAL' : rep > -40 ? 'COOL' : rep > -80 ? 'HOSTILE' : 'WAR';
     el.innerHTML = `
       <div class="faction-head">
-        <div class="faction-name" style="color:${f.color}">${f.name}</div>
+        <div class="faction-head-left">
+          <div class="faction-emblem" style="border-color:${f.color}; color:${f.color}; box-shadow: 0 0 18px ${f.color}33, inset 0 0 0 1px ${f.color}33">${initials}</div>
+          <div>
+            <div class="faction-name" style="color:${f.color}">${f.name}</div>
+            <div class="faction-status">${repStatus}</div>
+          </div>
+        </div>
         <div class="faction-rep" style="color:${rep > 0 ? 'var(--neon3)' : rep < 0 ? '#ff5a5a' : 'var(--muted)'}">${rep > 0 ? '+' : ''}${rep}</div>
       </div>
       <div class="faction-body">
@@ -2276,20 +2717,47 @@ function renderMissions() {
   const wrap = $('missionsWrap');
   wrap.innerHTML = '';
   const cur = state.missionChapter;
-  (window.NP_MISSIONS || []).forEach(m => {
+  const all = (window.NP_MISSIONS || []);
+  all.forEach(m => {
     const done = state.missionCompleted.includes(m.id);
     const active = !done && m.chapter === cur;
     const locked = !done && m.chapter > cur;
     const el = document.createElement('div');
     el.className = 'mission' + (done ? ' done' : active ? ' active' : locked ? ' locked' : '');
+    let objectives = '';
+    if (active && m.complete) {
+      const reqs = [];
+      if (m.complete.yield) {
+        const gotYield = state.totalEarned || 0;
+        reqs.push({ label: `Earn ${fmtYield(m.complete.yield)} Q.Y.`, have: Math.min(1, gotYield / m.complete.yield), sub: `${fmtYield(gotYield)} / ${fmtYield(m.complete.yield)}` });
+      }
+      if (m.complete.codex) {
+        const got = state.codexUnlocked.includes(m.complete.codex);
+        const entry = (window.NP_CODEX || []).find(c => c.id === m.complete.codex);
+        reqs.push({ label: `Uncover codex: ${entry ? entry.title : m.complete.codex}`, have: got ? 1 : 0, sub: got ? 'Found' : 'Pending' });
+      }
+      if (m.complete.research) {
+        const got = state.researchCompleted.includes(m.complete.research);
+        const node = (window.NP_RESEARCH || []).find(r => r.id === m.complete.research);
+        reqs.push({ label: `Research: ${node ? node.name : m.complete.research}`, have: got ? 1 : 0, sub: got ? 'Complete' : 'Pending' });
+      }
+      objectives = reqs.map(r => `
+        <div class="mission-obj ${r.have >= 1 ? 'done' : ''}">
+          <span class="obj-check">${r.have >= 1 ? '✓' : '◯'}</span>
+          <span class="obj-text">${r.label}</span>
+          <span class="obj-sub">${r.sub}</span>
+        </div>
+      `).join('');
+    }
     el.innerHTML = `
-      <div class="mission-head">
-        <span class="mission-chap">CHAPTER ${m.chapter}</span>
-        <span class="mission-state">${done ? '✓ COMPLETE' : active ? '▸ ACTIVE' : locked ? '◯ LOCKED' : ''}</span>
+      <div class="mission-chap-banner">
+        <span class="mission-chap-num">CH ${m.chapter.toString().padStart(2,'0')}</span>
+        <span class="mission-state">${done ? '✓ COMPLETE' : active ? '▸ ACTIVE' : locked ? '⊘ LOCKED' : ''}</span>
       </div>
-      <div class="mission-title">${locked ? '???' : m.title}</div>
+      <div class="mission-title">${locked ? '▒▒▒ CLASSIFIED ▒▒▒' : m.title}</div>
       ${!locked ? `<div class="mission-intro">${m.intro}</div>` : ''}
-      ${active ? `<div class="mission-directive">DIRECTIVE · ${m.directive}</div>` : ''}
+      ${active ? `<div class="mission-directive"><span class="dir-label">Directive</span> ${m.directive}</div>` : ''}
+      ${objectives ? `<div class="mission-objs">${objectives}</div>` : ''}
       ${done ? `<div class="mission-outro">${m.outro}</div>` : ''}
     `;
     wrap.appendChild(el);
@@ -2304,12 +2772,15 @@ function renderAchievements() {
     const done = state.achievements.includes(a.id);
     const el = document.createElement('div');
     el.className = 'achievement' + (done ? ' done' : '');
+    el.setAttribute('data-tip-title', a.name);
+    el.setAttribute('data-tip', `${a.desc}<br><br>${done ? '<i style="color:var(--neon3)">✓ Unlocked</i>' : '<i style="color:var(--muted)">Not yet earned.</i>'}`);
     el.innerHTML = `
-      <div class="ach-icon">${a.icon || '◆'}</div>
+      <div class="ach-icon">${done ? (a.icon || '◆') : '?'}</div>
       <div class="ach-info">
         <div class="n">${a.name}</div>
         <div class="d">${a.desc}</div>
       </div>
+      ${done ? '<div class="ach-ribbon">✓</div>' : ''}
     `;
     wrap.appendChild(el);
   });
@@ -2317,6 +2788,8 @@ function renderAchievements() {
   const cnt = state.achievements.length;
   $('achCount').textContent = `${cnt} / ${total}`;
   $('achPct').textContent = total ? Math.round(cnt / total * 100) + '%' : '0%';
+  const barEl = $('achProgressFill');
+  if (barEl) barEl.style.width = (total ? (cnt / total) * 100 : 0) + '%';
 }
 
 function updateBadges() {
@@ -2351,6 +2824,117 @@ function openModal(title, sub, body, actions) {
   $('modalBg').classList.add('show');
 }
 function closeModal() { $('modalBg').classList.remove('show'); }
+
+/* ============================================================
+   TOOLTIP ENGINE
+   ============================================================ */
+const NPTooltip = (() => {
+  let tip = null;
+  function ensure() {
+    if (tip) return tip;
+    tip = document.createElement('div');
+    tip.className = 'np-tooltip';
+    document.body.appendChild(tip);
+    return tip;
+  }
+  function show(target) {
+    const raw = target.getAttribute('data-tip');
+    if (!raw) return;
+    const t = ensure();
+    const title = target.getAttribute('data-tip-title');
+    const hotkey = target.getAttribute('data-tip-hotkey');
+    t.innerHTML =
+      (title ? `<div class="np-tooltip-title">${title}${hotkey ? `<span class="np-tooltip-hotkey">${hotkey}</span>` : ''}</div>` : '') +
+      raw;
+    const r = target.getBoundingClientRect();
+    // Position: below target by default; flip above if near bottom
+    const vw = window.innerWidth, vh = window.innerHeight;
+    t.style.visibility = 'hidden'; t.classList.add('show');
+    const tr = t.getBoundingClientRect();
+    let left = r.left + r.width / 2 - tr.width / 2;
+    let top = r.bottom + 8;
+    if (top + tr.height > vh - 10) top = r.top - tr.height - 8;
+    left = Math.max(8, Math.min(left, vw - tr.width - 8));
+    t.style.left = left + 'px';
+    t.style.top = top + 'px';
+    t.style.visibility = 'visible';
+  }
+  function hide() {
+    if (tip) tip.classList.remove('show');
+  }
+  function bind() {
+    document.addEventListener('mouseover', (e) => {
+      const el = e.target.closest('[data-tip]');
+      if (el) show(el);
+    });
+    document.addEventListener('mouseout', (e) => {
+      const el = e.target.closest('[data-tip]');
+      if (el) hide();
+    });
+    document.addEventListener('focusin', (e) => {
+      const el = e.target.closest('[data-tip]');
+      if (el) show(el);
+    });
+    document.addEventListener('focusout', hide);
+    window.addEventListener('scroll', hide, true);
+  }
+  return { bind, hide };
+})();
+
+/* ============================================================
+   HELP MODAL
+   ============================================================ */
+function openHelpModal() {
+  const body = `
+    <div class="help-sections">
+      <div class="help-section">
+        <h4>◈ Welcome to Nebula Prospect</h4>
+        <p>You are the station Overseer. Dispatch crew, research, manage factions, and hit the sector's quantum-yield target.</p>
+      </div>
+      <div class="help-section">
+        <h4>⟟ Core Loop</h4>
+        <ol class="help-list">
+          <li><b>Scan</b> for ops in the Command tab · <b>Assign</b> crew to operations</li>
+          <li>Ops complete → yield, codex, rep, and loot are awarded</li>
+          <li>Spend <b>Research Points</b> to unlock permanent bonuses</li>
+          <li>Complete <b>missions</b> to advance the story and unlock crew</li>
+        </ol>
+      </div>
+      <div class="help-section">
+        <h4>◆ Tips</h4>
+        <ul class="help-list">
+          <li>Match crew specialization to op type for efficiency bonus</li>
+          <li>Fatigued crew run ops slower — rotate assignments</li>
+          <li>Watch <b>Signal Integrity</b> — below 20% means raids</li>
+          <li>Factions remember. Burn bridges carefully</li>
+        </ul>
+      </div>
+      <div class="help-section">
+        <h4>⌨ Keyboard</h4>
+        <div class="help-keys">
+          <div class="help-key"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span>Speed 1× / 2× / 3×</span></div>
+          <div class="help-key"><kbd>Space</kbd><span>Pause / resume</span></div>
+          <div class="help-key"><kbd>S</kbd><span>Scan for ops</span></div>
+          <div class="help-key"><kbd>M</kbd><span>Toggle mute</span></div>
+          <div class="help-key"><kbd>?</kbd><span>Open this help</span></div>
+          <div class="help-key"><kbd>Esc</kbd><span>Close modal</span></div>
+        </div>
+      </div>
+      <div class="help-section">
+        <h4>⚈ Stats Legend</h4>
+        <ul class="help-list">
+          <li><b style="color:#a566ff">Yield</b> — accumulated Q.Y. toward station goal</li>
+          <li><b style="color:var(--neon2)">Signal</b> — station comms integrity</li>
+          <li><b style="color:var(--neon1)">Processing</b> — active op capacity</li>
+          <li><b style="color:#ffcc00">Threat</b> — pirate/raid risk in sector</li>
+          <li><b style="color:var(--neon3)">RP</b> — research points available</li>
+        </ul>
+      </div>
+    </div>
+  `;
+  openModal('Overseer Handbook', 'Field guide · Nebula Prospect', body);
+}
+
 
 function openOpModal(opId) {
   const op = state.ops.find(o => o.id === opId);
@@ -2622,6 +3206,37 @@ function init() {
     state.advisorIdx++;
     renderAdvisor();
     NPAudio.play('click');
+  });
+
+  // Codex search
+  const cs = $('codexSearch');
+  if (cs) {
+    cs.addEventListener('input', (e) => {
+      _codexQuery = e.target.value;
+      renderCodex();
+    });
+  }
+
+  // Help modal
+  const hb = $('helpBtn');
+  if (hb) hb.addEventListener('click', () => { openHelpModal(); NPAudio.play('click'); });
+
+  // Tooltip engine
+  NPTooltip.bind();
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Ignore when typing in inputs
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) { e.preventDefault(); openHelpModal(); return; }
+    if (e.key === '1') { state.speed = 1; state.paused = false; renderStats(); NPAudio.play('click'); }
+    else if (e.key === '2') { state.speed = 2; state.paused = false; renderStats(); NPAudio.play('click'); }
+    else if (e.key === '3') { if (state.maxSpeed >= 3) { state.speed = 3; state.paused = false; renderStats(); NPAudio.play('click'); } }
+    else if (e.key === ' ') { e.preventDefault(); state.paused = !state.paused; renderStats(); NPAudio.play('click'); }
+    else if (e.key === 's' || e.key === 'S') { scanForOps(); NPAudio.play('scan'); }
+    else if (e.key === 'm' || e.key === 'M') { NPAudio.toggle(); renderStats(); }
   });
 
   // Restart
