@@ -30,7 +30,7 @@
 // with the real renderer / sprites / boss art / fx / background / HUD.
 //   ?boss=warden|wyrm|prism|dread|heart   &power=N (default per sector)  &ship=aurora|tempest|seraph|valkyrie
 //   &bot=focus|crude|none (default focus)  &mortal (god off)  &speed=N  &post=0 (2D composite)  &players=N (co-op HP)
-//   &dmg=K (player damage ×K)  &clean (hide overlays)  &paused (step via __B.step)
+//   &dmg=K (player damage ×K)  &clean (hide overlays)  &paused (step via __B.step)  &nolens (skip the horizon lens)
 //   &det[&delay=N] — host + client Sims over an in-memory delayed net; the CLIENT view is rendered and
 //                    the host↔client enemy position error is shown.
 import { Sim } from '../js/game/sim.js';
@@ -198,7 +198,8 @@ function drawFrame(dt) {
     R.endField();
   }
   const ps = sim.env.fx.postState();
-  R.present({ grade: bg?.grade || null, waves: ps.waves, flash: ps.flash, flashColor: ps.flashColor, chroma: ps.chroma, lensing: bg?.lensing ? bg.lensing(R.W, R.H) : null, scanlines: true });
+  const lens = Q.has('nolens') ? null : bg?.lensing ? bg.lensing(R.W, R.H) : null;
+  R.present({ grade: bg?.grade || null, waves: ps.waves, flash: ps.flash, flashColor: ps.flashColor, chroma: ps.chroma, lensing: lens, scanlines: true });
 }
 function info() {
   const b = host.bossIds.length ? host.enemies.get(host.bossIds[0]) : null;

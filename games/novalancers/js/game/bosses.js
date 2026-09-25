@@ -297,7 +297,11 @@ function roarCue(pal) {
     sim.env.fx.chroma?.(0.3);
   };
 }
+// Optional background hook (all peers): lets a backdrop react to the boss fight — e.g. the
+// Event Horizon can pull its black-hole lens away from the boss arena. No-op if unsupported.
+function bgBoss(sim, on) { try { sim.env.bg?.bossMode?.(on); } catch { /* optional */ } }
 function bigDeath(e, sim, pal, ring, spots) {
+  bgBoss(sim, false);
   const fx = sim.env.fx;
   fx.shockwave?.(e.x, e.y, ring, pal);
   fx.shockwave?.(e.x, e.y, ring * 0.55, 'white');
@@ -656,7 +660,7 @@ ENEMIES.warden = {
   boss: true, bar: true, name: 'THE WARDEN', z: 2, move: 'wardenHull', paths: { wardenHull: wardenHullPath },
   explode: 'boss', palette: 'fire', odGain: 0.5, drops: BOSS_DROPS(14, 6),
   hpFn: wardenHp, brain: wardenBrain, onPhase: wardenPhase, draw: wardenDraw,
-  onSpawn(e) { e.armor = true; },
+  onSpawn(e, sim) { e.armor = true; bgBoss(sim, true); },
   onDeath(e, sim) { bigDeath(e, sim, 'fire', 150, [[-44, -24, 'large'], [42, -20, 'large'], [0, -34, 'medium'], [-30, 22, 'medium'], [30, 22, 'medium']]); },
   cues: {
     roar: roarCue('magenta'),
@@ -1100,7 +1104,7 @@ ENEMIES.wyrm = {
   boss: true, bar: true, name: 'CINDER WYRM', z: 6, move: 'wyrmHead', paths: { wyrmHead: wyrmHeadPath },
   explode: 'boss', palette: 'ember', odGain: 0.5, drops: BOSS_DROPS(16, 7),
   hpFn: wyrmHp, brain: wyrmBrain, onPhase: wyrmPhase, draw: wyrmHeadDraw,
-  onSpawn(e) { e.armor = true; },
+  onSpawn(e, sim) { e.armor = true; bgBoss(sim, true); },
   onDeath(e, sim) { bigDeath(e, sim, 'ember', 140, [[-16, -10, 'large'], [14, 12, 'medium'], [0, 20, 'medium']]); },
   cues: {
     roar: roarCue('ember'),
@@ -1371,7 +1375,7 @@ ENEMIES.prism = {
   boss: true, bar: true, name: 'PRISM ARRAY', z: 5, move: 'prismCore', paths: { prismCore: prismCorePath },
   explode: 'boss', palette: 'crystal', odGain: 0.5, drops: BOSS_DROPS(18, 8), warp: true,
   hpFn: prismHp, brain: prismBrain, onPhase: prismPhase, draw: prismDraw,
-  onSpawn(e) { e.armor = true; },
+  onSpawn(e, sim) { e.armor = true; bgBoss(sim, true); },
   onDeath(e, sim) { bigDeath(e, sim, 'crystal', 160, [[-12, -18, 'large'], [12, 16, 'large'], [0, 0, 'medium']]); for (let i = 0; i < 12; i++) sim.env.fx.spark?.(e.x, e.y, (i / 12) * TAU, 'crystal', 3); },
   cues: {
     roar: roarCue('crystal'),
@@ -1641,7 +1645,7 @@ ENEMIES.dread = {
   boss: true, bar: true, name: 'THE DREADNOUGHT', z: 2, move: 'dreadHull', paths: { dreadHull: dreadHullPath },
   explode: 'boss', palette: 'fire', odGain: 0.5, drops: BOSS_DROPS(20, 9),
   hpFn: dreadHp, brain: dreadBrain, onPhase: dreadPhase, draw: dreadDraw,
-  onSpawn(e) { e.armor = true; },
+  onSpawn(e, sim) { e.armor = true; bgBoss(sim, true); },
   onDeath(e, sim) { bigDeath(e, sim, 'fire', 190, [[-66, -10, 'large'], [64, -8, 'large'], [-30, 22, 'large'], [30, 22, 'large'], [0, -30, 'medium'], [-80, 8, 'medium'], [80, 8, 'medium']]); },
   cues: {
     roar: roarCue('fire'),
@@ -1937,7 +1941,7 @@ ENEMIES.heart = {
   boss: true, bar: true, final: true, name: 'THE CHOIR HEART', z: 5, move: 'heartPath', paths: { heartPath },
   explode: 'boss', palette: 'magenta', odGain: 0.5, drops: BOSS_DROPS(24, 12),
   hpFn: heartHp, brain: heartBrain, onPhase: heartPhase, draw: heartDraw,
-  onSpawn(e) { e.armor = true; },
+  onSpawn(e, sim) { e.armor = true; bgBoss(sim, true); },
   onDeath(e, sim) {
     bigDeath(e, sim, 'magenta', 240, [[-30, -20, 'large'], [30, -18, 'large'], [0, 34, 'large'], [-44, 20, 'medium'], [44, 22, 'medium'], [0, -44, 'medium']]);
     const fx = sim.env.fx;
