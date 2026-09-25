@@ -254,6 +254,8 @@ T.startStress = (hz = 20) => {
   $('bStress').textContent = 'STOP STRESS';
 };
 T.stopStress = stopStress;
+T.attach = attach;
+T.log = log;
 $('bStress').onclick = () => (stressTimer ? stopStress() : T.startStress(20));
 
 setInterval(() => {

@@ -370,7 +370,7 @@ const qLevel = (b) => { for (let i = 0; i < STAR_LV.length; i++) if (b <= STAR_L
 
 // Tileable star layer, meant to be composited with 'lighter'.
 // density(x, y) -> 0..1 acceptance; cols: hex list; maxB: brightness cap; big: chance of cross stars
-function starTile(rng, w, h, count, { density = null, cols = STAR_COLS, maxB = 1, pow = 2.6, big = 0.04 } = {}) {
+function starTile(rng, w, h, count, { density = null, cols = STAR_COLS, maxB = 1, pow = 2.6, big = 0.04, raster = false } = {}) {
   const r = new Raster(w, h, true);
   const rgbs = cols.map(hexToRgb);
   for (let i = 0; i < count; i++) {
@@ -386,7 +386,7 @@ function starTile(rng, w, h, count, { density = null, cols = STAR_COLS, maxB = 1
       if (b >= 0.78 && rng.chance(0.5)) { const k2 = qLevel(b * 0.16); put(2, 0, k2); put(-2, 0, k2); put(0, 2, k2); put(0, -2, k2); }
     }
   }
-  return r.toCanvas();
+  return raster ? r : r.toCanvas();
 }
 
 // Per-frame twinkling stars living in a virtual (w x h) tile with parallax factor f.
@@ -410,7 +410,7 @@ class Twinkles {
     this.css = cols.map((c) => c);
   }
   // ax: tile origin x on screen; oy: vertical offset (already multiplied by factor); dx: extra drift
-  draw(ctx, lctx, ax, oy, W, H, t, alpha = 1) {
+  draw(ctx, lctx, ax, oy, W, H, t, alpha = 1, clipY = null) {
     const { w, h } = this;
     let cur = -1;
     for (let i = 0; i < this.n; i++) {
@@ -422,6 +422,7 @@ class Twinkles {
       if (this.ci[i] !== cur) { cur = this.ci[i]; ctx.fillStyle = this.css[cur]; lctx.fillStyle = this.css[cur]; }
       const k = this.kind[i];
       for (let sx = mod(this.x[i] + ax, w); sx < W; sx += w) {
+        if (clipY && sy >= clipY[sx] - 2) continue;
         ctx.globalAlpha = a;
         ctx.fillRect(sx, sy, 1, 1);
         if (k) {
@@ -961,11 +962,552 @@ class TitleStage extends Stage {
 }
 
 // ---------------------------------------------------------------------------
+// Structure kit: pixel-art primitives for stations, rigs and hulls.
+// `sun` is a 2D screen direction TOWARD the light, e.g. [0.6, -0.8] = upper right.
+// A material is a dark->light ramp of packed colours plus a rim highlight.
+// ---------------------------------------------------------------------------
+
+function mat(hexes, rim) { return { c: packRamp(hexes), n: hexes.length, rim: packHex(rim || hexes[hexes.length - 1]) }; }
+const mc = (m, i) => m.c[clamp(Math.round(i), 0, m.n - 1)];
+
+// Bevelled box. panels: panel-line spacing (0 = none). base: ramp index of the face.
+function kBox(r, x, y, w, h, m, sun, { panels = 0, base = 2, rim = true } = {}) {
+  x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+  if (w <= 0 || h <= 0) return;
+  for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+    let i = base;
+    if (panels && xx > 0 && yy > 0 && xx < w - 1 && yy < h - 1 && ((xx % panels) === 0 || (yy % panels) === 0)) i = base - 1;
+    if (yy === 0) i = sun[1] < 0 ? base + 1 : base - 1;
+    else if (yy === h - 1) i = sun[1] > 0 ? base + 1 : base - 2;
+    if (xx === 0) i = sun[0] < 0 ? base + 1 : Math.min(i, base - 1);
+    else if (xx === w - 1) i = sun[0] > 0 ? base + 1 : Math.min(i, base - 1);
+    r.set(x + xx, y + yy, mc(m, i));
+  }
+  if (rim) r.set(sun[0] > 0 ? x + w - 1 : x, sun[1] < 0 ? y : y + h - 1, m.rim);
+}
+
+// Cylinder: horizontal (axis along x) or vertical. seg: seam spacing.
+function kCyl(r, x, y, len, rad, horiz, m, sun, { seg = 0, caps = true } = {}) {
+  x = Math.round(x); y = Math.round(y);
+  const d = Math.max(2, Math.round(rad * 2));
+  for (let a = 0; a < len; a++) for (let b = 0; b < d; b++) {
+    const nn = (b + 0.5 - d / 2) / (d / 2), nz = Math.sqrt(Math.max(0, 1 - nn * nn));
+    const l = (horiz ? nn * sun[1] : nn * sun[0]) * 0.85 + nz * 0.35;   // sun-facing side brighter
+    let v = clamp01(0.45 + l * 0.6) * (m.n - 1);
+    if (seg && a % seg === 0) v -= 1.2;
+    if (caps && (a === 0 || a === len - 1)) v += ((horiz ? sun[0] : sun[1]) * (a === 0 ? -1 : 1)) > 0 ? 0.8 : -0.8;
+    const px = horiz ? x + a : x + b, py = horiz ? y + b : y + a;
+    r.set(px, py, m.c[qi(clamp(v, 0, m.n - 1), px, py, m.n)]);
+  }
+}
+
+// Sphere / tank
+function kBall(r, cx, cy, rad, m, sun, { spec = true } = {}) {
+  const L = [sun[0] * 0.8, sun[1] * 0.8, 0.5];
+  for (let y = Math.floor(cy - rad); y <= Math.ceil(cy + rad); y++) for (let x = Math.floor(cx - rad); x <= Math.ceil(cx + rad); x++) {
+    const dx = (x + 0.5 - cx) / rad, dy = (y + 0.5 - cy) / rad, d2 = dx * dx + dy * dy;
+    if (d2 > 1) continue;
+    const nz = Math.sqrt(1 - d2), l = dx * L[0] + dy * L[1] + nz * L[2];
+    let v = clamp01(0.2 + l * 0.75) * (m.n - 1);
+    if (d2 > 0.8) v -= 0.6;
+    r.set(x, y, m.c[qi(clamp(v, 0, m.n - 1), x, y, m.n)]);
+    if (spec && l > 0.93) r.set(x, y, m.rim);
+  }
+}
+
+// Lattice truss between two points. w: width in px.
+function kTruss(r, x0, y0, x1, y1, w, m, sun, { rungs = true, heavy = false } = {}) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+  const ux = dx / len, uy = dy / len, nx = -uy, ny = ux, hw = w / 2;
+  const litPlus = nx * sun[0] + ny * sun[1] > 0;
+  const A = [x0 + nx * hw, y0 + ny * hw], B = [x0 - nx * hw, y0 - ny * hw];
+  const step = Math.max(3, w * 1.1);
+  for (let s = 0, k = 0; s < len; s += step, k++) {
+    const s2 = Math.min(len, s + step);
+    const p = k % 2 ? A : B, q = k % 2 ? B : A;
+    r.line(p[0] + ux * s, p[1] + uy * s, q[0] + ux * s2, q[1] + uy * s2, mc(m, 1));
+    if (rungs) r.line(A[0] + ux * s, A[1] + uy * s, B[0] + ux * s, B[1] + uy * s, mc(m, 1));
+  }
+  const rail = (P, lit) => {
+    r.line(P[0], P[1], P[0] + dx, P[1] + dy, mc(m, lit ? m.n - 2 : 1));
+    if (heavy) { const k = lit ? -1 : 1; r.line(P[0] + nx * k * (litPlus ? 1 : -1), P[1] + ny * k * (litPlus ? 1 : -1), P[0] + nx * k * (litPlus ? 1 : -1) + dx, P[1] + ny * k * (litPlus ? 1 : -1) + dy, mc(m, lit ? m.n - 3 : 0)); }
+  };
+  rail(litPlus ? B : A, false);
+  rail(litPlus ? A : B, true);
+  // nodes
+  for (let s = 0; s <= len; s += step) {
+    r.set(A[0] + ux * s, A[1] + uy * s, mc(m, litPlus ? m.n - 1 : 2));
+    r.set(B[0] + ux * s, B[1] + uy * s, mc(m, litPlus ? 2 : m.n - 1));
+  }
+}
+
+// Solid beam (thick shaded line)
+function kBeam(r, x0, y0, x1, y1, t, m, sun) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+  const nx = -dy / len, ny = dx / len, litDir = nx * sun[0] + ny * sun[1];
+  for (let k = 0; k < t; k++) {
+    const o = k - (t - 1) / 2, f = t > 1 ? o / ((t - 1) / 2) : 0;
+    const v = 2 + f * Math.sign(litDir) * 1.4 + (Math.abs(f) > 0.99 ? (f * litDir > 0 ? 0.6 : -0.6) : 0);
+    r.line(x0 + nx * o, y0 + ny * o, x1 + nx * o, y1 + ny * o, mc(m, v));
+  }
+}
+
+// Solar array: dark blue cells with a reflective sheen band
+function kSolar(r, x, y, w, h, sheen = 0.3) {
+  const cell = [packHex('#0b1530'), packHex('#0d2342'), packHex('#13294f'), packHex('#1b3a66'), packHex('#2150d0')];
+  const frame = packHex('#526283'), grid = packHex('#081a33');
+  x = Math.round(x); y = Math.round(y);
+  for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+    let c;
+    if (xx === 0 || yy === 0 || xx === w - 1 || yy === h - 1) c = frame;
+    else if (xx % 3 === 0 || yy % 4 === 0) c = grid;
+    else {
+      const band = Math.exp(-(((xx / w + yy / h) - 1 + sheen) * 3.2) ** 2);
+      c = cell[qi(clamp(1 + band * 3.2, 0, 4), x + xx, y + yy, 5)];
+    }
+    r.set(x + xx, y + yy, c);
+  }
+}
+
+// Outline everything opaque in `r` with colour c (1 px, 4-neighbourhood), into a copy.
+function outlined(r, c) {
+  const { w, h, d } = r, o = new Raster(w, h, r.wrap);
+  o.d.set(d);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[y * w + x]) continue;
+    const l = r.wrap ? mod(x - 1, w) : x - 1, rr = r.wrap ? mod(x + 1, w) : x + 1, u = r.wrap ? mod(y - 1, h) : y - 1, dn = r.wrap ? mod(y + 1, h) : y + 1;
+    if ((l >= 0 && d[y * w + l]) || (rr < w && d[y * w + rr]) || (u >= 0 && d[u * w + x]) || (dn < h && d[dn * w + x])) o.d[y * w + x] = c;
+  }
+  return o;
+}
+
+// Blinking beacons / lights in tile space (x, y), drawn per frame.
+class Blinkers {
+  constructor(w, h) { this.w = w; this.h = h; this.list = []; }
+  add(x, y, col, period = 1.6, phase = 0, duty = 0.14, size = 1) { this.list.push({ x: Math.round(mod(x, this.w)), y: Math.round(mod(y, this.h)), col, period, phase, duty, size }); return this; }
+  draw(ctx, lctx, ax, oy, W, H, t) {
+    const { w, h } = this;
+    for (let i = 0; i < this.list.length; i++) {
+      const b = this.list[i];
+      const u = fract(t / b.period + b.phase);
+      if (u > b.duty) continue;
+      const a = 1 - u / b.duty * 0.6;
+      const sy = mod(b.y + oy, h);
+      if (sy >= H + 2) continue;
+      ctx.fillStyle = b.col; lctx.fillStyle = b.col;
+      for (let sx = mod(b.x + ax, w); sx < W + 2; sx += w) {
+        ctx.globalAlpha = a; ctx.fillRect(sx, sy, 1, 1);
+        lctx.globalAlpha = a; lctx.fillRect(sx - 1, sy, 3, 1); lctx.fillRect(sx, sy - 1, 1, 3);
+        if (b.size > 1) { lctx.globalAlpha = a * 0.4; lctx.fillRect(sx - 2, sy - 1, 5, 3); lctx.fillRect(sx - 1, sy - 2, 3, 5); ctx.globalAlpha = a * 0.6; ctx.fillRect(sx - 1, sy, 3, 1); ctx.fillRect(sx, sy - 1, 1, 3); }
+      }
+    }
+    ctx.globalAlpha = 1; lctx.globalAlpha = 1;
+  }
+}
+
+// Flickering spark sources (welding, grinding). Each source sprays a few pixels.
+const SPARK_COLS = ['#fff5c9', '#ffd966', '#ffab4f', '#f7721f'];
+class Sparks {
+  constructor(w, h) { this.w = w; this.h = h; this.list = []; }
+  add(x, y, dirx = 0, diry = 1, rate = 1, phase = 0) { this.list.push({ x: Math.round(mod(x, this.w)), y: Math.round(mod(y, this.h)), dirx, diry, rate, phase }); return this; }
+  draw(ctx, lctx, ax, oy, W, H, t) {
+    const { w, h } = this;
+    for (let i = 0; i < this.list.length; i++) {
+      const s = this.list[i];
+      const u = fract(t * 0.25 * s.rate + s.phase);
+      if (u > 0.45) continue;               // bursts
+      const sy = mod(s.y + oy, h);
+      if (sy >= H + 8 || sy < -8) continue;
+      const fr = Math.floor(t * 24 + i * 7);
+      for (let sx = mod(s.x + ax, w); sx < W + 8; sx += w) {
+        lctx.globalAlpha = 0.7; lctx.fillStyle = '#ffab4f'; lctx.fillRect(sx - 1, sy - 1, 3, 3);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(sx, sy, 1, 1);
+        for (let k = 0; k < 4; k++) {
+          const hsh = hash3(fr, k, i, 5), hsh2 = hash3(fr, k, i, 9);
+          const dist = 1 + hsh * 6, ang = Math.atan2(s.diry, s.dirx) + (hsh2 - 0.5) * 2.2;
+          const px = Math.round(sx + Math.cos(ang) * dist), py = Math.round(sy + Math.sin(ang) * dist);
+          ctx.fillStyle = SPARK_COLS[(hsh * 4) | 0]; ctx.globalAlpha = 1 - hsh * 0.6;
+          ctx.fillRect(px, py, 1, 1);
+          lctx.fillStyle = ctx.fillStyle; lctx.globalAlpha = 0.8; lctx.fillRect(px, py, 1, 1);
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.globalAlpha = 1; lctx.globalAlpha = 1;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AURORA (S1) — orbital shipyard above a blue ocean world at dawn
+// ---------------------------------------------------------------------------
+
+const SUN_UR = [0.6, -0.8];
+const M_FAR = () => mat(['#0c1a2a', '#142638', '#1e3449', '#2c465e', '#3f5d78', '#5a7a96'], '#9cc4dc');
+const M_MID = () => mat(['#0e121c', '#171d2c', '#232c40', '#34405a', '#4c5c7c', '#71849f'], '#d6e4f4');
+const M_NEAR = () => mat(['#06070d', '#0b0e17', '#131826', '#1e2537', '#2f3a52', '#4a5876'], '#ffcf9a');
+const M_HULL = () => mat(['#141a26', '#202938', '#2f3b4f', '#46556c', '#65778f', '#8a9cb3'], '#e6eefa');
+const M_HAZ = () => mat(['#3d2106', '#7a430b', '#bf7412', '#f0a92a'], '#ffd966');
+
+function* genAurora() {
+  const rng = new Rng(0xa11ce);
+  const A = {};
+  const TH = 512;
+  // --- planet surface: ocean, archipelagos, city lights (periodic) ---
+  const oc = new Fbm(rng, TW, TH, 128, 4, 0.5).field(2);
+  const il = new Fbm(rng, TW, TH, 80, 5, 0.55).field(2);
+  const ct = new Fbm(rng, TW, TH, 12, 2, 0.5).field(1);
+  const surf = new Raster(TW, TH, true), lights = new Raster(TW, TH, true);
+  const OC = packRamp(['#041526', '#062238', '#08304e', '#0c4166', '#115680', '#18709c']);
+  const SH = packRamp(['#12628c', '#1c86ab', '#3aa6c4', '#7cc9d8']);
+  const LD = packRamp(['#1d3a30', '#2a4f38', '#3d6440', '#5b7a4c', '#8a8a5e', '#b0a070']);
+  const amber = hexToRgb('#f0a92a'), hot = hexToRgb('#fff1c9');
+  for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+    const i = y * TW + x, l = il[i];
+    let c;
+    if (l > 0.665) c = LD[qi((l - 0.665) * 30 + (oc[i] - 0.5) * 2, x, y, 6)];
+    else if (l > 0.63) c = SH[qi((l - 0.63) * 90, x, y, 4)];
+    else c = OC[qi(clamp((oc[i] - 0.28) * 9 + (l - 0.5) * 6, 0, 5), x, y, 6)];
+    surf.d[i] = c;
+    if (l > 0.64 && l < 0.74) {
+      const dens = smooth(0.5, 0.8, ct[i]) * (1 - Math.abs(l - 0.675) * 16);
+      const hs = hash3(x, y, 3, 77);
+      if (hs < dens * 0.45) {
+        const k = hs < dens * 0.1 ? 1 : 0.6, cc = hs < dens * 0.1 ? hot : amber;
+        lights.d[i] = pack(cc[0] * k, cc[1] * k, cc[2] * k);
+      }
+    }
+  }
+  A.surf = surf.toCanvas(); A.lights = lights.toCanvas();
+  yield;
+  // --- cloud bands with shadows (alpha) ---
+  const cf = new Fbm(rng, TW, TH * 2, 120, 5, 0.55);
+  const cw = new Fbm(rng, TW, TH * 2, 90, 3, 0.5);
+  const dens = new Float32Array(TW * TH);
+  for (let y = 0; y < TH; y += 2) for (let x = 0; x < TW; x += 2) {
+    const w = cw.at(x, y * 2);
+    const v = cf.at(x + (w - 0.5) * 60, y * 2 + (w - 0.5) * 30);
+    dens[y * TW + x] = smooth(0.5, 0.7, v);
+  }
+  for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {       // bilinear fill of odd pixels
+    if (!(y & 1) && !(x & 1)) continue;
+    const x0 = x & ~1, y0 = y & ~1, x1 = (x0 + 2) % TW, y1 = (y0 + 2) % TH, tx = (x - x0) / 2, ty = (y - y0) / 2;
+    const a = dens[y0 * TW + x0], b = dens[y0 * TW + x1], c = dens[y1 * TW + x0], d = dens[y1 * TW + x1];
+    dens[y * TW + x] = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+  }
+  const cl = new Raster(TW, TH, true);
+  const CL = packRamp(['#4d6d90', '#7b9cbc', '#aecae0', '#dcebf7', '#f7fbff']);
+  const shadow = pack(2, 10, 22, 150);
+  for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+    const v = dens[y * TW + x];
+    const a = v > 0.12 ? (v > 0.45 ? 1 : bay(x, y) < (v - 0.12) * 3 ? 1 : 0) : 0;
+    if (a) { cl.d[y * TW + x] = CL[qi(v * 4.4 - 0.4, x, y, 5)]; continue; }
+    const s = dens[mod(y - 3, TH) * TW + mod(x + 2, TW)];
+    if (s > 0.3) cl.d[y * TW + x] = shadow;
+  }
+  A.clouds = cl.toCanvas();
+  yield;
+
+  // --- far station layer (f = 0.22): ring-station spine trusses, modules, solar wings ---
+  {
+    const H = 768, r = new Raster(TW, H, true), e = new Raster(TW, H, true), m = M_FAR(), sun = SUN_UR;
+    const bl = new Blinkers(TW, H);
+    const spine = (y, w) => {
+      kTruss(r, 0, y, TW, y, w, m, sun);
+      for (let x = 10; x < TW; x += 64 + rng.int(0, 30)) {
+        const len = rng.int(18, 34), rad = rng.int(2, 3);
+        if (rng.chance(0.55)) {
+          kCyl(r, x, y - rad, len, rad, true, m, sun, { seg: 5 });
+          for (let k = 2; k < len - 2; k += 3) if (rng.chance(0.6)) e.set(x + k, y, packHex(rng.chance(0.8) ? '#c9a24e' : '#6fb8d8'));
+        } else {
+          const sw = rng.int(10, 16), sh = rng.int(5, 7);
+          kBeam(r, x + 4, y - w / 2 - sh - 1, x + 4, y + w / 2 + sh + 1, 1, m, sun);
+          kSolar(r, x - sw / 2 + 4, y - w / 2 - sh - 2, sw, sh, 0.4);
+          kSolar(r, x - sw / 2 + 4, y + w / 2 + 3, sw, sh, 0.1);
+        }
+        bl.add(x, y - w / 2 - 1, '#ff5a5a', 2.2, rng.next(), 0.12);
+      }
+    };
+    spine(110, 9);
+    spine(468, 6);
+    // docking hub on the upper spine
+    kBall(r, 246, 110, 9, m, sun);
+    kCyl(r, 243, 86, 16, 3, false, m, sun, { seg: 4 });
+    kCyl(r, 243, 121, 12, 3, false, m, sun, { seg: 4 });
+    bl.add(246, 84, '#ffffff', 1.3, 0.2, 0.1);
+    e.set(244, 106, packHex('#c9a24e')); e.set(248, 108, packHex('#c9a24e')); e.set(246, 113, packHex('#6fb8d8'));
+    // loose cargo pods and a tug between the spines
+    for (let k = 0; k < 7; k++) {
+      const x = rng.int(0, TW), y = rng.int(180, 420);
+      kBox(r, x, y, rng.int(4, 7), rng.int(3, 4), m, sun);
+    }
+    kTruss(r, 60, 468, 110, 610, 5, m, sun);
+    kBox(r, 100, 606, 18, 9, m, sun, { panels: 3 });
+    bl.add(118, 606, '#ff5a5a', 1.9, 0.5, 0.12);
+    A.far = outlined(r, pack(8, 14, 24, 180)).toCanvas(); A.farE = e.toCanvas(); A.farB = bl;
+  }
+  yield;
+
+  // --- mid layer (f = 0.5): a warship under construction in its dock cradle, fuel depot ---
+  {
+    const H = 1024, r = new Raster(TW, H, true), e = new Raster(TW, H, true), m = M_MID(), hm = M_HULL(), sun = SUN_UR;
+    const bl = new Blinkers(TW, H), sp = new Sparks(TW, H);
+    // hull profile: nose at top (y0), widest at 40%, engine block at the bottom
+    const cx = 248, y0 = 250, len = 230;
+    const half = (u) => (u < 0.35 ? 4 + 20 * Math.sqrt(u / 0.35) : u < 0.85 ? 24 - (u - 0.35) * 8 : 20);
+    // cradle frame
+    kTruss(r, cx - 36, y0 - 30, cx - 36, y0 + len + 20, 6, m, sun, { heavy: true });
+    kTruss(r, cx + 36, y0 - 30, cx + 36, y0 + len + 20, 6, m, sun, { heavy: true });
+    for (let k = 0; k < 5; k++) {
+      const yy = y0 + 10 + k * 52;
+      kBeam(r, cx - 36, yy, cx + 36, yy, 2, m, sun);
+    }
+    // ribs & plating
+    const plated = (u) => (u > 0.08 && u < 0.3) || (u > 0.52 && u < 0.7) || u > 0.86;
+    for (let yy = 0; yy < len; yy++) {
+      const u = yy / len, hw = half(u), Y = y0 + yy;
+      if (plated(u)) {
+        for (let xx = -hw; xx <= hw; xx++) {
+          const nx = xx / (hw + 0.5), nz = Math.sqrt(Math.max(0, 1 - nx * nx));
+          const l = nx * sun[0] * 0.9 + nz * 0.35 + (yy % 14 === 0 ? -0.35 : 0) + ((xx + 40) % 9 === 0 ? -0.12 : 0);
+          const v = clamp01(0.42 + l * 0.6) * (hm.n - 1);
+          r.set(cx + xx, Y, hm.c[qi(v, cx + xx, Y, hm.n)]);
+        }
+        if (Math.abs(yy % 14) === 1) { r.set(cx - hw, Y, mc(hm, 0)); }
+      } else {
+        // open ribs every 5 px + keel + stringers
+        if (yy % 5 === 0) for (let xx = -hw; xx <= hw; xx++) r.set(cx + xx, Y + Math.round((xx / hw) ** 2 * 2), mc(m, xx > 0 ? 4 : 2));
+        r.set(cx, Y, mc(m, 3)); r.set(cx - 1, Y, mc(m, 1));
+        r.set(cx - Math.round(hw * 0.6), Y, mc(m, 1)); r.set(cx + Math.round(hw * 0.6), Y, mc(m, 3));
+        r.set(cx - hw, Y, mc(m, 2)); r.set(cx + hw, Y, mc(m, 4));
+      }
+      // welding sparks along plating edges
+      if (plated(u) !== plated((yy - 1) / len) && yy > 0) {
+        sp.add(cx + rng.int(-hw + 2, hw - 2), Y, 0, -1, rng.range(0.8, 1.6), rng.next());
+        sp.add(cx + (rng.chance(0.5) ? -hw : hw), Y + 2, rng.sign(), 0.5, rng.range(0.8, 1.6), rng.next());
+      }
+    }
+    // engine bells + bridge tower
+    for (let k = -1; k <= 1; k++) kCyl(r, cx + k * 12 - 4, y0 + len, 6, 4, false, hm, sun, { seg: 0 });
+    kBox(r, cx - 6, y0 + 118, 12, 18, hm, sun, { panels: 4, base: 3 });
+    for (let k = 0; k < 4; k++) e.set(cx - 4 + k * 3, y0 + 121, packHex('#79ecff'));
+    bl.add(cx, y0 - 2, '#ff5a5a', 1.2, 0, 0.18, 2);
+    bl.add(cx - 36, y0 - 32, '#ffffff', 2.0, 0.3, 0.1);
+    bl.add(cx + 36, y0 - 32, '#ffffff', 2.0, 0.8, 0.1);
+    bl.add(cx - 36, y0 + len + 22, '#6fd23f', 1.7, 0.1, 0.15);
+    bl.add(cx + 36, y0 + len + 22, '#ff5a5a', 1.7, 0.6, 0.15);
+    // hazard stripes on the cradle foot
+    const hz = M_HAZ();
+    for (let xx = 0; xx < 72; xx++) for (let yy = 0; yy < 3; yy++) r.set(cx - 36 + xx, y0 + len + 24 + yy, ((xx + yy) >> 2) & 1 ? mc(hz, 2) : mc(hz, 0));
+    // fuel depot on the left
+    const fx = 70, fy = 690;
+    kTruss(r, 0, fy, TW, fy, 7, m, sun);
+    for (let k = 0; k < 3; k++) kBall(r, fx - 20 + k * 22, fy - 13, 9, hm, sun);
+    for (let k = 0; k < 2; k++) kBall(r, fx - 9 + k * 22, fy + 14, 8, hm, sun);
+    kCyl(r, 160, fy - 4, 40, 4, true, m, sun, { seg: 6 });
+    for (let k = 0; k < 6; k++) e.set(163 + k * 6, fy - 1, packHex('#ffd966'));
+    bl.add(fx - 20, fy - 23, '#ff5a5a', 1.5, 0.35, 0.13);
+    bl.add(fx + 24, fy - 23, '#ff5a5a', 1.5, 0.85, 0.13);
+    // a gantry crossing everything with a traveling crane
+    const gy = 930;
+    kTruss(r, 0, gy, TW, gy, 12, m, sun, { heavy: true });
+    kBox(r, 150, gy - 9, 22, 18, m, sun, { panels: 5, base: 3 });
+    r.line(161, gy + 9, 161, gy + 40, mc(m, 2));
+    kBox(r, 154, gy + 40, 14, 8, hz, sun);
+    e.set(152, gy - 6, packHex('#ffd966')); e.set(169, gy - 6, packHex('#ffd966'));
+    bl.add(161, gy - 10, '#ffab4f', 0.9, 0, 0.35);
+    A.mid = outlined(r, pack(4, 6, 12, 220)).toCanvas(); A.midE = e.toCanvas(); A.midB = bl; A.midS = sp;
+  }
+  yield;
+
+  // --- near layer (f = 0.9): massive dark girders, a crane reaching in, a docking arm ---
+  {
+    const H = 1024, r = new Raster(TW, H, true), e = new Raster(TW, H, true), m = M_NEAR(), sun = SUN_UR, hz = M_HAZ();
+    const bl = new Blinkers(TW, H);
+    // left crane tower + jib + hanging container
+    kTruss(r, 44, 60, 44, 520, 14, m, sun, { heavy: true });
+    kTruss(r, 30, 120, 170, 120, 9, m, sun, { heavy: true });
+    kBox(r, 36, 104, 18, 12, m, sun, { panels: 4, base: 3 });
+    e.set(50, 108, packHex('#ffd966')); e.set(47, 108, packHex('#ffd966'));
+    r.line(162, 124, 162, 196, mc(m, 3));
+    kBox(r, 150, 196, 26, 14, hz, sun, { panels: 6 });
+    for (let yy = 196; yy < 210; yy += 2) r.hline(150, 175, yy, mc(m, 1));
+    bl.add(170, 116, '#ff5a5a', 1.4, 0, 0.14, 2);
+    bl.add(44, 56, '#ff5a5a', 1.4, 0.5, 0.14, 2);
+    // right docking arm with cradle clamps
+    kTruss(r, 300, 640, 212, 700, 12, m, sun, { heavy: true });
+    kBox(r, 196, 692, 22, 20, m, sun, { panels: 5, base: 3 });
+    kBeam(r, 196, 712, 186, 740, 4, m, sun);
+    kBeam(r, 218, 712, 228, 740, 4, m, sun);
+    for (let k = 0; k < 5; k++) e.set(199 + k * 4, 697, packHex(k % 2 ? '#79ecff' : '#ffd966'));
+    bl.add(186, 742, '#ffffff', 1.1, 0.25, 0.12, 2);
+    bl.add(228, 742, '#ffffff', 1.1, 0.75, 0.12, 2);
+    kTruss(r, 280, 300, 280, 1000, 16, m, sun, { heavy: true });
+    bl.add(280, 300, '#ff5a5a', 1.6, 0.2, 0.14, 2);
+    // bridge girder crossing the whole screen
+    const by = 900;
+    kTruss(r, 0, by, TW, by, 18, m, sun, { heavy: true });
+    for (let x = 0; x < TW; x += 40) {
+      e.set(x + 6, by - 10, packHex('#ffd966'));
+      bl.add(x + 26, by + 10, '#ff5a5a', 2.4, x / TW, 0.1);
+    }
+    for (let xx = 0; xx < TW; xx++) for (let yy = 0; yy < 2; yy++) r.set(xx, by + 10 + yy, ((xx + yy) >> 2) & 1 ? mc(hz, 2) : mc(hz, 0));
+    A.near = outlined(r, pack(2, 2, 6, 235)).toCanvas(); A.nearE = e.toCanvas(); A.nearB = bl;
+  }
+  A.stars = starTile(rng, TW, 320, 500, { maxB: 0.8, pow: 2.2, big: 0.05, raster: true });
+  A.tw = new Twinkles(rng, 30, TW, 400, 0.02, { bigChance: 0.3 });
+  return A;
+}
+
+const PAL_AURORA_SKY = [...RAMPS.void, ...RAMPS.ocean, ...RAMPS.dawn, ...RAMPS.sapphire.slice(0, 5), '#27c2ea', '#79ecff', '#d6fcff', '#ffffff', '#fff5c9', '#ffd966', '#081a33', '#0d2342', '#13294f', '#1b3a66'];
+
+class AuroraStage extends Stage {
+  constructor(A) {
+    super('aurora', A);
+    this.scrollSpeed = 28;
+    this.grade = { tint: [0.98, 1.0, 1.04], lift: [0.0, 0.008, 0.024], sat: 1.08, contrast: 1.06 };
+    this.q = new Quant(PAL_AURORA_SKY);
+  }
+  layout() {
+    const { W, H } = this, S = this.S, q = this.q;
+    prof();
+    const portrait = H >= W * 1.2;
+    // limb passes through (0, ya) and (W, yb); planet centre lower-left
+    const ya = H * (portrait ? 0.07 : 0.1), yb = H * (portrait ? 0.3 : 0.52);
+    const R = portrait ? H * 1.25 : W * 1.1;
+    const chx = W, chy = yb - ya, cl = Math.hypot(chx, chy);
+    const mx = W / 2, my = (ya + yb) / 2, dist = Math.sqrt(Math.max(0, R * R - (cl / 2) ** 2));
+    const pcx = mx + (-chy / cl) * dist, pcy = my + (chx / cl) * dist;
+    let L = [0.62, -0.62, -0.42]; const ll = Math.hypot(...L); L = L.map((v) => v / ll);
+    const s2l = Math.hypot(L[0], L[1]), s2x = L[0] / s2l, s2y = L[1] / s2l;
+    this.limb = new Int16Array(W);
+    for (let x = 0; x < W; x++) { const dx = x + 0.5 - pcx; this.limb[x] = Math.abs(dx) < R ? Math.floor(pcy - Math.sqrt(R * R - dx * dx)) : H; }
+    // sun just above the limb near the right edge
+    const sx = W * (portrait ? 0.86 : 0.8), sy = this.limb[Math.min(W - 1, Math.round(sx))] - (portrait ? 10 : 14);
+    this.sun = [Math.round(sx), Math.round(sy)];
+    const sky = new Raster(W, H), lm = new Raster(W, H), hz = new Raster(W, H), nm = new Raster(W, H), em = new Raster(W, H);
+    const LM = [[30, 40, 84], [52, 62, 112], [120, 96, 128], [205, 150, 140], [236, 214, 206], [242, 244, 250]];
+    const gk = 1 / (Math.max(W, H) * 0.35);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d2 = dx * dx + dy * dy;
+      const sdx = x - sx, sdy = (y - sy) * 1.6, sd = Math.sqrt(sdx * sdx + sdy * sdy);
+      const g1 = Math.exp(-sd * gk), g2 = Math.exp(-sd * 0.12);
+      if (d2 >= 1) {
+        const d = Math.sqrt(d2), h = (d - 1) * R, ux = dx / d, uy = dy / d, sdot = Math.max(0, ux * s2x + uy * s2y);
+        const rim = 0.3 + 0.7 * Math.pow(sdot, 1.5), warm = Math.pow(sdot, 5);
+        const a1 = Math.exp(-h / 1.7) * rim, a2 = Math.exp(-h / 8) * rim * 0.55, a3 = Math.exp(-h / 38) * rim * 0.28;
+        let r = 4 + 70 * g1 + 180 * g2, g = 4 + 36 * g1 + 150 * g2, b = 14 + 40 * g1 + 110 * g2;
+        r += (50 + 180 * warm) * a1 + (20 + 120 * warm) * a2 + 14 * a3;
+        g += (160 + 60 * warm) * a1 + (100 + 40 * warm) * a2 + 40 * a3;
+        b += (255 - 90 * warm) * a1 + (230 - 110 * warm) * a2 + 100 * a3;
+        sky.d[i] = q.dq(r, g, b, x, y, 18);
+        if (a1 > 0.08) em.d[i] = pack(r * 0.22 * a1, g * 0.22 * a1, b * 0.22 * a1);
+        lm.d[i] = 0xffffffff;
+        continue;
+      }
+      // inside the disc: light map (multiply), haze (add), night mask (multiply for city lights)
+      const nz = Math.sqrt(1 - d2), ndl = dx * L[0] + dy * L[1] + nz * L[2];
+      const v = clamp(smooth(-0.1, 0.5, ndl) * 5, 0, 5);
+      const k = qi(v, x, y, 6);
+      const c = LM[k];
+      lm.d[i] = pack(c[0], c[1], c[2]);
+      const d = Math.sqrt(d2), ux = dx / d, uy = dy / d, sdot = Math.max(0, ux * s2x + uy * s2y);
+      const limbF = (1 - nz) ** 3 * (0.2 + 0.8 * Math.pow(sdot, 1.2));
+      const hv = clamp01(limbF * 1.3 + g2 * 0.9 + g1 * 0.15);
+      if (hv > 0.03) {
+        const hk = qi(hv * 5, x, y, 6) / 5, warm = Math.pow(sdot, 6) * 0.8 + g2;
+        hz.d[i] = pack((40 + 180 * warm) * hk, (110 + 50 * warm) * hk, (200 - 60 * warm) * hk);
+      } else hz.d[i] = 0xff000000;
+      const night = 1 - smooth(-0.06, 0.12, ndl);
+      const nk = qi(night * 3, x, y, 4) / 3;
+      nm.d[i] = pack(255 * nk, 255 * nk, 255 * nk);
+    }
+    // bright 1 px limb line on the lit side
+    for (let x = 0; x < W; x++) {
+      const y = this.limb[x]; if (y < 0 || y >= H) continue;
+      const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d = Math.hypot(dx, dy);
+      const sdot = Math.max(0, (dx / d) * s2x + (dy / d) * s2y);
+      if (sdot > 0.2) { const kk = smooth(0.2, 1, sdot); sky.set(x, y, q.dq(130 + 120 * kk, 200 + 50 * kk, 255, x, y, 24)); em.add(x, y, 60 * kk, 80 * kk, 90 * kk); }
+    }
+    // sky is transparent inside the disc; far stars are baked into the sky (they barely move)
+    const st = this.A.stars, ax = this.ax;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (y > this.limb[x]) { sky.d[i] = 0; continue; }
+      if (y >= this.limb[x] - 1) continue;
+      const s = st.d[(y % st.h) * st.w + mod(x - ax, st.w)];
+      if (s & 0xffffff) { const p = sky.d[i]; sky.d[i] = pack(Math.min(255, unR(p) + unR(s)), Math.min(255, unG(p) + unG(s)), Math.min(255, unB(p) + unB(s))); }
+    }
+    prof('aurora pixels');
+    S.sky = sky.toCanvas(); S.lm = lm.toCanvas(); S.haze = hz.toCanvas(); S.nm = nm.toCanvas(); S.em = em.toCanvas();
+    // city-light composite
+    S.lc = makeCanvas(W, H); this.lcx = ctx2d(S.lc);
+    S.flare = flareSprite(portrait ? 61 : 81, FLARE_RAMP, { rays: 4, rot: 0.2 });
+    S.streak = streakSprite(Math.round(W * 1.2), STREAK_RAMP, W * 0.2);
+    prof('aurora canvases');
+  }
+  draw(ctx, lctx, scrollY, t) {
+    const { W, H, S, A } = this;
+    if (!S.sky) return;
+    const lop = lctx.globalCompositeOperation;
+    const ax = this.ax;
+    // planet surface + clouds, lit by a multiply light map, hazed at the limb
+    drawTiled(ctx, A.surf, ax, Math.round(scrollY * 0.045), W, H);
+    drawTiled(ctx, A.clouds, ax + Math.round(t * 0.6), Math.round(scrollY * 0.07), W, H);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(S.lm, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(S.haze, 0, 0);
+    // city lights masked to the night side
+    const lc = this.lcx;
+    lc.globalCompositeOperation = 'source-over';
+    drawTiled(lc, A.lights, ax, Math.round(scrollY * 0.045), W, H);
+    lc.globalCompositeOperation = 'multiply';
+    lc.drawImage(S.nm, 0, 0);
+    ctx.drawImage(S.lc, 0, 0);
+    lctx.globalCompositeOperation = 'lighter';
+    lctx.globalAlpha = 0.7; lctx.drawImage(S.lc, 0, 0);
+    // space above the limb
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(S.sky, 0, 0);
+    A.tw.draw(ctx, lctx, ax, 0, W, H, t, 1, this.limb);
+    lctx.globalAlpha = 1; lctx.drawImage(S.em, 0, 0);
+    // sun
+    const [sx, sy] = this.sun;
+    const br = 0.9 + 0.1 * Math.sin(t * 0.9);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = br; ctx.drawImage(S.flare, sx - (S.flare.width >> 1), sy - (S.flare.height >> 1));
+    ctx.globalAlpha = 0.45 * br; ctx.drawImage(S.streak, sx - (S.streak.width >> 1), sy - 2);
+    lctx.globalAlpha = 0.7 * br; lctx.drawImage(S.flare, sx - (S.flare.width >> 1), sy - (S.flare.height >> 1));
+    lctx.globalAlpha = 0.3 * br; lctx.drawImage(S.streak, sx - (S.streak.width >> 1), sy - 2);
+    ctx.globalAlpha = 1; lctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    // station layers
+    const layers = [[A.far, A.farE, A.farB, null, 0.22, 0.55], [A.mid, A.midE, A.midB, A.midS, 0.5, 0.8], [A.near, A.nearE, A.nearB, null, 0.9, 1]];
+    for (let i = 0; i < 3; i++) {
+      const [img, em, bl, sp, f, ea] = layers[i];
+      const oy = Math.round(scrollY * f);
+      drawTiled(ctx, img, ax, oy, W, H);
+      ctx.globalCompositeOperation = 'lighter';
+      drawTiled(ctx, em, ax, oy, W, H);
+      ctx.globalCompositeOperation = 'source-over';
+      lctx.globalAlpha = ea; drawTiled(lctx, em, ax, oy, W, H); lctx.globalAlpha = 1;
+      bl.draw(ctx, lctx, ax, oy, W, H, t);
+      if (sp) sp.draw(ctx, lctx, ax, oy, W, H, t);
+    }
+    lctx.globalCompositeOperation = lop;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Registry, asset cache and public API
 // ---------------------------------------------------------------------------
 
 const STAGES = {
   title: [genTitle, TitleStage],
+  aurora: [genAurora, AuroraStage],
 };
 export const BG_KEYS = Object.keys(STAGES);
 

@@ -514,37 +514,52 @@ function inPoly(pts, x, y) {
 function toCanvas(w, h, u32, any = true) {
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h;
-  if (any) {
-    const ctx = cv.getContext('2d');
-    const img = ctx.createImageData(w, h);
-    new Uint32Array(img.data.buffer).set(u32);
-    ctx.putImageData(img, 0, 0);
-  }
+  if (any) cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(u32.buffer, u32.byteOffset, w * h * 4), w, h), 0, 0);
   return cv;
 }
 
+// Mirror a G-buffer left<->right into dst (normals' x flipped) — used to derive the
+// directions of bilaterally symmetric rotated sprites from their mirror-image directions.
+function mirrorGB(src, dst) {
+  const { w, h } = src;
+  for (let y = 0; y < h; y++) {
+    const r = y * w;
+    for (let x = 0; x < w; x++) {
+      const i = r + x, j = r + (w - 1 - x);
+      dst.m[j] = src.m[i]; dst.nx[j] = -src.nx[i]; dst.ny[j] = src.ny[i]; dst.nz[j] = src.nz[i];
+      dst.z[j] = src.z[i]; dst.t[j] = src.t[i]; dst.p[j] = src.p[i]; dst.e[j] = src.e[i]; dst.sp[j] = src.sp[i];
+    }
+  }
+}
+
 // Build a registerSprite def. draw(g, frame, dirIndex, angle) paints the G-buffer.
-function build(w, h, { frames = 1, dirs = 1, fps = 8, shade = NO }, draw) {
+// sym: the art is left/right symmetric (odd width) -> directions past 180 deg are mirrored
+// G-buffers of their counterparts (then shaded normally, so lighting stays top-left).
+function build(w, h, { frames = 1, dirs = 1, fps = 8, shade = NO, sym = false }, draw) {
   const g = new GB(w, h);
-  const out = { w, h, frameCount: frames, dirs, fps, frames: [], emissive: [] };
+  const out = { w, h, frameCount: frames, dirs, fps, frames: new Array(frames * dirs), emissive: new Array(frames * dirs) };
+  const useSym = sym && dirs > 1 && (w & 1) && dirs % 2 === 0;
+  const mg = useSym ? new GB(w, h) : null;
   let anyEm = false;
-  for (let d = 0; d < dirs; d++) {
+  const emit = (gb, idx) => {
+    const { col, emi } = gb.shade(shade);
+    let has = false;
+    for (let k = 0; k < emi.length; k++) if (emi[k]) { has = true; break; }
+    anyEm = anyEm || has;
+    out.frames[idx] = toCanvas(w, h, col);
+    out.emissive[idx] = toCanvas(w, h, emi, has);
+  };
+  const last = useSym ? dirs / 2 : dirs - 1;
+  for (let d = 0; d <= last; d++) {
     const ang = (d / dirs) * TAU;
     for (let f = 0; f < frames; f++) {
-      const _t0 = performance.now();
       g.reset(ang);
       draw(g, f, d, ang);
-      const _t1 = performance.now();
-      const { col, emi } = g.shade(shade);
-      const _t2 = performance.now();
-      (globalThis.__prof ||= { draw: 0, shade: 0, canvas: 0 }); __prof.draw += _t1 - _t0; __prof.shade += _t2 - _t1;
-      let has = false;
-      for (let k = 0; k < emi.length; k++) if (emi[k]) { has = true; break; }
-      anyEm = anyEm || has;
-      const _t3 = performance.now();
-      out.frames.push(toCanvas(w, h, col));
-      out.emissive.push(toCanvas(w, h, emi, has));
-      __prof.canvas += performance.now() - _t3;
+      emit(g, d * frames + f);
+      if (useSym && d > 0 && d < dirs / 2) {
+        mirrorGB(g, mg);
+        emit(mg, (dirs - d) * frames + f);
+      }
     }
   }
   if (!anyEm) out.emissive = null;
@@ -1076,13 +1091,9 @@ function wyrmTail(g) {
 }
 
 function makeWyrm() {
-  let _t = performance.now();
   const seg = build(29, 29, { frames: 2, fps: 4 }, wyrmSeg);
-  __prof.seg = (__prof.seg || 0) + performance.now() - _t; _t = performance.now();
   const head = build(45, 45, { frames: 2, dirs: 32, fps: 4 }, wyrmHead);
-  __prof.head = (__prof.head || 0) + performance.now() - _t; _t = performance.now();
   const tail = build(21, 21, { dirs: 32 }, wyrmTail);
-  __prof.tail = (__prof.tail || 0) + performance.now() - _t;
   BOSS_META.wyrm = WYRM;
   return { boss_wyrm_head: head, boss_wyrm_seg: seg, boss_wyrm_tail: tail };
 }

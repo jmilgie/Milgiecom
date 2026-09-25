@@ -545,19 +545,22 @@ const emi = (p, k = 1) => (k === 1 ? p : scaleRGB(p, k));
 const L_GLOW = legend(['a', CY, true], ['A', CY, 0.75], SPECIAL);
 
 function flameFrames() {
+  // teardrop plume; the top row hides under the nozzle. Side flickers ('c' at the edges)
+  // make the 4-frame loop feel turbulent.
   const F = [
-    ['.e*e.', '.f*f.', 'dfff d'.replace(' ', ''), '.ded.', '.dec.'.replace('dec', 'ded'), '..d..', '..c..', '..b..', '.....'],
-    ['.e*e.', '.f*f.', '.fff.', '.ded.', '..d..', '..c..', '.....', '.....', '.....'],
-    ['.e*e.', '.f*f.', 'dfffd', '.efe.', '.ded.', '..d..', '..c..', '..c..', '..b..'],
-    ['.e*e.', '.f*f.', '.fff.', '.efe.', '..e..', '..d..', '..c..', '..b..', '.....'],
+    ['.e*e.', '.f*f.', 'cefe.', '.dfd.', '.ded.', '..d..', '..c..', '..b..', '.....'],
+    ['.e*e.', '.f*f.', '.efe.', '.ded.', '..d..', '..c..', '.....', '.....', '.....'],
+    ['.e*e.', '.f*f.', '.fff.', '.efec', '.ded.', '..e..', '..d..', '..c..', '..b..'],
+    ['.e*e.', '.f*f.', '.efe.', '.ded.', '..d..', '..d..', '..c..', '.....', '.....'],
   ];
   return F.map((rows) => {
     const a = parseMap(rows, L_GLOW);
-    // the tail thins out: fade alpha toward the end
-    for (let y = 4; y < a.h; y++) {
+    for (let y = 0; y < a.h; y++) {
       for (let x = 0; x < a.w; x++) {
         const i = y * a.w + x;
-        if (a.col[i]) a.col[i] = withAlpha(a.col[i], y >= 6 ? 140 : 200);
+        if (!a.col[i]) continue;
+        const edge = x === 0 || x === 4;
+        if (edge || y >= 4) a.col[i] = withAlpha(a.col[i], edge ? 130 : y >= 6 ? 140 : 200);
       }
     }
     return a;
@@ -845,6 +848,148 @@ function optionShot() {
   return a;
 }
 
+// =======================================================================================
+// ENEMY BULLETS — the most readable objects on screen: white-hot center, bright core,
+// darker colored ring, 1-px dark rim, strong glow. Four color families.
+// =======================================================================================
+
+const EB_RAMPS = { p: MG, o: EM, v: PL, c: CR };
+const rampP = (r) => r.map(P);
+
+// Concentric radial painter. bands: [[maxR, rampIndex|'w'], ...] (ascending radius).
+function radial(size, bands, R, opt = {}) {
+  const a = newArt(size, size);
+  const { spec = null, emiK = 1 } = opt;
+  forEachPixel(a, (x, y, dx, dy) => {
+    const d = Math.hypot(dx, dy);
+    for (const [mr, idx] of bands) {
+      if (d <= mr) {
+        if (idx === 'w') plot(a, x, y, WHITE, R[4]);
+        else plot(a, x, y, R[idx], emi(R[Math.min(idx, 4)], emiK));
+        return;
+      }
+    }
+  });
+  if (spec) plot(a, spec[0], spec[1], WHITE, R[4]);
+  outline(a, OUT);
+  return a;
+}
+
+function ebSmall(R) {
+  const f0 = newArt(5, 5), f1 = newArt(5, 5);
+  const L0 = ['.....', '.cbc.', '.bwb.', '.cbc.', '.....'];
+  const L1 = ['.....', '.dbd.', '.bwb.', '.dbd.', '.....'];
+  const put = (a, rows) => rows.forEach((r, y) => [...r].forEach((ch, x) => {
+    if (ch === 'w') plot(a, x, y, WHITE, R[5]);
+    else if (ch === 'b') plot(a, x, y, R[5], R[4]);
+    else if (ch === 'c') plot(a, x, y, R[3], R[3]);
+    else if (ch === 'd') plot(a, x, y, R[4], R[3]);
+  }));
+  put(f0, L0); put(f1, L1);
+  outline(f0, OUT); outline(f1, OUT);
+  return [f0, f1];
+}
+
+function ebOrb(R) {
+  return [
+    radial(9, [[0.9, 'w'], [1.9, 5], [2.75, 4], [3.6, 2]], R, { spec: [3, 2] }),
+    radial(9, [[1.2, 'w'], [2.2, 5], [3.0, 4], [3.6, 3]], R, { spec: [3, 2] }),
+  ];
+}
+
+function ebBig(R) {
+  const out = [];
+  for (let f = 0; f < 4; f++) {
+    const a = newArt(15, 15);
+    const ph = (f / 4) * (TAU / 3);
+    forEachPixel(a, (x, y, dx, dy) => {
+      const d = Math.hypot(dx, dy);
+      if (d > 6.4) return;
+      const th = Math.atan2(dy, dx);
+      if (d <= 1.4) return plot(a, x, y, WHITE, R[5]);
+      if (d <= 2.6) return plot(a, x, y, R[5], R[4]);
+      if (d > 5.6) return plot(a, x, y, R[2], R[2]);
+      const arm = Math.sin(3 * th + d * 1.15 - ph * 3);
+      if (arm > 0.35) plot(a, x, y, R[4], R[4]);
+      else if (arm > -0.45) plot(a, x, y, R[3], R[3]);
+      else plot(a, x, y, R[2], R[3]);
+    });
+    plot(a, 5, 4, WHITE, R[4]); plot(a, 6, 4, R[5], R[4]);
+    outline(a, OUT);
+    out.push(a);
+  }
+  return out;
+}
+
+// needle/shard: 1-px hot core along the flight direction
+function ebNeedleShade(R) {
+  return (u, v) => {
+    if (Math.abs(u) > 0.56 || v > 3.9 || v < -3.9) return null;
+    if (v > 2.6) return [R[5], R[4]];
+    if (v > -0.4) return [WHITE, R[4]];
+    if (v > -2.2) return [R[4], R[3]];
+    return [R[3], R[3]];
+  };
+}
+
+function ebStar(R) {
+  const out = [];
+  for (let f = 0; f < 4; f++) {
+    const a = newArt(9, 9);
+    const ph = (f / 4) * (Math.PI / 2);
+    const pts = [];
+    for (let k = 0; k < 8; k++) {
+      const ang = ph + (k * Math.PI) / 4;
+      const r = k & 1 ? 1.55 : 3.95;
+      pts.push([4.5 + Math.sin(ang) * r, 4.5 - Math.cos(ang) * r]);
+    }
+    for (let y = 0; y < 9; y++) {
+      for (let x = 0; x < 9; x++) {
+        if (!pointInPoly(x + 0.5, y + 0.5, pts)) continue;
+        const d = Math.hypot(x - 4, y - 4);
+        if (d < 0.7) plot(a, x, y, WHITE, R[5]);
+        else if (d < 1.8) plot(a, x, y, R[5], R[4]);
+        else if (d < 2.9) plot(a, x, y, R[4], R[4]);
+        else plot(a, x, y, R[3], R[3]);
+      }
+    }
+    outline(a, OUT);
+    out.push(a);
+  }
+  return out;
+}
+
+function ebRing(R) {
+  const out = [];
+  for (let f = 0; f < 2; f++) {
+    const a = newArt(11, 11);
+    forEachPixel(a, (x, y, dx, dy) => {
+      const d = Math.hypot(dx, dy);
+      if (d < 2.3 || d > 4.3) return;
+      const lit = (-dx - dy) / (d * 1.414);          // -1..1, 1 toward the upper left
+      const hot = f === 0 ? lit > 0.72 : lit < -0.72;
+      if (hot) plot(a, x, y, WHITE, R[5]);
+      else if (d < 3.1) plot(a, x, y, R[5], R[4]);
+      else plot(a, x, y, f ? R[4] : R[3], R[4]);
+    });
+    outline(a, OUT);
+    out.push(a);
+  }
+  return out;
+}
+
+function buildEnemyBullets() {
+  for (const k of ['p', 'o', 'v', 'c']) {
+    const R = rampP(EB_RAMPS[k]);
+    addArt('eb_small_' + k, ebSmall(R), { frames: 2, fps: 12 });
+    addArt('eb_orb_' + k, ebOrb(R), { frames: 2, fps: 10 });
+    if (k !== 'c') addArt('eb_big_' + k, ebBig(R), { frames: 4, fps: 12 });
+    if (k !== 'v') addArt('eb_needle_' + k, bakeAnalytic(11, 32, ebNeedleShade(R), (a) => outline(a, OUT)), { frames: 1, dirs: 32 });
+  }
+  addArt('eb_star_o', ebStar(rampP(EM)), { frames: 4, fps: 16 });
+  addArt('eb_ring_v', ebRing(rampP(PL)), { frames: 2, fps: 8 });
+}
+
 function buildPlayerExtras() {
   addArt('flame_s', flameFrames(), { frames: 4, fps: 20, teamed: true });
   addArt('option_drone', droneFrames(), { frames: 4, fps: 12, teamed: true });
@@ -869,7 +1014,7 @@ function buildPlayerBullets() {
 
 const TASKS = [];
 for (const k in SHIPS) TASKS.push(() => buildShip(k));
-TASKS.push(buildPlayerExtras, buildPlayerBullets);
+TASKS.push(buildPlayerExtras, buildPlayerBullets, buildEnemyBullets);
 
 let buildPromise = null;
 
