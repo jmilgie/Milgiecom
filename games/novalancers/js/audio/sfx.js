@@ -13,8 +13,11 @@
 //  * Every variant is DC-blocked, click-faded, peak-normalized to −1 dBFS and loudness-matched
 //    (phone-speaker weighted short-term loudness) so the mix follows each sound's `db` target.
 //    This post-processing runs in Blob-URL workers (inline fallback), off the main thread.
-// Runtime: voice gain → StereoPanner → AudioSys.sfxBus; per-name voice caps and retrigger
-// cooldowns, a global voice cap with priority-aware oldest-steal, seamless loops.
+//  * buildSfx() resolves once the sounds needed right after boot are ready; the set pieces
+//    (bosses, deaths, co-op, stage end …) keep rendering in the background (see LATE).
+// Runtime: voice gain → StereoPanner → (duck bus →) AudioSys.sfxBus; per-name voice caps and
+// retrigger cooldowns where the louder request wins, a global voice cap stealing the least
+// important voice, capped seamless loops, and big moments ducking the gunfire/hit spam.
 
 import { AudioSys } from './audio.js';
 import { FIELD_W } from '../config.js';
@@ -1714,7 +1717,7 @@ let warned = false;
 // Rendered after buildSfx() has resolved, in the background, in rough order of first need: sounds
 // nobody can hear in the first seconds after boot (lobby, bombs, overdrive, deaths, bosses, stage
 // end). Each is playable as soon as its own render finishes; until then sfx() returns null.
-const LATE = ['player_join', 'player_leave', 'countdown', 'nova', 'pickup_bomb', 'pickup_overdrive', 'overdrive_on',
+const LATE = ['player_join', 'player_leave', 'countdown', 'nova', 'explode_large', 'pickup_bomb', 'pickup_overdrive', 'overdrive_on',
   'overdrive_off', 'player_hit', 'player_explode', 'respawn', 'shield_up', 'pickup_life', 'powerup_max', 'beacon_ping',
   'revive', 'warning', 'boss_roar', 'boss_phase', 'explode_boss', 'stage_clear_whoosh'];
 
@@ -1741,8 +1744,8 @@ async function buildOne(name) {
   stats.jobs.push({ name, graphMs: t1 - t0, renderMs: t2 - t1, postMs: perfNow() - t2, layers: g.j.layers, sr: g.sr, work: res.ms });
 }
 
-// Resolves (always with the same promise) once the core set — UI, weapons, hits, explosions up
-// to large, enemy fire, pickups — is playable; onProgress(0..1) tracks that part only.
+// Resolves (always with the same promise) once the core set — UI, weapons, hits, small and medium
+// explosions, enemy fire, common pickups — is playable; onProgress(0..1) tracks that part only.
 export function buildSfx(onProgress) {
   if (!buildPromise) buildPromise = runBuild(onProgress);
   return buildPromise;

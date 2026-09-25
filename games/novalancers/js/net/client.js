@@ -228,9 +228,14 @@ export class ClientSession extends Session {
       (info, mq, url) => this._rescueFound(r, mq, url),
       (state) => {
         if (this._rescue !== r) return;
-        // Brokers answer but the host isn't there, and our channel to it is closed: gone.
-        if (state === 'negative' && this.link.closed) this._shutdown('HOST_LEFT', false, true);
-        else if (state === 'unreachable' && this.link.closed) this._shutdown('NETWORK', false, true);
+        if (state === 'negative') {
+          // Brokers answer but the host isn't there (a live host always listens on the relay):
+          // with our channel closed it is gone; otherwise give it a last short chance.
+          if (this.link.closed) this._shutdown('HOST_LEFT', false, true);
+          else r.deadline = Math.min(r.deadline, now() + 2500);
+        } else if (this.link.closed) {
+          this._shutdown('NETWORK', false, true); // no broker reachable either
+        }
       }, true);
     r.prober.start();
   }

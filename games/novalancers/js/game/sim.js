@@ -698,6 +698,7 @@ export class Sim {
     p.odT = 0;
     this.env.fx.explode(p.x, p.y, 'large', { palette: 'fire' });
     this.env.fx.shockwave(p.x, p.y, 60, 'fire');
+    this.env.sfx('player_hit', { x: p.x });
     this.env.sfx('player_explode', { x: p.x });
     this.env.shake(7, 0.6);
     this.env.haptic('death');

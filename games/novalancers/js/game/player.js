@@ -82,6 +82,7 @@ export function tickTimers(sim, p) {
   if (p.local && p.alive && p.entryT < 1) {
     // fly-in from below the field after respawn
     p.entryT = Math.min(1, p.entryT + 1 / 40);
+    if (p.entryT >= 1 && p.inv > 0) sim.env.sfx('shield_up', { x: p.x, vol: 0.7 });
     const target = FIELD_H - 60;
     p.y = Math.min(p.y, FIELD_H + 20 - (FIELD_H + 20 - target) * easeOutQuad(p.entryT));
   }
@@ -126,6 +127,7 @@ export function fireWeapons(sim, p, tick) {
       for (const o of p.opts) {
         pb.spawn({ x: o.x, y: o.y - 4, vx: 0, vy: -7.5, spr: 'pb_option', dmg: 0.7 * mul, owner, team, r: 2.5 });
       }
+      if (p.local && ((tick / period) | 0) % 3 === 0) sim.env.sfx('shot_option', { x: p.x, vol: 0.45 });
     }
   }
 

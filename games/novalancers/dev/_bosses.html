@@ -232,7 +232,7 @@ function nextPhase() {
   const res = b.maxHp * (b.def.res || 0), eff = b.maxHp - res;
   // strip the parts that gate phase 0, then drop the core to just below the next threshold
   for (const c of host.elist) if (c.parent === b.id && c.alive && ['arm', 'tur', 'shard'].includes(c.p.role) && b.phase <= 0) host.kill(c, 0);
-  const th = { warden: [1, 0.5, 0], wyrm: [0.7, 0.35, 0], prism: [1, 0.5, 0], dread: [1, 0.45, 0], heart: [1 - 2300 / 6600, 2000 / 6600, 0] }[BOSS];
+  const th = { warden: [1, 0.5, 0], wyrm: [0.7, 0.35, 0], prism: [1, 0.5, 0], dread: [1, 0.45, 0], heart: [1 - 2100 / 6100, 1900 / 6100, 0] }[BOSS];
   const f = th[Math.max(0, b.phase)] ?? 0;
   const target = res + eff * f - 2;
   if (b.hp > target && f < 1) { b.hp = Math.max(res + 1, target); host.hpDirty.add(b.id); }

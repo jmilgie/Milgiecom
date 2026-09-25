@@ -263,7 +263,7 @@ export class HostSession extends Session {
       case 'info': this._applyInfo(p, obj); break;
       case 'vis': p.hidden = obj.h === 1; break;
       case 'bye': this._removePlayer(p.slot, 'left'); break;
-      case 'hello': if (!retired) this._hello(link, obj); break; // resent hello (relay): idempotent
+      case 'hello': if (!retired && obj.cid === p.cid) this._welcome(p); break; // resent hello (relay): idempotent
       default: break; // unknown internal type: ignore
     }
   }
@@ -404,7 +404,7 @@ export class HostSession extends Session {
   }
 
   _reject(link, code) {
-    if (link.rejected) return;
+    if (link.rejected || link.slot != null) return; // never on a player's live link
     link.rejected = true;
     link.sendRaw(JSON.stringify({ _: 'err', e: code }), true);
     setTimeout(() => { this.pending.delete(link); link.close(true); }, 600);

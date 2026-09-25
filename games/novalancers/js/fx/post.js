@@ -156,14 +156,19 @@ void main() {
   vec3 light = texture2D(uLight, luv).rgb;
   vec3 bloom = texture2D(uB1, luv).rgb * uBloom.x;
 #if MIPS > 1
-  bloom += texture2D(uB2, luv).rgb * uBloom.y;
-#endif
+  vec3 wide = texture2D(uB2, luv).rgb * uBloom.y;
 #if MIPS > 2
-  bloom += texture2D(uB3, luv).rgb * uBloom.z;
+  wide += texture2D(uB3, luv).rgb * uBloom.z;
 #endif
-  // light sources illuminate nearby surfaces (multiplicative: dark outlines stay dark),
-  // then the light layer and its bloom are added on top
-  col = col * (1.0 + min(bloom, vec3(1.5)) * uIllum) + light + bloom * uBloom.w;
+  bloom += wide;
+#else
+  vec3 wide = bloom;
+#endif
+  // Emissive light illuminates the surfaces around it: the wide (low-frequency) bloom acts
+  // as a light field that multiplies the main layer, so hulls, rocks and nebula gas near a
+  // blast or beam pick up its colour while dark outlines stay dark (unlike additive haze).
+  // Then the light layer and its bloom are added on top.
+  col = col * (1.0 + min(wide, vec3(0.6)) * uIllum) + light + bloom * uBloom.w;
 
   col = col * uTint + uLift;
   float l = dot(col, vec3(0.299, 0.587, 0.114));
@@ -548,8 +553,8 @@ export function createPost(canvas) {
     gl.uniform3f(u.uLift, lift[0], lift[1], lift[2]);
     gl.uniform2f(u.uSatCon, g && g.sat != null ? g.sat : 1, g && g.contrast != null ? g.contrast : 1);
     const bw = Q.bloomW;
-    gl.uniform4f(u.uBloom, bw[0], bw[1], bw[2], s.bloom != null ? s.bloom : 0.8);
-    gl.uniform1f(u.uIllum, s.illum != null ? s.illum : 1.1);
+    gl.uniform4f(u.uBloom, bw[0], bw[1], bw[2], s.bloom != null ? s.bloom : 0.82);
+    gl.uniform1f(u.uIllum, s.illum != null ? s.illum : 2.4);
     gl.uniform1f(u.uScan, s.scanlines ? 0.16 * Math.min(1, Math.max(0, (scale - 1.6) / 1.4)) : 0);
     gl.uniform1f(u.uVig, s.vignette != null ? s.vignette : 0.3);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

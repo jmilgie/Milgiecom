@@ -1537,55 +1537,65 @@ function rimToward(r, cx, col, col2) {
 const SUN_UR = [0.6, -0.8];
 const M_FAR = () => mat(['#18324a', '#1f3d58', '#284a68', '#335a7a', '#436e8e', '#5a86a4'], '#a8d0e6');
 const M_MID = () => mat(['#0e121c', '#171d2c', '#232c40', '#34405a', '#4c5c7c', '#71849f'], '#d6e4f4');
-const M_NEAR = () => mat(['#06070d', '#0b0e17', '#131826', '#1e2537', '#2f3a52', '#4a5876'], '#ffcf9a');
+// near girders: lifted mid tones so obsidian Choir hulls (#05040c outline) stay readable on them
+const M_NEAR = () => mat(['#0d1019', '#141a27', '#1e2537', '#283247', '#36435c', '#4e5f7e'], '#ffcf9a');
 const M_HULL = () => mat(['#141a26', '#202938', '#2f3b4f', '#46556c', '#65778f', '#8a9cb3'], '#e6eefa');
 const M_HAZ = () => mat(['#3d2106', '#7a430b', '#bf7412', '#f0a92a'], '#ffd966');
 
-// Ocean planet surface + city lights tile (tw x 512, periodic).
-function auroraSurface(tw) {
+// Ocean planet surface + city lights tile (tw x 512, periodic). Flat colour bands with
+// dithering only at band edges: the surface scrolls, and a full 50% checkerboard would crawl.
+function* auroraSurfaceG(tw) {
   const rng = new Rng(0xa11ce + tw);
   const TH = 512;
-  // --- planet surface: ocean, archipelagos, city lights (periodic) ---
   const oc = new Fbm(rng, tw, TH, 128, 4, 0.5).field(2);
+  yield;
   const il = new Fbm(rng, tw, TH, 80, 5, 0.55).field(2);
+  yield;
   const ct = new Fbm(rng, tw, TH, 12, 2, 0.5).field(2);
+  yield;
   const surf = new Raster(tw, TH, true), lights = new Raster(tw, TH, true);
   lights.d.fill(0xff000000);   // opaque black: multiply by the night mask must not accumulate
   const OC = packRamp(['#041526', '#062238', '#08304e', '#0c4166', '#115680', '#18709c']);
   const SH = packRamp(['#12628c', '#1c86ab', '#3aa6c4', '#7cc9d8']);
   const LD = packRamp(['#1d3a30', '#2a4f38', '#3d6440', '#5b7a4c', '#8a8a5e', '#b0a070']);
   const amber = hexToRgb('#f0a92a'), hot = hexToRgb('#fff1c9');
-  for (let y = 0; y < TH; y++) for (let x = 0; x < tw; x++) {
-    const i = y * tw + x, l = il[i];
-    let c;
-    if (l > 0.665) c = LD[qi((l - 0.665) * 30 + (oc[i] - 0.5) * 2, x, y, 6)];
-    else if (l > 0.63) c = SH[qi((l - 0.63) * 90, x, y, 4)];
-    else c = OC[qi(clamp((oc[i] - 0.28) * 9 + (l - 0.5) * 6, 0, 5), x, y, 6)];
-    surf.d[i] = c;
-    if (l > 0.64 && l < 0.74) {
-      const dens = smooth(0.5, 0.8, ct[i]) * (1 - Math.abs(l - 0.675) * 16);
-      const hs = hash3(x, y, 3, 77);
-      if (hs < dens * 0.45) {
-        const k = hs < dens * 0.1 ? 1 : 0.6, cc = hs < dens * 0.1 ? hot : amber;
-        lights.d[i] = pack(cc[0] * k, cc[1] * k, cc[2] * k);
+  for (let y = 0; y < TH; y++) {
+    if (every(y, 64)) yield;
+    for (let x = 0; x < tw; x++) {
+      const i = y * tw + x, l = il[i];
+      let c;
+      if (l > 0.665) c = LD[qe((l - 0.665) * 30 + (oc[i] - 0.5) * 2, x, y, 6, 0.4)];
+      else if (l > 0.63) c = SH[qi((l - 0.63) * 90, x, y, 4)];
+      else c = OC[qe(clamp((oc[i] - 0.28) * 9 + (l - 0.5) * 6, 0, 5), x, y, 6, 0.3)];
+      surf.d[i] = c;
+      if (l > 0.64 && l < 0.74) {
+        const dens = smooth(0.5, 0.8, ct[i]) * (1 - Math.abs(l - 0.675) * 16);
+        const hs = hash3(x, y, 3, 77);
+        if (hs < dens * 0.45) {
+          const k = hs < dens * 0.1 ? 1 : 0.6, cc = hs < dens * 0.1 ? hot : amber;
+          lights.d[i] = pack(cc[0] * k, cc[1] * k, cc[2] * k);
+        }
       }
     }
   }
   return { surf: surf.toCanvas(), lights: lights.toCanvas() };
 }
 
-// Cloud bands with baked shadows (tw x 512, alpha).
-function auroraClouds(tw) {
+// Cloud bands with baked shadows (tw x 512, alpha). Lit tops are capped well below white
+// (the planet sits behind the play field).
+function* auroraCloudsG(tw) {
   const rng = new Rng(0xc10d + tw);
   const TH = 512;
-  // --- cloud bands with shadows (alpha) ---
   const cf = new Fbm(rng, tw, TH * 2, 120, 5, 0.55);
   const cw = new Fbm(rng, tw, TH * 2, 90, 3, 0.5);
   const dens = new Float32Array(tw * TH);
-  for (let y = 0; y < TH; y += 2) for (let x = 0; x < tw; x += 2) {
-    const w = cw.at(x, y * 2);
-    const v = cf.at(x + (w - 0.5) * 60, y * 2 + (w - 0.5) * 30);
-    dens[y * tw + x] = smooth(0.5, 0.7, v);
+  for (let y = 0; y < TH; y += 2) {
+    if (every(y >> 1, 24)) yield;
+    for (let x = 0; x < tw; x += 2) {
+      const w = cw.at(x, y * 2);
+      const v = cf.at(x + (w - 0.5) * 60, y * 2 + (w - 0.5) * 30);
+      dens[y * tw + x] = smooth(0.5, 0.7, v);
+    }
   }
   for (let y = 0; y < TH; y++) for (let x = 0; x < tw; x++) {       // bilinear fill of odd pixels
     if (!(y & 1) && !(x & 1)) continue;
@@ -1593,15 +1603,19 @@ function auroraClouds(tw) {
     const a = dens[y0 * tw + x0], b = dens[y0 * tw + x1], c = dens[y1 * tw + x0], d = dens[y1 * tw + x1];
     dens[y * tw + x] = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
   }
+  yield;
   const cl = new Raster(tw, TH, true);
-  const CL = packRamp(['#4d6d90', '#7394b4', '#a2bfd6', '#cadcec', '#e8f1f9']);
+  const CL = packRamp(['#4d6d90', '#6384a6', '#7a9aba', '#8eadc8', '#a2bfd6']);
   const shadow = pack(2, 10, 22, 150);
-  for (let y = 0; y < TH; y++) for (let x = 0; x < tw; x++) {
-    const v = dens[y * tw + x];
-    const a = v > 0.12 ? (v > 0.45 ? 1 : bay(x, y) < (v - 0.12) * 3 ? 1 : 0) : 0;
-    if (a) { cl.d[y * tw + x] = CL[qi(v * 4.4 - 0.4, x, y, 5)]; continue; }
-    const s = dens[wr(y - 3, TH) * tw + wr(x + 2, tw)];
-    if (s > 0.3) cl.d[y * tw + x] = shadow;
+  for (let y = 0; y < TH; y++) {
+    if (every(y, 96)) yield;
+    for (let x = 0; x < tw; x++) {
+      const v = dens[y * tw + x];
+      const a = v > 0.12 ? (v > 0.45 ? 1 : bay(x, y) < (v - 0.12) * 3 ? 1 : 0) : 0;
+      if (a) { cl.d[y * tw + x] = CL[qe(v * 4.4 - 0.4, x, y, 5, 0.35)]; continue; }
+      const s = dens[wr(y - 3, TH) * tw + wr(x + 2, tw)];
+      if (s > 0.3) cl.d[y * tw + x] = shadow;
+    }
   }
   return cl.toCanvas();
 }
@@ -1609,10 +1623,8 @@ function auroraClouds(tw) {
 function* genAurora() {
   const rng = new Rng(0xa11ce);
   const A = {};
-  Object.assign(A, auroraSurface(TW));
-  yield;
-  A.clouds = auroraClouds(TW);
-  yield;
+  Object.assign(A, yield* auroraSurfaceG(TW));
+  A.clouds = yield* auroraCloudsG(TW);
 
   // --- far station layer (f = 0.2): the ring's spine seen from far above — small, hazy ---
   {
@@ -1646,14 +1658,13 @@ function* genAurora() {
     kTruss(r, 70, 468, 104, 600, 3, m, sun, { rungs: false });
     kBox(r, 96, 598, 14, 7, m, sun, { panels: 3 });
     bl.add(110, 598, '#ff5a5a', 1.9, 0.5, 0.12);
-    A.far = banded(outlined(r, pack(12, 26, 42, 160))); A.farE = banded(e); A.farB = bl;
+    A.far = yield* bandedG(outlined(r, pack(12, 26, 42, 160))); A.farE = yield* bandedG(e); A.farB = bl;
   }
-  yield;
 
   // --- mid layer (f = 0.5): a warship under construction in its dock cradle, fuel depot ---
   {
     const H = 1024, r = new Raster(TW, H, true), e = new Raster(TW, H, true), m = M_MID(), hm = M_HULL(), sun = SUN_UR, hz = M_HAZ();
-    const bl = new Blinkers(TW, H), sp = new Sparks(TW, H);
+    const bl = new Blinkers(TW, H), sp = new Sparks(TW, H, false, SPARK_WELD, 0.35);
     const cx = 244, y0 = 236, len = 250;
     const half = (u) => u < 0.22 ? 2 + (u / 0.22) * 13 : u < 0.5 ? 15 + (u - 0.22) * 8 : u < 0.56 ? 17 + ((u - 0.5) / 0.06) * 13
       : u < 0.74 ? 30 : u < 0.78 ? 30 - ((u - 0.74) / 0.04) * 12 : u < 0.92 ? 18 : 20;
@@ -1673,7 +1684,7 @@ function* genAurora() {
           const nx = xx / (hw + 0.5), ridge = Math.abs(xx) <= 1 ? 0.35 : 0;
           const panel = (yy % 12 === 0 ? -0.3 : 0) + ((xx + 40) % 7 === 0 ? -0.1 : 0);
           const l = nx * sun[0] * 0.8 + (1 - Math.abs(nx)) * 0.35 + ridge + panel;
-          r.set(cx + xx, Y, hm.c[qi(clamp01(0.42 + l * 0.6) * (hm.n - 1), cx + xx, Y, hm.n)]);
+          r.set(cx + xx, Y, hm.c[qe(clamp01(0.42 + l * 0.6) * (hm.n - 1), cx + xx, Y, hm.n, 0.5)]);
         }
         r.set(cx - hw, Y, mc(hm, 1)); r.set(cx + hw, Y, hm.rim);
       } else {
@@ -1698,6 +1709,7 @@ function* genAurora() {
     bl.add(cx - 44, y0 + len + 26, '#6fd23f', 1.7, 0.1, 0.15);
     bl.add(cx + 44, y0 + len + 26, '#ff5a5a', 1.7, 0.6, 0.15);
     for (let xx = 0; xx < 88; xx++) for (let yy = 0; yy < 3; yy++) r.set(cx - 44 + xx, y0 + len + 28 + yy, ((xx + yy) >> 2) & 1 ? mc(hz, 2) : mc(hz, 0));
+    yield;
     // fuel depot on the left, on its own truss
     const fx = 70, fy = 690;
     kTruss(r, 12, fy, TW - 12, fy, 6, m, sun);
@@ -1716,12 +1728,11 @@ function* genAurora() {
     r.line(119, gy + 7, 119, gy + 32, mc(m, 2));
     kBox(r, 113, gy + 32, 12, 7, hz, sun);
     e.set(111, gy - 5, packHex('#ffd966')); e.set(126, gy - 5, packHex('#ffd966'));
-    bl.add(119, gy - 8, '#ffab4f', 0.9, 0, 0.35);
-    A.mid = banded(outlined(r, pack(4, 6, 12, 220))); A.midE = banded(e); A.midB = bl; A.midS = sp;
+    bl.add(119, gy - 8, '#ffd966', 0.9, 0, 0.35);
+    A.mid = yield* bandedG(outlined(r, pack(4, 6, 12, 220))); A.midE = yield* bandedG(e); A.midB = bl; A.midS = sp;
   }
-  yield;
 
-  // --- near layer (f = 0.9): massive dark girders with warm dawn rims ---
+  // --- near layer (f = 0.9): massive girders with warm dawn rims ---
   {
     const H = 1024, r = new Raster(TW, H, true), e = new Raster(TW, H, true), m = M_NEAR(), sun = SUN_UR, hz = M_HAZ();
     const bl = new Blinkers(TW, H);
@@ -1742,39 +1753,45 @@ function* genAurora() {
     kBox(r, 194, 694, 26, 22, m, sun, { panels: 5, base: 3 });
     kBeam(r, 196, 716, 184, 748, 4, m, sun);
     kBeam(r, 218, 716, 230, 748, 4, m, sun);
-    for (let k = 0; k < 5; k++) { const c = packHex(k % 2 ? '#79ecff' : '#ffd966'); r.set(198 + k * 5, 700, c); e.set(198 + k * 5, 700, c); }
+    for (let k = 0; k < 5; k++) { const c = packHex(k % 2 ? '#c8f4ff' : '#ffd966'); r.set(198 + k * 5, 700, c); e.set(198 + k * 5, 700, c); }
     bl.add(184, 750, '#ffffff', 1.1, 0.25, 0.12, 2);
     bl.add(230, 750, '#ffffff', 1.1, 0.75, 0.12, 2);
     kTruss(r, 290, 300, 290, 600, 20, m, sun, { heavy: true });
     bl.add(290, 298, '#ff5a5a', 1.6, 0.2, 0.14, 2);
     // bridge girder crossing the whole screen
     const by = 900;
-    kTruss(r, 16, by, TW - 16, by, 22, m, sun, { heavy: true });
+    kTruss(r, 16, by, TW - 16, by, 18, m, sun, { heavy: true });
     kBox(r, 4, by - 16, 16, 32, m, sun, { panels: 5, base: 2 }); kBox(r, TW - 20, by - 16, 16, 32, m, sun, { panels: 5, base: 2 });
     for (let x = 20; x < TW - 20; x += 40) {
-      r.set(x + 6, by - 12, packHex('#ffd27a')); e.set(x + 6, by - 12, packHex('#8a6420'));
-      bl.add(x + 26, by + 12, '#ff5a5a', 2.4, x / TW, 0.1);
+      r.set(x + 6, by - 10, packHex('#ffd27a')); e.set(x + 6, by - 10, packHex('#8a6420'));
+      bl.add(x + 26, by + 10, '#ff5a5a', 2.4, x / TW, 0.1);
     }
-    for (let xx = 18; xx < TW - 18; xx++) for (let yy = 0; yy < 3; yy++) r.set(xx, by + 12 + yy, ((xx + yy) >> 2) & 1 ? mc(hz, 2) : mc(hz, 0));
-    A.near = banded(outlined(r, pack(2, 2, 6, 235))); A.nearE = banded(e); A.nearB = bl;
+    for (let xx = 18; xx < TW - 18; xx++) for (let yy = 0; yy < 3; yy++) r.set(xx, by + 10 + yy, ((xx + yy) >> 2) & 1 ? mc(hz, 2) : mc(hz, 0));
+    rimToward(r, TW / 2, packHex('#6f84a4'), packHex('#3a4760'));
+    A.near = yield* bandedG(outlined(r, pack(2, 2, 6, 235))); A.nearE = yield* bandedG(e); A.nearB = bl;
   }
   A.stars = starTile(rng, TW, 320, 500, { maxB: 0.8, pow: 2.2, big: 0.05, raster: true });
   A.tw = new Twinkles(rng, 30, TW, 400, 0.02, { bigChance: 0.3 });
   return A;
 }
 
-const PAL_AURORA_SKY = [...RAMPS.void, ...RAMPS.ocean, ...RAMPS.dawn, ...RAMPS.sapphire.slice(0, 5), '#27c2ea', '#79ecff', '#d6fcff', '#ffffff', '#fff5c9', '#ffd966', '#081a33', '#0d2342', '#13294f', '#1b3a66'];
+const PAL_AURORA_SKY = [...RAMPS.void, ...RAMPS.ocean, ...RAMPS.dawn, ...RAMPS.sapphire.slice(0, 5), '#27c2ea', '#79ecff', '#d6fcff', '#ffffff', '#fff5c9', '#ffd966', '#081a33', '#0d2342', '#13294f', '#1b3a66',
+  '#1a0c26', '#2a1030', '#3a1640', '#5a2458', '#7a2442'];
+// Planet light map (night -> twilight -> dawn -> day), multiplied over the surface. Smooth
+// (not dithered): it is fixed on screen while the surface scrolls under it.
+const AURORA_LM = [[20, 28, 64], [34, 44, 88], [86, 70, 108], [150, 112, 118], [168, 158, 176], [160, 172, 200]].map((c) => c.map((v) => v / 255));
 
 class AuroraStage extends Stage {
-  wide() { return { surf: (tw) => auroraSurface(tw), clouds: (tw) => auroraClouds(tw) }; }
   constructor(A) {
     super('aurora', A);
     this.scrollSpeed = 28;
-    this.grade = { tint: [0.98, 1.0, 1.04], lift: [0.0, 0.008, 0.024], sat: 1.08, contrast: 1.06 };
+    this.grade = { tint: [0.95, 0.97, 1.0], lift: [0.0, 0.006, 0.02], sat: 1.04, contrast: 1.0 };
     this.q = new Quant(PAL_AURORA_SKY);
+    this.lcKey = '';
   }
-  layout() {
-    const W = this.W, H = this.LH, S = this.S, q = this.q;
+  revive() { super.revive(); this.lcKey = ''; }
+  *layout(S) {
+    const { W, LH: H, ax } = S, q = this.q;
     prof();
     const portrait = H >= W * 1.2;
     // limb passes through (0, ya) and (W, yb); planet centre lower-left
@@ -1783,106 +1800,117 @@ class AuroraStage extends Stage {
     const chx = W, chy = yb - ya, cl = Math.hypot(chx, chy);
     const mx = W / 2, my = (ya + yb) / 2, dist = Math.sqrt(Math.max(0, R * R - (cl / 2) ** 2));
     const pcx = mx + (-chy / cl) * dist, pcy = my + (chx / cl) * dist;
-    let L = [0.62, -0.62, -0.42]; const ll = Math.hypot(...L); L = L.map((v) => v / ll);
+    // Sun low behind the upper-right limb: a dawn crescent along the top, the terminator
+    // sweeping diagonally through the upper field, night (city lights) below.
+    let L = [0.5, -0.55, -0.67]; const ll = Math.hypot(...L); L = L.map((v) => v / ll);
     const s2l = Math.hypot(L[0], L[1]), s2x = L[0] / s2l, s2y = L[1] / s2l;
-    this.limb = new Int16Array(W);
-    for (let x = 0; x < W; x++) { const dx = x + 0.5 - pcx; this.limb[x] = Math.abs(dx) < R ? Math.floor(pcy - Math.sqrt(R * R - dx * dx)) : H; }
+    const limb = S.limb = new Int16Array(W);
+    for (let x = 0; x < W; x++) { const dx = x + 0.5 - pcx; limb[x] = Math.abs(dx) < R ? Math.floor(pcy - Math.sqrt(R * R - dx * dx)) : H; }
     // sun just above the limb near the right edge
-    const sx = W * (portrait ? 0.86 : 0.8), sy = this.limb[Math.min(W - 1, Math.round(sx))] - (portrait ? 10 : 14);
-    this.sun = [Math.round(sx), Math.round(sy)];
+    const sx = W * (portrait ? 0.88 : 0.8), sy = limb[Math.min(W - 1, Math.round(sx))] - (portrait ? 9 : 14);
+    S.sun = [Math.round(sx), Math.round(sy)];
     const sky = new Raster(W, H), lm = new Raster(W, H), hz = new Raster(W, H), nm = new Raster(W, H), em = new Raster(W, H);
-    const LM = [[26, 36, 78], [46, 56, 104], [110, 88, 122], [188, 140, 134], [210, 196, 196], [218, 222, 236]];
+    const LM = AURORA_LM;
     const gk = 1 / (Math.max(W, H) * 0.35);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const i = y * W + x;
-      const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d2 = dx * dx + dy * dy;
-      const sdx = x - sx, sdy = (y - sy) * 1.6, sd = Math.sqrt(sdx * sdx + sdy * sdy);
-      const g1 = Math.exp(-sd * gk), g2 = Math.exp(-sd * 0.12);
-      if (d2 >= 1) {
-        const d = Math.sqrt(d2), h = (d - 1) * R, ux = dx / d, uy = dy / d, sdot = Math.max(0, ux * s2x + uy * s2y);
-        const s2 = sdot * sdot, rim = 0.3 + 0.7 * sdot * Math.sqrt(sdot), warm = s2 * s2 * sdot;
-        const a1 = Math.exp(-h / 1.7) * rim, a2 = Math.exp(-h / 8) * rim * 0.55, a3 = Math.exp(-h / 38) * rim * 0.28;
-        let r = 4 + 70 * g1 + 180 * g2, g = 4 + 36 * g1 + 150 * g2, b = 14 + 40 * g1 + 110 * g2;
-        r += (50 + 180 * warm) * a1 + (20 + 120 * warm) * a2 + 14 * a3;
-        g += (160 + 60 * warm) * a1 + (100 + 40 * warm) * a2 + 40 * a3;
-        b += (255 - 90 * warm) * a1 + (230 - 110 * warm) * a2 + 100 * a3;
-        sky.d[i] = q.dq(r, g, b, x, y, 18);
-        if (a1 > 0.08) em.d[i] = pack(r * 0.22 * a1, g * 0.22 * a1, b * 0.22 * a1);
-        lm.d[i] = 0xffffffff;
-        continue;
+    for (let y = 0; y < H; y++) {
+      if (every(y, 32)) yield;
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d2 = dx * dx + dy * dy;
+        const sdx = x - sx, sdy = (y - sy) * 1.6, sd = Math.sqrt(sdx * sdx + sdy * sdy);
+        const g1 = Math.exp(-sd * gk), g2 = Math.exp(-sd * 0.12);
+        if (d2 >= 1) {
+          const d = Math.sqrt(d2), h = (d - 1) * R, ux = dx / d, uy = dy / d, sdot = Math.max(0, ux * s2x + uy * s2y);
+          const s2 = sdot * sdot, rim = 0.3 + 0.7 * sdot * Math.sqrt(sdot), warm = s2 * s2 * sdot;
+          const a1 = Math.exp(-h / 1.7) * rim, a2 = Math.exp(-h / 8) * rim * 0.55, a3 = Math.exp(-h / 38) * rim * 0.28;
+          let r = 4 + 70 * g1 + 180 * g2, g = 4 + 36 * g1 + 150 * g2, b = 14 + 40 * g1 + 110 * g2;
+          r += (50 + 180 * warm) * a1 + (20 + 120 * warm) * a2 + 14 * a3;
+          g += (160 + 60 * warm) * a1 + (100 + 40 * warm) * a2 + 40 * a3;
+          b += (255 - 90 * warm) * a1 + (230 - 110 * warm) * a2 + 100 * a3;
+          sky.d[i] = q.dq(r, g, b, x, y, 18 + 20 * g1);
+          if (a1 > 0.08) em.d[i] = pack(r * 0.22 * a1, g * 0.22 * a1, b * 0.22 * a1);
+          lm.d[i] = 0xffffffff;
+          continue;
+        }
+        // inside the disc: light map (multiply), haze (add), night mask (multiply for city lights)
+        const nz = Math.sqrt(1 - d2), ndl = dx * L[0] + dy * L[1] + nz * L[2];
+        const v = smooth(-0.12, 0.42, ndl) * 5, k0 = Math.min(4, v | 0), f = v - k0, c0 = LM[k0], c1 = LM[k0 + 1];
+        lm.d[i] = pack((c0[0] + (c1[0] - c0[0]) * f) * 255, (c0[1] + (c1[1] - c0[1]) * f) * 255, (c0[2] + (c1[2] - c0[2]) * f) * 255);
+        const d = Math.sqrt(d2), ux = dx / d, uy = dy / d, sdot = Math.max(0, ux * s2x + uy * s2y);
+        const inz = 1 - nz, limbF = inz * inz * inz * (0.2 + 0.8 * sdot);
+        const hv = clamp01(limbF * 1.3 + g2 * 0.9 + g1 * 0.12);
+        if (hv > 0.02) {
+          const s2 = sdot * sdot, warm = s2 * s2 * s2 * 0.8 + g2;
+          hz.d[i] = pack((40 + 180 * warm) * hv, (110 + 50 * warm) * hv, (200 - 60 * warm) * hv);
+        }
+        const night = 1 - smooth(-0.08, 0.1, ndl);
+        nm.d[i] = pack(255 * night, 255 * night, 255 * night);
       }
-      // inside the disc: light map (multiply), haze (add), night mask (multiply for city lights)
-      const nz = Math.sqrt(1 - d2), ndl = dx * L[0] + dy * L[1] + nz * L[2];
-      const v = clamp(smooth(-0.1, 0.5, ndl) * 5, 0, 5);
-      const k = qi(v, x, y, 6);
-      const c = LM[k];
-      lm.d[i] = pack(c[0], c[1], c[2]);
-      const d = Math.sqrt(d2), ux = dx / d, uy = dy / d, sdot = Math.max(0, ux * s2x + uy * s2y);
-      const inz = 1 - nz, limbF = inz * inz * inz * (0.2 + 0.8 * sdot);
-      const hv = clamp01(limbF * 1.3 + g2 * 0.9 + g1 * 0.15);
-      if (hv > 0.03) {
-        const s2 = sdot * sdot, hk = qi(hv * 5, x, y, 6) / 5, warm = s2 * s2 * s2 * 0.8 + g2;
-        hz.d[i] = pack((40 + 180 * warm) * hk, (110 + 50 * warm) * hk, (200 - 60 * warm) * hk);
-      }
-      const night = 1 - smooth(-0.06, 0.12, ndl);
-      const nk = qi(night * 3, x, y, 4) / 3;
-      nm.d[i] = pack(255 * nk, 255 * nk, 255 * nk);
     }
     // bright 1 px limb line on the lit side
     for (let x = 0; x < W; x++) {
-      const y = this.limb[x]; if (y < 0 || y >= H) continue;
+      const y = limb[x]; if (y < 0 || y >= H) continue;
       const dx = (x + 0.5 - pcx) / R, dy = (y + 0.5 - pcy) / R, d = Math.hypot(dx, dy);
       const sdot = Math.max(0, (dx / d) * s2x + (dy / d) * s2y);
       if (sdot > 0.2) { const kk = smooth(0.2, 1, sdot); sky.set(x, y, q.dq(130 + 120 * kk, 200 + 50 * kk, 255, x, y, 24)); em.add(x, y, 60 * kk, 80 * kk, 90 * kk); }
     }
     // sky is transparent inside the disc; far stars are baked into the sky (they barely move)
-    const st = this.A.stars, ax = this.ax;
+    const st = this.A.stars;
     const sx0 = mod(-ax, st.w);
     for (let y = 0; y < H; y++) for (let x = 0, sx = sx0; x < W; x++, sx = sx + 1 === st.w ? 0 : sx + 1) {
       const i = y * W + x;
-      if (y > this.limb[x]) { sky.d[i] = 0; continue; }
-      if (y >= this.limb[x] - 1) continue;
+      if (y > limb[x]) { sky.d[i] = 0; continue; }
+      if (y >= limb[x] - 1) continue;
       const s = st.d[(y % st.h) * st.w + sx];
       if (s & 0xffffff) { const p = sky.d[i]; sky.d[i] = pack(Math.min(255, unR(p) + unR(s)), Math.min(255, unG(p) + unG(s)), Math.min(255, unB(p) + unB(s))); }
     }
     prof('aurora pixels');
-    S.sky = banded(sky); S.lm = lm.toCanvas(); S.haze = banded(hz); S.nm = nm.toCanvas(); S.em = banded(em);
-    // city-light composite
-    S.lc = makeCanvas(W, H); this.lcx = ctx2d(S.lc);
+    yield;
+    S.sky = yield* bandedG(sky); S.lm = lm.toCanvas(); S.haze = yield* bandedG(hz); S.nm = nm.toCanvas(); S.em = yield* bandedG(em);
+    // city-light composite (rebuilt only when the surface or clouds move a pixel)
+    S.lc = makeCanvas(W, H); S.lcx = ctx2d(S.lc);
     S.flare = flareSprite(portrait ? 61 : 81, FLARE_RAMP, { rays: 4, rot: 0.2 });
     S.streak = streakSprite(Math.round(W * 1.2), STREAK_RAMP, W * 0.2);
+    this.lcKey = '';
     prof('aurora canvases');
   }
-  render(ctx, lctx, scrollY, t) {
-    const { W, H, S, A } = this;
-    if (!S.sky) return;
+  render(ctx, lctx, scrollY, t, S) {
+    const { W, H, A } = this;
     const lop = lctx.globalCompositeOperation;
     const ax = this.ax;
     // planet surface + clouds, lit by a multiply light map, hazed at the limb
-    this.tile(ctx, this.L('surf'), Math.round(scrollY * 0.045));
-    this.tile(ctx, this.L('clouds'), Math.round(scrollY * 0.07), 0, Math.round(t * 0.6));
+    const sOy = Math.round(scrollY * 0.045), cOy = Math.round(scrollY * 0.07), cDx = Math.round(t * 0.6);
+    this.tile(ctx, this.L('surf'), sOy);
+    this.tile(ctx, this.L('clouds'), cOy, 0, cDx);
     ctx.globalCompositeOperation = 'multiply';
     ctx.drawImage(S.lm, 0, 0);
     ctx.globalCompositeOperation = 'lighter';
     blit(ctx, S.haze, 0, 0);
-    // city lights masked to the night side
-    const lc = this.lcx;
-    lc.globalCompositeOperation = 'source-over';
-    this.tile(lc, this.L('lights'), Math.round(scrollY * 0.045));
-    lc.globalCompositeOperation = 'multiply';
-    lc.drawImage(S.nm, 0, 0);
+    // city lights: masked to the night side, hidden under clouds; cached until something moves
+    const key = sOy * 4096 + cOy * 64 + (cDx & 63) + (this.W > TW ? 0.5 : 0);
+    if (key !== this.lcKey) {
+      this.lcKey = key;
+      const lc = S.lcx;
+      lc.globalCompositeOperation = 'source-over';
+      drawTiled(lc, this.L('lights'), this.axw(this.L('lights').width), sOy, W, H);
+      lc.globalCompositeOperation = 'destination-out';
+      drawTiled(lc, this.L('clouds'), this.axw(this.L('clouds').width) + cDx, cOy, W, H);
+      lc.globalCompositeOperation = 'multiply';
+      lc.drawImage(S.nm, 0, 0);
+      lc.globalCompositeOperation = 'source-over';
+    }
     ctx.drawImage(S.lc, 0, 0);
     lctx.globalCompositeOperation = 'lighter';
     lctx.globalAlpha = 0.7; lctx.drawImage(S.lc, 0, 0);
     // space above the limb
     ctx.globalCompositeOperation = 'source-over';
     blit(ctx, S.sky, 0, 0);
-    A.tw.draw(ctx, lctx, ax, 0, W, H, t, 1, this.limb);
+    A.tw.draw(ctx, lctx, ax, 0, W, H, t, 1, S.limb);
     lctx.globalAlpha = 1; blit(lctx, S.em, 0, 0);
-    // sun
-    const [sx, sy] = this.sun;
-    const br = 0.9 + 0.1 * Math.sin(t * 0.9) + this.flashT * 0.9;
-    if (this.flashT > 0) { lctx.globalAlpha = this.flashT * this.flashT * 0.18; lctx.fillStyle = '#ffd49a'; lctx.fillRect(0, 0, W, H); lctx.globalAlpha = 1; }
+    // sun (flash: the limb and flare flare up; no full-screen wash over the field)
+    const [sx, sy] = S.sun, fl = this.flashT;
+    const br = 0.9 + 0.1 * Math.sin(t * 0.9) + fl * 0.9;
+    if (fl > 0) { lctx.globalAlpha = fl * 0.8; blit(lctx, S.haze, 0, 0); blit(lctx, S.em, 0, 0); }
     ctx.globalCompositeOperation = 'lighter';
     const sxo = sx - (S.flare.width >> 1), syo = sy - (S.flare.height >> 1);
     ctx.globalAlpha = clamp01(br); ctx.drawImage(S.flare, sxo, syo);
@@ -1892,13 +1920,14 @@ class AuroraStage extends Stage {
     lctx.globalAlpha = clamp01(0.3 * br); lctx.drawImage(S.streak, sx - (S.streak.width >> 1), sy - 2);
     ctx.globalAlpha = 1; lctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    // station layers
+    // station layers, far to near; each opaque layer hides the light of everything behind it
     // [image, emissive, blinkers, sparks, parallax, light alpha, column shift]
     const layers = this.layers || (this.layers = [[A.far, A.farE, A.farB, null, 0.2, 0.55, 0], [A.mid, A.midE, A.midB, A.midS, 0.5, 0.8, 0.37], [A.near, A.nearE, A.nearB, null, 0.9, 1, 0.61]]);
     for (let i = 0; i < 3; i++) {
       const [img, em, bl, sp, f, ea, sh] = layers[i];
       const oy = Math.round(scrollY * f);
       drawTiled(ctx, img, ax, oy, W, H, sh);
+      occlude(lctx, (l) => drawTiled(l, img, ax, oy, W, H, sh));
       ctx.globalCompositeOperation = 'lighter';
       drawTiled(ctx, em, ax, oy, W, H, sh);
       ctx.globalCompositeOperation = 'source-over';
@@ -1918,16 +1947,17 @@ class AuroraStage extends Stage {
 const vn2 = (x, y, s) => vnoise3(x, y, 0.5, s);
 
 // Shaded asteroid. M: material (dark->light); L3: [lx, ly, lz] toward the light.
-// e (optional): emissive raster for molten cracks.
+// e (optional): emissive raster for molten cracks. The brightest ramp step is kept for a
+// 1-px rim on the lit edge; cracks are random-walk fissures with a hot core.
 function kRock(r, e, cx, cy, rad, rng, M, L3, { cracks = 0, craters = 3, rim = null, squash = 1, rot = 0, crackRamp = null, seed = 1 } = {}) {
   const K = 5, amps = [], phs = [];
   for (let k = 0; k < K; k++) { amps.push(rng.range(0.03, 0.16) / (1 + k * 0.6)); phs.push(rng.range(0, TAU)); }
   const cr = [];
   for (let i = 0; i < craters; i++) { const a = rng.range(0, TAU), d = rng.range(0, 0.65); cr.push([Math.cos(a) * d * rad, Math.sin(a) * d * rad, rng.range(0.12, 0.3) * rad]); }
-  const bb = Math.ceil(rad * 1.5), cs = Math.cos(rot), sn = Math.sin(rot);
+  const bb = Math.ceil(rad * 1.5), cs = Math.cos(rot), sn = Math.sin(rot), side = bb * 2 + 1;
   const rimC = rim ? packHex(rim) : M.rim;
-  const CR = crackRamp ? crackRamp.map(hexToRgb) : null;
   const lx = L3[0], ly = L3[1], lz = L3[2];
+  const dm = new Float32Array(side * side).fill(9), col = new Uint32Array(side * side);
   for (let y = -bb; y <= bb; y++) for (let x = -bb; x <= bb; x++) {
     const X = (x * cs + y * sn) / squash, Y = -x * sn + y * cs;
     const ang = Math.atan2(Y, X);
@@ -1948,24 +1978,55 @@ function kRock(r, e, cx, cy, rad, rng, M, L3, { cracks = 0, craters = 3, rim = n
     }
     const nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
     const l = (nx * lx + ny * ly + nz * lz) / nl;
-    let v = (0.1 + Math.max(0, l) * 0.95 - cav * 0.15) * (M.n - 1);
+    // lit faces top out one step below the rim colour, so the rim reads as an edge highlight
+    let v = (0.06 + Math.max(0, l) * 0.86 - cav * 0.15) * (M.n - 1);
     v += (vn2(px * 0.6, py * 0.6, seed + 7) - 0.5) * 0.9;
-    let c = M.c[qi(clamp(v, 0, M.n - 1), px, py, M.n)];
-    // rim light on the lit edge
-    if (d > 0.82 && (x * lx + y * ly) / (Math.sqrt(x * x + y * y) + 0.01) > 0.45) c = d > 0.92 ? rimC : M.c[M.n - 1];
-    r.set(px, py, c);
-    // molten cracks
-    if (cracks && CR && d < 0.88) {
-      const rv = 1 - Math.abs(vnoise3(px * 0.09, py * 0.09, 3.3, seed + 11) * 2 - 1);
-      const rv2 = 1 - Math.abs(vnoise3(px * 0.2, py * 0.2, 1.7, seed + 13) * 2 - 1);
-      const k = rv * 0.78 + rv2 * 0.3;
-      const th = 1.045 - cracks * 0.035;
-      if (k > th) {
-        const heat = clamp((k - th) * 40 + 0.5, 0, CR.length - 1);
-        const ci = qi(heat, px, py, CR.length), col = CR[ci];
-        r.set(px, py, pack(col[0], col[1], col[2]));
-        if (e) e.set(px, py, pack(col[0] * 0.8, col[1] * 0.7, col[2] * 0.6));
+    const j = (y + bb) * side + x + bb;
+    dm[j] = d;
+    col[j] = M.c[qi(clamp(v, 0, M.n - 1.5), px, py, M.n)];
+  }
+  // 1-px rim on the outermost pixels whose normal faces the light
+  for (let y = -bb; y <= bb; y++) for (let x = -bb; x <= bb; x++) {
+    const j = (y + bb) * side + x + bb;
+    if (dm[j] > 1) continue;
+    const edge = x === -bb || x === bb || y === -bb || y === bb || dm[j - 1] > 1 || dm[j + 1] > 1 || dm[j - side] > 1 || dm[j + side] > 1;
+    if (edge && (x * lx + y * ly) / (Math.sqrt(x * x + y * y) + 0.01) > 0.35) col[j] = rimC;
+    r.set(cx + x, cy + y, col[j]);
+  }
+  // molten fissures: random walks with a hot 1-px core and a cooler margin
+  if (cracks && crackRamp) {
+    const CR = crackRamp.map(hexToRgb), top = CR.length - 1;
+    const inside = (x, y) => { const X = Math.round(x), Y = Math.round(y); return Math.abs(X) <= bb && Math.abs(Y) <= bb && dm[(Y + bb) * side + X + bb] < 0.86; };
+    const done = new Uint8Array(side * side);
+    const put = (x, y, ci, core) => {
+      const X = Math.round(x), Y = Math.round(y);
+      if (!inside(X, Y)) return;
+      const j = (Y + bb) * side + X + bb;
+      if (done[j] >= (core ? 2 : 1)) return;
+      done[j] = core ? 2 : 1;
+      const c = CR[clamp(ci, 0, top)];
+      r.set(cx + X, cy + Y, pack(c[0], c[1], c[2]));
+      if (e) { const k = core ? 0.8 : 0.35; e.set(cx + X, cy + Y, pack(c[0] * k, c[1] * k * 0.9, c[2] * k * 0.8)); }
+    };
+    const walk = (x, y, ang, len, heat, depth) => {
+      for (let s = 0; s < len; s++) {
+        x += Math.cos(ang); y += Math.sin(ang);
+        if (!inside(x, y)) return;
+        const h = heat * (1 - (s / len) * 0.55);
+        const ci = Math.round(1 + h * (top - 1));
+        put(x, y, ci, true);
+        // margin on both sides, one ramp step cooler; a second cooler step on thick hot parts
+        const px = -Math.sin(ang), py = Math.cos(ang);
+        put(x + px, y + py, ci - 2, false); put(x - px, y - py, ci - 2, false);
+        if (h > 0.8) { put(x + px * 2, y + py * 2, ci - 4, false); }
+        ang += rng.range(-0.55, 0.55);
+        if (depth < 2 && rng.chance(0.07)) walk(x, y, ang + rng.sign() * rng.range(0.6, 1.2), len * 0.45, heat * 0.75, depth + 1);
       }
+    };
+    const n = cracks * (rad > 20 ? 2 : 1) + (rad > 30 ? 1 : 0);
+    for (let k = 0; k < n; k++) {
+      const a = rng.range(0, TAU), d0 = rng.range(0, 0.35) * rad;
+      walk(Math.cos(a) * d0, Math.sin(a) * d0, rng.range(0, TAU), rad * rng.range(0.7, 1.3), rad > 8 ? rng.range(0.75, 1) : 0.6, 0);
     }
   }
 }
@@ -1975,62 +2036,81 @@ function kRock(r, e, cx, cy, rad, rng, M, L3, { cracks = 0, craters = 3, rim = n
 // ---------------------------------------------------------------------------
 
 const PAL_CINDER = [...RAMPS.void.slice(0, 5), '#1a1030', '#140c26', '#0e0a1c', ...RAMPS.ember, ...RAMPS.fire, ...RAMPS.dawn.slice(0, 6), ...RAMPS.rust, ...RAMPS.smoke.slice(0, 4),
-  '#1e0808', '#2e0c0a', '#420f0c', '#5a140e', '#12060a', '#1a0a10', '#240c12'];
+  '#1e0808', '#2e0c0a', '#420f0c', '#5a140e', '#12060a', '#1a0a10', '#240c12', '#16070a', '#260a0c', '#3a100c', '#521a10', '#6e2412'];
 const ROCK_RAMP = ['#0a0506', '#140a0a', '#20110f', '#2f1914', '#42231a', '#5a3021', '#77432b', '#9c5c38'];
 const CRACK_RAMP = ['#5a1206', '#9a2a08', '#d4470f', '#f7811e', '#fdbb3a', '#fff0a8'];
+const CRACK_HEX = packRamp(CRACK_RAMP);
 const L_CINDER = (() => { const v = [-0.62, -0.58, 0.52], l = Math.hypot(...v); return v.map((a) => a / l); })();
 
-// Cinder dust lanes: dark absorbing filaments with faint sun-lit edges (alpha tile).
-function cinderDust(tw, h, cell, bias, alphaMax, seed) {
+// Cinder dust lanes: absorbing filaments (alpha tile) lit from the upper left by the red
+// giant: a dark core, a warm lit slope and a continuous 1-px rim on the sun-facing edge.
+function* cinderDustG(tw, h, cell, bias, alphaMax, seed) {
   const f = new Fbm(new Rng(seed + tw), tw, h * 2, cell, 4, 0.5);
-  const r = new Raster(tw, h, true);
-  const D = [[26, 8, 8], [40, 14, 11], [58, 22, 14]];
-  const E = hexToRgb('#7d2a12');
+  const cw = tw >> 1, ch = h >> 1, co = new Float32Array(cw * ch);
+  for (let y = 0; y < ch; y++) {
+    if (every(y, 32)) yield;
+    for (let x = 0; x < cw; x++) co[y * cw + x] = f.at(x * 2, y * 4);
+  }
   const val = new Float32Array(tw * h);
-  for (let y = 0; y < h; y += 2) for (let x = 0; x < tw; x += 2) { const v = f.at(x, y * 2); val[y * tw + x] = v; val[y * tw + x + 1] = v; val[(y + 1) * tw + x] = v; val[(y + 1) * tw + x + 1] = v; }
-  for (let y = 0; y < h; y++) for (let x = 0; x < tw; x++) {
-    const v = val[y * tw + x];
-    const dns = clamp01((v - bias) * 3);
-    if (dns <= 0) continue;
-    const a = qi(dns * 3, x, y, 4) / 3 * alphaMax;
-    if (a <= 0) continue;
-    const up = val[wr(y - 4, h) * tw + wr(x - 4, tw)];
-    const edge = dns < 0.34 && up < bias && bay(x, y) < 0.5;
-    const c = edge ? E : D[Math.min(2, (dns * 3) | 0)];
-    r.d[y * tw + x] = pack(c[0], c[1], c[2], (edge ? 0.6 : a) * 255);
+  for (let y = 0; y < h; y++) {
+    const fy = y / 2, y0 = fy | 0, ty = fy - y0, y1 = (y0 + 1) % ch;
+    for (let x = 0; x < tw; x++) {
+      const fx = x / 2, x0 = fx | 0, tx = fx - x0, x1 = (x0 + 1) % cw;
+      const a = co[y0 * cw + x0], b = co[y0 * cw + x1], c = co[y1 * cw + x0], d = co[y1 * cw + x1];
+      val[y * tw + x] = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+    }
+  }
+  yield;
+  const r = new Raster(tw, h, true);
+  const BODY = [hexToRgb('#120506'), hexToRgb('#1e0907'), hexToRgb('#2e1109'), hexToRgb('#44190c')];
+  const RIM = hexToRgb('#8a3416');
+  for (let y = 0; y < h; y++) {
+    if (every(y, 96)) yield;
+    for (let x = 0; x < tw; x++) {
+      const v = val[y * tw + x], dns = clamp01((v - bias) * 3.2);
+      if (dns <= 0) continue;
+      const up = val[wr(y - 1, h) * tw + wr(x - 1, tw)], up3 = val[wr(y - 3, h) * tw + wr(x - 3, tw)];
+      if (up <= bias) { r.d[y * tw + x] = pack(RIM[0], RIM[1], RIM[2], 0.85 * 255); continue; }   // sun-facing rim
+      const lit = clamp01((v - up3) * 14);                                                          // slope toward the sun
+      const a = (0.35 + 0.65 * qe(dns * 3, x, y, 4, 0.4) / 3) * alphaMax;
+      const c = BODY[qe(lit * 2.2 + (1 - dns) * 0.8, x, y, 4, 0.4)];
+      r.d[y * tw + x] = pack(c[0], c[1], c[2], a * 255);
+    }
   }
   return r.toCanvas();
 }
-const cinderDust1 = (tw) => cinderDust(tw, 640, 220, 0.5, 0.6, 0xd1);
-const cinderDust2 = (tw) => cinderDust(tw, 768, 170, 0.56, 0.7, 0xd2);
+const cinderDust1 = (tw) => cinderDustG(tw, 640, 220, 0.5, 0.6, 0xd1);
+const cinderDust2 = (tw) => cinderDustG(tw, 768, 170, 0.56, 0.7, 0xd2);
 
 function* genCinder() {
   const rng = new Rng(0xc1de5);
   const A = {};
-  A.dust1 = cinderDust1(TW);
-  yield;
-  A.dust2 = cinderDust2(TW);
-  yield;
+  A.dust1 = yield* cinderDust1(TW);
+  A.dust2 = yield* cinderDust2(TW);
   const M = mat(ROCK_RAMP, '#ff8a4a');
   // --- far rocks (f = 0.2): a dense scatter of small bodies ---
   {
     const H = 640, r = new Raster(TW, H, true), e = new Raster(TW, H, true);
     for (let i = 0; i < 110; i++) {
+      if (every(i, 16)) yield;
       const rad = rng.chance(0.15) ? rng.range(5, 9) : rng.range(1.6, 4.5);
       // concentrate the belt in a diagonal band (periodic in the tile)
       const y = rng.int(0, H), x0 = rng.int(0, TW);
       if (rng.next() > 0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.cos(((x0 / TW) - (y / H)) * TAU), 3)) continue;
       kRock(r, e, clamp(x0, rad * 1.5 + 2, TW - rad * 1.5 - 2), y, rad, rng, M, L_CINDER, { craters: rad > 5 ? 2 : 0, cracks: rng.chance(0.2) ? 1 : 0, crackRamp: CRACK_RAMP, rot: rng.range(0, TAU), squash: rng.range(0.7, 1.3), seed: i });
     }
-    A.rocksFar = banded(outlined(r, pack(6, 2, 3, 200))); A.rocksFarE = banded(e);
+    A.rocksFar = yield* bandedG(outlined(r, pack(6, 2, 3, 200))); A.rocksFarE = yield* bandedG(e);
   }
-  yield;
   // --- mid rocks (f = 0.45): big asteroids with molten cracks and mining rigs ---
   {
     const H = 1024, r = new Raster(TW, H, true), e = new Raster(TW, H, true), las = new Raster(TW, H, true);
     const bl = new Blinkers(TW, H), sp = new Sparks(TW, H);
     const big = [[70, 150, 34], [258, 420, 40], [96, 640, 26], [226, 850, 30], [292, 150, 14], [24, 420, 12], [150, 236, 10], [150, 560, 9], [34, 870, 13], [170, 980, 8]];
-    big.forEach(([x, y, rad], i) => kRock(r, e, x, y, rad, rng, M, L_CINDER, { craters: rad > 20 ? 5 : 2, cracks: rad > 20 ? 2 : 1, crackRamp: CRACK_RAMP, rot: rng.range(0, TAU), squash: rng.range(0.8, 1.2), seed: 100 + i }));
+    for (let i = 0; i < big.length; i++) {
+      const [x, y, rad] = big[i];
+      kRock(r, e, x, y, rad, rng, M, L_CINDER, { craters: rad > 20 ? 5 : 2, cracks: rad > 20 ? 2 : 1, crackRamp: CRACK_RAMP, rot: rng.range(0, TAU), squash: rng.range(0.8, 1.2), seed: 100 + i });
+      yield;
+    }
     // mining rigs
     const steel = mat(['#0f0d12', '#1c1820', '#2c2630', '#403744', '#5a4d5c', '#7a6a78'], '#ffb27a'), hz = M_HAZ();
     const sunR = [-0.7, -0.7];
@@ -2044,7 +2124,7 @@ function* genCinder() {
       kBox(r, x + s * 30 - 3, y + 12, 6, 6, hz, sunR);
       sp.add(x + s * 30, y + 18, s * 0.3, 1, rng.range(0.9, 1.5), rng.next());
       bl.add(x - 9, y - 7, '#ff5a5a', 1.3, rng.next(), 0.15, 2);
-      bl.add(x + 9, y - 7, '#ffab4f', 0.8, rng.next(), 0.3);
+      bl.add(x + 9, y - 7, '#e8f4ff', 2.4, rng.next(), 0.3, 1, true);
       // tether pipes
       r.line(x - s * 9, y + 2, x - s * 22, y + 10, mc(steel, 2)); r.line(x - s * 9, y + 3, x - s * 22, y + 11, mc(steel, 1));
     };
@@ -2062,12 +2142,12 @@ function* genCinder() {
       const FL = ['#8f260b', '#d4470f', '#f7811e', '#fdbb3a', '#fff0a8'].map(hexToRgb);
       for (let k = 0; k < 7; k++) for (let j = -1; j <= 1; j++) {
         const c = FL[clamp(4 - k + (j ? -1 : 0), 0, 4)];
-        r.set(x - 3 + j, y - 42 - k, pack(c[0], c[1], c[2])); e.set(x - 3 + j, y - 42 - k, pack(c[0], c[1], c[2]));
+        r.set(x - 3 + j, y - 42 - k, pack(c[0], c[1], c[2])); e.set(x - 3 + j, y - 42 - k, pack(c[0] * 0.6, c[1] * 0.6, c[2] * 0.6));
       }
       // landing pad with lights
       for (let a = 0; a < TAU; a += 0.05) r.set(x - 36 + Math.cos(a) * 9, y + 20 + Math.sin(a) * 9, mc(hz, 3));
       kBox(r, x - 43, y + 17, 14, 6, steel, sunR, { base: 2 });
-      bl.add(x - 45, y + 20, '#79ecff', 1.2, 0, 0.3); bl.add(x - 27, y + 20, '#79ecff', 1.2, 0.5, 0.3);
+      bl.add(x - 45, y + 20, '#e8ffe0', 2.2, 0, 0.3, 1, true); bl.add(x - 27, y + 20, '#e8ffe0', 2.2, 0.5, 0.3, 1, true);
       bl.add(x - 30, y - 18, '#ff5a5a', 1.5, 0.2, 0.14, 2);
       sp.add(x + 30, y + 4, 1, 0.4, 1.3, 0.3);
     }
@@ -2075,7 +2155,6 @@ function* genCinder() {
     const beam = (x0, y0, x1, y1) => {
       const hot = packHex('#fff0a8'), mid = packHex('#f7811e'), dk = packHex('#8f260b');
       const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), nx = -dy / len, ny = dx / len;
-      r.line(x0 + nx, y0 + ny, x1 + nx, y1 + ny, 0); // no-op keeps signature symmetrical
       las.line(x0 + nx, y0 + ny, x1 + nx, y1 + ny, dk); las.line(x0 - nx, y0 - ny, x1 - nx, y1 - ny, dk);
       las.line(x0 + nx * 0.5, y0 + ny * 0.5, x1 + nx * 0.5, y1 + ny * 0.5, mid);
       las.line(x0, y0, x1, y1, hot);
@@ -2086,47 +2165,94 @@ function* genCinder() {
     // ore haulers on a short tether between neighbouring rocks
     r.line(150, 560, 96, 626, mc(steel, 1));
     for (let k = 1; k < 4; k++) { const u = k / 4; kBox(r, lerp(150, 96, u) - 2, lerp(560, 626, u) - 1, 4, 3, hz, sunR, { base: 2 }); }
-    A.rocksMid = banded(outlined(r, pack(5, 2, 2, 220))); A.rocksMidE = banded(e); A.laser = banded(las);
+    A.rocksMid = yield* bandedG(outlined(r, pack(5, 2, 2, 220))); A.rocksMidE = yield* bandedG(e); A.laser = yield* bandedG(las);
     A.midB = bl; A.midS = sp;
   }
-  yield;
-  // --- near rocks (f = 0.9): dark silhouettes at the sides with hot rims ---
+  // --- near rocks (f = 0.9): big silhouettes at the sides, lifted from pure black and rimmed
+  //     on the side facing the field so dark Choir hulls stay readable over them ---
   {
     const H = 1024, r = new Raster(TW, H, true), e = new Raster(TW, H, true);
-    const dark = mat(['#030102', '#060304', '#0b0506', '#120809', '#1b0c0c', '#281210'], '#c4400f');
+    const dark = mat(['#0e0606', '#150909', '#1b0c0c', '#241110', '#301815', '#40201a'], '#c4400f');
     const L2 = [-0.75, -0.55, 0.36];
-    [[40, 200, 30], [292, 520, 26], [36, 760, 22], [296, 950, 16], [150, 60, 7]].forEach(([x, y, rad], i) =>
-      kRock(r, e, x, y, rad, rng, dark, L2, { craters: 3, cracks: i < 2 ? 1 : 0, crackRamp: CRACK_RAMP, rot: rng.range(0, TAU), seed: 200 + i }));
-    A.rocksNear = banded(outlined(r, pack(2, 0, 0, 230))); A.rocksNearE = banded(e);
+    const list = [[40, 200, 30], [292, 520, 26], [36, 760, 22], [296, 950, 16], [150, 60, 7]];
+    for (let i = 0; i < list.length; i++) {
+      const [x, y, rad] = list[i];
+      kRock(r, e, x, y, rad, rng, dark, L2, { craters: 3, cracks: i < 2 ? 1 : 0, crackRamp: CRACK_RAMP, rot: rng.range(0, TAU), seed: 200 + i });
+      yield;
+    }
+    rimToward(r, TW / 2, packHex('#6e2412'), packHex('#3a1610'));
+    A.rocksNear = yield* bandedG(outlined(r, pack(2, 0, 0, 230))); A.rocksNearE = yield* bandedG(e);
   }
   A.tw = new Twinkles(rng, 22, TW, 480, 0.02, { cols: ['#ffd29c', '#ffe6c4', '#f4f4ff', '#ffb98e'], bigChance: 0.2 });
   // drifting embers (free-running)
-  const N = 46;
+  const N = 40;
   A.emb = { n: N, x: new Float32Array(N), y: new Float32Array(N), vx: new Float32Array(N), vy: new Float32Array(N), ph: new Float32Array(N) };
   for (let i = 0; i < N; i++) { A.emb.x[i] = rng.range(0, 800); A.emb.y[i] = rng.range(0, 600); A.emb.vx[i] = rng.range(4, 14); A.emb.vy[i] = rng.range(6, 18); A.emb.ph[i] = rng.range(0, TAU); }
   return A;
 }
 
+// Solid prominence arches standing on the limb of a sun (cx, cy, R). list: [angle, span,
+// height, lean]; ph: animation phase 0..1 (loops breathe and drift). Returns a Raster.
+function prominenceFrame(W, H, cx, cy, R, list, ph) {
+  const r = new Raster(W, H);
+  const PR = ['#5a1206', '#9a2a08', '#d4470f', '#f7811e', '#fdbb3a', '#fff0a8'].map(hexToRgb);
+  const dist = new Float32Array(W * H).fill(9);
+  for (let p = 0; p < list.length; p++) {
+    const [a0, span, hgt0, lean] = list[p];
+    const wob = Math.sin((ph + p * 0.37) * TAU), hgt = hgt0 * (1 + 0.12 * wob), sp = span * (1 + 0.05 * Math.cos((ph + p * 0.21) * TAU));
+    const thick = 1.4 + hgt0 / 18;
+    const n = Math.ceil(sp * R * 3 + hgt * 4);
+    for (let i = 0; i <= n; i++) {
+      const s = i / n;
+      const a = a0 - sp / 2 + sp * s + lean * Math.sin(s * Math.PI) * 0.06 + 0.012 * wob * Math.sin(s * TAU);
+      const lift = Math.sin(s * Math.PI) * hgt;
+      const rr = R - 1 + lift;
+      const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+      // thicker at the feet, a filament texture along the arch
+      const th = thick * (1.15 - 0.45 * Math.sin(s * Math.PI)) * (0.8 + 0.4 * vn2(s * 30 + p * 7, ph * 3, 9 + p));
+      const ib = Math.ceil(th + 1);
+      for (let yy = -ib; yy <= ib; yy++) for (let xx = -ib; xx <= ib; xx++) {
+        const X = Math.round(x) + xx, Y = Math.round(y) + yy;
+        if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+        const dd = Math.hypot(X + 0.5 - x, Y + 0.5 - y) / th;
+        if (dd < dist[Y * W + X]) dist[Y * W + X] = dd;
+      }
+    }
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dd = dist[y * W + x];
+    if (dd > 1) continue;
+    if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < R - 0.5) continue;       // feet hidden by the disc
+    const c = PR[qe((1 - dd) * 5.4, x, y, 6, 0.5)];
+    r.d[y * W + x] = pack(c[0], c[1], c[2]);
+  }
+  return r;
+}
+
 class CinderStage extends Stage {
-  wide() { return { dust1: cinderDust1, dust2: cinderDust2 }; }
   constructor(A) {
     super('cinder', A);
     this.scrollSpeed = 32;
-    this.grade = { tint: [1.06, 0.97, 0.92], lift: [0.03, 0.006, 0.0], sat: 1.12, contrast: 1.1 };
+    this.grade = { tint: [1.04, 0.97, 0.94], lift: [0.024, 0.006, 0.004], sat: 1.0, contrast: 1.06 };
     this.q = new Quant(PAL_CINDER);
     this.emb = { x: Float32Array.from(A.emb.x), y: Float32Array.from(A.emb.y) };
+    this.disSun = null; this.disProm = null;
   }
-  layout() {
-    const W = this.W, H = this.LH, S = this.S, q = this.q;
+  *layout(S) {
+    const { W, LH: H, fx, fy } = S, q = this.q;
     prof();
     const portrait = H >= W * 1.2;
-    const R = Math.round(portrait ? W * 0.62 : H * 0.62);
-    const cx = portrait ? -W * 0.18 : this.fx - R * 0.72, cy = portrait ? H * 0.1 : H * 0.3;
-    this.sunC = [cx, cy, R];
-    const sky = new Raster(W, H), em = new Raster(W, H);
-    // sun surface: two granulation phases, crossfaded for a boiling look
-    const bx0 = 0, by0 = 0, bw = Math.min(W, Math.ceil(cx + R + 2)), bh = Math.min(H, Math.ceil(cy + R + 2));
-    const discs = [new Raster(Math.max(1, bw), Math.max(1, bh)), new Raster(Math.max(1, bw), Math.max(1, bh))];
+    // The red giant stays out of the play field: in portrait only the lower limb of a huge
+    // disc arcs across the top HUD strip (dipping ~14 px into the field at the left edge);
+    // in landscape it sits left of the field. Corona light fades out inside the field.
+    let R, cx, cy;
+    if (portrait) { R = Math.round(Math.max(W, FIELD_W) * 1.05); cx = Math.round(W * 0.05); cy = fy + 14 - R; }
+    else { R = Math.round(H * 0.62); cx = Math.round(fx - R * 1.05); cy = Math.round(H * 0.3); }
+    S.sunC = [cx, cy, R];
+    const sky = new Raster(W, H), cor = new Raster(W, H);
+    // sun surface: two granulation phases, dissolved for a boiling look
+    const bw = clamp(Math.ceil(cx + R + 2), 1, W), bh = clamp(Math.ceil(cy + R + 2), 1, H);
+    const discs = [new Raster(bw, bh), new Raster(bw, bh)];
     const SUN = ['#2a0806', '#4a0f08', '#6e1a0a', '#932a0c', '#b83d10', '#d75a18', '#ee7d26', '#fca443', '#ffd07a'].map(hexToRgb);
     const worley = (u, v, s) => {
       const iu = Math.floor(u), iv = Math.floor(v);
@@ -2151,32 +2277,43 @@ class CinderStage extends Stage {
         o[4 + k] = vnoise3(dx * 38 + k * 3.1, dy * 38, nz * 38, 23 + k);
       }
     });
+    yield;
     const nv = new Float32Array(6);
-    for (let y = by0; y < bh; y++) for (let x = bx0; x < bw; x++) {
-      const dx = (x + 0.5 - cx) / R, dy = (y + 0.5 - cy) / R, d2 = dx * dx + dy * dy;
-      if (d2 >= 1) continue;
-      const nz = Math.sqrt(1 - d2), limbD = 0.28 + 0.72 * Math.sqrt(nz);
-      sn.get(x, y, nv);
-      for (let k = 0; k < 2; k++) {
-        const I = limbD * (0.86 + 0.14 * nv[2 + k]) * (0.72 + nv[1] * 0.5) * (0.9 + nv[4 + k] * 0.2) * (1 - nv[0] * 0.5);
-        const c = SUN[qi(clamp(I * 6.5 - 0.2, 0, 8), x, y, 9)];
-        discs[k].d[y * bw + x] = pack(c[0], c[1], c[2]);
+    for (let y = 0; y < bh; y++) {
+      if (every(y, 24)) yield;
+      for (let x = 0; x < bw; x++) {
+        const dx = (x + 0.5 - cx) / R, dy = (y + 0.5 - cy) / R, d2 = dx * dx + dy * dy;
+        if (d2 >= 1) continue;
+        const nz = Math.sqrt(1 - d2), limbD = 0.28 + 0.72 * Math.sqrt(nz);
+        sn.get(x, y, nv);
+        for (let k = 0; k < 2; k++) {
+          const I = limbD * (0.86 + 0.14 * nv[2 + k]) * (0.72 + nv[1] * 0.5) * (0.9 + nv[4 + k] * 0.2) * (1 - nv[0] * 0.5);
+          const c = SUN[qi(clamp(I * 6.5 - 0.2, 0, 8), x, y, 9)];
+          discs[k].d[y * bw + x] = pack(c[0], c[1], c[2]);
+        }
       }
     }
-    // sky: deep maroon glow near the sun, black-violet far away; corona + stars
-    const cor = hexToRgb('#ff6a2a');
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.sqrt(dx * dx + dy * dy), h = d - R;
-      const i = y * W + x;
-      if (h < 0) { sky.d[i] = q.dq(40, 8, 6, x, y, 10); continue; }
-      const g1 = Math.exp(-h / (R * 1.6)), g2 = Math.exp(-h / (R * 0.18)), g3 = Math.exp(-h / 4);
-      const ang = Math.atan2(dy, dx);
-      const streak = 0.75 + 0.25 * Math.sin(ang * 23 + Math.sin(ang * 7) * 2) * Math.sin(ang * 11 + 1);
-      let r = 6 + 64 * g1 + 150 * g2 * streak + 200 * g3, g = 3 + 10 * g1 + 44 * g2 * streak + 90 * g3, b = 8 + 8 * g1 + 16 * g2 + 30 * g3;
-      // cold violet far from the sun
-      b += 22 * (1 - g1) * (1 - g1); r += 6 * (1 - g1);
-      sky.d[i] = q.dq(r, g, b, x, y, 16);
-      if (g2 > 0.2) em.d[i] = pack(cor[0] * g2 * 0.22 * streak, cor[1] * g2 * 0.18, cor[2] * g2 * 0.1);
+    // sky: deep maroon glow near the sun, black-violet far away; corona light (light layer)
+    // that fades out within ~40 px inside the field
+    const corC = hexToRgb('#ff6a2a');
+    for (let y = 0; y < H; y++) {
+      if (every(y, 32)) yield;
+      for (let x = 0; x < W; x++) {
+        const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.sqrt(dx * dx + dy * dy), h = d - R;
+        const i = y * W + x;
+        if (h < 0) { sky.d[i] = q.dq(40, 8, 6, x, y, 10); continue; }
+        const g1 = Math.exp(-h / (R * 1.6)), g2 = Math.exp(-h / (R * 0.16)), g3 = Math.exp(-h / 4);
+        const ang = Math.atan2(dy, dx);
+        const streak = 0.75 + 0.25 * Math.sin(ang * 23 + Math.sin(ang * 7) * 2) * Math.sin(ang * 11 + 1);
+        let r = 6 + 58 * g1 + 140 * g2 * streak + 190 * g3, g = 3 + 9 * g1 + 40 * g2 * streak + 86 * g3, b = 8 + 8 * g1 + 16 * g2 + 30 * g3;
+        // cold violet far from the sun
+        b += 22 * (1 - g1) * (1 - g1); r += 6 * (1 - g1);
+        const inF = Math.min(x - fx, fx + FIELD_W - x, y - fy, fy + FIELD_H - y);
+        const dimF = 1 - 0.35 * smooth(0, 50, inF);
+        sky.d[i] = q.dq(r * dimF, g * dimF, b * (0.6 + 0.4 * dimF), x, y, 16 + 14 * g2);
+        const cl = (g2 * 0.24 * streak + g3 * 0.35) * (1 - 0.85 * smooth(0, 40, inF));
+        if (cl > 0.02) cor.d[i] = pack(corC[0] * cl, corC[1] * cl * 0.8, corC[2] * cl * 0.45);
+      }
     }
     // baked stars away from the glare
     const srng = new Rng(77);
@@ -2186,30 +2323,31 @@ class CinderStage extends Stage {
       const c = hexToRgb(srng.pick(['#ffd29c', '#ffe6c4', '#ffb98e', '#d4dcff'])), b = qLevel(0.6 * srng.next() ** 2);
       sky.add(x, y, c[0] * b, c[1] * b, c[2] * b);
     }
-    // prominences: glowing loops standing on the limb (emissive)
-    const pr = new Raster(W, H);
-    const PR = ['#5a1206', '#9a2a08', '#d4470f', '#f7811e', '#fdbb3a'].map(hexToRgb);
-    const angs = portrait ? [0.25, 0.75, 1.25] : [-0.9, -0.3, 0.4, 0.9];
-    for (const a0 of angs) {
-      const span = srng.range(0.1, 0.18), hgt = R * srng.range(0.1, 0.18), lean = srng.range(-0.3, 0.3);
-      for (let st = 0; st < 4; st++) {
-        const hs = 0.7 + st * 0.12, sp = span * (0.8 + st * 0.08);
-        for (let s = 0; s <= 1; s += 0.003) {
-          const a = a0 - sp / 2 + sp * s + lean * Math.sin(s * Math.PI) * 0.05;
-          const lift = Math.sin(s * Math.PI) * hgt * hs;
-          const rr = R - 1 + lift;
-          const x = Math.round(cx + Math.cos(a) * rr), y = Math.round(cy + Math.sin(a) * rr);
-          const k = clamp(3.6 - st * 0.7 - (lift / hgt) * 1.2 + (vn2(s * 40, st, 9) - 0.5) * 1.4, 0, 4), c = PR[qi(k, x, y, 5)];
-          const p = pr.get(x, y);
-          if (!p || unR(p) < c[0]) pr.set(x, y, pack(c[0], c[1], c[2]));
-        }
+    prof('cinder pixels');
+    yield;
+    // prominences: 3 animation frames of solid arches along the visible part of the limb
+    const vis = [];
+    for (let a = -Math.PI; a < Math.PI; a += 0.004) {
+      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+      if (x > 4 && y > 2 && x < W - 4 && y < H - 4) vis.push(a);
+    }
+    const list = [];
+    if (vis.length > 8) {
+      const a0 = vis[0], a1 = vis[vis.length - 1];
+      for (const u of portrait ? [0.16, 0.5, 0.82] : [0.2, 0.5, 0.8]) {
+        list.push([lerp(a0, a1, u), srng.range(0.09, 0.14) * (portrait ? 0.8 : 1), R * srng.range(0.07, 0.11), srng.range(-0.4, 0.4)]);
       }
     }
-    prof('cinder pixels');
-    S.sky = sky.toCanvas(); S.em = banded(em); S.sun0 = discs[0].toCanvas(); S.sun1 = discs[1].toCanvas(); S.prom = banded(pr);
-    S.glow = glowSprite(Math.round(R * 2.8), Math.round(R * 2.8), ['#000000', '#1a0604', '#300a06', '#4a1208', '#6a1c0a'], (dx, dy) => {
-      const d = Math.hypot(dx, dy) / R; if (d < 1) return 1; const u = Math.max(0, 1 - (d - 1) / 0.4); return u * u * 0.9;
-    });
+    const pf = [0, 1 / 3, 2 / 3].map((ph) => prominenceFrame(W, H, cx, cy, R, list, ph));
+    // crop all frames to their common bounding box
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (const r of pf) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (r.d[y * W + x]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 >= 0) {
+      S.prom = pf.map((r) => { const c = new Raster(x1 - x0 + 1, y1 - y0 + 1); for (let y = y0; y <= y1; y++) c.d.set(r.d.subarray(y * W + x0, y * W + x1 + 1), (y - y0) * c.w); return c.toCanvas(); });
+      S.promPos = [x0, y0];
+    }
+    yield;
+    S.sky = sky.toCanvas(); S.cor = yield* bandedG(cor); S.sun0 = discs[0].toCanvas(); S.sun1 = discs[1].toCanvas();
     prof('cinder canvases');
   }
   step(dt) {
@@ -2219,63 +2357,71 @@ class CinderStage extends Stage {
       if (e.x[i] > W) e.x[i] -= W; if (e.y[i] > H) e.y[i] -= H;
     }
   }
-  render(ctx, lctx, scrollY, t) {
-    const { W, H, S, A } = this;
-    if (!S.sky) return;
+  render(ctx, lctx, scrollY, t, S) {
+    const { W, H, A } = this;
     const lop = lctx.globalCompositeOperation;
-    const ax = this.ax, [cx, cy] = this.sunC;
+    const ax = this.ax;
     ctx.drawImage(S.sky, 0, 0);
-    // boiling sun: crossfade two granulation phases
-    const k = 0.5 + 0.5 * Math.sin(t * 0.35);
-    ctx.drawImage(S.sun0, 0, 0);
-    ctx.globalAlpha = k; ctx.drawImage(S.sun1, 0, 0); ctx.globalAlpha = 1;
-    const fl = this.flashT;
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = clamp01(0.75 + 0.25 * Math.sin(t * 1.3) + fl);
-    blit(ctx, S.prom, 0, 0);
-    const gx = Math.round(cx - S.glow.width / 2), gy = Math.round(cy - S.glow.height / 2);
-    if (fl > 0) { ctx.globalAlpha = fl * 0.8; ctx.drawImage(S.glow, gx, gy); }
-    ctx.globalAlpha = 1;
     lctx.globalCompositeOperation = 'lighter';
-    lctx.globalAlpha = clamp01(0.55 + fl * 0.6); lctx.drawImage(S.glow, gx, gy);
-    lctx.globalAlpha = 0.9; blit(lctx, S.prom, 0, 0);
-    lctx.globalAlpha = 1; blit(lctx, S.em, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
+    // boiling sun: Bayer dissolve between two granulation phases
+    const k = 0.5 + 0.5 * Math.sin(t * 0.35), fl = this.flashT;
+    const ds = this.disSun && this.disSun.w === S.sun0.width && this.disSun.h === S.sun0.height ? this.disSun : (this.disSun = new Dissolve(S.sun0.width, S.sun0.height));
+    ds.prep(S.sun0, S.sun1, k);
+    ds.put(ctx, 0, 0);
+    if (S.prom) {
+      const dp = this.disProm && this.disProm.w === S.prom[0].width && this.disProm.h === S.prom[0].height ? this.disProm : (this.disProm = new Dissolve(S.prom[0].width, S.prom[0].height));
+      const pu = (t * 0.09) % 3, p0 = Math.floor(pu);
+      dp.prep(S.prom[p0], S.prom[(p0 + 1) % 3], smooth(0.2, 0.8, pu - p0), true);
+      dp.put(ctx, S.promPos[0], S.promPos[1]);
+      lctx.globalAlpha = clamp01(0.55 + 0.2 * Math.sin(t * 1.3) + fl * 0.45); dp.put(lctx, S.promPos[0], S.promPos[1]);
+    }
+    if (fl > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = fl * 0.7; blit(ctx, S.cor, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+    lctx.globalAlpha = clamp01(0.75 + fl * 0.8); blit(lctx, S.cor, 0, 0);
+    lctx.globalAlpha = 1;
     A.tw.draw(ctx, lctx, ax, Math.round(scrollY * 0.02), W, H, t, 0.8);
-    // dust lanes
-    this.tile(ctx, this.L('dust1'), Math.round(scrollY * 0.06));
-    drawTiled(ctx, A.rocksFar, ax, Math.round(scrollY * 0.2), W, H, 0.41);
-    lctx.globalAlpha = 0.7; drawTiled(lctx, A.rocksFarE, ax, Math.round(scrollY * 0.2), W, H, 0.41);
-    this.tile(ctx, this.L('dust2'), Math.round(scrollY * 0.3));
+    // dust lanes absorb (part of) the light behind them
+    const d1 = this.L('dust1'), o1 = Math.round(scrollY * 0.06);
+    this.tile(ctx, d1, o1);
+    occlude(lctx, (l) => this.tile(l, d1, o1));
+    const of = Math.round(scrollY * 0.2);
+    drawTiled(ctx, A.rocksFar, ax, of, W, H, 0.41);
+    occlude(lctx, (l) => drawTiled(l, A.rocksFar, ax, of, W, H, 0.41));
+    lctx.globalAlpha = 0.7; drawTiled(lctx, A.rocksFarE, ax, of, W, H, 0.41); lctx.globalAlpha = 1;
+    const d2 = this.L('dust2'), o2 = Math.round(scrollY * 0.3);
+    this.tile(ctx, d2, o2);
+    occlude(lctx, (l) => this.tile(l, d2, o2));
     // mid rocks with rigs, lasers, sparks
     const oy = Math.round(scrollY * 0.45);
     drawTiled(ctx, A.rocksMid, ax, oy, W, H, 0.37);
+    occlude(lctx, (l) => drawTiled(l, A.rocksMid, ax, oy, W, H, 0.37));
     ctx.globalCompositeOperation = 'lighter';
     const duty = fract(t / 5.5), lf = duty < 0.62 ? (0.75 + 0.25 * Math.sin(t * 37) * Math.sin(t * 13)) * smooth(0, 0.04, duty) * (1 - smooth(0.58, 0.62, duty)) : 0;
     if (lf > 0) { ctx.globalAlpha = lf; drawTiled(ctx, A.laser, ax, oy, W, H, 0.37); ctx.globalAlpha = 1; }
     ctx.globalCompositeOperation = 'source-over';
-    lctx.globalAlpha = 0.9; drawTiled(lctx, A.rocksMidE, ax, oy, W, H, 0.37);
-    if (lf > 0) { lctx.globalAlpha = lf; drawTiled(lctx, A.laser, ax, oy, W, H, 0.37); }
+    lctx.globalAlpha = 0.8; drawTiled(lctx, A.rocksMidE, ax, oy, W, H, 0.37);
+    if (lf > 0) { lctx.globalAlpha = lf * 0.8; drawTiled(lctx, A.laser, ax, oy, W, H, 0.37); }
     lctx.globalAlpha = 1;
     A.midB.draw(ctx, lctx, ax, oy, W, H, t, 0.37);
-    A.midS.draw(ctx, lctx, ax, oy, W, H, t, 0.37);
+    if (lf > 0) A.midS.draw(ctx, lctx, ax, oy, W, H, t, 0.37);
     // near silhouettes
     const oy2 = Math.round(scrollY * 0.9);
     drawTiled(ctx, A.rocksNear, ax, oy2, W, H, 0.53);
+    occlude(lctx, (l) => drawTiled(l, A.rocksNear, ax, oy2, W, H, 0.53));
     lctx.globalAlpha = 0.8; drawTiled(lctx, A.rocksNearE, ax, oy2, W, H, 0.53); lctx.globalAlpha = 1;
-    // embers
+    // embers: dim, dull red single pixels drifting on the solar wind
     const e = this.emb, EA = A.emb;
-    ctx.fillStyle = '#ffab4f'; lctx.fillStyle = '#f7721f';
+    ctx.fillStyle = '#c4400f'; lctx.fillStyle = '#9a2a08';
     for (let i = 0; i < EA.n; i++) {
       const x = Math.round(e.x[i]) - 20, y = Math.round(e.y[i]) - 20;
       if (x < 0 || y < 0 || x >= W || y >= H) continue;
-      const a = 0.5 + 0.5 * Math.sin(t * 5 + EA.ph[i]);
-      ctx.globalAlpha = a; ctx.fillRect(x, y, 1, 1);
-      lctx.globalAlpha = a * 0.8; lctx.fillRect(x, y, 1, 1);
+      const a = 0.5 + 0.5 * Math.sin(t * 3 + EA.ph[i]);
+      ctx.globalAlpha = a * 0.6; ctx.fillRect(x, y, 1, 1);
+      lctx.globalAlpha = a * 0.35; lctx.fillRect(x, y, 1, 1);
     }
     ctx.globalAlpha = 1; lctx.globalAlpha = 1;
     lctx.globalCompositeOperation = lop;
   }
+  destroy() { if (this.disSun) this.disSun.free(); if (this.disProm) this.disProm.free(); this.disSun = this.disProm = null; super.destroy(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -2345,25 +2491,27 @@ const PAL_VEIL = ['#000000', ...RAMPS.void, ...RAMPS.magenta, ...RAMPS.plasma.sl
   '#1e1440', '#2a1a52', '#3a2266', '#50307c', '#241030', '#3a1640', '#5a2458', '#ffc4e1', '#ffffff'];
 const NEB_BLUE = ['#000000', '#05061a', '#090b2a', '#0e123c', '#151b52', '#1f276a'];
 
-// Veil noise layers as standalone seeded functions (regenerated at viewport width on desktop).
-function veilBase(tw) {
+// Veil noise layers as standalone seeded generators (also built at a wider width for
+// wide screens, in the background).
+function* veilBase(tw) {
   const rng = new Rng(0x7e11 + tw), H = 640;
-  const blue = nebulaTile(rng, tw, H, { cell: 160, oct: 4, warp: 40, bias: 0.4, contrast: 1.8, ramp: NEB_BLUE, step: 4 });
+  const blue = yield* nebulaTileG(rng, tw, H, { cell: 160, oct: 4, warp: 40, bias: 0.4, contrast: 1.8, ramp: NEB_BLUE, step: 4 });
   const cx = ctx2d(blue);
   cx.globalCompositeOperation = 'lighter';
   cx.drawImage(starTile(rng, tw, H, Math.round(1500 * tw / TW), { maxB: 0.7, pow: 2.4, big: 0.02 }), 0, 0);
+  yield;
   cx.drawImage(starTile(rng, tw, H, Math.round(90 * tw / TW), { maxB: 1, pow: 1.5, big: 0.12, cols: ['#9db4ff', '#b5c6ff', '#e6c4ff', '#ffc4e1', '#c8fff0'] }), 0, 0);
   return blue;
 }
 let veilQ = null;
 const veilQuant = () => veilQ || (veilQ = new Quant(PAL_VEIL));
-function veilFar(tw) {
-  return nebula2Tile(new Rng(0xfa7 + tw), tw, 640, veilQuant(), { cell: 200, oct: 4, warp: 70, colA: '#1a6a70', colB: '#24306e', biasA: 0.47, biasB: 0.45, gainA: 0.9, gainB: 0.9, fil: 0.5, filCol: '#2e9a8c', step: 3 });
+function* veilFar(tw) {
+  return yield* nebula2TileG(new Rng(0xfa7 + tw), tw, 640, veilQuant(), { cell: 200, oct: 4, warp: 70, colA: '#1a6a70', colB: '#24306e', biasA: 0.47, biasB: 0.45, gainA: 0.9, gainB: 0.9, fil: 0.5, filCol: '#2e9a8c', step: 3 });
 }
 // magenta emission clouds with star nurseries -> { nebMid, nebMidE }
-function veilMid(tw) {
+function* veilMid(tw) {
   const rng = new Rng(0x3a9 + tw), H = 1024;
-  const neb = nebula2Tile(rng, tw, H, veilQuant(), { cell: 150, warp: 80, colA: '#c02a78', colB: '#2aa08c', biasA: 0.49, biasB: 0.55, gainA: 1.25, gainB: 0.9, fil: 0.9, filCol: '#ff7ab0', step: 3, hot: '#ffb0d0', hotAt: 0.75 });
+  const neb = yield* nebula2TileG(rng, tw, H, veilQuant(), { cell: 150, warp: 80, colA: '#c02a78', colB: '#2aa08c', biasA: 0.49, biasB: 0.55, gainA: 1.25, gainB: 0.9, fil: 0.9, filCol: '#ff7ab0', step: 3, hot: '#ffb0d0', hotAt: 0.75 });
   const e = new Raster(tw, H, true), stars = new Raster(tw, H, true);
   const KN = [[0, 0, 0], [40, 14, 34], [70, 26, 60], [110, 50, 96], [170, 110, 150]];
   const n = Math.round(9 * tw / TW);
@@ -2388,35 +2536,54 @@ function veilMid(tw) {
     }
     stars.add(x, y, 255, 255, 255);
   }
+  yield;
   const nc = ctx2d(neb);
   nc.globalCompositeOperation = 'lighter';
   nc.drawImage(stars.toCanvas(), 0, 0);
-  return { nebMid: neb, nebMidE: banded(e) };
+  return { nebMid: neb, nebMidE: yield* bandedG(e) };
 }
-// dark dust filaments (alpha) with a thin ionised rim along their upper edges
-function veilDust(tw) {
+// dark dust filaments (alpha) with a thin ionised rim along their upper edges; the rim is
+// only drawn where a real dust body lies right below it (no floating dashes)
+function* veilDust(tw) {
   const rng = new Rng(0xd057 + tw), H = 1024;
   const f = new Fbm(rng, tw, H, 150, 4, 0.55), g = new Fbm(rng, tw, H, 80, 2, 0.5), m = new Fbm(rng, tw, H, 260, 2, 0.5);
-  const r = new Raster(tw, H, true);
-  const val = new Float32Array(tw * H);
-  for (let y = 0; y < H; y += 2) for (let x = 0; x < tw; x += 2) {
-    const w = g.at(x, y);
-    const v = f.ridge(x + (w - 0.5) * 70, y + (w - 0.5) * 70) * (0.75 + 0.5 * m.at(x, y));
-    val[y * tw + x] = v; val[y * tw + x + 1] = v; val[(y + 1) * tw + x] = v; val[(y + 1) * tw + x + 1] = v;
+  const cw = tw >> 1, ch = H >> 1, co = new Float32Array(cw * ch);
+  for (let y = 0; y < ch; y++) {
+    if (every(y, 32)) yield;
+    for (let x = 0; x < cw; x++) {
+      const X = x * 2, Y = y * 2, w = g.at(X, Y);
+      co[y * cw + x] = f.ridge(X + (w - 0.5) * 70, Y + (w - 0.5) * 70) * (0.75 + 0.5 * m.at(X, Y));
+    }
   }
+  const val = new Float32Array(tw * H);
+  for (let y = 0; y < H; y++) {
+    const fy = y / 2, y0 = fy | 0, ty = fy - y0, y1 = (y0 + 1) % ch;
+    for (let x = 0; x < tw; x++) {
+      const fx = x / 2, x0 = fx | 0, tx = fx - x0, x1 = (x0 + 1) % cw;
+      const a = co[y0 * cw + x0], b = co[y0 * cw + x1], c = co[y1 * cw + x0], d = co[y1 * cw + x1];
+      val[y * tw + x] = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+    }
+  }
+  yield;
+  const r = new Raster(tw, H, true);
   const TH0 = 0.86;
   const D = [pack(10, 6, 18, 110), pack(8, 5, 15, 170), pack(6, 4, 11, 215), pack(4, 3, 8, 240)];
-  const rimM = packHex('#912a58', 210);
-  for (let y = 0; y < H; y++) for (let x = 0; x < tw; x++) {
-    const v = val[y * tw + x];
-    const dens = clamp01((v - TH0) * 7);
-    if (dens <= 0) continue;
-    const k = qi(dens * 3.99, x, y, 4);
-    if (k === 0 && bay(x, y) > 0.5) continue;
-    let c = D[k];
-    const ul = val[wr(y - 1, H) * tw + x];
-    if (ul <= TH0 && val[wr(y + 2, H) * tw + x] > TH0 + 0.07) c = bay(x, y) < 0.75 ? rimM : c;
-    r.d[y * tw + x] = c;
+  const rimM = packHex('#912a58', 200), rimD = packHex('#4e1136', 170);
+  for (let y = 0; y < H; y++) {
+    if (every(y, 128)) yield;
+    for (let x = 0; x < tw; x++) {
+      const v = val[y * tw + x];
+      const dens = clamp01((v - TH0) * 7);
+      if (dens <= 0) continue;
+      const k = qe(dens * 3.99, x, y, 4, 0.5);
+      if (k === 0 && bay(x, y) > 0.5) continue;
+      let c = D[k];
+      if (val[wr(y - 1, H) * tw + x] <= TH0) {
+        const b1 = val[wr(y + 1, H) * tw + x], b3 = val[wr(y + 3, H) * tw + x];
+        if (b1 > TH0 + 0.03 && b3 > TH0 + 0.06) c = rimM; else if (b1 > TH0) c = rimD;
+      }
+      r.d[y * tw + x] = c;
+    }
   }
   return r.toCanvas();
 }
@@ -2424,14 +2591,10 @@ function veilDust(tw) {
 function* genVeil() {
   const rng = new Rng(0x7e11);
   const A = {};
-  A.base = veilBase(TW);
-  yield;
-  A.nebFar = veilFar(TW);
-  yield;
-  Object.assign(A, veilMid(TW));
-  yield;
-  A.dust = veilDust(TW);
-  yield;
+  A.base = yield* veilBase(TW);
+  A.nebFar = yield* veilFar(TW);
+  Object.assign(A, yield* veilMid(TW));
+  A.dust = yield* veilDust(TW);
   // --- crystal spires (f = 0.42) ---
   {
     const H = 1024, r = new Raster(TW, H, true), e = new Raster(TW, H, true);
@@ -2439,45 +2602,74 @@ function* genVeil() {
     const PM = mat(['#140a26', '#241244', '#3c1f6c', '#5c3aa0', '#8a64d8', '#bca0ff', '#efe2ff'], '#ffffff');
     const rockM = mat(['#07050c', '#0e0a16', '#171022', '#221830', '#302242', '#443058'], '#9b73ff');
     const spots = [[72, 120, 40, 0], [252, 360, 52, 1], [86, 620, 34, 1], [246, 830, 44, 0], [170, 480, 16, 0], [140, 950, 18, 1], [44, 380, 12, 0], [290, 620, 13, 1]];
-    for (const [x, y, s, kind] of spots) kCrystalCluster(r, e, x, y, s, rng, kind ? PM : CM, rockM, kind ? '#c9b0ff' : '#86f4d8');
-    A.crys = banded(outlined(r, pack(3, 2, 8, 230))); A.crysE = banded(e);
+    for (const [x, y, s, kind] of spots) { kCrystalCluster(r, e, x, y, s, rng, kind ? PM : CM, rockM, kind ? '#c9b0ff' : '#86f4d8'); yield; }
+    A.crys = yield* bandedG(outlined(r, pack(3, 2, 8, 230))); A.crysE = yield* bandedG(e);
     A.glints = new Twinkles(rng, 26, TW, H, 0.42, { cols: ['#e2fff6', '#f1e9ff', '#ffffff'], bigChance: 0.6, speed: [0.8, 2], density: (x, y) => { let best = 0; for (const [sx, sy, s] of spots) best = Math.max(best, 1 - Math.hypot(x - sx, y - sy) / (s * 1.1)); return best > 0 ? 1 : 0; } });
   }
-  yield;
-  // --- near dust globules (f = 0.72): irregular dark clouds at the sides, rim-lit from above ---
+  // --- near dust globules (f = 0.72): Bok globules at the sides. Lit from above by the
+  //     nebula: a dithered rim light that falls off over ~6 px, a faint teal back-light
+  //     along the underside, mottled interiors and a few embedded protostars ---
   {
     const H = 1024, f = new Fbm(rng, TW, H, 44, 4, 0.55), g = new Fbm(rng, TW, H, 18, 2, 0.5), f2 = new Fbm(rng, TW, H, 12, 2, 0.5);
     const r = new Raster(TW, H, true), e = new Raster(TW, H, true);
     const D = packRamp(['#040209', '#07040e', '#0b0615', '#110a1f', '#190e2b', '#23133a']);
-    const RIM = packRamp(['#3a0b27', '#6c1a45', '#bc4470', '#ffb0c8']);
-    const TRIM = packHex('#1e6a60');
-    // [x, y, rx, ry] — kept inside the tile so columns can be shifted
-    const glob = [[60, 150, 34, 58], [40, 250, 18, 26], [262, 540, 40, 64], [282, 640, 20, 30], [56, 860, 30, 44], [150, 70, 10, 12]];
-    const field = new Float32Array(TW * H).fill(-1);
-    for (const [px, py, rx, ry] of glob) {
+    const RIM = packRamp(['#23133a', '#3a0b27', '#6c1a45', '#bc4470', '#ffb0c8']);
+    const TEAL = packRamp(['#0b0615', '#0a2226', '#0e3a38', '#1e6a60']);
+    // [x, y, rx, ry] — x ± 1.6 rx stays inside the tile so columns can be shifted
+    const glob = [[60, 150, 34, 58], [40, 250, 18, 26], [250, 540, 40, 64], [282, 640, 20, 30], [56, 860, 30, 44], [150, 70, 10, 12]];
+    const field = new Float32Array(TW * H).fill(-1), gi = new Int8Array(TW * H).fill(-1);
+    for (let k = 0; k < glob.length; k++) {
+      const [px, py, rx, ry] = glob[k];
       for (let y = Math.floor(py - ry * 1.6); y < py + ry * 1.6; y++) for (let x = Math.max(0, Math.floor(px - rx * 1.6)); x < Math.min(TW, px + rx * 1.6); x++) {
         const Y = mod(y, H), dx = (x - px) / rx, dy = (y - py) / ry;
         const v = 1 - (dx * dx + dy * dy) + (f.at(x, Y) - 0.5) * 1.9 + (f2.at(x, Y) - 0.5) * 0.7;
-        field[Y * TW + x] = Math.max(field[Y * TW + x], v);
+        if (v > field[Y * TW + x]) { field[Y * TW + x] = v; gi[Y * TW + x] = k; }
       }
+      yield;
     }
+    // distance (in px, up to 8) to the outside, looking up (toward the light) and down
+    const up = new Uint8Array(TW * H), dn = new Uint8Array(TW * H);
+    for (let x = 0; x < TW; x++) {
+      let run = 0;
+      for (let y = 0; y < H; y++) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 9) : 0; up[i] = run; }
+      run = 0;
+      for (let y = H - 1; y >= 0; y--) { const i = y * TW + x; run = field[i] > 0 ? Math.min(run + 1, 9) : 0; dn[i] = run; }
+    }
+    yield;
     for (let y = 0; y < H; y++) for (let x = 0; x < TW; x++) {
-      const v = field[y * TW + x];
+      const i = y * TW + x, v = field[i];
       if (v <= 0) continue;
-      const up1 = field[wr(y - 1, H) * TW + x], up2 = field[wr(y - 2, H) * TW + wr(x + 1, TW)], up4 = field[wr(y - 4, H) * TW + wr(x + 1, TW)];
-      const dn1 = field[wr(y + 1, H) * TW + x];
+      const [px, py, rx, ry] = glob[gi[i]];
+      const ny = (y - py) / ry, nx = (x - px) / rx, nl = Math.hypot(nx, ny) + 1e-3;
+      const upness = clamp01(-ny / nl * 1.2 + 0.15), downness = clamp01(ny / nl);
+      const du = up[i], dd = dn[i];
+      const tex = g.at(x, y);
       let c;
-      if (up1 <= 0) { c = RIM[3]; e.set(x, y, packHex('#bc4470')); }
-      else if (up2 <= 0) { c = RIM[2]; e.set(x, y, packHex('#3a0b27')); }
-      else if (up4 <= 0) c = RIM[bay(x, y) < 0.5 ? 1 : 0];
-      else if (dn1 <= 0) c = TRIM;                                          // faint teal back-light underneath
+      const rv = (du <= 7 ? Math.pow(1 - (du - 1) / 7, 1.6) : 0) * upness * (0.8 + 0.4 * tex) * 4;
+      const tv = (dd <= 4 ? 1 - (dd - 1) / 4 : 0) * downness * 3;
+      if (rv > 0.6) {
+        const k = qe(rv, x, y, 5, 0.6);
+        c = RIM[k];
+        if (k >= 3) e.set(x, y, packHex(k === 4 ? '#bc4470' : '#4e1136'));
+      } else if (tv > 0.6) c = TEAL[qe(tv, x, y, 4, 0.6)];
       else {
-        const bil = g.at(x, y) * 1.2 + clamp01(v) * 0.5 - (1 - smooth(0, 0.3, v)) * 0.5;
-        c = D[qi(clamp(bil * 4 - 1, 0, 5), x, y, 6)];
+        const bil = tex * 1.2 + clamp01(v) * 0.5 - (1 - smooth(0, 0.3, v)) * 0.5 + (du < 12 ? 0.15 * upness : 0);
+        c = D[qe(clamp(bil * 4 - 1, 0, 5), x, y, 6, 0.6)];
       }
-      r.d[y * TW + x] = c;
+      r.d[i] = c;
     }
-    A.pillars = banded(r); A.pillarsE = banded(e);
+    // embedded protostars: a hot pixel in a small dim halo, deep inside the bigger globules
+    for (let k = 0; k < glob.length; k++) {
+      const [px, py, rx, ry] = glob[k];
+      if (rx < 25) continue;
+      for (let n = 0; n < 2; n++) {
+        const x = Math.round(px + rng.range(-0.4, 0.4) * rx), y = Math.round(py + rng.range(-0.2, 0.5) * ry), Y = mod(y, H);
+        if (field[Y * TW + x] < 0.5 || up[Y * TW + x] < 8) continue;
+        for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) r.set(x + ox, y + oy, packHex('#6c1a45'));
+        r.set(x, y, packHex('#fff0f6')); e.set(x, y, packHex('#8a3a60'));
+      }
+    }
+    A.pillars = yield* bandedG(r); A.pillarsE = yield* bandedG(e);
   }
   // lightning: bolt sprites + a radial mask for lighting up the clouds
   A.bolts = [];
@@ -2505,7 +2697,6 @@ function* genVeil() {
 }
 
 class VeilStage extends Stage {
-  wide() { return { base: veilBase, nebFar: veilFar, nebMid: veilMid, dust: veilDust }; }
   constructor(A) {
     super('veil', A);
     this.scrollSpeed = 24;
@@ -2513,18 +2704,27 @@ class VeilStage extends Stage {
     this.bolt = { t: 0, x: 0, y: 0, i: 0, big: 0, next: 2.5 };
     this.rnd = mulberry32(0x5eed);
   }
-  layout() {
-    this.S.comp = makeCanvas(96, 96);
-    this.compCtx = ctx2d(this.S.comp);
+  revive() { super.revive(); this.bolt.t = 0; this.bolt.next = 2.5; }
+  *layout(S) {
+    S.comp = makeCanvas(96, 96);
+    S.compCtx = ctx2d(S.comp);
   }
   flash() {
     super.flash();
     this.strike(true);
   }
+  // Ambient strikes stay in the outer 40 px of the field (or beside it on wide screens) so
+  // they never swamp the magenta/violet bullets in the middle; boss flashes may hit anywhere.
   strike(big) {
-    const b = this.bolt, R = this.rnd;
+    const b = this.bolt, R = this.rnd, fx = this.fx, fy = this.fy;
     b.t = big ? 0.9 : 0.55; b.big = big ? 1 : 0;
-    b.x = Math.round(this.fx + 30 + R() * (FIELD_W - 60)); b.y = Math.round(this.fy + 20 + R() * (FIELD_H * 0.6));
+    if (big) b.x = Math.round(fx + 30 + R() * (FIELD_W - 60));
+    else {
+      const side = R() < 0.5 ? -1 : 1, out = fx > 60 && R() < 0.6;
+      const dx = out ? -R() * 50 : R() * 40;
+      b.x = Math.round(side < 0 ? fx + dx : fx + FIELD_W - dx);
+    }
+    b.y = Math.round(fy + 20 + R() * (FIELD_H * 0.6));
     b.i = Math.floor(R() * this.A.bolts.length);
     b.next = 2 + R() * 5;
   }
@@ -2534,7 +2734,7 @@ class VeilStage extends Stage {
     b.next -= dt;
     if (b.next <= 0 && b.t <= 0) this.strike(false);
   }
-  render(ctx, lctx, scrollY, t) {
+  render(ctx, lctx, scrollY, t, S) {
     const { W, H, A } = this;
     const lop = lctx.globalCompositeOperation;
     const ax = this.ax;
@@ -2552,36 +2752,41 @@ class VeilStage extends Stage {
     if (b.t > 0) {
       const life = b.big ? 0.9 : 0.55, u = 1 - b.t / life;
       const flick = u < 0.35 ? (Math.sin(u * 90) > -0.2 ? 1 : 0.35) : 1;
-      const a = (1 - u) * (1 - u) * flick * (b.big ? 1.4 : 1);
-      const c = this.compCtx, sx = b.x - 48, sy = b.y - 48;
+      const a = (1 - u) * (1 - u) * flick * (b.big ? 0.9 : 0.6);
+      const c = S.compCtx, sx = b.x - 48, sy = b.y - 48;
       c.globalCompositeOperation = 'copy';
       // copy the nebula patch under the flash (tile space) into the comp canvas
       const tx = mod(sx - nax, nebMid.width), ty = mod(sy - om, nebMid.height);
       drawTiled(c, nebMid, -tx, -ty, 96, 96);
       c.globalCompositeOperation = 'destination-in';
       c.drawImage(A.flashMask, 0, 0);
-      ctx.globalAlpha = clamp01(a * 1.6); ctx.drawImage(this.S.comp, sx, sy); ctx.drawImage(this.S.comp, sx, sy);
-      ctx.globalAlpha = clamp01(a * 0.7); ctx.drawImage(A.flashGlow, b.x - 36, b.y - 36);
-      lctx.globalAlpha = clamp01(a); lctx.drawImage(this.S.comp, sx, sy); lctx.drawImage(A.flashGlow, b.x - 36, b.y - 36);
+      ctx.globalAlpha = clamp01(a * 1.5); ctx.drawImage(S.comp, sx, sy);
+      ctx.globalAlpha = clamp01(a * 0.6); ctx.drawImage(A.flashGlow, b.x - 36, b.y - 36);
+      lctx.globalAlpha = clamp01(a * 0.8); lctx.drawImage(S.comp, sx, sy); lctx.drawImage(A.flashGlow, b.x - 36, b.y - 36);
       if (u < 0.4 && flick > 0.5) {
         const bo = A.bolts[b.i];
         ctx.globalAlpha = 1; ctx.drawImage(bo, b.x - 32, b.y - 40);
-        lctx.globalAlpha = 0.9; lctx.drawImage(bo, b.x - 32, b.y - 40);
+        lctx.globalAlpha = b.big ? 0.9 : 0.6; lctx.drawImage(bo, b.x - 32, b.y - 40);
       }
       ctx.globalAlpha = 1; lctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = 'source-over';
-    this.tile(ctx, this.L('dust'), Math.round(scrollY * 0.24));
+    // dark dust lanes, crystals and globules each hide the light of the layers behind them
+    const dust = this.L('dust'), od = Math.round(scrollY * 0.24);
+    this.tile(ctx, dust, od);
+    occlude(lctx, (l) => this.tile(l, dust, od));
     const oc = Math.round(scrollY * 0.42);
     drawTiled(ctx, A.crys, ax, oc, W, H, 0.43);
+    occlude(lctx, (l) => drawTiled(l, A.crys, ax, oc, W, H, 0.43));
     lctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 2.3); drawTiled(lctx, A.crysE, ax, oc, W, H, 0.43); lctx.globalAlpha = 1;
     A.glints.draw(ctx, lctx, ax, oc, W, H, t * 1.5, 1, null, 0.43);
     const op = Math.round(scrollY * 0.72);
     drawTiled(ctx, A.pillars, ax, op, W, H, 0.29);
+    occlude(lctx, (l) => drawTiled(l, A.pillars, ax, op, W, H, 0.29));
     lctx.globalAlpha = 0.6; drawTiled(lctx, A.pillarsE, ax, op, W, H, 0.29); lctx.globalAlpha = 1;
     // big flash: a faint wash over everything
     if (this.flashT > 0) {
-      lctx.globalAlpha = this.flashT * this.flashT * 0.1; lctx.fillStyle = '#b3175f'; lctx.fillRect(0, 0, W, H); lctx.globalAlpha = 1;
+      lctx.globalAlpha = this.flashT * this.flashT * 0.07; lctx.fillStyle = '#b3175f'; lctx.fillRect(0, 0, W, H); lctx.globalAlpha = 1;
     }
     lctx.globalCompositeOperation = lop;
   }
@@ -2610,6 +2815,8 @@ function* genWreck() {
   const A = {};
   const HH = 1024, HW = HULL_W;
   const r = new Raster(HW, HH, true), e = new Raster(HW, HH, true);
+  // periodic 1D noise over the tile height (sampled on a circle) so edges wrap cleanly
+  const pnoise = (y, per, freq, s) => { const a = (y / per) * TAU, rr = (per * freq) / TAU; return vnoise3(Math.cos(a) * rr + 50, Math.sin(a) * rr + 50, s * 1.7, 9); };
   const HR = packRamp(['#0b0e10', '#12181b', '#1a2226', '#232d32', '#2e3a40', '#3a484e', '#4a5a60', '#5f7176', '#7d9094']);
   const RU = packRamp(['#1a1311', '#2a1d18', '#3c2a20', '#523626', '#6a452e']);
   const grime = new Fbm(rng, HW, HH, 90, 5, 0.55);
@@ -2710,8 +2917,8 @@ function* genWreck() {
     if (kind === 'windows') {
       for (let xx = 4; xx < w - 4; xx += 3) {
         const lit = rng.chance(0.3);
-        r.set(x + xx, y + 4, lit ? packHex('#ffd27a') : HR[0]);
-        if (lit) e.set(x + xx, y + 4, packHex('#6a4a18'));
+        r.set(x + xx, y + 4, lit ? packHex('#e8dcb0') : HR[0]);
+        if (lit) e.set(x + xx, y + 4, packHex('#3a3628'));
       }
     }
     if (kind === 'hatch') {
@@ -2722,14 +2929,15 @@ function* genWreck() {
   };
   block(104, 250, 40, 22, 'windows');
   block(196, 262, 34, 30, 'hatch');
-  block(22, 380, 30, 60, 'ribbed');
+  block(16, 380, 28, 60, 'ribbed');
   block(110, 700, 56, 26, 'windows');
-  block(284, 560, 36, 44, 'ribbed');
+  block(292, 560, 28, 44, 'ribbed');
   block(170, 1000, 44, 20, 'hatch');
   block(96, 470, 24, 14, 'plain');
   yield;
-  // --- trenches with pipes, bracing and rim lights ---
-  const bl = new Blinkers(HW, HH, true), steam = [], arcs = new Sparks(HW, HH, true);
+  // --- trenches with pipes, bracing and running lights. They run along the field's edges,
+  //     so the hull between them (field x ~20..220) stays clean plating for ground turrets ---
+  const bl = new Blinkers(HW, HH, true), steam = [], arcs = new Sparks(HW, HH, true, SPARK_WELD, 0.1);
   const TR = packRamp(['#040506', '#07090b', '#0c1013', '#12181b', '#1a2226', '#26323a', '#34444c']);
   const PIPE = mat(['#0e1214', '#182024', '#253036', '#36444b', '#4c5d64', '#6a7e84'], '#a8bcc0');
   const trench = (x0, w) => {
@@ -2742,20 +2950,19 @@ function* genWreck() {
       r.set(x, y, TR[qi(clamp(v + (fine[y * HW + x] - 0.5), 0, 6), x, y, 7)]);
     }
     // pipes along the floor
-    const pr = [[x0 + 9, 3], [x0 + 15, 2], [x0 + w - 8, 2]];
-    for (const [px, rad] of pr) if (px + rad * 2 < x0 + w - 2) kCyl(r, px, 0, HH, rad, false, PIPE, L_HULL, { seg: 23, caps: false });
-    // cross braces + rim lights
+    const pr = [[x0 + 5, 2], [x0 + 10, 2]];
+    for (const [px, rad] of pr) if (px + rad * 2 < x0 + w - 2) kCyl(r, px, 0, HH, rad, false, PIPE, L_HULL, { seg: 32, caps: false });
+    // cross braces + cool running lights (slow fade, 1x2 px: never mistaken for bullets)
     for (let y = 20; y < HH; y += 64) {
       kBox(r, x0 + 2, y, w - 4, 4, PIPE, L_HULL, { base: 3 });
-      bl.add(x0 - 1, y + 16, '#ffab4f', 2.4, (y / 64) * 0.08, 0.2);
-      bl.add(x0 + w, y + 16, '#ffab4f', 2.4, (y / 64) * 0.08 + 0.5, 0.2);
-      e.set(x0 - 1, y + 16, packHex('#3d1d06')); e.set(x0 + w, y + 16, packHex('#3d1d06'));
+      bl.add(x0 - 1, y + 16, '#e8f6ff', 3.2, (y / 64) * 0.13, 0.5, 1, true);
+      bl.add(x0 + w, y + 16, '#c4ffc0', 3.2, (y / 64) * 0.13 + 0.5, 0.5, 1, true);
     }
     // rim lips
     for (let y = 0; y < HH; y++) { r.set(x0 - 1, y, HR[7]); r.set(x0 + w, y, HR[1]); }
   };
-  trench(62, 26);
-  trench(250, 24);
+  trench(48, 18);
+  trench(270, 18);
   // cross trench segments
   const xtrench = (y0, h, x0, x1) => {
     for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x1; x++) {
@@ -2766,9 +2973,9 @@ function* genWreck() {
     kCyl(r, x0, y0 + 8, x1 - x0, 2, true, PIPE, L_HULL, { seg: 17, caps: false });
     for (let x = x0; x < x1; x++) { r.set(x, y0 - 1, HR[7]); r.set(x, y0 + h, HR[1]); }
   };
-  xtrench(300, 16, 88, 250);
-  xtrench(784, 14, 14, 62);
-  xtrench(784, 14, 274, HW - 14);
+  xtrench(300, 16, 66, 270);
+  xtrench(784, 14, 14, 48);
+  xtrench(784, 14, 288, HW - 14);
   yield;
   // --- vents: grilles, some glowing hot, some venting steam ---
   const vent = (x, y, w, h, kind) => {
@@ -2779,7 +2986,7 @@ function* genWreck() {
       if (!slat && kind === 'hot') {
         const k = 1 - Math.abs(xx - w / 2) / (w / 2);
         const hc = hexToRgb(k > 0.6 ? '#f7811e' : k > 0.3 ? '#c4400f' : '#7d1e08');
-        c = pack(hc[0], hc[1], hc[2]); e.set(x + xx, y + yy, pack(hc[0] * 0.7, hc[1] * 0.6, hc[2] * 0.5));
+        c = pack(hc[0], hc[1], hc[2]); e.set(x + xx, y + yy, pack(hc[0] * 0.4, hc[1] * 0.32, hc[2] * 0.25));
       }
       r.set(x + xx, y + yy, c);
     }
@@ -2794,7 +3001,7 @@ function* genWreck() {
   const ring = (cx, cy, rad) => {
     for (let a = 0; a < TAU; a += 0.02) { r.set(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad, Math.sin(a + 0.9) < 0 ? HR[7] : HR[1]); r.set(cx + Math.cos(a) * (rad - 2), cy + Math.sin(a) * (rad - 2), HR[2]); }
   };
-  ring(200, 430, 9); ring(40, 960, 8);
+  ring(200, 430, 9); ring(34, 960, 8);
   yield;
   // --- a dead main-battery turret: barbette, armoured gunhouse and twin barrels ---
   {
@@ -2860,15 +3067,20 @@ function* genWreck() {
       if (hole && d < hr + 0.1) {                                   // torn edge: lit lip on the far side, dark underside near
         const facing = (x * L_HULL[0] + y * L_HULL[1]) / (Math.hypot(x, y) + 0.01);
         r.d[i] = d < hr + 0.04 ? (facing < 0 ? HR[7] : HR[0]) : facing < 0 ? HR[5] : HR[2];
+        // still-hot metal: a broken 1-2 px band right on the torn lip
+        if (d < hr + 0.06 && fine[i] > 0.5) {
+          const hc = CRACK_HEX[clamp(Math.round((fine[i] - 0.5) * 9), 0, 3)];
+          r.d[i] = hc; e.d[i] = pack(unR(hc) * 0.4, unG(hc) * 0.3, unB(hc) * 0.25);
+        }
         continue;
       }
       if (d < 1.9) {
         const k = (1 - smooth(0.3, 1.9, d)) * (0.75 + fine[i] * 0.6);
         const p = r.d[i], s = 1 - k * 0.85;
         r.d[i] = bay(X, Y) < k * 1.4 ? pack(unR(p) * s, unG(p) * s * 0.95, unB(p) * s * 0.9) : p;
-        if (d < (hole ? 0.95 : 0.5) && fine[i] > (hole ? 0.6 : 0.7)) {   // glowing embers in the scar
-          const hc = hexToRgb(fine[i] > 0.75 ? '#f7811e' : '#8f260b');
-          r.d[i] = pack(hc[0], hc[1], hc[2]); e.d[i] = pack(hc[0] * 0.8, hc[1] * 0.6, hc[2] * 0.5);
+        if (!hole && d < 0.35 && fine[i] > 0.78) {                        // a few dull embers in the burn
+          const hc = CRACK_HEX[fine[i] > 0.84 ? 2 : 1];
+          r.d[i] = hc; e.d[i] = pack(unR(hc) * 0.35, unG(hc) * 0.25, unB(hc) * 0.2);
         }
       }
     }
@@ -2877,9 +3089,9 @@ function* genWreck() {
       arcs.add(cx + rad * 0.4, cy + rad * 0.3, -1, -0.4, 1.2, rng.next());
     }
   }
-  // armour belts along both hull edges (ragged outer edge)
+  // armour belts along both hull edges (ragged outer edge, periodic over the tile)
   for (let y = 0; y < HH; y++) {
-    const rag = (s) => Math.round(2 + 2 * vnoise3(y * 0.08, s, 0.3, 9) + (((y + s * 40) % 96) < 30 ? 3 : 0));
+    const rag = (s) => Math.round(2 + 2 * pnoise(y, HH, 0.08, s) + (((y + s * 40) % 128) < 40 ? 3 : 0));
     const l = rag(1), rr = rag(2);
     for (let x = 0; x < 14; x++) {
       const vL = x < l ? -1 : x === l ? 7.5 : x < l + 3 ? 6 : x === 13 ? 1 : 4 + (fine[y * HW + x] - 0.5) * 2;
@@ -2888,9 +3100,9 @@ function* genWreck() {
       const vR = x < rr ? -1 : x === rr ? 1 : x < rr + 3 ? 2.2 : x === 13 ? 7 : 3.6 + (fine[y * HW + X] - 0.5) * 2;
       r.d[y * HW + X] = vR < 0 ? 0 : HR[qi(clamp(vR, 0, 8), X, y, 9)];
     }
-    if (y % 48 === 8) { bl.add(8, y, '#ff5a5a', 1.8, y / 480, 0.12); bl.add(HW - 9, y, '#6fd23f', 1.8, y / 480 + 0.4, 0.12); }
+    if (y % 64 === 8) { bl.add(8, y, '#ff5a5a', 1.8, y / 512, 0.12); bl.add(HW - 9, y, '#6fd23f', 1.8, y / 512 + 0.4, 0.12); }
   }
-  A.hull = r.toCanvas(); A.hullE = banded(e); A.hullB = bl; A.arcs = arcs;
+  A.hull = r.toCanvas(); A.hullE = yield* bandedG(e); A.hullB = bl; A.arcs = arcs;
   A.steam = steam;
   yield;
 
@@ -2953,17 +3165,18 @@ function* genWreck() {
     }
     for (let k = 0; k < 7; k++) { const y = rng.int(0, H2); kCyl(d, C2 - 150, y, 300, 2, true, PIPE, L_HULL, { seg: 29, caps: false }); }
     for (let k = 0; k < 10; k++) {
-      const x = rng.int(C2 - 130, C2 + 130), y = rng.int(0, H2);
-      for (let yy = -6; yy <= 6; yy++) for (let xx = -7; xx <= 7; xx++) {
-        const q = 1 - Math.hypot(xx, yy * 1.3) / 7;
-        if (q <= 0 || bay(x + xx, y + yy) > q * 1.3) continue;
-        const hc = hexToRgb(q > 0.6 ? '#fdbb3a' : q > 0.3 ? '#f7721f' : '#8f260b');
-        d.set(x + xx, y + yy, pack(hc[0], hc[1], hc[2])); de.set(x + xx, y + yy, pack(hc[0] * 0.7, hc[1] * 0.55, hc[2] * 0.4));
+      const x = rng.int(C2 - 130, C2 + 130), y = rng.int(0, H2), sd = rng.int(1, 999);
+      for (let yy = -6; yy <= 6; yy++) for (let xx = -9; xx <= 9; xx++) {
+        // ragged burning debris: noise-shaped, flattened, hottest in small pockets
+        const q = 1 - Math.hypot(xx / 1.3, yy * 1.2) / 7 + (vn2((x + xx) * 0.45, (y + yy) * 0.45, sd) - 0.5) * 1.1;
+        if (q <= 0.05 || bay(x + xx, y + yy) > q * 1.6) continue;
+        const hc = hexToRgb(q > 0.7 ? '#fdbb3a' : q > 0.42 ? '#f7721f' : q > 0.2 ? '#b0300c' : '#5a1206');
+        d.set(x + xx, y + yy, pack(hc[0], hc[1], hc[2])); de.set(x + xx, y + yy, pack(hc[0] * 0.45, hc[1] * 0.32, hc[2] * 0.22));
       }
     }
     // ragged outer edges and a few holes to space in the outer plating
     for (let y = 0; y < H2; y++) {
-      const edge = 24 + Math.round(10 * vnoise3(y * 0.05, 1, 0.2, 5) + (((y % 192) < 60) ? 16 : 0));
+      const edge = 24 + Math.round(10 * pnoise(y, H2, 0.05, 5) + (((y % 192) < 60) ? 16 : 0));
       for (let x = 0; x < edge; x++) { d.d[y * W2 + x] = 0; d.d[y * W2 + W2 - 1 - x] = 0; de.d[y * W2 + x] = 0; de.d[y * W2 + W2 - 1 - x] = 0; }
     }
     for (let k = 0; k < 4; k++) {
@@ -2973,7 +3186,7 @@ function* genWreck() {
         if (q < 1) d.set(x + xx, y + yy, 0);
       }
     }
-    A.deck = outlined(d, pack(2, 2, 3, 255)).toCanvas(); A.deckE = banded(de);
+    A.deck = outlined(d, pack(2, 2, 3, 255)).toCanvas(); A.deckE = yield* bandedG(de);
   }
   yield;
   // --- deep space below: stars, a cold nebula glow and far debris ---
@@ -2991,7 +3204,7 @@ function* genWreck() {
       if (rng.chance(0.5)) kRock(deb, null, x, y, rng.range(2, 6), rng, DM, [-0.6, -0.6, 0.5], { craters: 0, seed: k });
       else { kBox(deb, x, y, rng.int(6, 16), rng.int(3, 6), DM, L_HULL, { base: 2 }); kBeam(deb, x, y, x + rng.int(-12, 12), y + rng.int(8, 20), 2, DM, L_HULL); }
     }
-    A.debris = banded(outlined(deb, pack(1, 1, 2, 200)));
+    A.debris = yield* bandedG(outlined(deb, pack(1, 1, 2, 200)));
   }
   // steam puff sprites (dithered, 3 sizes)
   A.puffs = [5, 9, 13].map((s) => glowSprite(s, s, ['#000000', '#343c40', '#5a666c', '#8a969c', '#c2ccd0'], (dx, dy) => Math.max(0, 1 - Math.hypot(dx, dy) / (s / 2)) * 1.1));
@@ -3005,9 +3218,11 @@ class WreckStage extends Stage {
     this.grade = { tint: [0.97, 1.0, 1.0], lift: [0.004, 0.01, 0.014], sat: 0.88, contrast: 1.14 };
   }
   // Hull-space helpers for gameplay (the hull tile is 336 x 1024, centred on the field and
-  // scrolling at exactly 1.0 x scrollY): field coords of hull pixel (hx, hy).
+  // scrolling at exactly 1.0 x scrollY): field coords of hull pixel (hx, hy). hullY returns
+  // the copy of that tile row that is on (or nearest above) the screen. The trenches run
+  // along field x 0..18 and 222..240, so field x 20..220 is clean plating for turrets.
   hullX(hx) { return hx - HULL_W / 2 + FIELD_W / 2; }
-  hullY(hy, scrollY) { return mod(hy + Math.round(scrollY), 1024) - this.fy; }
+  hullY(hy, scrollY) { let y = mod(hy + Math.round(scrollY), 1024); if (y >= this.H) y -= 1024; return y - this.fy; }
   render(ctx, lctx, scrollY, t) {
     const { W, H, A } = this;
     const lop = lctx.globalCompositeOperation;
@@ -3020,16 +3235,18 @@ class WreckStage extends Stage {
     lctx.globalCompositeOperation = 'lighter';
     const fl = 0.7 + 0.3 * Math.sin(t * 9) * Math.sin(t * 5.3);
     lctx.globalAlpha = fl; drawStrip(lctx, A.deckE, dx, dy, H); lctx.globalAlpha = 1;
-    // hull (exactly 1.0 x scrollY)
+    // hull (exactly 1.0 x scrollY); intact plating hides the deck fires below it, so their
+    // light only escapes through the breaches
     const hx = Math.round(cx - HULL_W / 2), hy = Math.round(scrollY);
     let y0 = mod(hy, 1024); if (y0 > 0) y0 -= 1024;
     for (let y = y0; y < H; y += 1024) ctx.drawImage(A.hull, hx, y);
+    occlude(lctx, (l) => { for (let y = y0; y < H; y += 1024) l.drawImage(A.hull, hx, y); });
     const surge = this.flashT;
     lctx.globalAlpha = clamp01(0.85 + surge);
     drawStrip(lctx, A.hullE, hx, hy, H);
     if (surge > 0.15) { lctx.globalAlpha = clamp01(surge - 0.15); drawStrip(lctx, A.hullE, hx, hy, H); }
     lctx.globalAlpha = 1;
-    A.hullB.draw(ctx, lctx, hx, hy, hx + HULL_W, H, surge > 0 ? t * 6 : t);
+    A.hullB.draw(ctx, lctx, hx, hy, hx + HULL_W, H, surge > 0 ? t * 3 : t, 0, 0.6 + surge);
     A.arcs.draw(ctx, lctx, hx, hy, hx + HULL_W, H, t * (1 + surge * 3));
     // steam from vents: puffs drift down-screen (relative wind) and dissolve
     for (let i = 0; i < A.steam.length; i++) {

@@ -17,7 +17,7 @@
 <div id="hud"></div>
 <div id="bar"></div>
 <script type="module">
-import { createFX, _fxArt } from '../js/fx/particles.js';
+import { createFX, buildFX, _fxArt } from '../js/fx/particles.js';
 import { createPost } from '../js/fx/post.js';
 import { RAMPS } from '../js/art/palette.js';
 
@@ -25,8 +25,11 @@ import { RAMPS } from '../js/art/palette.js';
 // and hooks for deterministic capture (window.fxDev: step(n), goto(sec), stress(frames)).
 // URL params:
 //   ?t=SEC        step deterministically to SEC and freeze    ?manual=1   no auto-run (Playwright)
-//   ?nopost=1     2D composite instead of post.js              ?q=high|medium|low
-//   ?stress=1     keep ~1500 particles alive, time update+draw  ?lens=1     black-hole lensing test
+//   ?nopost=1     2D composite instead of post.js              ?q=high|medium|low|auto
+//   ?stress=1     keep ~1500 particles alive, time update+draw  ?lens=S     black-hole lensing test
+//                 (horizon-like values: r = 3.4 x shadow radius, strength S e.g. 0.8)
+//   ?nofield=1    no field rect (post effects over the HUD strip too)
+//   ?illum=X / ?bloom=X   override post bloom illumination / additive bloom intensity
 //   ?atlas=ex|sp|glow&p=N&z=Z&sx=&sy=  inspect atlases (with ?nopost=1)
 //   stress tuning: ?nolight=1 / ?nomain=1 (draw one layer), ?flush=1 (force raster in timing)
 const qs = new URLSearchParams(location.search);
@@ -42,16 +45,17 @@ const ctx = main.getContext('2d', { alpha: false });
 const lctx = light.getContext('2d', { alpha: false });
 
 const t0 = performance.now();
+if (qs.get('async')) await buildFX();
 const fx = createFX();
 const buildMs = performance.now() - t0;
 const post = qs.get('nopost') ? null : createPost(screen);
 let ctx2 = null;
-if (post) post.resize(cssW, cssH, dpr, W, H);
+if (post) post.resize(cssW, cssH, dpr, W, H, cssW / W);
 else {
   screen.width = Math.round(cssW * Math.min(2, dpr)); screen.height = Math.round(cssH * Math.min(2, dpr));
   ctx2 = screen.getContext('2d');
 }
-const quality = qs.get('q') || 'high';
+const quality = qs.get('q') === 'auto' ? undefined : qs.get('q') || 'high';
 
 // ---------- stand-in scene ----------
 let seed = 7;
@@ -133,6 +137,8 @@ const beams = () => {
   const out = [];
   if (t > 4.0 && t < 6.4) out.push({ x1: 60, y1: 58, x2: 60, y2: 400, w: 9, phase: t < 4.8 ? 'warn' : 'fire', pal: 'magenta' });
   if (t > 4.2 && t < 6.4) out.push({ x1: 206, y1: 48, x2: 140, y2: 400, w: 7, phase: t < 5.0 ? 'warn' : 'fire', pal: 'plasma' });
+  if (t > 4.4 && t < 6.4) out.push({ x1: 20, y1: 190, x2: 150, y2: 320, w: 5, phase: t < 5.1 ? 'warn' : 'fire', pal: 'crystal' });
+  if (t > 4.6 && t < 6.4) out.push({ x1: 236, y1: 250, x2: 10, y2: 205, w: 3, phase: t < 5.2 ? 'warn' : 'fire', pal: 'ember' });
   return out;
 };
 function sim() {
@@ -154,9 +160,25 @@ function sim() {
 }
 
 // ---------- render ----------
-const LENS = qs.get('lens') ? { x: FX0 + 150, y: FY0 + 250, r: 12, strength: +qs.get('lens') } : null;
+const LENS_RS = 20;   // painted shadow radius; lensing r follows backgrounds.js horizon (3.4 x rs)
+const LENS = qs.get('lens') ? { x: FX0 + 120, y: FY0 + 150, r: LENS_RS * 3.4, strength: +qs.get('lens') } : null;
+const FIELD = qs.get('nofield') ? null : { x: FX0, y: FY0, w: 240, h: 400 };
 const wavesInt = Array.from({ length: 8 }, () => ({ x: 0, y: 0, r: 0, strength: 0 }));
-const pstate = { waves: [], flash: 0, flashColor: [1, 1, 1], chroma: 0, grade: { tint: [1, 0.97, 1.04], lift: [0.01, 0, 0.02], sat: 1.05, contrast: 1.04 }, lensing: null, time: 0, quality, scanlines: true };
+const pstate = { waves: [], flash: 0, flashColor: [1, 1, 1], chroma: 0, grade: { tint: [1, 0.97, 1.04], lift: [0.01, 0, 0.02], sat: 1.05, contrast: 1.04 }, lensing: null, time: 0, quality, scanlines: true, field: FIELD };
+if (qs.get('illum')) pstate.illum = +qs.get('illum');
+if (qs.get('bloom')) pstate.bloom = +qs.get('bloom');
+// stand-in HUD strip above/below the field: must never move or colour-fringe
+function drawHudStandIn(g, l) {
+  const y0 = Math.max(2, FY0 - 16);
+  g.fillStyle = '#05040c'; g.fillRect(0, 0, W, Math.max(0, FY0));
+  g.fillStyle = '#dfe8f7';
+  for (let i = 0; i < 7; i++) { g.fillRect(90 + i * 8, y0, 5, 7); g.fillStyle = i & 1 ? '#dfe8f7' : '#79ecff'; }
+  g.fillStyle = '#7c8fb3'; for (let i = 0; i < 3; i++) g.fillRect(6 + i * 11, y0 + 1, 7, 5);
+  g.fillStyle = '#ffd966'; g.fillRect(190, y0, 50, 7);
+  g.fillStyle = '#05040c'; g.fillRect(0, FY0 + 400, W, H - FY0 - 400);
+  g.fillStyle = '#36425f'; g.fillRect(40, FY0 + 410, 170, 3); g.fillStyle = '#27c2ea'; g.fillRect(40, FY0 + 410, 60, 3);
+  l.fillStyle = '#0b4f7e'; l.fillRect(40, FY0 + 410, 60, 3);
+}
 function renderFrame() {
   frame++;
   const t = (tick - loopBase) / 60;
@@ -168,12 +190,16 @@ function renderFrame() {
     ctx.fillStyle = c; ctx.fillRect(Math.floor(s.x), y, 1, 1);
     if (s.z > 0.93 && ((frame + s.c * 60) | 0) % 50 < 40) { lctx.fillStyle = '#526283'; lctx.fillRect(Math.floor(s.x), y, 1, 1); }
   }
-  if (LENS) {   // stand-in black hole + accretion disk for the lensing test
-    const g = ctx, hx = LENS.x, hy = LENS.y;
-    g.fillStyle = '#ff9466'; g.fillRect(hx - 30, hy - 1, 60, 3); lctx.fillStyle = '#e0565b'; lctx.fillRect(hx - 30, hy - 1, 60, 3);
-    g.fillStyle = '#fff4d6'; g.beginPath(); g.arc(hx, hy, LENS.r + 2, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#000'; g.beginPath(); g.arc(hx, hy, LENS.r, 0, Math.PI * 2); g.fill();
+  if (LENS) {   // stand-in black hole + accretion disk + a grid to read the warp against
+    const g = ctx, hx = LENS.x, hy = LENS.y, rs = LENS_RS;
+    g.fillStyle = '#252050';
+    for (let x = FX0; x < FX0 + 240; x += 12) g.fillRect(x, FY0, 1, 400);
+    for (let y = FY0; y < FY0 + 400; y += 12) g.fillRect(FX0, y, 240, 1);
+    g.fillStyle = '#ff9466'; g.fillRect(hx - 80, hy - 1, 160, 3); lctx.fillStyle = '#e0565b'; lctx.fillRect(hx - 80, hy - 1, 160, 3);
+    g.fillStyle = '#fff4d6'; g.beginPath(); g.arc(hx, hy, rs + 2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#000'; g.beginPath(); g.arc(hx, hy, rs, 0, Math.PI * 2); g.fill();
   }
+  drawHudStandIn(ctx, lctx);
   ctx.save(); lctx.save();
   ctx.translate(FX0, FY0); lctx.translate(FX0, FY0);
   ctx.beginPath(); ctx.rect(0, 0, 240, 400); ctx.clip();
@@ -251,10 +277,67 @@ function showAtlas() {
 }
 
 // ---------- drive ----------
+// Heavy co-op load (critique scenario): 4 engine trails, 60 trailing bullets calling trail()
+// every 2 ticks, 6 kills/s, a boss chain, a nova and 3 firing beams. Returns pool stats.
+function coopStress(sec) {
+  const bul = Array.from({ length: 60 }, (_, i) => ({ x: (i * 37) % 240, y: (i * 53) % 400, vx: Math.sin(i) * 60, vy: 70 + (i % 7) * 10 }));
+  const pal = ['fire', 'magenta', 'crystal', 'ember', 'plasma'];
+  let boss = false, nova = false, maxN = 0;
+  for (let f = 0; f < sec * 60; f++) {
+    const t = f / 60;
+    for (let p = 0; p < 4; p++) if ((f & 3) === p) fx.trail(40 + p * 50, 360, p, 1);
+    for (const b of bul) {
+      b.x = (b.x + b.vx / 60 + 240) % 240; b.y = (b.y + b.vy / 60) % 400;
+      if ((f & 1) === 0) fx.trail(b.x, b.y - 3, 'ember', 1);
+    }
+    if (f % 10 === 0) fx.explode(20 + rand() * 200, 30 + rand() * 300, ['small', 'medium', 'large'][(rand() * 3) | 0], { palette: pal[(rand() * 5) | 0] });
+    if (!boss && t > 1) { boss = true; fx.explode(120, 100, 'boss', { palette: 'magenta' }); }
+    if (!nova && t > 3.2) { nova = true; fx.nova(120, 330, 0); }
+    fx.update(1 / 60);
+    ctx.save(); lctx.save(); ctx.translate(FX0, FY0); lctx.translate(FX0, FY0);
+    fx.draw(ctx, lctx);
+    fx.drawBeam(ctx, lctx, 60, 20, 60, 400, 9, 'fire', t, 'magenta');
+    fx.drawBeam(ctx, lctx, 200, 20, 120, 400, 7, 'fire', t, 'plasma');
+    fx.drawPlayerBeam(ctx, lctx, 150, 330, 40, 7, 1, t);
+    ctx.restore(); lctx.restore();
+    maxN = Math.max(maxN, fx.count);
+  }
+  return { maxN, pools: fx._stats() };
+}
+
+// Auto-quality simulation: drives post.render() on a timer with a synthetic cadence.
+// pattern: 'load' (loading-screen jank 30-200 ms for 4 s, then 60 fps), 'cap30' (steady 33.3 ms),
+// 'slow' (post-bound 28 ms that improves 40 % per level), 'cpu' (28 ms regardless of level)
+async function autoSim(pattern, ms) {
+  post.setQuality('high');
+  pstate.quality = undefined;
+  const log = [];
+  const t0 = performance.now();
+  let fakeT = 0;
+  const realNow = performance.now.bind(performance);
+  const lvl = () => ({ high: 0, medium: 1, low: 2 })[post.quality];
+  performance.now = () => fakeT;
+  try {
+    let q0 = '';
+    while (fakeT < ms) {
+      let d;
+      if (pattern === 'load') d = fakeT < 4000 ? 30 + rand() * 170 : 16.7 + (rand() - 0.5) * 2;
+      else if (pattern === 'cap30') d = 33.3 + (rand() - 0.5) * 1.5;
+      else if (pattern === 'slow') d = 28 * Math.pow(0.6, lvl()) + rand() * 3;
+      else d = 28 + rand() * 3;
+      fakeT += d;
+      post.render(main, light, pstate);
+      if (post.quality !== q0) { log.push(`${(fakeT / 1000).toFixed(1)}s:${post.quality}`); q0 = post.quality; }
+    }
+  } finally { performance.now = realNow; }
+  return { log: log.join(' '), final: post.quality, auto: post.autoQuality, wallMs: Math.round(realNow() - t0) };
+}
+
 window.fxDev = {
-  fx, post, stats, buildMs, ctx, lctx, main, light,
+  fx, post, stats, buildMs, ctx, lctx, main, light, coopStress, autoSim,
   step(n = 1) { for (let i = 0; i < n; i++) sim(); renderFrame(); return fx.count; },
-  goto(sec) { while ((tick - loopBase) / 60 < sec) sim(); renderFrame(); return fx.count; },
+  // beams record their sparks when drawn, so render the last few steps of a jump
+  goto(sec) { while ((tick - loopBase) / 60 < sec - 0.2) sim(); while ((tick - loopBase) / 60 < sec) { sim(); renderFrame(); } renderFrame(); return fx.count; },
   render: renderFrame,
   get tick() { return tick; },
   stress(n) { for (let i = 0; i < n; i++) stressStep(); return { frames: stats.frames, updMs: stats.upd / stats.frames, drawMs: stats.drw / stats.frames, maxCount: stats.maxCount, avgCount: stats.samples.reduce((a, b) => a + b, 0) / stats.samples.length }; },

@@ -14,38 +14,46 @@
 // The root carries a small HP reserve (def.res, fraction of max HP) so the dying sequence can
 // start before the engine's own "hp <= 0 → kill" fires; the HUD bar hides the reserve.
 //
-// 1 THE WARDEN  (S1, ~2340 HP @1P) hijacked shipyard carrier.
-//     parts: 2 crane arms (300 hp, cable-hung claws with a turret each), 4 hull turrets (60),
-//            9 armored hull plates (bullets spark off the hull), core in an armored bay hatch.
-//     P0 hatch shut: claws grapple at players (reticle telegraph), pendulum swipes dripping
-//        orbs, arm fans, turret needles, drone launches. Both arms down (or 32 s) → P1.
-//     P1 hatch open (core 1500): core spirals / aimed rings + everything left alive.
+// HP below is 1-player (the engine multiplies every part by sim.diff.hp for co-op). Tuned so a
+// focused pilot at the sector's expected power (S1 ≈ 5 … S5 = 8) needs ~50–100 s (Tempest fastest,
+// Seraph slowest; the final boss ~65–120 s).
+// 1 THE WARDEN  (S1, 2120 HP) hijacked shipyard carrier.
+//     parts: 2 crane arms (240 hp, cable-hung claws with a turret each), 4 hull turrets (60),
+//            9 armored hull plates (bullets spark off the hull), core (1400) behind a bay hatch.
+//     P0 hatch shut: claws grapple at players (reticle telegraph), pendulum swipes dripping orbs,
+//        arm fans, turret needles, drone launches. Both arms down (or 28 s) → P1.
+//     P1 hatch open: core spirals / aimed rings + everything left alive.
 //     P2 (core < 50%): pylon "gate" lasers + core rings, 6-beam rotating sunburst, petals.
-// 2 CINDER WYRM (S2, ~3400 HP) magma serpent: head (2200) + 10 segments (120, destroyable only
-//     while molten = cracked frame) + tail. The body follows the head's track (turtle lines +
-//     arcs, exact arc length) at fixed arc offsets, so every peer evaluates it closed-form.
-//     It surfaces in legs (coil figure-8, weave pass, hook, dive through the field, lunge),
-//     burrowing off-screen between legs; the next emergence point glows + previews the path.
-//     Head: fire-breath fans along its heading (jaw-open telegraph), cluster bombs; molten
-//     segments lob magma. P1 more molten + faster; P2 enrage: all molten, spirals, magma rain.
-// 3 PRISM ARRAY (S3, ~4200 HP) crystal core (2800) + 6 orbiting shards (170).
+// 2 CINDER WYRM (S2, 3500 HP bar) magma serpent: head (2000) + 10 segments (150, destroyable only
+//     while molten = cracked frame; 75% of the damage they take also burns the head) + tail. The
+//     body follows the head's track (turtle lines + arcs, exact arc length) at fixed arc offsets,
+//     so every peer evaluates it closed-form. It surfaces in legs (coil figure-8, weave pass, hook,
+//     dive through the field, lunge), burrowing off-screen between legs; the next emergence point
+//     glows and previews the path (a danger corridor for dives/lunges). Head: fire-breath fans
+//     along its heading (jaw-open telegraph), cluster bombs; molten segments lob magma.
+//     P1 more molten + faster, magma rain while burrowed; P2 enrage: all molten, spirals, lunges.
+//     Dying: the frozen serpent slides into view and bursts apart tail → head.
+// 3 PRISM ARRAY (S3, 4140 HP) crystal core (2800) + 6 orbiting shards (170).
 //     P0 shielded core; shards refract needles and fire a rotating beam wheel (beams ride the
-//        shards) — shoot shards off to expose the core (or 40 s).
-//     P1 exposed core teleports (warp fade), implode rings, petals, refracting laser fans.
-//     P2 (core < 50%): 4 new shards grow (80), faster reverse wheel, cross spirals.
-// 4 THE DREADNOUGHT (S4, ~5500 HP) bridge section: bridge (4500) + 6 turrets (100) +
+//        shards; the core draws refraction beams into them) — shoot shards off to expose the
+//        core (or 40 s).
+//     P1 exposed core teleports (warp fade), implode rings, petals, refracting laser fans, stopAim.
+//     P2 (core < 50%): 4 new shards grow (80), faster reverse wheel, cross spirals, accel rings.
+// 4 THE DREADNOUGHT (S4, 4920 HP) bridge section: bridge (4000) + 6 turrets (100) +
 //     4 drone hatches (80, launch seekers) + spinal cannon + 10 hull plates.
-//     Signature: cannon charges over 4 frames, long warning showing the swept wedge, then a
-//     30 px beam sweeps across (safe side chosen from player positions), screen shake.
-//     P0 bridge shuttered until the turrets fall (or 40 s); P1 bridge exposed; P2 (< 45%)
-//     overload: lowers, wider/faster sweep, crossfire, burst chains, more drones.
-// 5 THE CHOIR HEART (S5, final, ~8500 HP) eye within a rotating halo, 8 petal blades (100).
-//     P0 Bloom: eye blinks shut (armored) while the halo fires counter-rotating rings; petals fire
-//        radial needle lines; bloom/flower patterns. (eye 2700)
-//     P1 Blades: halo shatters, petals detach into spinning orbiting blades firing spirals; eye
-//        beams and opening laser fans. (2700)
-//     P2 Singularity: the heart devours its blades, core2 exposed; dense spiral/flower
-//        desperation that slowly accelerates. (2300) Then a 6 s death sequence.
+//     Signature: the cannon charges over 4 frames while a translucent wedge shows exactly what the
+//     sweep will cover (safe side chosen from player positions), then a 28–34 px beam sweeps
+//     across with screen shake and scorch bursts.
+//     P0 bridge shuttered until the turrets fall (or 40 s); P1 bridge exposed (curtains, accel
+//     rings); P2 (< 45%) overload: lowers, wider/faster sweep, crossfire, burst chains, snipes.
+// 5 THE CHOIR HEART (S5, final, 6900 HP) eye within a rotating halo, 8 petals (100).
+//     P0 Bloom (eye 2100): the eye blinks shut (armored) while the halo fires counter-rotating
+//        orbit rings; petals (behind the halo plane, not hittable) fire radial needle lines;
+//        bloom / rose patterns.
+//     P1 Blades (2100): the halo shatters, petals tear free as spinning orbiting blades (now
+//        destroyable) firing spirals; eye beam fans and opening laser fans.
+//     P2 Singularity (1900): the heart devours its blades, core2 exposed; cross-spiral / rose
+//        desperation that slowly accelerates over 40 s. Then a 6 s death sequence.
 
 import { ENEMIES, canFire, fireAt, dens } from './enemies.js';
 import { registerPatterns } from './patterns.js';
@@ -718,7 +726,7 @@ function spawnWarden(sim) {
 // off-screen; the body always trails `d` px behind the head along the current/previous leg.
 // =======================================================================================
 
-const Y_HEAD = 2200, Y_RES = 200, Y_SEG = 150, Y_NSEG = 10;
+const Y_HEAD = 2000, Y_RES = 200, Y_SEG = 150, Y_NSEG = 10;
 const Y_SHARE = 0.75;             // fraction of damage dealt to molten segments that also burns the head
 const TRK = new WeakMap();
 function trkBuild(leg) {
@@ -1688,8 +1696,8 @@ function spawnDread(sim) {
 // under the halo), in the Blades phase they detach and orbit/spin (drawn by themselves).
 // =======================================================================================
 
-const H_EYE = 6600, H_RES = 300, H_PET = 100;
-const H_F1 = 2300 / 6600, H_F2 = 2000 / 6600;       // eye pools 2300 / 2300 / 2000 (form changes at these fractions lost / left)
+const H_EYE = 6100, H_RES = 300, H_PET = 100;
+const H_F1 = 2100 / 6100, H_F2 = 1900 / 6100;       // eye pools 2100 / 2100 / 1900 (form changes at these fractions lost / left)
 const H_P0_LEN = 540, H_LID = 70;
 function heartLid(e, tick) {
   if (e.phase !== 0 || !e._settled) return -1;
@@ -1841,6 +1849,7 @@ function heartPhase(e, ph, sim) {
   if (ph === DYING) { e.tD = e.phaseT0; dyingFx(e, sim, 'magenta'); fx.flash?.(0.8, [1, 0.8, 0.95]); }
   else if (ph === 1) {
     e.t1 = e.phaseT0;
+    for (const c of sim.elist) if (c.alive && c.parent === e.id && c.p.role === 'petal') c.def = ENEMIES.heart_blade;
     phaseFx(e, sim, 'magenta', true);
     const M = meta(sim, 'heart');
     for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; fx.spark?.(e.x + Math.cos(a) * M.haloR, e.y + Math.sin(a) * M.haloR, a, 'magenta', 3); }
@@ -1956,12 +1965,15 @@ ENEMIES.heart = {
     pop: popCue('magenta'),
   },
 };
-ENEMIES.heart_petal = {
+// Bloom petals sit behind the halo plane: shots and ships pass them (noHit/noCollide). When the
+// halo breaks, the heart's onPhase swaps every petal to the solid 'heart_blade' def (all peers).
+ENEMIES.heart_blade = {
   spr: 'boss_heart_petal', hp: H_PET, r: 9, score: 2500, z: 6, move: 'heartPetal', paths: { heartPetal: heartPetalPath },
   explode: 'medium', palette: 'magenta', odGain: 0.12, drops: { gem: 2, power: 0.25 },
   onSpawn(e) { e.armor = true; }, draw: heartPetalDraw,
   onDeath(e, sim) { sim.env.fx.debris?.(e.x, e.y, 6, 'magenta'); sim.env.fx.shockwave?.(e.x, e.y, 32, 'magenta'); },
 };
+ENEMIES.heart_petal = Object.assign({}, ENEMIES.heart_blade, { noHit: true, noCollide: true });
 
 function spawnHeart(sim) {
   const M = meta(sim, 'heart');

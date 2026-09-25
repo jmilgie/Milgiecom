@@ -149,14 +149,16 @@ export function joinSession(code, { name, ship } = {}, { signal } = {}) {
 // 2. Discover for ~2.6 s: probe (up to 4 of) the taken slots below ours over P2P and listen
 //    to relay lobby announcements (every public host announces there; also covers hosts
 //    without PeerJS and the case where signaling is down).
-// 3. Try the best open room while our own room stays open: established rooms first, rooms
-//    that answered a P2P probe before unverified announcements, then fuller, lower slot,
-//    code. Two tentative seekers break the tie deterministically: the "larger" one yields.
-//    If someone joins us meanwhile we stay host; if the join fails we try the next
-//    candidate (at most two unverified ones) and otherwise stay host — so fake
-//    announcements on the public broker can't split or stall matchmaking.
+// 3. Announcements travel over a public broker where anyone can publish, so each announced
+//    room is verified with a relay probe (it must answer); only rooms that answered a P2P
+//    or relay probe are ever joined.
+// 4. Try the best room while our own room stays open: established before tentative, then
+//    fuller, lower slot, code. Two tentative seekers break the tie deterministically: the
+//    "larger" one yields. If someone joins us meanwhile we stay host; if the join fails we
+//    try the next candidate and otherwise stay host.
 
-const MAX_PROBES = 4;
+const MAX_PROBES = 4;          // P2P probes of taken public slots
+const MAX_VERIFY = 6;          // relay probes of announced rooms
 const keyOf = (i) => [i.tent ? 1 : 0, -i.n, i.slot >= 0 ? i.slot : 99, i.code];
 function cmpKey(a, b) {
   for (let i = 0; i < a.length; i++) {
@@ -187,14 +189,13 @@ function probeSlot(ep, i) {
   }), () => null);
 }
 
-function pickCandidate(cands, selfKey, tried, allowUnverified) {
-  let best = null, bestRank = null;
+function pickCandidate(cands, selfKey, tried) {
+  let best = null, bestKey = null;
   for (const c of cands.values()) {
-    if (tried.has(c.info.code) || (!c.link && !allowUnverified)) continue;
+    if (tried.has(c.info.code) || !(c.link || c.verified) || !joinableInfo(c.info)) continue;
     const k = keyOf(c.info);
     if (c.info.tent && cmpKey(k, selfKey) >= 0) continue; // they yield to us
-    const rank = [k[0], c.link ? 0 : 1, ...k.slice(1)];
-    if (!best || cmpKey(rank, bestRank) < 0) { best = c; bestRank = rank; }
+    if (!best || cmpKey(k, bestKey) < 0 || (cmpKey(k, bestKey) === 0 && c.link && !best.link)) { best = c; bestKey = k; }
   }
   return best;
 }
@@ -256,6 +257,7 @@ async function quickAttempt(name, ship, last, at) {
 
   const selfKey = keyOf({ tent: 1, n: 1, slot: host.pubSlot, code: host.code });
   const cands = new Map();
+  const verifying = [];
   let decided = false;
   let wake;
   const early = new Promise((r) => { wake = r; });
@@ -267,12 +269,18 @@ async function quickAttempt(name, ship, last, at) {
     const prev = cands.get(info.code);
     if (link) {
       if (prev && prev.link) prev.link.close();
-      cands.set(info.code, { info, link });
+      cands.set(info.code, { info, link, verified: true });
       if (!info.tent) wake(); // an established room answered over P2P: take it now
     } else if (prev) {
-      prev.info = info;
+      if (!prev.verified) prev.info = info;
     } else {
-      cands.set(info.code, { info, link: null });
+      const c = { info, link: null, verified: false };
+      cands.set(info.code, c);
+      if (host.hub && verifying.length < MAX_VERIFY) {
+        verifying.push(host.hub.probeRoom(info.code).then((real) => {
+          if (real && real.pub && !c.link) { c.info = real; c.verified = true; }
+        }));
+      }
     }
   };
   if (host.hub) host.hub.listenLobby((a) => { if (a._ === 'ann') consider(a, null); });
@@ -281,15 +289,14 @@ async function quickAttempt(name, ship, last, at) {
   await Promise.race([early, Promise.all([sleep(2600), Promise.all(probes)])]);
   decided = true;
   if (host.hub) host.hub.stopLobby();
+  await Promise.all(verifying); // each settles within 1.5 s of its announcement
 
   const closeCands = () => { for (const c of cands.values()) if (c.link) { c.link.close(); c.link = null; } };
   const tried = new Set();
-  let unverified = 0;
   while (!host.closed && !at.aborted && host._count() === 1) {
-    const best = pickCandidate(cands, selfKey, tried, unverified < 2);
+    const best = pickCandidate(cands, selfKey, tried);
     if (!best) break;
     tried.add(best.info.code);
-    if (!best.link) unverified++;
     const usesSeek = !!(best.link && seekEP);
     if (usesSeek) { for (const c of cands.values()) if (c !== best && c.link) { c.link.close(); c.link = null; } }
     const r = await joinWhileHosting(host, best, name, ship, usesSeek ? seekEP : null, at);

@@ -26,7 +26,7 @@ export const LOST_MS = 6000;                     // silence before a peer is dec
 export const LOST_HIDDEN_MS = 12000;             // ... when it told us its page went hidden (in game)
 export const LOBBY_HIDDEN_MS = 30000;            // ... same, while still in the lobby
 export const STALE_MS = 2500;                    // silence before lobby shows connected:false
-export const RESCUE_MAX = 8000;                  // a client's link-rescue attempt (P2P -> relay) budget
+export const RESCUE_MAX = 7000;                  // a client's link-rescue attempt (P2P -> relay) budget
 export const RESCUE_GRACE = 8000;                // host holds a slot this long after a rescue probe
 export const P2P_HOLD_MS = 8000;                 // silence before a rescue-capable P2P player is dropped
 

@@ -25,6 +25,7 @@ import { MqttClient } from './mqtt.js';
 import { sha256, hex, sameTag } from './auth.js';
 import {
   TOPIC_ROOT, LOBBY_TOPIC, MAX_ENVELOPE, CID_RE, BAD, isObj, isInt, now, sleep, safeJson, utf8Len,
+  randomId, validInfo,
 } from './common.js';
 
 const PUB_RATE = 25;          // sustained publishes/s per link direction (token bucket)
@@ -187,6 +188,7 @@ export class RelayHub {
     this.troubleAt = -1e9;    // last time a broker connection was found dead
     this.closed = false;
     this._lobbyFn = null;
+    this._probes = new Map(); // inbox topic -> { code, done } (probeRoom)
   }
 
   get up() {
@@ -264,6 +266,13 @@ export class RelayHub {
 
   _onMsg(b, topic, text, raw) {
     if (this.closed) return;
+    const pr = this._probes.size ? this._probes.get(topic) : null;
+    if (pr) {
+      const fr = raw.length <= MAX_ENVELOPE ? splitFrame(text) : null;
+      const env = fr && parseEnvelope(fr.body);
+      if (env) for (const m of env.m) if (isObj(m) && m._ === 'info' && m.code === pr.code && validInfo(m)) { pr.done(m); break; }
+      return;
+    }
     if (topic === LOBBY_TOPIC) {
       if (this._lobbyFn) {
         const a = parseJson(text, raw.length);
@@ -371,6 +380,34 @@ export class RelayHub {
     for (const b of this.brokers) if (b.mq) b.mq.publish(LOBBY_TOPIC, str);
   }
 
+  /**
+   * Ask another room's host for its info through our broker connections (quick match uses
+   * it to verify lobby announcements, which anyone can publish). Resolves info or null.
+   */
+  probeRoom(code, timeoutMs = 1500) {
+    return new Promise((resolve) => {
+      const brokers = this.brokers.filter((b) => b.mq);
+      if (this.closed || !brokers.length) { resolve(null); return; }
+      const cid = randomId(12);
+      const t = roomTopics(code);
+      const inbox = t.c(cid);
+      let timer = 0;
+      const done = (info) => {
+        if (!this._probes.has(inbox)) return;
+        this._probes.delete(inbox);
+        clearTimeout(timer);
+        for (const b of brokers) if (b.mq) b.mq.unsubscribe(inbox).catch(() => {});
+        resolve(info);
+      };
+      this._probes.set(inbox, { code, done });
+      timer = setTimeout(() => done(null), timeoutMs);
+      for (const b of brokers) {
+        const mq = b.mq;
+        mq.subscribe(inbox).then(() => mq.publish(t.h, `{"f":"${cid}","m":[{"_":"probe"}]}`), () => {});
+      }
+    });
+  }
+
   /** Receive lobby announcements (quick-match discovery) until stopLobby(). */
   listenLobby(fn) {
     this._lobbyFn = fn;
@@ -387,6 +424,7 @@ export class RelayHub {
     if (this.closed) return;
     this.flush();
     this.closed = true;
+    for (const p of Array.from(this._probes.values())) p.done(null);
     for (const l of Array.from(this.links.values())) l.close();
     this.links.clear();
     for (const b of this.brokers) {

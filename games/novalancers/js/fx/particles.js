@@ -768,6 +768,81 @@ function bolt(g, x0, y0, ang, len, pixel, start) {
 }
 
 // ---------------------------------------------------------------------------------------
+// Pixel-exact diagonal beams. A rotated fillRect would anti-alias the main layer, so a
+// diagonal beam is stamped one cross-section per major-axis row (or column) from a small
+// strip image; runs of identical stamps merge into one stretched drawImage (nearest).
+// 64 strip variants: left flame 0..3 | right flame 0..3 <<2 | energy pulse <<4 | core flicker <<5.
+// Strips are cached per (palette, width, angle bucket, orientation) in a small LRU.
+// ---------------------------------------------------------------------------------------
+const DS = 128, DC = 64, DV = 64;             // strip length, centre offset, variant count
+const RIPT = new Uint8Array(8 * 32);          // flame width by (phase, px along the beam)
+for (let ph = 0; ph < 8; ph++) {
+  for (let y = 0; y < 32; y++) {
+    const f = ph / 8;
+    const a = 0.6 + 1.1 * (0.5 + 0.5 * Math.sin(TAU * (y / 16 - f)))
+      + 0.9 * (0.5 + 0.5 * Math.sin(TAU * (y / 32 + 2 * f) + 1.7))
+      + 0.7 * (0.5 + 0.5 * Math.sin(TAU * (y / 8 - 3 * f) + 0.6));
+    RIPT[ph * 32 + y] = Math.min(3, Math.round(a));
+  }
+}
+const PACK8 = new Uint32Array(NPAL * 8);
+RAMP8.forEach((r, p) => { for (let k = 0; k < 8; k++) PACK8[p * 8 + k] = packHex(r[k]); });
+const DSN = 12;
+const dsKey = new Int32Array(DSN).fill(-1), dsUse = new Float64Array(DSN);
+const dsCan = new Array(DSN).fill(null), dsG = new Array(DSN).fill(null);
+let dsClock = 0, dsImgH = null, dsImgV = null, dsPxH = null, dsPxV = null;
+// half-extents (in stamp px) of the beam bands; filled by diagStrip for the caller
+const DSX = { hb: 0, ext: 0 };
+function diagStrip(p, W, sx, horiz) {
+  const sk = Math.round((sx - 1) * 25);        // angle bucket 0..10
+  const sxq = 1 + sk / 25;
+  const hb = Math.max(0, Math.round(W * 0.5 * sxq - 0.5));
+  DSX.hb = hb; DSX.ext = hb + 3;
+  const key = ((p * 64 + (W & 63)) * 16 + sk) * 2 + (horiz ? 1 : 0);
+  dsClock++;
+  let lru = 0;
+  for (let i = 0; i < DSN; i++) {
+    if (dsKey[i] === key) { dsUse[i] = dsClock; return dsCan[i]; }
+    if (dsUse[i] < dsUse[lru]) lru = i;
+  }
+  const cw = horiz ? DS : DV, ch = horiz ? DV : DS;
+  let c = dsCan[lru];
+  if (!c) { c = dsCan[lru] = mkCanvas(cw, ch); dsG[lru] = ctx2d(c); }
+  else if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+  if (!dsImgH) {
+    dsImgH = dsG[lru].createImageData(DS, DV); dsPxH = new Uint32Array(dsImgH.data.buffer);
+    dsImgV = dsG[lru].createImageData(DV, DS); dsPxV = new Uint32Array(dsImgV.data.buffer);
+  }
+  const px = horiz ? dsPxH : dsPxV;
+  px.fill(0);
+  const hi = W >= 3 ? Math.max(0, Math.round((W * 0.5 - 1) * sxq - 0.5)) : -1;
+  const cw0 = Math.max(1, Math.round(W * 0.26)) | 1, o = p * 8;
+  for (let v = 0; v < DV; v++) {
+    const fl = v & 3, fr = (v >> 2) & 3, pulse = (v >> 4) & 1;
+    const cwv = cw0 + ((v >> 5) && W >= 7 ? 2 : 0);
+    const hr = W >= 5 ? Math.round((cwv * 0.5 + 1) * sxq - 0.5) : -1;
+    const hc = Math.max(0, Math.round(cwv * 0.5 * sxq - 0.5));
+    for (let a = -hb - 3; a <= hb + 3; a++) {
+      const m = a < 0 ? -a : a;
+      let k;
+      if (m <= hc) k = 7;
+      else if (m <= hr) k = 5;
+      else if (m <= hi) k = pulse ? 5 : 4;
+      else if (m <= hb) k = 3;
+      else {
+        const e = m - hb;                       // flame pixel 1..3 outside the body
+        if (e > (a < 0 ? fl : fr)) continue;
+        k = e === 1 ? 4 : e === 2 ? 3 : 2;
+      }
+      px[horiz ? v * DS + DC + a : (DC + a) * DV + v] = PACK8[o + k];
+    }
+  }
+  dsG[lru].putImageData(horiz ? dsImgH : dsImgV, 0, 0);
+  dsKey[lru] = key; dsUse[lru] = dsClock;
+  return c;
+}
+
+// ---------------------------------------------------------------------------------------
 // Particle pools (structure of arrays)
 // ---------------------------------------------------------------------------------------
 // When a pool is full, the particle nearest the end of its life is recycled for the new one
@@ -1184,6 +1259,7 @@ export function createFX() {
         runEvent(k, x, y, sz, p, vx, vy);
       } else i++;
     }
+    beamSparks(dt);
     for (let k = 0; k < POOLS.length; k++) POOLS[k].step(dt);
 
     // debris: tumble + smoke puffs from smoky chunks
@@ -1563,84 +1639,127 @@ export function createFX() {
   }
 
   // ---- beams --------------------------------------------------------------------------------
+  // Beams are drawn by the caller every frame. Their impact/emitter sparks are not spawned in
+  // draw (that would tie spark density to the display rate and let a draw call consume the
+  // spawn RNG): draw records each firing beam, update(dt) emits sparks for the beams drawn
+  // since the previous update, proportionally to dt.
+  const BMN = 16;
+  const bmX1 = new Float32Array(BMN), bmY1 = new Float32Array(BMN), bmX2 = new Float32Array(BMN), bmY2 = new Float32Array(BMN);
+  const bmPal = new Uint8Array(BMN), bmPl = new Uint8Array(BMN);
+  let bmN = 0;
+  function recordBeam(x1, y1, x2, y2, p, player) {
+    for (let i = 0; i < bmN; i++) {
+      if (bmX1[i] === x1 && bmY1[i] === y1 && bmX2[i] === x2 && bmY2[i] === y2 && bmPal[i] === p) return;   // redrawn while paused
+    }
+    if (bmN >= BMN) return;
+    const i = bmN++;
+    bmX1[i] = x1; bmY1[i] = y1; bmX2[i] = x2; bmY2[i] = y2; bmPal[i] = p; bmPl[i] = player ? 1 : 0;
+  }
+  function beamSparks(dt) {
+    for (let i = 0; i < bmN; i++) {
+      const x1 = bmX1[i], y1 = bmY1[i], x2 = bmX2[i], y2 = bmY2[i], p = bmPal[i];
+      const back = Math.atan2(y1 - y2, x1 - x2);
+      const k = bmPl[i] ? 0.6 : 1;
+      let n = (dt * 42 * k + rnd()) | 0;       // impact spray (~42/s)
+      while (n-- > 0) {
+        const a = back + rr(-1.2, 1.2), sp = rr(60, 200);
+        addSpark(x2, y2, Math.cos(a) * sp, Math.sin(a) * sp, rr(0.12, 0.3), 3, 0, rr(0, 1), 1, p, S_GLOW, 0);
+      }
+      n = (dt * 11 * k + rnd()) | 0;           // a few off the emitter (~11/s)
+      while (n-- > 0) {
+        const a = back + Math.PI + rr(-1.4, 1.4), sp = rr(40, 110);
+        addSpark(x1, y1, Math.cos(a) * sp, Math.sin(a) * sp, rr(0.1, 0.22), 3, 0, 0.5, 1, p, S_GLOW, 0);
+      }
+    }
+    bmN = 0;
+  }
+
   function beam(ctx, lctx, x1, y1, x2, y2, width, fire, t, p, player) {
     const dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy);
     if (len < 1) return;
     const L = Math.round(len);
     let ca = dy / len, sa = -dx / len;             // local +y runs along the beam
     if (Math.abs(ca) > 0.9995) { ca = Math.sign(ca); sa = 0; } else if (Math.abs(sa) > 0.9995) { sa = Math.sign(sa); ca = 0; }
+    const axis = ca === 0 || sa === 0;
     const ox = Math.round(x1), oy = Math.round(y1);
     const W = Math.max(1, Math.round(width)) | 1;  // odd: centred on a pixel column
     const hw = W >> 1, lft = -hw;
-    const ramp = CSTR[p], at = SPA[p];
+    const ramp = CSTR[p];
     const fr = (t * 30) | 0;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.transform(ca, sa, -sa, ca, ox, oy);
-    if (fire) {
-      // bands: outer body -> inner body -> hot rim -> white core
-      if (player) ctx.globalAlpha = 0.88;
-      ctx.fillStyle = ramp[3]; ctx.fillRect(lft, 0, W, L);
-      if (W >= 3) { ctx.fillStyle = ramp[4]; ctx.fillRect(lft + 1, 0, W - 2, L); }
-      // energy pulses flowing along the beam
-      if (W >= 5) {
-        ctx.fillStyle = ramp[5];
-        const per = 34, off = (t * 240) % per;
-        ctx.beginPath();
-        for (let s = off - per; s < L; s += per) {
-          const a = Math.max(0, Math.round(s)), b = Math.min(L, Math.round(s) + 5);
-          if (b > a) ctx.rect(lft + 1, a, W - 2, b - a);
-        }
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      // white-hot core (flickers by a pixel on wide beams)
-      let cw = Math.max(1, Math.round(W * 0.26)) | 1;
-      if (W >= 7 && fr & 1) cw += 2;
-      if (W >= 5) { ctx.fillStyle = ramp[5]; ctx.fillRect(-(cw >> 1) - 1, 0, cw + 2, L); }
-      ctx.fillStyle = ramp[7]; ctx.fillRect(-(cw >> 1), 0, cw, L);
-      // animated edge ripples
-      if (W >= 3) {
-        const sw = Math.min(4, Math.max(1, hw - 1)), f1 = (fr >> 1) & 7, f2 = ((fr >> 1) + 3) & 7;
-        const rx = POS.rp[0], ry = POS.rp[1];
-        for (let s = 0; s < L; s += 64) {
-          const h = Math.min(64, L - s);
-          ctx.drawImage(at, rx + f1 * 4, ry, sw, h, lft + W, s, sw, h);
-          ctx.drawImage(at, rx + 32 + f2 * 4 + (4 - sw), ry, sw, h, lft - sw, s, sw, h);
-        }
-      }
-      // origin + impact splash
-      const r0 = hw + (fr & 1), r1 = Math.max(1, hw) + ((fr >> 1) & 1);
-      ctx.fillStyle = ramp[5]; diskFill(ctx, 0, 0, r0 + 1);
-      ctx.fillStyle = ramp[7]; diskFill(ctx, 0, 0, Math.max(1, r0 - 1));
-      ctx.fillStyle = ramp[6]; diskFill(ctx, 0, L, r1 + 1);
-      ctx.fillStyle = ramp[7]; diskFill(ctx, 0, L, Math.max(0, r1 - 1));
-    } else {
-      // warn: thin flickering dotted guide + danger-width ticks + charging orb
-      if (fr % 4 !== 3) {
-        const off = (t * 80) % 8;
-        ctx.fillStyle = ramp[5];
-        ctx.beginPath();
-        for (let s = off - 8; s < L; s += 8) {
-          const a = Math.max(0, Math.round(s)), b = Math.min(L, Math.round(s) + 4);
-          if (b > a) ctx.rect(0, a, 1, b - a);
-        }
-        ctx.fill();
-        if (W >= 3) {
-          ctx.fillStyle = ramp[3];
+    if (!axis) beamDiag(ctx, ox, oy, dx / len, dy / len, L, W, fire, t, p);
+    else {
+      ctx.transform(ca, sa, -sa, ca, ox, oy);
+      if (fire) {
+        // bands: outer body -> inner body -> hot rim -> white core. The player's lance is
+        // toned down (translucent, no white-hot core) so enemy fire stays the loudest thing.
+        if (player) ctx.globalAlpha = 0.72;
+        ctx.fillStyle = ramp[3]; ctx.fillRect(lft, 0, W, L);
+        if (W >= 3) { ctx.fillStyle = ramp[4]; ctx.fillRect(lft + 1, 0, W - 2, L); }
+        // energy pulses flowing along the beam
+        if (W >= 5) {
+          ctx.fillStyle = ramp[5];
+          const per = 34, off = (t * 240) % per;
           ctx.beginPath();
-          for (let s = ((t * 40) % 6) - 6; s < L; s += 6) {
-            const a = Math.round(s);
-            if (a < 0 || a >= L) continue;
-            ctx.rect(lft - 1, a, 1, 1); ctx.rect(hw + 1, a, 1, 1);
+          for (let s = off - per; s < L; s += per) {
+            const a = Math.max(0, Math.round(s)), b = Math.min(L, Math.round(s) + 5);
+            if (b > a) ctx.rect(lft + 1, a, W - 2, b - a);
           }
           ctx.fill();
         }
+        if (!player) ctx.globalAlpha = 1;
+        // core (flickers by a pixel on wide beams)
+        let cw = Math.max(1, Math.round(W * 0.26)) | 1;
+        if (W >= 7 && fr & 1) cw += 2;
+        if (player) { ctx.fillStyle = ramp[6]; ctx.fillRect(-(cw >> 1), 0, cw, L); }
+        else {
+          if (W >= 5) { ctx.fillStyle = ramp[5]; ctx.fillRect(-(cw >> 1) - 1, 0, cw + 2, L); }
+          ctx.fillStyle = ramp[7]; ctx.fillRect(-(cw >> 1), 0, cw, L);
+        }
+        // animated edge ripples
+        if (W >= 3) {
+          const sw = Math.min(4, Math.max(1, hw - 1)), f1 = (fr >> 1) & 7, f2 = ((fr >> 1) + 3) & 7;
+          const rx = POS.rp[0], ry = POS.rp[1] + SPO[p];
+          for (let s = 0; s < L; s += 64) {
+            const h = Math.min(64, L - s);
+            ctx.drawImage(SPA, rx + f1 * 4, ry, sw, h, lft + W, s, sw, h);
+            ctx.drawImage(SPA, rx + 32 + f2 * 4 + (4 - sw), ry, sw, h, lft - sw, s, sw, h);
+          }
+        }
+        // origin + impact splash
+        const r0 = hw + (fr & 1), r1 = Math.max(1, hw) + ((fr >> 1) & 1);
+        ctx.fillStyle = ramp[5]; diskFill(ctx, 0, 0, r0 + 1);
+        ctx.fillStyle = ramp[player ? 6 : 7]; diskFill(ctx, 0, 0, Math.max(1, r0 - 1));
+        ctx.fillStyle = ramp[player ? 5 : 6]; diskFill(ctx, 0, L, r1 + 1);
+        ctx.fillStyle = ramp[player ? 6 : 7]; diskFill(ctx, 0, L, Math.max(0, r1 - 1));
+      } else {
+        // warn: thin flickering dotted guide + danger-width ticks + charging orb
+        if (fr % 4 !== 3) {
+          const off = (t * 80) % 8;
+          ctx.fillStyle = ramp[5];
+          ctx.beginPath();
+          for (let s = off - 8; s < L; s += 8) {
+            const a = Math.max(0, Math.round(s)), b = Math.min(L, Math.round(s) + 4);
+            if (b > a) ctx.rect(0, a, 1, b - a);
+          }
+          ctx.fill();
+          if (W >= 3) {
+            ctx.fillStyle = ramp[3];
+            ctx.beginPath();
+            for (let s = ((t * 40) % 6) - 6; s < L; s += 6) {
+              const a = Math.round(s);
+              if (a < 0 || a >= L) continue;
+              ctx.rect(lft - 1, a, 1, 1); ctx.rect(hw + 1, a, 1, 1);
+            }
+            ctx.fill();
+          }
+        }
+        const cr = 1 + W * 0.3 * (0.75 + 0.25 * Math.sin(t * 38));
+        ctx.fillStyle = ramp[5]; diskFill(ctx, 0, 0, cr + 1);
+        ctx.fillStyle = ramp[7]; diskFill(ctx, 0, 0, Math.max(0, cr - 1));
       }
-      const cr = 1 + W * 0.3 * (0.75 + 0.25 * Math.sin(t * 38));
-      ctx.fillStyle = ramp[5]; diskFill(ctx, 0, 0, cr + 1);
-      ctx.fillStyle = ramp[7]; diskFill(ctx, 0, 0, Math.max(0, cr - 1));
     }
     ctx.restore();
 
@@ -1651,13 +1770,16 @@ export function createFX() {
       lctx.transform(ca, sa, -sa, ca, ox, oy);
       const gx = p * GC;
       if (fire) {
-        const k = player ? 0.65 : 1, fl = 0.9 + 0.1 * Math.sin(t * 50);
+        const k = player ? 0.38 : 1, fl = 0.9 + 0.1 * Math.sin(t * 50), hwid = player ? W * 1.5 : W * 2.1;
         lctx.globalAlpha = 0.42 * k * fl;
-        lctx.drawImage(GLOW, gx, STRIP_BODY_Y, 32, 1, 0.5 - W * 2.1, 0, W * 4.2, L);
-        lctx.globalAlpha = 0.22 * k;
-        lctx.drawImage(GLOW, gx, STRIP_CORE_Y, 32, 1, 0.5 - W * 0.6, 0, W * 1.2, L);
-        glowAt(lctx, p, G_HOT, 0.5, 0.5, W * 2.2 + 4, W * 2.2 + 4, 0.75 * k * fl);
-        glowAt(lctx, p, G_HOT, 0.5, L + 0.5, W * 1.9 + 4, W * 1.9 + 4, 0.7 * k * fl);
+        lctx.drawImage(GLOW, gx, STRIP_BODY_Y, 32, 1, 0.5 - hwid, 0, hwid * 2, L);
+        if (!player) {
+          lctx.globalAlpha = 0.22;
+          lctx.drawImage(GLOW, gx, STRIP_CORE_Y, 32, 1, 0.5 - W * 0.6, 0, W * 1.2, L);
+        }
+        const ke = player ? 0.5 : 1;
+        glowAt(lctx, p, G_HOT, 0.5, 0.5, W * 2.2 + 4, W * 2.2 + 4, 0.75 * ke * fl);
+        glowAt(lctx, p, G_HOT, 0.5, L + 0.5, W * 1.9 + 4, W * 1.9 + 4, 0.7 * ke * fl);
       } else {
         lctx.globalAlpha = (0.25 + 0.15 * Math.sin(t * 40)) * (fr % 4 !== 3 ? 1 : 0.4);
         lctx.drawImage(GLOW, gx, STRIP_BODY_Y, 32, 1, -2.5, 0, 6, L);
@@ -1666,18 +1788,89 @@ export function createFX() {
       lctx.restore();
     }
 
-    // sparks spraying from the impact point (and a few off the emitter)
-    if (fire) {
-      const back = Math.atan2(-dy, -dx);
-      if (rnd() < 0.7) {
-        const a = back + rr(-1.2, 1.2), sp = rr(60, 200);
-        addSpark(x2, y2, Math.cos(a) * sp, Math.sin(a) * sp, rr(0.12, 0.3), 3, 0, rr(0, 1), 1, p, S_GLOW, 0);
+    if (fire) recordBeam(x1, y1, x2, y2, p, player);
+  }
+
+  // Main-layer body of a non-axis-aligned beam, pixel-exact (see diagStrip). (ox, oy) is the
+  // start pixel, (ux, uy) the unit direction, L the length in px, W the odd width.
+  function beamDiag(ctx, ox, oy, ux, uy, L, W, fire, t, p) {
+    const ramp = CSTR[p], fr = (t * 30) | 0, hw = W >> 1;
+    const ax = ox + 0.5, ay = oy + 0.5;          // axis through the start pixel's centre
+    const ex = Math.floor(ax + ux * L), ey = Math.floor(ay + uy * L);
+    if (!fire) {
+      if (fr % 4 !== 3) {
+        const off = (t * 80) % 8;
+        ctx.fillStyle = ramp[5];
+        ctx.beginPath();
+        for (let s = off - 8; s < L; s += 8) {
+          const a = Math.max(0, Math.round(s)), b = Math.min(L, Math.round(s) + 4) - 1;
+          if (b >= a) addPixLine(ctx, Math.floor(ax + ux * a), Math.floor(ay + uy * a), Math.floor(ax + ux * b), Math.floor(ay + uy * b));
+        }
+        ctx.fill();
+        if (W >= 3) {
+          const d = hw + 1;
+          ctx.fillStyle = ramp[3];
+          ctx.beginPath();
+          for (let s = ((t * 40) % 6) - 6; s < L; s += 6) {
+            const a = Math.round(s);
+            if (a < 0 || a >= L) continue;
+            const cx = ax + ux * a, cy = ay + uy * a;
+            ctx.rect(Math.floor(cx - uy * d), Math.floor(cy + ux * d), 1, 1);
+            ctx.rect(Math.floor(cx + uy * d), Math.floor(cy - ux * d), 1, 1);
+          }
+          ctx.fill();
+        }
       }
-      if (rnd() < 0.18) {
-        const a = back + Math.PI + rr(-1.4, 1.4), sp = rr(40, 110);
-        addSpark(x1, y1, Math.cos(a) * sp, Math.sin(a) * sp, rr(0.1, 0.22), 3, 0, 0.5, 1, p, S_GLOW, 0);
-      }
+      const cr = 1 + W * 0.3 * (0.75 + 0.25 * Math.sin(t * 38));
+      ctx.fillStyle = ramp[5]; diskFill(ctx, ox, oy, cr + 1);
+      ctx.fillStyle = ramp[7]; diskFill(ctx, ox, oy, Math.max(0, cr - 1));
+      return;
     }
+    // stamp one cross-section per row (steep beams) or column (shallow beams)
+    const vert = Math.abs(uy) >= Math.abs(ux);
+    const um = vert ? uy : ux, am = vert ? Math.abs(uy) : Math.abs(ux);
+    const strip = diagStrip(p, W, 1 / am, vert);
+    const ext = DSX.ext, span = 2 * ext + 1;
+    const n = Math.round(L * am), step = um > 0 ? 1 : -1;
+    const m0 = vert ? oy : ox;
+    const flames = W >= 3, pulses = W >= 5;
+    const fmax = Math.min(3, Math.max(1, hw - 1));
+    const ph1 = ((fr >> 1) & 7) * 32, ph2 = (((fr >> 1) + 3) & 7) * 32;
+    const per = 34, poff = (t * 240) % per;
+    const flick = W >= 7 && fr & 1 ? 32 : 0;
+    let rs = 0, rc = 0, rv = -1, rl = 0;
+    for (let j = 0; j <= n; j++) {
+      const tt = j / am;                           // distance along the axis
+      const c = Math.floor(vert ? ax + ux * tt : ay + uy * tt);
+      let v = flick;
+      if (flames) {
+        const yy = (tt | 0) & 31;
+        let fa = RIPT[ph1 + yy], fb = RIPT[ph2 + yy];
+        if (fa > fmax) fa = fmax;
+        if (fb > fmax) fb = fmax;
+        v |= fa | (fb << 2);
+      }
+      if (pulses) {
+        let q = (tt - poff) % per;
+        if (q < 0) q += per;
+        if (q < 5) v |= 16;
+      }
+      if (v === rv && c === rc) { rl++; continue; }
+      if (rl) diagRun(ctx, strip, vert, step, rs, rl, rc, rv, ext, span);
+      rs = m0 + j * step; rc = c; rv = v; rl = 1;
+    }
+    if (rl) diagRun(ctx, strip, vert, step, rs, rl, rc, rv, ext, span);
+    // origin + impact splash
+    const r0 = hw + (fr & 1), r1 = Math.max(1, hw) + ((fr >> 1) & 1);
+    ctx.fillStyle = ramp[5]; diskFill(ctx, ox, oy, r0 + 1);
+    ctx.fillStyle = ramp[7]; diskFill(ctx, ox, oy, Math.max(1, r0 - 1));
+    ctx.fillStyle = ramp[6]; diskFill(ctx, ex, ey, r1 + 1);
+    ctx.fillStyle = ramp[7]; diskFill(ctx, ex, ey, Math.max(0, r1 - 1));
+  }
+  function diagRun(ctx, strip, vert, step, rs, rl, rc, v, ext, span) {
+    const m = step > 0 ? rs : rs - rl + 1;
+    if (vert) ctx.drawImage(strip, DC - ext, v, span, 1, rc - ext, m, span, rl);
+    else ctx.drawImage(strip, v, DC - ext, 1, span, m, rc - ext, rl, span);
   }
 
   // ---- post state -----------------------------------------------------------------------------
@@ -1863,7 +2056,7 @@ export function createFX() {
 
     clear() {
       for (let k = 0; k < POOLS.length; k++) POOLS[k].n = 0;
-      rgN = 0; nvN = 0; boN_ = 0; evN = 0;
+      rgN = 0; nvN = 0; boN_ = 0; evN = 0; bmN = 0;
       for (let i = 0; i < txN; i++) txStr[i] = '';
       txN = 0;
       flashA = 0; chromaA = 0; live = 0;
@@ -1883,7 +2076,16 @@ export function createFX() {
     setTextRenderer(fn) { textFn = typeof fn === 'function' ? fn : null; },
 
     get count() { return live; },
+
+    // dev only (dev/fx.html): pool occupancy and overflow counters
+    _stats() {
+      const o = {};
+      const names = ['spk', 'dot', 'fire', 'smoke', 'deb', 'glw', 'flr'];
+      POOLS.forEach((P, k) => { o[names[k]] = { n: P.n, cap: P.cap, drops: P.drops, recycled: P.recycled }; });
+      return o;
+    },
   };
+  prebuildLazy();
   return fx;
 }
 
