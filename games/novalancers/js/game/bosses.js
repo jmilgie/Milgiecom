@@ -1535,7 +1535,7 @@ function dreadBrain(e, sim) {
   }
   if (e.hp <= resHp(e)) { sim.setPhase(e, DYING); return; }
   if (e.phase === 0) {
-    if (!kid(e, sim, 'tur') || sim.tick - settledAt(e) > 40 * 60) { sim.setPhase(e, 1); return; }
+    if (!kid(e, sim, 'tur') || sim.tick - settledAt(e) > 32 * 60) { sim.setPhase(e, 1); return; }
   } else if (e.phase === 1 && effFrac(e) <= 0.45) { sim.setPhase(e, 2); return; }
   runScript(e, sim, D_SCRIPT[e.phase]);
 }
