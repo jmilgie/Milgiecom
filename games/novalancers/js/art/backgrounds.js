@@ -1450,62 +1450,83 @@ function outlined(r, c) {
   return o;
 }
 
-// Blinking beacons / lights in tile space (x, y), drawn per frame.
+// Blinking beacons / lights in tile space (x, y), drawn per frame. Light-layer glow is a
+// single pixel (bloom softens it) so nothing reads as a bullet; size 2 adds a faint cross.
+// fade: smooth pulse instead of a hard blink (steady running lights).
 class Blinkers {
   // strip = true: the layer does not repeat horizontally (x is used as-is)
   constructor(w, h, strip = false) { this.w = w; this.h = h; this.strip = strip; this.list = []; }
-  add(x, y, col, period = 1.6, phase = 0, duty = 0.14, size = 1) { this.list.push({ x: Math.round(mod(x, this.w)), y: Math.round(mod(y, this.h)), col, period, phase, duty, size }); return this; }
-  draw(ctx, lctx, ax, oy, W, H, t, shift = 0) {
+  add(x, y, col, period = 1.6, phase = 0, duty = 0.14, size = 1, fade = false) { this.list.push({ x: Math.round(mod(x, this.w)), y: Math.round(mod(y, this.h)), col, period, phase, duty, size, fade }); return this; }
+  draw(ctx, lctx, ax, oy, W, H, t, shift = 0, gain = 1) {
     const { w, h } = this;
     for (let i = 0; i < this.list.length; i++) {
       const b = this.list[i];
       const u = fract(t / b.period + b.phase);
-      if (u > b.duty) continue;
-      const a = 1 - u / b.duty * 0.6;
+      let a;
+      if (b.fade) a = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(u * TAU));
+      else { if (u > b.duty) continue; a = 1 - u / b.duty * 0.6; }
       ctx.fillStyle = b.col; lctx.fillStyle = b.col;
       const step = this.strip ? 1e9 : w;
       for (let sx = this.strip ? b.x + ax : mod(b.x + ax, w); sx < W + 2; sx += step) {
         const sy = mod(b.y + oy + colShift(sx, b.x, ax, w, shift, h), h);
         if (sy >= H + 2) continue;
-        ctx.globalAlpha = a; ctx.fillRect(sx, sy, 1, 1);
-        lctx.globalAlpha = a; lctx.fillRect(sx - 1, sy, 3, 1); lctx.fillRect(sx, sy - 1, 1, 3);
-        if (b.size > 1) { lctx.globalAlpha = a * 0.4; lctx.fillRect(sx - 2, sy - 1, 5, 3); lctx.fillRect(sx - 1, sy - 2, 3, 5); ctx.globalAlpha = a * 0.6; ctx.fillRect(sx - 1, sy, 3, 1); ctx.fillRect(sx, sy - 1, 1, 3); }
+        ctx.globalAlpha = a; ctx.fillRect(sx, sy, 1, b.fade ? 2 : 1);
+        lctx.globalAlpha = clamp01(a * gain); lctx.fillRect(sx, sy, 1, b.fade ? 2 : 1);
+        if (b.size > 1) { lctx.globalAlpha = a * 0.3 * gain; lctx.fillRect(sx - 1, sy, 3, 1); lctx.fillRect(sx, sy - 1, 1, 3); ctx.globalAlpha = a * 0.5; ctx.fillRect(sx - 1, sy, 3, 1); ctx.fillRect(sx, sy - 1, 1, 3); }
       }
     }
     ctx.globalAlpha = 1; lctx.globalAlpha = 1;
   }
 }
 
-// Flickering spark sources (welding, grinding). Each source sprays a few pixels.
-const SPARK_COLS = ['#fff5c9', '#ffd966', '#ffab4f', '#f7721f'];
+// Flickering spark sources (welding arcs, grinding). Each burst is a hot core pixel plus a
+// few short-lived pixels sprayed along dir. cols[0] is the core colour.
+const SPARK_WELD = ['#f4f8ff', '#c8e4ff', '#9fd0ff', '#fff5c9'];
+const SPARK_HOT = ['#fff5c9', '#ffe6a0', '#ffd966', '#ffab4f'];
 class Sparks {
-  constructor(w, h, strip = false) { this.w = w; this.h = h; this.strip = strip; this.list = []; }
+  constructor(w, h, strip = false, cols = SPARK_HOT, burst = 0.45) { this.w = w; this.h = h; this.strip = strip; this.list = []; this.cols = cols; this.burst = burst; }
   add(x, y, dirx = 0, diry = 1, rate = 1, phase = 0) { this.list.push({ x: Math.round(mod(x, this.w)), y: Math.round(mod(y, this.h)), dirx, diry, rate, phase }); return this; }
   draw(ctx, lctx, ax, oy, W, H, t, shift = 0) {
-    const { w, h } = this;
+    const { w, h, cols } = this;
     for (let i = 0; i < this.list.length; i++) {
       const s = this.list[i];
       const u = fract(t * 0.25 * s.rate + s.phase);
-      if (u > 0.45) continue;               // bursts
+      if (u > this.burst) continue;               // bursts
       const fr = Math.floor(t * 24 + i * 7);
       const step = this.strip ? 1e9 : w;
       for (let sx = this.strip ? s.x + ax : mod(s.x + ax, w); sx < W + 8; sx += step) {
         const sy = mod(s.y + oy + colShift(sx, s.x, ax, w, shift, h), h);
         if (sy >= H + 8) continue;
-        lctx.globalAlpha = 0.7; lctx.fillStyle = '#ffab4f'; lctx.fillRect(sx - 1, sy - 1, 3, 3);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(sx, sy, 1, 1);
-        for (let k = 0; k < 4; k++) {
+        const flick = hash3(fr, i, 1, 3);
+        ctx.globalAlpha = 0.6 + 0.4 * flick; ctx.fillStyle = cols[0]; ctx.fillRect(sx, sy, 1, 1);
+        lctx.globalAlpha = 0.45 + 0.35 * flick; lctx.fillStyle = cols[1]; lctx.fillRect(sx, sy, 1, 1);
+        for (let k = 0; k < 3; k++) {
           const hsh = hash3(fr, k, i, 5), hsh2 = hash3(fr, k, i, 9);
-          const dist = 1 + hsh * 6, ang = Math.atan2(s.diry, s.dirx) + (hsh2 - 0.5) * 2.2;
+          if (hsh > 0.8) continue;
+          const dist = 1 + hsh * 5, ang = Math.atan2(s.diry, s.dirx) + (hsh2 - 0.5) * 2.2;
           const px = Math.round(sx + Math.cos(ang) * dist), py = Math.round(sy + Math.sin(ang) * dist);
-          ctx.fillStyle = SPARK_COLS[(hsh * 4) | 0]; ctx.globalAlpha = 1 - hsh * 0.6;
+          ctx.fillStyle = cols[1 + ((hsh * 3) | 0)]; ctx.globalAlpha = 1 - hsh * 0.7;
           ctx.fillRect(px, py, 1, 1);
-          lctx.fillStyle = ctx.fillStyle; lctx.globalAlpha = 0.8; lctx.fillRect(px, py, 1, 1);
+          lctx.fillStyle = ctx.fillStyle; lctx.globalAlpha = 0.35; lctx.fillRect(px, py, 1, 1);
         }
-        ctx.globalAlpha = 1;
       }
     }
     ctx.globalAlpha = 1; lctx.globalAlpha = 1;
+  }
+}
+
+// Brighten the edges of opaque pixels that face toward tile column cx (the field centre):
+// near silhouettes then separate from dark enemy hulls that cross them.
+function rimToward(r, cx, col, col2) {
+  const { w, h, d } = r, src = d.slice();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    if (!src[i] || unA(src[i]) < 250) continue;
+    const dir = x < cx ? 1 : -1, nx = x + dir;
+    if (nx < 0 || nx >= w || src[y * w + nx]) continue;
+    d[i] = col;
+    const ix = x - dir;
+    if (col2 && ix >= 0 && ix < w && src[y * w + ix] && unA(src[y * w + ix]) >= 250) d[y * w + ix] = col2;
   }
 }
 
