@@ -125,9 +125,9 @@ export default {
     hRiff: { base: 'lead', wave: 'saw', voices: 5, detune: 20, cutoff: 1900, kt: 0.4, q: 2.5, env: 1.7, fa: 0.003, fd: 0.22, vib: 0, a: 0.002, d: 0.25, s: 0.55, r: 0.12, glide: 0, vol: 0.55 },
     hLead: { base: 'leadBright', voices: 3, detune: 13, cutoff: 3000, kt: 0.3, q: 2, env: 1.1, vib: 17, vibDelay: 0.24, glide: 0.05, r: 0.28 },
     hVast: { base: 'padGlass', r: 1.1 },                                           // play-time: shorter tails keep the voice count low
-    hPad: { base: 'pad', r: 0.9 },
+    hPad: { base: 'padBright', a: 0.4, r: 0.9 },                                   // same samples as the gated saws, darkened by the strip filter
     hChoir: { base: 'choir', r: 1.0 },
-    hOo: { base: 'choirOo', r: 0.9 },
+    hOo: { base: 'choir', a: 0.7, r: 0.9 },                                        // the choir samples, filtered to a hushed 'oo'
     hArp: { base: 'pluck', cutoff: 900, env: 3.4, decay: 0.18, amp: 0.5, q: 3 },
   },
 
@@ -147,10 +147,10 @@ export default {
     sub: { gain: 0.5 },
     bass: { inst: 'hBass', gain: 0.72, duck: 0.55, lpf: 20000 },
     vast: { inst: 'hVast', gain: 0.3, reverb: 0.45, duck: 0.35, lpf: 20000, poly: 7 },
-    pad: { inst: 'hPad', gain: 0.24, reverb: 0.3, duck: 0.55, lpf: 20000, poly: 6 },
+    pad: { inst: 'hPad', gain: 0.25, reverb: 0.3, duck: 0.55, lpf: 2600, poly: 6 },
     gate: { inst: 'hGate', gain: 0.46, reverb: 0.2, delay: 0.1, duck: 0.4, lpf: 20000, poly: 8 },
     strings: { gain: 0.36, reverb: 0.4, pan: 0.16, duck: 0.25, poly: 6 },
-    choirOo: { inst: 'hOo', gain: 0.24, reverb: 0.55, duck: 0.2, poly: 5 },
+    choirOo: { inst: 'hOo', gain: 0.3, reverb: 0.55, duck: 0.2, lpf: 1300, poly: 5 },
     choir: { inst: 'hChoir', gain: 0.24, reverb: 0.5, duck: 0.25, poly: 5 },
     brass: { gain: 0.62, reverb: 0.3, pan: -0.06, poly: 2 },
     riff: { inst: 'hRiff', gain: 1.2, delay: 0.3, reverb: 0.2, pan: 0.08, duck: 0.3, lpf: 20000 },

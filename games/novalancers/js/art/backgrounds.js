@@ -233,16 +233,20 @@ class Fbm {
     for (let i = 0; i < this.n; i++) s += this.amp[i] * (1 - Math.abs(this.p[i].at(x * this.sx[i], y * this.sy[i])) * 1.6);
     return s / this.norm;
   }
-  // Fill a Float32Array (w*h) sampling every `step` px then bilinear upsampling (fast path).
-  field(step = 2, ridged = false) {
+  field(step = 2, ridged = false) { return runGen(this.fieldG(step, ridged)); }
+  // Fill a Float32Array (w*h) sampling every `step` px then bilinear upsampling (generator).
+  *fieldG(step = 2, ridged = false) {
     const { w, h } = this;
     const cw = Math.ceil(w / step), ch = Math.ceil(h / step);
     const coarse = new Float32Array(cw * ch);
-    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++)
-      coarse[y * cw + x] = ridged ? this.ridge(x * step, y * step) : this.at(x * step, y * step);
+    for (let y = 0; y < ch; y++) {
+      if (due()) yield;
+      for (let x = 0; x < cw; x++) coarse[y * cw + x] = ridged ? this.ridge(x * step, y * step) : this.at(x * step, y * step);
+    }
     if (step === 1) return coarse;
     const out = new Float32Array(w * h);
     for (let y = 0; y < h; y++) {
+      if (due()) yield;
       const fy = y / step, y0 = Math.floor(fy), ty = fy - y0, y1 = (y0 + 1) % ch;
       for (let x = 0; x < w; x++) {
         const fx = x / step, x0 = Math.floor(fx), tx = fx - x0, x1 = (x0 + 1) % cw;
@@ -406,21 +410,20 @@ function makeCanvas(w, h) {
   return c;
 }
 function ctx2d(c) { const x = c.getContext('2d'); x.imageSmoothingEnabled = false; return x; }
-// Draw a canvas once onto a tiny scratch canvas so the browser uploads its texture now
-// (during loading) instead of on the first gameplay frame that uses it.
+// Draw a canvas once onto a tiny scratch canvas so the browser prepares its texture while
+// loading rather than on the first gameplay frame that uses it. (No readback to force it:
+// a synchronous readback waits for the whole GPU queue and can stall far longer.)
 let warmCtx = null;
-function warm(v, top = true) {
+function warm(v) {
   if (!v) return;
-  if (Array.isArray(v)) { v.forEach((x) => warm(x, false)); }
-  else if (typeof v !== 'object') return;
-  else if (v.bands) v.bands.forEach((b) => warm(b.c, false));
-  else if (v.getContext) {
+  if (Array.isArray(v)) { v.forEach(warm); return; }
+  if (typeof v !== 'object') return;
+  if (v.bands) { v.bands.forEach((b) => warm(b.c)); return; }
+  if (v.getContext) {
     if (!v.width || !v.height) return;
-    if (!warmCtx) { const c = makeCanvas(2, 2); warmCtx = c.getContext('2d', { willReadFrequently: false }); }
+    if (!warmCtx) { const c = makeCanvas(2, 2); warmCtx = c.getContext('2d'); }
     warmCtx.drawImage(v, 0, 0, 1, 1, 0, 0, 1, 1);
-  } else if (v.constructor === Object) for (const k in v) warm(v[k], false);
-  // a 1-px readback flushes the queued draws, so the uploads happen here
-  if (top && warmCtx) warmCtx.getImageData(0, 0, 1, 1);
+  } else if (v.constructor === Object) for (const k in v) warm(v[k]);
 }
 // the same, one canvas at a time (yields between uploads)
 function* warmG(v) {
@@ -817,8 +820,8 @@ class Stage {
 function nebulaTile(...a) { return runGen(nebulaTileG(...a)); }
 function* nebulaTileG(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 0.45, contrast = 2.2, profile = null, step = 2, ridged = 0, levels = 0 }) {
   const f = new Fbm(rng, w, h, cell, oct, 0.52);
-  const wx = new Fbm(rng, w, h, cell * 1.3, 3, 0.5).field(4);
-  const wy = new Fbm(rng, w, h, cell * 1.3, 3, 0.5).field(4);
+  const wx = yield* new Fbm(rng, w, h, cell * 1.3, 3, 0.5).fieldG(4);
+  const wy = yield* new Fbm(rng, w, h, cell * 1.3, 3, 0.5).fieldG(4);
   const rf = ridged ? new Fbm(rng, w, h, cell * 0.7, 4, 0.55) : null;
   const cw = Math.ceil(w / step), ch = Math.ceil(h / step);
   const coarse = new Float32Array(cw * ch);
@@ -858,9 +861,9 @@ function* nebulaTileG(rng, w, h, { cell = 160, oct = 5, warp = 40, ramp, bias = 
 function* nebula2TileG(rng, w, h, q, { cell = 150, oct = 5, warp = 60, colA, colB, biasA = 0.5, biasB = 0.55, gainA = 1, gainB = 1, fil = 0.4, filCol = null, spread = 14, step = 2, hot = null, hotAt = 0.8 }) {
   const fa = new Fbm(rng, w, h, cell, oct, 0.52), fb = new Fbm(rng, w, h, cell * 1.2, 4, 0.5);
   const fr = new Fbm(rng, w, h, cell * 0.55, 3, 0.55);
-  const wx = new Fbm(rng, w, h, cell * 1.4, 3, 0.5).field(4);
+  const wx = yield* new Fbm(rng, w, h, cell * 1.4, 3, 0.5).fieldG(4);
   yield;
-  const wy = new Fbm(rng, w, h, cell * 1.4, 3, 0.5).field(4);
+  const wy = yield* new Fbm(rng, w, h, cell * 1.4, 3, 0.5).fieldG(4);
   yield;
   const cw = Math.ceil(w / step), ch = Math.ceil(h / step), K = 3;
   const co = new Float32Array(cw * ch * K);
@@ -1147,7 +1150,9 @@ class TitleStage extends Stage {
     yield;
     // Flare sprites
     S.flare = flareSprite(portrait ? 71 : 91, FLARE_RAMP, { rays: 6, rot: 0.35 });
+    yield;
     S.streak = streakSprite(Math.round(W * 1.4), STREAK_RAMP, W * 0.24);
+    yield;
     // Traffic from the station down toward the planet
     const [rx, ry] = S.ring.c;
     S.traffic = new Traffic([
@@ -1574,11 +1579,11 @@ const M_HAZ = () => mat(['#3d2106', '#7a430b', '#bf7412', '#f0a92a'], '#ffd966')
 function* auroraSurfaceG(tw) {
   const rng = new Rng(0xa11ce + tw);
   const TH = 512;
-  const oc = new Fbm(rng, tw, TH, 128, 4, 0.5).field(2);
+  const oc = yield* new Fbm(rng, tw, TH, 128, 4, 0.5).fieldG(2);
   yield;
-  const il = new Fbm(rng, tw, TH, 80, 5, 0.55).field(2);
+  const il = yield* new Fbm(rng, tw, TH, 80, 5, 0.55).fieldG(2);
   yield;
-  const ct = new Fbm(rng, tw, TH, 12, 2, 0.5).field(2);
+  const ct = yield* new Fbm(rng, tw, TH, 12, 2, 0.5).fieldG(2);
   yield;
   const surf = new Raster(tw, TH, true), lights = new Raster(tw, TH, true);
   lights.d.fill(0xff000000);   // opaque black: multiply by the night mask must not accumulate
@@ -1627,6 +1632,7 @@ function* auroraCloudsG(tw) {
     }
   }
   for (let y = 0; y < TH; y++) for (let x = 0; x < tw; x++) {       // bilinear fill of odd pixels
+    if (x === 0 && due()) yield;
     if (!(y & 1) && !(x & 1)) continue;
     const x0 = x & ~1, y0 = y & ~1, x1 = (x0 + 2) % tw, y1 = (y0 + 2) % TH, tx = (x - x0) / 2, ty = (y - y0) / 2;
     const a = dens[y0 * tw + x0], b = dens[y0 * tw + x1], c = dens[y1 * tw + x0], d = dens[y1 * tw + x1];
@@ -2084,6 +2090,7 @@ function* cinderDustG(tw, h, cell, bias, alphaMax, seed) {
   }
   const val = new Float32Array(tw * h);
   for (let y = 0; y < h; y++) {
+    if (due()) yield;
     const fy = y / 2, y0 = fy | 0, ty = fy - y0, y1 = (y0 + 1) % ch;
     for (let x = 0; x < tw; x++) {
       const fx = x / 2, x0 = fx | 0, tx = fx - x0, x1 = (x0 + 1) % cw;
@@ -2373,7 +2380,8 @@ class CinderStage extends Stage {
         list.push([lerp(a0, a1, u), srng.range(0.09, 0.14) * (portrait ? 0.8 : 1), R * srng.range(0.07, 0.11), srng.range(-0.4, 0.4)]);
       }
     }
-    const pf = [0, 1 / 3, 2 / 3].map((ph) => prominenceFrame(W, H, cx, cy, R, list, ph));
+    const pf = [];
+    for (const ph of [0, 1 / 3, 2 / 3]) { pf.push(prominenceFrame(W, H, cx, cy, R, list, ph)); yield; }
     // crop all frames to their common bounding box
     let x0 = W, y0 = H, x1 = -1, y1 = -1;
     for (const r of pf) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (r.d[y * W + x]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -2592,6 +2600,7 @@ function* veilDust(tw) {
   }
   const val = new Float32Array(tw * H);
   for (let y = 0; y < H; y++) {
+    if (due()) yield;
     const fy = y / 2, y0 = fy | 0, ty = fy - y0, y1 = (y0 + 1) % ch;
     for (let x = 0; x < tw; x++) {
       const fx = x / 2, x0 = fx | 0, tx = fx - x0, x1 = (x0 + 1) % cw;
@@ -2656,12 +2665,14 @@ function* genVeil() {
     const field = new Float32Array(TW * H).fill(-1), gi = new Int8Array(TW * H).fill(-1);
     for (let k = 0; k < glob.length; k++) {
       const [px, py, rx, ry] = glob[k];
-      for (let y = Math.floor(py - ry * 1.6); y < py + ry * 1.6; y++) for (let x = Math.max(0, Math.floor(px - rx * 1.6)); x < Math.min(TW, px + rx * 1.6); x++) {
-        const Y = mod(y, H), dx = (x - px) / rx, dy = (y - py) / ry;
-        const v = 1 - (dx * dx + dy * dy) + (f.at(x, Y) - 0.5) * 1.9 + (f2.at(x, Y) - 0.5) * 0.7;
-        if (v > field[Y * TW + x]) { field[Y * TW + x] = v; gi[Y * TW + x] = k; }
+      for (let y = Math.floor(py - ry * 1.6); y < py + ry * 1.6; y++) {
+        if (due()) yield;
+        for (let x = Math.max(0, Math.floor(px - rx * 1.6)); x < Math.min(TW, px + rx * 1.6); x++) {
+          const Y = mod(y, H), dx = (x - px) / rx, dy = (y - py) / ry;
+          const v = 1 - (dx * dx + dy * dy) + (f.at(x, Y) - 0.5) * 1.9 + (f2.at(x, Y) - 0.5) * 0.7;
+          if (v > field[Y * TW + x]) { field[Y * TW + x] = v; gi[Y * TW + x] = k; }
+        }
       }
-      yield;
     }
     // distance (px, capped) to the outside looking up (toward the light), down, and sideways
     const up = new Uint8Array(TW * H), dn = new Uint8Array(TW * H), sd = new Uint8Array(TW * H);
@@ -2679,6 +2690,7 @@ function* genVeil() {
     }
     yield;
     for (let y = 0; y < H; y++) for (let x = 0; x < TW; x++) {
+      if (x === 0 && due()) yield;
       const i = y * TW + x, v = field[i];
       if (v <= 0) continue;
       const [px, py, rx, ry] = glob[gi[i]];
@@ -2870,9 +2882,9 @@ function* genWreck() {
   const HR = packRamp(['#0b0e10', '#12181b', '#1a2226', '#232d32', '#2e3a40', '#3a484e', '#4a5a60', '#5f7176', '#7d9094']);
   const RU = packRamp(['#1a1311', '#2a1d18', '#3c2a20', '#523626', '#6a452e']);
   const grime = new Fbm(rng, HW, HH, 90, 5, 0.55);
-  const grimeF = grime.field(3);
-  const fine = new Fbm(rng, HW, HH, 16, 2, 0.5).field(3);
-  const rust = new Fbm(rng, HW, HH, 60, 4, 0.55).field(3);
+  const grimeF = yield* grime.fieldG(3);
+  const fine = yield* new Fbm(rng, HW, HH, 16, 2, 0.5).fieldG(3);
+  const rust = yield* new Fbm(rng, HW, HH, 60, 4, 0.55).fieldG(3);
   yield;
   // --- plates: BSP subdivision, each plate bevelled and weathered ---
   const plates = [];
@@ -2886,6 +2898,7 @@ function* genWreck() {
   };
   for (let y = 0; y < HH; y += 128) split(14, y, HW - 28, 128, 0);
   for (const [px, py, pw, ph] of plates) {
+    if (due()) yield;
     const tone = rng.pick([-0.7, -0.3, 0, 0, 0.2, 0.5]);
     const rusty = rng.chance(0.18);
     for (let y = py; y < py + ph; y++) for (let x = px; x < px + pw; x++) {
@@ -2925,9 +2938,11 @@ function* genWreck() {
     }
   };
   paint(100, 40, 136, 150, '#3a1e1c', 0.4);
+  yield;
   paint(130, 600, 80, 120, '#1e2a36', 0.5);
   hazard(100, 210, 136, 6);
   hazard(126, 590, 84, 5);
+  yield;
   // --- giant hull numbers ---
   const stencil = (str, x0, y0, s, hex) => {
     const c = hexToRgb(hex);
@@ -2947,6 +2962,7 @@ function* genWreck() {
     }
   };
   stencil('07', 112, 56, 11, '#b8b09a');
+  yield;
   stencil('LV-7', 142, 612, 4, '#c8a050');
   yield;
   // --- raised superstructure blocks (bevelled, casting shadows to the lower right) ---
@@ -2980,6 +2996,7 @@ function* genWreck() {
   block(104, 250, 40, 22, 'windows');
   block(196, 262, 34, 30, 'hatch');
   block(16, 380, 28, 60, 'ribbed');
+  yield;
   block(110, 700, 56, 26, 'windows');
   block(292, 560, 28, 44, 'ribbed');
   block(170, 1000, 44, 20, 'hatch');
@@ -3012,7 +3029,9 @@ function* genWreck() {
     for (let y = 0; y < HH; y++) { r.set(x0 - 1, y, HR[7]); r.set(x0 + w, y, HR[1]); }
   };
   trench(48, 18);
+  yield;
   trench(270, 18);
+  yield;
   // cross trench segments
   const xtrench = (y0, h, x0, x1) => {
     for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x1; x++) {
@@ -3024,6 +3043,7 @@ function* genWreck() {
     for (let x = x0; x < x1; x++) { r.set(x, y0 - 1, HR[7]); r.set(x, y0 + h, HR[1]); }
   };
   xtrench(300, 16, 66, 270);
+  yield;
   xtrench(784, 14, 14, 48);
   xtrench(784, 14, 288, HW - 14);
   yield;
@@ -3103,6 +3123,7 @@ function* genWreck() {
     const bb = Math.ceil(rad * 2.2);
     const rmax2 = (rad * 1.25 * 1.9) ** 2;
     for (let y = -bb; y <= bb; y++) for (let x = -bb; x <= bb; x++) {
+      if (x === -bb && due()) yield;
       const X = cx + x, Y = mod(cy + y, HH);
       if (X < 14 || X >= HW - 14 || x * x + y * y > rmax2) continue;
       const i = Y * HW + X, ang = Math.atan2(y, x);
@@ -3141,6 +3162,7 @@ function* genWreck() {
   }
   // armour belts along both hull edges (ragged outer edge, periodic over the tile)
   for (let y = 0; y < HH; y++) {
+    if (due()) yield;
     const rag = (s) => Math.round(2 + 2 * pnoise(y, HH, 0.08, s) + (((y + s * 40) % 128) < 40 ? 3 : 0));
     const l = rag(1), rr = rag(2);
     for (let x = 0; x < 14; x++) {
@@ -3162,9 +3184,10 @@ function* genWreck() {
     const W2 = 560, H2 = 576, C2 = W2 / 2, d = new Raster(W2, H2, true), de = new Raster(W2, H2, true);
     const DR = packRamp(['#060506', '#0b0909', '#120e0e', '#1a1414', '#241c1b', '#302624', '#3e322e']);
     const PL = packRamp(['#06080a', '#0a0e11', '#0f1519', '#151d22', '#1c262c', '#253139', '#2f3d46', '#3b4a53']);
-    const f2 = new Fbm(rng, W2, H2, 40, 3, 0.5).field(3);
+    const f2 = yield* new Fbm(rng, W2, H2, 40, 3, 0.5).fieldG(3);
     // outer plating: rows of bevelled plates
     for (let py = 0; py < H2; py += 64) {
+      yield;
       for (const side of [-1, 1]) {
         let x = side < 0 ? 24 : C2 + 150;
         const xe = side < 0 ? C2 - 150 : W2 - 24;
@@ -3194,15 +3217,18 @@ function* genWreck() {
       if (rng.chance(0.6)) { d.set(x, y - 12, packHex('#ff5a5a')); de.set(x, y - 12, packHex('#8a1a1a')); }
     }
     // exposed skeleton in the middle: girders, ribs, machinery, conduits, fires (lit red by emergency lamps)
-    const f3 = new Fbm(rng, W2, H2, 90, 3, 0.5).field(4);
+    const f3 = yield* new Fbm(rng, W2, H2, 90, 3, 0.5).fieldG(4);
     for (let y = 0; y < H2; y++) for (let x = C2 - 150; x < C2 + 150; x++) {
+      if (x === C2 - 150 && due()) yield;
       const glow = f3[y * W2 + x];
       d.d[y * W2 + x] = glow > 0.5 && bay(x, y) < (glow - 0.5) * 4 ? pack(46, 12, 10) : glow > 0.4 && bay(x, y) < 0.5 ? pack(24, 8, 8) : pack(12, 6, 7);
     }
+    yield;
     for (const gx of [C2 - 120, C2 - 60, C2, C2 + 60, C2 + 120]) for (let y = 0; y < H2; y++) for (let x = gx - 5; x < gx + 5; x++) {
       const u = x - (gx - 5);
       d.set(x, y, DR[qi(clamp((u < 2 ? 5.5 : u > 7 ? 1 : 3.2) + (f2[y * W2 + x] - 0.5) * 2, 0, 6), x, y, 7)]);
     }
+    yield;
     for (let ry = 0; ry < H2; ry += 48) for (let y = ry; y < ry + 12; y++) for (let x = C2 - 150; x < C2 + 150; x++) {
       const u = y - ry;
       if (Math.abs(x - C2 + 20) < 40 && ry % 144 === 0) continue;
@@ -3213,7 +3239,9 @@ function* genWreck() {
       kBox(d, x, y, w, h, mat(['#0a0808', '#140f0f', '#1f1716', '#2c2220', '#3c2f2b'], '#5a4640'), L_HULL, { panels: 5, base: 2 });
       if (rng.chance(0.45)) { de.set(x + 2, y + 2, packHex('#8a1a1a')); d.set(x + 2, y + 2, packHex('#ff5a5a')); }
     }
+    yield;
     for (let k = 0; k < 7; k++) { const y = rng.int(0, H2); kCyl(d, C2 - 150, y, 300, 2, true, PIPE, L_HULL, { seg: 29, caps: false }); }
+    yield;
     for (let k = 0; k < 10; k++) {
       const x = rng.int(C2 - 130, C2 + 130), y = rng.int(0, H2), sd = rng.int(1, 999);
       for (let yy = -6; yy <= 6; yy++) for (let xx = -9; xx <= 9; xx++) {
@@ -3236,7 +3264,10 @@ function* genWreck() {
         if (q < 1) d.set(x + xx, y + yy, 0);
       }
     }
-    A.deck = outlined(d, pack(2, 2, 3, 255)).toCanvas(); A.deckE = yield* bandedG(de);
+    yield;
+    const dOut = outlined(d, pack(2, 2, 3, 255));
+    yield;
+    A.deck = dOut.toCanvas(); A.deckE = yield* bandedG(de);
   }
   yield;
   // --- deep space below: stars, a cold nebula glow and far debris ---
@@ -3545,7 +3576,7 @@ class HorizonStage extends Stage {
       // incremental re-render: at most ~1.5 ms of work per frame, then swap
       const t0 = nowMs();
       let r;
-      do { r = this.job.next(); } while (!r.done && nowMs() - t0 < 1.5);
+      do { r = resume(this.job); } while (!r.done && nowMs() - t0 < 1.5);
       if (r.done) { this.freeHole(this.hole); this.hole = r.value; this.job = null; }
     }
   }
@@ -3846,7 +3877,7 @@ export function _bgDebug() {
 // Dev: run a stage's asset and layout generators step by step and report the longest steps.
 export function _bgProfile(key, W = 240, H = 520, fx = 0, fy = 42) {
   const steps = [];
-  const time = (label, it) => { let r, i = 0; do { const t0 = nowMs(); r = it.next(); steps.push([label + '#' + i++, +(nowMs() - t0).toFixed(1)]); } while (!r.done); return r.value; };
+  const time = (label, it) => { let r, i = 0; do { const t0 = nowMs(); r = resume(it); steps.push([label + '#' + i++, +(nowMs() - t0).toFixed(1)]); } while (!r.done); return r.value; };
   const t0 = nowMs();
   const A = time('assets', STAGES[key][0]());
   const t1 = nowMs();

@@ -509,6 +509,7 @@ async function startOnline(kind, o = {}) {
     else session = await net.quickMatch(info);
   } catch (e) {
     const code = e && e.message;
+    if (code === 'ABORTED') return;   // superseded by a newer attempt (or cancelled): stay quiet
     const msg = {
       ROOM_NOT_FOUND: 'Squad not found. Check the code.',
       ROOM_FULL: 'That squad is full (4/4).',
@@ -552,7 +553,9 @@ function wireSession(s) {
 
 function launchOnline() {
   if (!session || !session.isHost) return;
-  const players = session.lobby.players.filter((p) => p.connected !== false).map((p) => ({ slot: p.slot, name: p.name, ship: p.ship }));
+  // Everyone in the lobby gets a ship (a briefly lagging player still receives 'start');
+  // anyone who never comes back is removed by the normal 'peerleave' path.
+  const players = session.lobby.players.map((p) => ({ slot: p.slot, name: p.name, ship: p.ship }));
   session.startGame({ sector: 0, seed: randomSeed(), players, v: VERSION });
 }
 

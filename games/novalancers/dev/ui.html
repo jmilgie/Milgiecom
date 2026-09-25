@@ -6,7 +6,7 @@
   <title>Nova Lancers — UI test bench</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <style>
     /* bench-only chrome */
@@ -47,7 +47,7 @@
 //   &host=0 &coop=1 &online=1 &room=CODE &unlocked=3 &mode=solo   variants
 //   ?banner=1  ?toast=1  ?touch=1 (touch buttons)  ?hud=1 (HUD sheet)  ?font=1 (font specimen)  ?tools=1 (screen switcher)
 import { UI } from '../js/ui/screens.js';
-import { drawHUD } from '../js/ui/hud.js';
+import { drawHUD, takeHudToasts } from '../js/ui/hud.js';
 import { drawText, measureText, fontGlyphs } from '../js/art/font.js';
 import { SECTORS, DEFAULT_SETTINGS, FIELD_W, FIELD_H, HUD_TOP, HUD_BOTTOM } from '../js/config.js';
 
@@ -148,6 +148,13 @@ function layout() {
   const free = R.H - FIELD_H;
   R.fy = free >= HUD_TOP + HUD_BOTTOM ? HUD_TOP + Math.floor((free - HUD_TOP - HUD_BOTTOM) * 0.35) : free > 0 ? Math.floor(free * HUD_TOP / (HUD_TOP + HUD_BOTTOM)) : 0;
   main.width = light.width = R.W; main.height = light.height = R.H;
+  // same custom properties main.js publishes for the touch buttons
+  const tc = $('#touchControls');
+  const fb = (R.fy + FIELD_H) * s;
+  tc.style.setProperty('--field-bottom', fb + 'px');
+  tc.style.setProperty('--field-left', R.fx * s + 'px');
+  tc.style.setProperty('--field-right', (cssW - (R.fx + FIELD_W) * s) + 'px');
+  tc.style.setProperty('--below-field', Math.max(0, cssH - fb) + 'px');
   screenCv.width = Math.round(cssW * Math.min(2, devicePixelRatio)); screenCv.height = Math.round(cssH * Math.min(2, devicePixelRatio));
   screenCv.style.width = cssW + 'px'; screenCv.style.height = cssH + 'px';
   bg?.resize?.(R.W, R.H, R.fx, R.fy);
@@ -338,7 +345,10 @@ function go(search) {
     $('#novaCount').textContent = q.get('bombs') || '2';
   }
   if (q.get('banner')) setTimeout(() => UI.banner(q.get('banner') === 'warn' ? 'WARNING' : 'SECTOR 2 — CINDER BELT', q.get('banner') === 'warn' ? 'WYRM APPROACHING' : 'Mining Belt · Red Giant Hadar', 60000), 50);
-  if (q.get('toast')) { UI.toast('Squad not found. Check the code.', 60000); UI.toast('BLAZE joined', 60000); }
+  if (q.get('toast')) {
+    if (UI.current === 'none') { UI.toast('POWER 4', 60000); UI.toast('ORBITAL-7 REVIVED', 60000); UI.toast('BLAZE joined', 60000); }
+    else { UI.toast('Squad not found. Check the code.', 60000); UI.toast('BLAZE joined', 60000); }
+  }
   if (q.get('tools') && !$('#devbar').classList.contains('on')) {
     const bar = $('#devbar'); bar.classList.add('on');
     for (const n of ['title', 'menu', 'hangar', 'coop', 'join', 'lobby', 'pause', 'gameover', 'results', 'victory', 'settings', 'howto', 'credits', 'loading', 'none']) {
@@ -352,7 +362,7 @@ function go(search) {
   }
 }
 window.UI = UI;
-window.bench = { go, clearToasts: () => document.querySelectorAll('.toast').forEach((t) => t.remove()), clearBanner: () => document.querySelector('.ui-banner').classList.remove('show', 'hide') };
+window.bench = { go, clearToasts: () => { document.querySelectorAll('.toast').forEach((t) => t.remove()); takeHudToasts(); }, clearBanner: () => document.querySelector('.ui-banner').classList.remove('show', 'hide') };
 </script>
 </body>
 </html>
